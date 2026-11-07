@@ -16,7 +16,7 @@
       "id": "b",
       "name": "B",
       "pos": {
-        "line": 5,
+        "line": 4,
         "col": 1
       }
     }
@@ -26,7 +26,7 @@
       "from": "a",
       "to": "b",
       "pos": {
-        "line": 8,
+        "line": 6,
         "col": 1
       }
     }
@@ -41,7 +41,7 @@
           "x": 10,
           "y": 20,
           "pos": {
-            "line": 11,
+            "line": 9,
             "col": 3
           }
         },
@@ -51,13 +51,13 @@
           "x": 10,
           "y": 20,
           "pos": {
-            "line": 12,
+            "line": 10,
             "col": 3
           }
         }
       ],
       "pos": {
-        "line": 10,
+        "line": 8,
         "col": 1
       }
     }
@@ -69,7 +69,7 @@
         "shape": "rounded"
       },
       "pos": {
-        "line": 15,
+        "line": 13,
         "col": 1
       }
     }

@@ -4,14 +4,14 @@
     {
       "code": "P201",
       "message": "\"ctx\" is orphaned (no links, no flow references)",
-      "line": 30,
+      "line": 28,
       "col": 1,
       "severity": "warning"
     },
     {
       "code": "P101",
       "message": "process target \"mailx\" resolves to nothing",
-      "line": 57,
+      "line": 55,
       "col": 7,
       "severity": "error"
     }

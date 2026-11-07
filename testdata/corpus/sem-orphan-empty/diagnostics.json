@@ -11,14 +11,14 @@
     {
       "code": "P202",
       "message": "flow \"Empty\" has no steps",
-      "line": 6,
+      "line": 5,
       "col": 1,
       "severity": "warning"
     },
     {
       "code": "P202",
       "message": "flow \"Talk only\" has no visual steps",
-      "line": 8,
+      "line": 7,
       "col": 1,
       "severity": "warning"
     }

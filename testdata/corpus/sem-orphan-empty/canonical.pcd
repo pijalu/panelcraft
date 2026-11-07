@@ -1,7 +1,6 @@
 pcd 1.0
 
-person lonely "Lonely" {
-}
+person lonely "Lonely"
 
 flow "Empty" as empty {
 }

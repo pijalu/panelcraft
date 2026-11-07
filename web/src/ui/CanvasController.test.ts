@@ -191,7 +191,7 @@ describe('link creation via halo (FR-C7)', () => {
     ctrl.addObject('system', { x: 580, y: 430 }); // o2 (500,400)
   });
 
-  it('halo drag → ghost → commit link with default type uses', () => {
+  it('halo drag → ghost → commit an untyped link (F-08: no injected type)', () => {
     svg.dispatchEvent(ptr('pointerdown', center('o1').x, center('o1').y));
     window.dispatchEvent(ptr('pointerup', center('o1').x, center('o1').y));
     const halo = svg.querySelector('.pc-halo');
@@ -201,7 +201,7 @@ describe('link creation via halo (FR-C7)', () => {
     expect(links).toHaveLength(1);
     expect(links[0]?.from).toBe('o1');
     expect(links[0]?.to).toBe('o2');
-    expect(links[0]?.type).toBe('uses');
+    expect(links[0]?.type).toBeUndefined();
     expect(svg.querySelectorAll('.pc-route')).toHaveLength(1);
     ctrl.undo.undo();
     expect(ctrl.snapshot.links).toHaveLength(0);

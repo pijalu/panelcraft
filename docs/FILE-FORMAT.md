@@ -461,9 +461,10 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
 - E-12 Fields the parser recorded are emitted even when empty strings
   (`title ""`, `person a ""`, `a -> b : ""`); Go's IR models presence with
   `*string` for exactly those fields (implementation note, D-M1-22).
-- E-13 Objects always print in block form (`person a "A" {`+newline+`}`), even
-  attribute-less; an empty `{}` style block parses to "no style" and is omitted
-  (§3, §11).
+- E-13 Objects print in block form only when they have content (F-05): the
+  grammar makes the block optional (`object = kind ident , [ string ] , [ "{" ,
+  { attr } , "}" ]`), so an attribute-less object prints as `person a "A"` and
+  a `{}` style block parses to "no style" and is omitted (§3, §11).
 - E-14 Nesting limit: 32 levels, deeper = E112 (§6).
 - E-15 Syntax errors (E100–E113) abort the whole file (doc = null + diagnostics);
   semantic findings never abort (§10, §14 sample).

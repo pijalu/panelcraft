@@ -191,6 +191,25 @@ describe('printer (WP3)', () => {
     expect(out.indexOf('person b')).toBeLessThan(out.indexOf('style a'));
   });
 
+  it('omits the attribute block when an object has no attributes (F-05)', () => {
+    const { doc } = parsePDL('pcd 1.0\n\nsystem a "A" {\n}\n');
+    expect(printDoc(doc!)).toBe('pcd 1.0\n\nsystem a "A"\n');
+  });
+
+  it('keeps the block for any real attribute, style or raw line (F-05)', () => {
+    const { doc } = parsePDL('pcd 1.0\n\nsystem a "A" {\n  technology "Go"\n}\n');
+    expect(printDoc(doc!)).toContain('system a "A" {\n  technology "Go"\n}');
+  });
+
+  it('print∘parse∘print is stable without empty blocks (F-05)', () => {
+    const src = 'pcd 1.0\n\nsystem a "A" {\n}\n\nsystem b "B" {\n  tag x\n}\n\na -> b\n';
+    const once = printDoc(parsePDL(src).doc!);
+    const twice = printDoc(parsePDL(once).doc!);
+    expect(twice).toBe(once);
+    expect(once).not.toContain('{ }');
+    expect(once).not.toContain('{\n}');
+  });
+
   it('idempotence + IR-stability fuzz (50 seeds)', () => {
     forAllSeeds(Array.from({ length: 50 }, (_, k) => k + 1), (rng, seed) => {
       const doc = genDoc(rng);

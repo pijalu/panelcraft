@@ -18,7 +18,7 @@
       "id": "web",
       "name": "Web Shop",
       "pos": {
-        "line": 7,
+        "line": 6,
         "col": 1
       }
     },
@@ -27,7 +27,7 @@
       "id": "db",
       "name": "Orders DB",
       "pos": {
-        "line": 9,
+        "line": 7,
         "col": 1
       }
     },
@@ -36,7 +36,7 @@
       "id": "psp",
       "name": "PSP",
       "pos": {
-        "line": 11,
+        "line": 8,
         "col": 1
       }
     },
@@ -45,7 +45,7 @@
       "id": "q",
       "name": "order events",
       "pos": {
-        "line": 13,
+        "line": 9,
         "col": 1
       }
     },
@@ -54,7 +54,7 @@
       "id": "n",
       "name": "fraud?",
       "pos": {
-        "line": 15,
+        "line": 10,
         "col": 1
       }
     }
@@ -64,7 +64,7 @@
       "from": "u",
       "to": "web",
       "pos": {
-        "line": 18,
+        "line": 12,
         "col": 1
       }
     },
@@ -72,7 +72,7 @@
       "from": "web",
       "to": "db",
       "pos": {
-        "line": 19,
+        "line": 13,
         "col": 1
       }
     },
@@ -81,7 +81,7 @@
       "to": "psp",
       "type": "dotted",
       "pos": {
-        "line": 20,
+        "line": 14,
         "col": 1
       }
     },
@@ -90,7 +90,7 @@
       "to": "q",
       "type": "thick",
       "pos": {
-        "line": 21,
+        "line": 15,
         "col": 1
       }
     },
@@ -98,7 +98,7 @@
       "from": "web",
       "to": "n",
       "pos": {
-        "line": 22,
+        "line": 16,
         "col": 1
       }
     }

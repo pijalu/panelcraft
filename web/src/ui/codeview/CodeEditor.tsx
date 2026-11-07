@@ -16,6 +16,7 @@ import type { SyncMachine, SyncSnapshot } from './sync';
 import { mermaidToPdl } from './mermaidPaste';
 import { pdlStreamLanguage } from './pdlMode';
 import { pcTheme, pcHighlightExtension } from './cmTheme';
+import { minimalChange, trailingWhitespaceOnly } from './diff';
 
 export interface CodeEditorProps {
   /** The App-owned sync machine (single source of sync truth). */
@@ -34,9 +35,18 @@ export function CodeEditor({ machine }: CodeEditorProps) {
       machine.subscribe((s) => {
         setSnap(s);
         const v = view.current;
-        if (v !== null && v.state.doc.toString() !== s.codeText) {
-          v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: s.codeText } });
-        }
+        if (v === null) return;
+        const current = v.state.doc.toString();
+        if (current === s.codeText) return;
+        // F-03/F-04: minimal diff + mapped selection. A full-document replace
+        // dropped the caret to offset 0 on every machine write; an incoming
+        // text that differs only in trailing whitespace needs no dispatch.
+        if (trailingWhitespaceOnly(current, s.codeText)) return;
+        const change = minimalChange(current, s.codeText);
+        if (change.from === change.to && change.insert === '') return;
+        // no explicit `selection`: CodeMirror maps the current selection
+        // through the change, so a caret in an untouched region stays put
+        v.dispatch({ changes: change, scrollIntoView: false });
       }),
     [machine],
   );

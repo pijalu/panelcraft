@@ -32,6 +32,10 @@ class Printer {
   text(): string {
     return this.out.join('\n') + '\n';
   }
+  /** Raw collected lines (used to decide whether a block has content). */
+  lines(): string[] {
+    return [...this.out];
+  }
 }
 
 const styleLines = (sb: StyleBlock | undefined, depth: number, p: Printer): void => {
@@ -133,14 +137,25 @@ const objectAttrLines = (o: Obj, p: Printer): void => {
 const printObject = (o: Obj, p: Printer): void => {
   p.comment(o.comments, 0);
   const name = o.name ?? o.id;
-  p.add(`${o.kind} ${o.id} ${quote(name)} {`);
-  objectAttrLines(o, p);
+  const head = `${o.kind} ${o.id} ${quote(name)}`;
+  // F-05: a block is emitted only when it has content — the grammar allows
+  // omission (FILE-FORMAT §10/§11), and an unconditional `{ }` made every
+  // canvas-origin rewrite touch every line (maximum echo diff).
+  const body = new Printer();
+  objectAttrLines(o, body);
   if (hasStyle(o.style)) {
-    p.add(`${INDENT}style {`);
-    styleLines(o.style, 2, p);
-    p.add(`${INDENT}}`);
+    body.add(`${INDENT}style {`);
+    styleLines(o.style, 2, body);
+    body.add(`${INDENT}}`);
   }
-  for (const r of o.attributes ?? []) p.add(`${INDENT}${r.raw}`);
+  for (const r of o.attributes ?? []) body.add(`${INDENT}${r.raw}`);
+  const lines = body.lines();
+  if (lines.length === 0) {
+    p.add(head);
+    return;
+  }
+  p.add(head + ' {');
+  for (const line of lines) p.add(line);
   p.add('}');
 };
 

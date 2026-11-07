@@ -66,6 +66,8 @@ class SyncMachineImpl implements SyncMachine {
   private codeTimer: unknown = null;
   private idleTimer: unknown = null;
   private pendingCanvas: Doc | null = null;
+  /** Cached canonical print of `buffer` (reset on every buffer change). */
+  private bufferCanon: string | null = null;
   private readonly watchers = new Set<(s: SyncSnapshot) => void>();
 
   constructor(private readonly port: SyncMachinePort) {}
@@ -74,8 +76,19 @@ class SyncMachineImpl implements SyncMachine {
     state: this.state,
     codeText: this.buffer,
     diagnostics: this.diagnostics,
-    divergedFromSaved: this.buffer !== this.savedText,
+    // F-04: the buffer is kept verbatim after an idle apply, so "diverged"
+    // means "means something other than what is saved", not "is not
+    // byte-identical to the canonical print".
+    divergedFromSaved: this.buffer === this.savedText ? false : this.canonOfBuffer() !== this.savedText,
   });
+
+  /** Canonical form of the buffer (parse + print); the buffer itself if unparsable. */
+  private canonOfBuffer(): string {
+    if (this.bufferCanon !== null) return this.bufferCanon;
+    const { doc } = parsePDL(this.buffer);
+    this.bufferCanon = doc === null ? this.buffer : printDoc(doc);
+    return this.bufferCanon;
+  }
 
   subscribe = (fn: (s: SyncSnapshot) => void): (() => void) => {
     this.watchers.add(fn);
@@ -87,6 +100,7 @@ class SyncMachineImpl implements SyncMachine {
     this.cancelAll();
     this.pendingCanvas = null;
     this.buffer = text;
+    this.bufferCanon = null;
     this.savedText = text;
     this.diagnostics = [];
     this.state = 'clean';
@@ -96,6 +110,7 @@ class SyncMachineImpl implements SyncMachine {
   textChanged = (text: string): void => {
     if (text === this.buffer) return; // echo suppression
     this.buffer = text;
+    this.bufferCanon = null;
     this.state = 'editing';
     this.diagnostics = [];
     // A pending canvas re-render must not clobber the freshly typed buffer.
@@ -127,6 +142,7 @@ class SyncMachineImpl implements SyncMachine {
     const canonical = printDoc(doc);
     const changed = canonical !== this.buffer || this.savedText !== canonical;
     this.buffer = canonical;
+    this.bufferCanon = canonical;
     this.pendingCanvas = null;
     if (changed) this.port.apply(doc);
     this.state = 'clean';
@@ -139,7 +155,9 @@ class SyncMachineImpl implements SyncMachine {
       this.port.cancel(this.idleTimer);
       this.idleTimer = null;
     }
-    this.buffer = printDoc(this.parseBuffer().doc!);
+    // F-04: the buffer stays exactly what the user typed — canonicalising it
+    // here added `{ }` blocks and re-flowed the document under the caret while
+    // typing. The canonical form goes to the file (markSaved) instead.
     this.reachClean();
   };
 
@@ -169,6 +187,7 @@ class SyncMachineImpl implements SyncMachine {
     this.codeTimer = this.port.schedule(() => {
       this.codeTimer = null;
       this.buffer = printDoc(doc);
+      this.bufferCanon = this.buffer;
       this.emit();
     }, this.port.codeDebounceMs ?? CODE_MS);
   }

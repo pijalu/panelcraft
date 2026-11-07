@@ -95,9 +95,12 @@ export function PropertiesPanel({ obj, link, nameFieldRef, onChangeObject, onCha
           <span class="field-label">Type</span>
           <select
             data-testid="link-type"
-            value={link.type}
-            onChange={(e) => onChangeLink(link.id, { type: (e.target as HTMLSelectElement).value })}
+            value={link.type ?? ''}
+            onChange={(e) =>
+              onChangeLink(link.id, { type: (e.target as HTMLSelectElement).value || undefined })
+            }
           >
+            <option value="">(untyped)</option>
             {LINK_TYPES.map((t) => (
               <option key={t} value={t} selected={t === link.type}>
                 {t}

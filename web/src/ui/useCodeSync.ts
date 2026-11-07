@@ -18,7 +18,9 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { CanvasController, Snapshot } from './CanvasController';
 import type { WorkspaceManager } from '../workspace/workspace';
-import { docToState, stateToDoc, stateToPcd } from '../workspace/workspace';
+import { docToState, stateToPcd } from '../workspace/workspace';
+import { applyCanvasState } from '../engine/model/merge';
+import { FORMAT_VERSION, IR_VERSION, type Doc } from '../engine/model/types';
 import { printDoc } from '../engine/format/printer';
 import { parsePDL } from '../engine/format/parser';
 import { createSyncMachine, type SyncMachine, type SyncSnapshot } from './codeview/sync';
@@ -27,6 +29,25 @@ import { createSyncMachine, type SyncMachine, type SyncSnapshot } from './codevi
 function canon(text: string): string {
   const { doc } = parsePDL(text);
   return doc === null ? text : printDoc(doc);
+}
+
+/** Parsed doc of `text`, or null when it does not parse. */
+function docOf(text: string): Doc | null {
+  return parsePDL(text).doc;
+}
+
+/** Blank document — the merge base when neither buffer nor file parse. */
+function emptyDoc(): Doc {
+  return {
+    irVersion: IR_VERSION,
+    formatVersion: FORMAT_VERSION,
+    imports: [],
+    objects: [],
+    links: [],
+    flows: [],
+    views: [],
+    styles: [],
+  };
 }
 
 export interface CodeSyncHandle {
@@ -121,10 +142,14 @@ export function useCodeSync(deps: {
     }
     if (text === lastBridgeTextRef.current) return; // drags/selection/viewport spam
     lastBridgeTextRef.current = text;
-    // Doc built directly from the canvas state: the projection text is not
-    // guaranteed to re-parse, so a parse-first round trip silently dropped
-    // genuine updates (M4 fix — buffer never updated after an apply).
-    machine.canvasChanged(stateToDoc(state));
+    // Canvas changes are merged into the live document (F-01), so flows, views,
+    // styles and imports never disappear when the canvas writes: the base is
+    // the buffer the user sees (falling back to the file, then an empty doc).
+    const base =
+      docOf(machine.snapshot().codeText) ??
+      docOf(path === null ? '' : manager.text(path)) ??
+      emptyDoc();
+    machine.canvasChanged(applyCanvasState(base, state));
     // the emission's saveCanvas (onCtrlState) already wrote the projection
     // to the file synchronously — record it, or the chip would show a
     // diverged false alarm whenever canvas edits re-canonicalize ids/types.

@@ -45,13 +45,13 @@
         {
           "raw": "shine true",
           "pos": {
-            "line": 11,
+            "line": 10,
             "col": 3
           }
         }
       ],
       "pos": {
-        "line": 10,
+        "line": 9,
         "col": 1
       }
     }

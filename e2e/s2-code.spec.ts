@@ -43,7 +43,10 @@ test('S2: mermaid paste → canvas → canvas edit → code view updates', async
   // the buffer swaps to the canvas projection text (meta lines dropped)
   await expect(content).toContainText('System 1', { timeout: 3000 });
   await expect(content).toContainText('container api');
-  await expect(content).not.toContainText('direction');
+  // F-01/D1: a canvas edit merges into the document — the mermaid paste kept
+  // `direction TD`, so the meta line must survive the canvas write (this
+  // assertion used to bless the data-loss bug).
+  await expect(content).toContainText('direction TD');
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
 
   // light + dark screenshots (vision round input for M4)

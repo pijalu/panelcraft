@@ -22,6 +22,7 @@ import { exportPcd, exportMmd, importText } from './io';
 import { parsePDL } from '../engine/format/parser';
 import { printDoc } from '../engine/format/printer';
 import { DEFAULT_SHAPE } from '../ui/CanvasController';
+import { applyCanvasState } from '../engine/model/merge';
 import { IR_VERSION, FORMAT_VERSION, type Doc, type Kind, type Link, type Obj } from '../engine/model/types';
 
 /** Canvas-side state (structurally compatible with ui CanvasController). */
@@ -44,9 +45,12 @@ export interface CanvasLink {
   id: string;
   from: string;
   to: string;
-  type: string;
+  /** Arrow type; absent = untyped arrow (F-08: never invented). */
+  type?: string;
   label?: string;
   dashed?: boolean;
+  /** `<->` double-headed link (F-07). */
+  bidir?: boolean;
 }
 
 export interface CanvasState {
@@ -57,10 +61,12 @@ export interface CanvasState {
 /* ---- canvas ⇄ PDL ------------------------------------------------------- */
 
 /**
- * Canvas projection doc: objects + links only — flows/views/styles are
- * dropped (D-M4-6: the canvas cannot model them). Fed to the sync machine
- * by useCodeSync and printed by stateToPcd; must always re-parse, so link
- * ids must be valid idents.
+ * Canvas → doc *projection*: objects + links only, no flows/views/styles.
+ *
+ * Used for two things only: (a) the fallback when the file does not parse
+ * (F-01 — a broken buffer must not block canvas saves) and (b) the canvas
+ * fingerprint that dedupes no-op saves. Real saves go through
+ * `applyCanvasState`, so nothing outside objects/links is lost.
  */
 export function stateToDoc(state: CanvasState): Doc {
   const objects: Obj[] = state.objects.map((o) => ({
@@ -71,15 +77,18 @@ export function stateToDoc(state: CanvasState): Doc {
     technology: o.technology,
     tags: o.tags?.length ? [...o.tags] : undefined,
     icon: o.icon,
+    style: o.dashed === true ? { dashed: true } : undefined,
     pos: { line: 0, col: 0 },
   }));
   const links: Link[] = state.links.map((l) => ({
     id: l.id,
     from: l.from,
     to: l.to,
-    type: l.type || undefined,
+    // F-08: no `uses` default — an untyped arrow stays untyped
+    type: l.type === '' ? undefined : l.type,
     label: l.label,
-    bidir: false,
+    bidir: l.bidir === true ? true : undefined,
+    style: l.dashed === true ? { dashed: true } : undefined,
     pos: { line: 0, col: 0 },
   }));
   return {
@@ -135,26 +144,27 @@ function viewPositions(doc: Doc, viewName?: string): Map<string, { x: number; y:
  */
 export function docToState(doc: Doc, viewName?: string): CanvasState {
   const positions = viewPositions(doc, viewName);
-  const objects: CanvasObject[] = doc.objects
-    .filter((o) => o.kind !== 'group' && o.kind !== 'note')
-    .map((o, i) => {
-      const size = DEFAULT_SHAPE[o.kind];
-      const grid = gridPos(i);
-      const p = positions.get(o.id) ?? grid;
-      return {
-        id: o.id,
-        kind: o.kind,
-        x: p.x,
-        y: p.y,
-        w: size?.w ?? 160,
-        h: size?.h ?? 60,
-        name: o.name,
-        description: o.description,
-        technology: o.technology,
-        tags: o.tags,
-        icon: o.icon,
-      };
-    });
+  // F-06: every kind the palette offers must survive a load (group/note used
+  // to be filtered out here, so a drawn boundary vanished on the next apply).
+  const objects: CanvasObject[] = doc.objects.map((o, i) => {
+    const size = DEFAULT_SHAPE[o.kind];
+    const grid = gridPos(i);
+    const p = positions.get(o.id) ?? grid;
+    return {
+      id: o.id,
+      kind: o.kind,
+      x: p.x,
+      y: p.y,
+      w: size?.w ?? 160,
+      h: size?.h ?? 60,
+      name: o.name,
+      description: o.description,
+      technology: o.technology,
+      tags: o.tags,
+      icon: o.icon,
+      dashed: o.style?.dashed === true ? true : undefined,
+    };
+  });
   const ids = new Set(objects.map((o) => o.id));
   const links: CanvasLink[] = doc.links
     .filter((l) => ids.has(l.from) && ids.has(l.to))
@@ -162,8 +172,11 @@ export function docToState(doc: Doc, viewName?: string): CanvasState {
       id: l.id ?? `${l.from}-${l.to}-${i}`,
       from: l.from,
       to: l.to,
-      type: l.type ?? 'uses',
+      // F-08: carry the document's semantics — no injected `uses`
+      type: l.type,
       label: l.label,
+      dashed: l.style?.dashed === true ? true : undefined,
+      bidir: l.bidir === true ? true : undefined,
     }));
   return { objects, links };
 }
@@ -362,7 +375,7 @@ export class WorkspaceManager {
 
   /** Canvas → workspace file; no-op when the serialized text is unchanged. */
   saveCanvas(path: string, state: CanvasState): void {
-    const text = stateToPcd(state);
+    const text = this.canvasText(path, state);
     const node = getNode(this.root, path);
     if (node?.kind === 'file' && node.content === text) return;
     writeFile(this.root, path, text);
@@ -370,6 +383,31 @@ export class WorkspaceManager {
     this.emit();
     this.scheduleSave();
   }
+
+  /**
+   * Merge-based canvas write (F-01): the canvas only owns objects/links, so a
+   * canvas edit is merged into the *current* document — flows, views,
+   * positions, styles, imports, meta, comments, attributes, tags and waypoints
+   * survive. Falls back to the bare projection when the file does not parse
+   * (a typo must not block canvas saves).
+   */
+  private canvasText(path: string, state: CanvasState): string {
+    const node = getNode(this.root, path);
+    const current = node?.kind === 'file' ? (node.content ?? '') : '';
+    const doc = this.parseForMerge(current);
+    if (doc === null) return stateToPcd(state);
+    return printDoc(applyCanvasState(doc, state));
+  }
+
+  /** parse memo: canvas saves re-parse the same text many times per drag end. */
+  private parseForMerge(text: string): Doc | null {
+    if (this.parseCache.text === text) return this.parseCache.doc;
+    const { doc } = parsePDL(text);
+    this.parseCache = { text, doc };
+    return doc;
+  }
+
+  private parseCache: { text: string | null; doc: Doc | null } = { text: null, doc: null };
 
   /** File → canvas state (grid layout; empty text → empty state). */
   canvasState(path: string): CanvasState {

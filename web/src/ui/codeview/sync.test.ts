@@ -54,8 +54,8 @@ class FakeScheduler {
   }
 }
 
-const PDL_A = 'pcd 1.0\n\nsystem a "A" {\n}\n';
-const PDL_B = 'pcd 1.0\n\nsystem b "B" {\n}\n';
+const PDL_A = 'pcd 1.0\n\nsystem a "A"\n';
+const PDL_B = 'pcd 1.0\n\nsystem b "B"\n';
 const BAD = 'pcd 1.0\nsystem';
 
 interface Rig {

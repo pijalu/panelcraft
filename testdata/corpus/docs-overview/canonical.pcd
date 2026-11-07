@@ -5,8 +5,7 @@ level deployment
 direction LR
 theme dark
 
-person author "Architect" {
-}
+person author "Architect"
 container spa "PanelCraft SPA" {
   description "Single-page editor: SVG canvas + code view"
   technology "Preact + TypeScript SVG engine"

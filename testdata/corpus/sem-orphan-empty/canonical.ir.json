@@ -17,7 +17,7 @@
       "id": "empty",
       "title": "Empty",
       "pos": {
-        "line": 6,
+        "line": 5,
         "col": 1
       }
     },
@@ -29,13 +29,13 @@
           "type": "info",
           "text": "nothing visual",
           "pos": {
-            "line": 9,
+            "line": 8,
             "col": 3
           }
         }
       ],
       "pos": {
-        "line": 8,
+        "line": 7,
         "col": 1
       }
     }

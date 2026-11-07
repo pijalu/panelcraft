@@ -6,8 +6,7 @@ direction LR
 import common as "../common/actors.pcd"
 
 # provides common.psp
-person user "Shopper" {
-}
+person user "Shopper"
 system shop "Webshop" {
   description "Storefront SPA"
   technology "React"
@@ -24,8 +23,7 @@ datastore db "Orders DB" {
 queue events "order.events" {
   technology "Kafka"
 }
-system_ext psp "Payment Provider" {
-}
+system_ext psp "Payment Provider"
 # imported in real files; inlined here
 group ctx "Checkout context" {
   contains api db

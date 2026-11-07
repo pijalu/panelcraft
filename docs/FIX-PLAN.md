@@ -1,0 +1,246 @@
+# PanelCraft — Fix Plan (execution contract)
+
+Companion to [REVIEW-enhancements.md](REVIEW-enhancements.md). That document says *what is wrong and why*;
+this one is the ordered, testable work list. **Every task below must end with a regression test that fails
+without the fix.**
+
+## 0. Working rules (non-negotiable)
+
+1. **Issue intake rule.** Any problem discovered while fixing something — from any source (test flake,
+   stale doc, wrong assumption in the review, a bug in adjacent code, a broken screenshot) — is **in scope
+   and must be fixed** in the same programme. Register it as a new `F-xx` row here with severity, owner
+   phase, and a test. The programme is complete only when **no row is open**.
+2. **No test may encode a defect.** `e2e/s2-code.spec.ts` currently asserts that canvas edits drop
+   `direction`. Any test that blesses a bug is rewritten in the same commit that fixes the bug.
+3. **Never weaken a gate** (`npm run check`, coverage thresholds, axe, corpus parity, self-containment) to
+   make a change land.
+4. **Format changes are atomic:** `IR_VERSION` bump + `FILE-FORMAT.md` + parser + printer + corpus +
+   Go parity fixtures + serialize in one commit.
+5. **Each commit:** one task ID, its test, and a one-line `CHANGELOG.md` entry.
+
+Verification for every task: `npm run check && npx vitest run` green, plus the task's own e2e/visual proof.
+Programme-level gate: `bash scripts/verify.sh m7` green with a clean `git status` afterwards.
+
+---
+
+## Phase P0 — Correctness (blocks everything else)
+
+### F-01 Document-preserving canvas writes — **critical**
+*Problem:* `saveCanvas` writes a projection (`workspace.ts:65-96,364-372`) that silently deletes flows,
+views, positions, style blocks, imports, comments, waypoints, link tags, `bidir`, raw attributes (review §2 D1).
+*Change:* add `applyCanvasState(doc, state): Doc` in `engine/model` that merges by id (update in place, keep
+untouched fields, append new, drop removed, leave `flows/views/styles/imports/meta` alone) and make
+`saveCanvas` = `printDoc(applyCanvasState(parseCache(currentText), state))`. Keep `stateToDoc` as the
+fallback when the current text does not parse.
+*Tests:* unit — flow + view + style + import + waypoint + `bidir` survive a simulated drag/rename;
+e2e — paste a file with a flow, drag a node, assert the flow block is still in the code pane and in IDB.
+*Depends on:* none.
+
+### F-02 Stable id allocation — **critical**
+*Problem:* session counter reuses ids of a loaded file (`CanvasController.ts:226`, `loadState` at `:293`);
+duplicate ids appear in the file and one entity is visually lost (review §2 D2).
+*Change:* `loadState` re-baselines `seq` from `max(/^o(\d+)$/)`; `addObject` probes for a free id; add a
+`uniqueId(existing)` helper. Also regenerate ids on paste/duplicate (needed by F-19).
+*Tests:* unit — load `o1,o2`, add → `o3`; 20 sequential adds are unique; e2e — add 3 objects to a loaded
+file, file has 5 unique ids.
+
+### F-03 Caret-preserving editor sync
+*Problem:* full-document dispatch on every machine→editor write; caret lands at offset 0 (review §2 D4,
+repro: selection 12 → 0). `CodeEditor.tsx:38`.
+*Change:* prefix/suffix minimal-diff dispatch; restore `selection` (and `scrollIntoView` only if the caret
+left the viewport); skip dispatch when only trailing whitespace differs. Add `caret-color`/focus assertions
+to the CM theme tests.
+*Tests:* unit — dispatch keeps caret at its logical position; e2e — click mid-line, wait >400 ms, caret is
+still on the same line/column (assert via `window.getSelection()`).
+
+### F-04 Stop canonicalising the buffer under the caret
+*Problem:* `applied()` replaces the user's text with the canonical print (`sync.ts:138-145`), adding `{ }`
+blocks mid-typing and re-flowing the doc while the user types (review §2 D3).
+*Change:* keep the user's buffer verbatim on idle apply; write the canonical form to the file only
+(`markSaved`), canonicalise the buffer on Format/Save. Reconcile `state`/`divergedFromSaved` accordingly.
+*Tests:* unit — type one line, fire idle timer, buffer equals what the user typed; file content canonical;
+e2e — pause 600 ms mid-rename in code view, canvas does not re-layout (transform attributes unchanged).
+
+### F-05 Printer: no empty attribute blocks
+*Problem:* every object prints `{ }` even with no attributes (`printer.ts:133-144`), so any canvas write
+touches every line and echo diffs are maximal.
+*Change:* emit the block only when it has content; grammar already allows omission (`FILE-FORMAT.md:344`).
+*Tests:* printer golden + corpus regeneration (`npm run corpus:accept`) + `format(format(x)) == format(x)`.
+
+### F-06 `group` / `note` objects must survive a load
+*Problem:* palette offers them, loader filters them out (`workspace.ts:139`) — draw a boundary, it disappears.
+*Change:* render `group` (boundary rect, resizable, contains-children drag) and `note`; stop filtering;
+auto-size groups to their contained objects; `note` uses `attach` when anchors land (F-20).
+*Tests:* unit — `docToState` keeps both kinds; e2e — drop a Group, reload, still there with same size.
+
+### F-07 Persist what the properties panel shows
+*Problem:* object `dashed`, link `dashed`, link `bidir`, and any style/waypoints set in code are dropped by
+the canvas projection (review §2 D6/D7).
+*Change:* covered structurally by F-01; additionally map `dashed`/`bidir` in the merge so the panel control
+and the file stay in sync, and add the missing fields to `DiagramLink`/`DiagramObject`.
+*Tests:* unit round-trip for each field; e2e — toggle "Dashed border", reload, checkbox still checked and
+the border still dashed.
+
+### F-08 Canvas-origin link semantics must not mutate
+*Problem:* `bidir: false` and `type ?? 'uses'` are injected on every canvas write (`workspace.ts:77-83`), so
+`a <-> b` becomes `a -uses-> b`.
+*Change:* remove the defaults from the projection; carry type/head/tail/line/dashed from the doc.
+*Tests:* unit — load `<->`, drag a node, link stays `<->` with the original type; e2e assertion updated.
+
+### F-09 Repo hygiene: no generated content
+*Problem:* `dist/release/**` (12 files, 46 MB of dry-run binaries + built pages) and
+`e2e/__screenshots__/**` are tracked, and the specs write into the tracked directory — every e2e run leaves
+a dirty worktree (review §7).
+*Change:* `git rm -r --cached dist`; add `dist/`, `e2e/**/__screenshots__/` to `.gitignore`; write run
+screenshots to `test-results/` (`playwright.config.ts` `outputDir`); keep curated goldens in
+`e2e/goldens/` written only when `UPDATE_GOLDENS=1`; add a CI step asserting `git status --porcelain` is
+empty after e2e; document the optional history purge in `agents.md`.
+*Tests:* `npm run check` + `npm run e2e` then `git status --porcelain` empty; `git ls-files dist` empty.
+
+---
+
+## Phase P1 — Requested UX (all depend on P0)
+
+### F-10 Collapsible, resizable shell — *items 1-3*
+Panels: sidebar / palette / code / properties each get `open|collapsed`; splitters with persisted widths;
+`Ctrl/Cmd+B` sidebar, `Ctrl/Cmd+J` code, `Ctrl/Cmd+Alt+P` properties; collapsed code leaves a rail with the
+sync-state chip; default `code: collapsed` under 1440 px. Persist in `StoredWorkspace.settings` (schema bump
++ migration in `store/port.ts` + `store/idb.ts`).
+*Tests:* component — toggles flip `aria-expanded`, layout state persists; e2e — collapse all, reload, canvas
+width ≥ 900 px at 1280; axe stays green.
+
+### F-11 Properties panel sections — *item 2*
+Split into collapsible sections (Identity / Metadata / Style / Advanced) with per-section persistence; add
+the missing controls from the spec: custom key-value properties, style overrides (fill/stroke/text/icon),
+link direction/head/line (F-12), size (F-13).
+*Tests:* component — section collapse + every control round-trips through the doc.
+
+### F-12 Arrow type model — *item 10*
+Link visual model `{head, tail, line, width}` + per-type colour hint; renderer gains one marker per head
+shape; format carries `head/tail/line` inside the existing link `style` block; UI segmented control and
+`Shift+A` cycle.
+*Tests:* unit — marker selection per link, style block round-trip; e2e — set "diamond tail", reload, assert
+`marker-start` and the code line; visual screenshot (light+dark) of 5 link styles.
+
+### F-13 Size: format, fit-to-name, manual resize — *items 7, 8*
+`size <w> <h>` object attribute (known attr, `IR_VERSION` 2); measurement port for text; `autoSize` on
+create/rename with 2-line wrapping; 8-handle resize for all kinds (min 48×32, snap, one undo per drag);
+`Fit` command; explicit size disables auto-fit.
+*Tests:* unit — text measurement stub, auto-grow, wrap, clamp; e2e — resize a container, reload, same size;
+screenshot before/after of a long name (proves no overflow).
+
+### F-14 Geometry persistence + explicit re-layout — *item 9*
+Drag/resize end commits positions to the active view (implicit `"Default"` with `layout saved` when absent),
+debounced 250 ms, undoable; opening/switching never re-positions; only `Auto-layout` (confirmed + undo) and
+`Reset layout` reorganise.
+*Tests:* unit — commit path writes `position` lines only for moved ids; e2e — drag 3 nodes, reload, identical
+transforms; `Auto-layout` changes them and undo restores.
+
+### F-15 In-place rename — *item 6*
+`F2` / double-click opens an overlay input positioned in screen space (repositioned on pan/zoom, chip above
+200 % zoom), Enter commits, Esc cancels, `aria-label="Rename <kind>"`, routed through `updateObject`
+(coalesced undo), properties panel mirrors it live.
+*Tests:* component — Enter/Esc/blur paths; e2e — rename on canvas, assert canvas label + properties field +
+code line all agree.
+
+---
+
+## Phase P2 — Presentation & animation
+
+### F-16 Present shell — *item 11*
+Fullscreen presentation container that hides editor chrome (`.presenting`), minimal transport dock,
+click/`Space`/`→` advance, `←` back, `P` pause, `R` restart, `Esc` exits and restores the pre-play viewport;
+step counter, progress dots, speaker notes, reduced-motion path.
+*Tests:* e2e — start flow, click canvas to advance, counter increments, Esc restores viewport + chrome;
+screenshot of presenting mode; `prefers-reduced-motion` path.
+
+### F-17 Illustration registry
+`BeatPlayer` implementations: `travel-token` (existing), `pulse` (existing), `sequential-glow` (par lanes),
+`packet-burst` (info), `compare-split` (alt), `trail-fade` (conclusion); per-flow choice in the flow header,
+planner untouched.
+*Tests:* unit per player (keyframe/DOM end-state), e2e video-frame assertion on one player + screenshots.
+
+### F-18 Flow editing parity
+Drag-reorder steps (exists as `moveStep`, wire the UI), duplicate step, per-step delay editing, dirty
+indicators, sticky flow header with "play from step".
+*Tests:* component + e2e reorder persists in code.
+
+---
+
+## Phase P3 — Parity, fidelity, discoverability
+
+### F-19 Clipboard, context menus, waypoints, alignment — *spec items missing today*
+Copy/paste/duplicate with cross-file id remap (needs F-02); canvas/object/edge context menus; waypoint
+dragging with orthogonal re-route; align/distribute/equal-size on multi-selection.
+*Tests:* unit for the command layer; e2e for each entry point.
+
+### F-20 Imports rendered as ghosts
+Resolve `imports`, render ghost objects (dashed, badge), click-through to source file, cycle + missing-file
+errors surfaced in the UI, read-only enforcement.
+*Tests:* unit resolution + cycle detection; e2e two-file workspace.
+
+### F-21 Mermaid interop completion
+`sequenceDiagram` import → flows (FR-M3), C4 export, `classDef`/`linkStyle` mapping, and a generated
+`docs/MERMAID-MATRIX.md` that is asserted against the exporter's `dropped[]` list.
+*Tests:* corpus fixtures both directions + a doc/code parity test.
+
+### F-22 Canvas accessibility + canvas↔code map
+Roving-focus object navigation (`Tab` into canvas, `←→↑↓` between objects, `Enter` select, `F2` rename),
+ARIA roles/labels on scene nodes, `aria-live` narration already present; click object → highlight its code
+lines and vice versa.
+*Tests:* e2e keyboard-only pass (axe + focus order), screenshot of code highlight.
+
+### F-23 Diagnostics on canvas + error-state UX
+Error ring on offending objects, "N problems" header chip, last-good render with an "out of date" canvas
+banner instead of a frozen silent canvas.
+*Tests:* component + e2e typing an error mid-rename.
+
+### F-24 Unified undo
+One journal: canvas commands, code edits, flow/view edits with focus-aware `Ctrl/Cmd+Z` routing and a
+history affordance for the last N entries.
+*Tests:* unit ordering/coalescing; e2e undo across all three surfaces.
+
+---
+
+## Phase P4 — Laws-of-UX pass & docs truth
+
+### F-25 UX laws pass
+Implement the audit table in `REVIEW-enhancements.md` §6: saved/dirty pill, template gallery empty state,
+palette grouped by C4 level, progressive link-type menu, feedback toasts, problem chips, closing card,
+sticky flow headers, hover info cards, docked transport, 32 px minimum hit targets.
+*Tests:* component tests per affordance + screenshot set light/dark per state.
+
+### F-26 Docs truth pass
+Update `SPEC.md` (either implemented or moved to a post-1.0 section: FR-C5/C6/C7/C8/C10/C12, FR-I*),
+`USER-GUIDE.md` (panels, rename, size, present mode), `AppHeader` copy (drop "M3 workspace"), `CHANGELOG.md`,
+`agents.md` (new gates: corpus regeneration steps, e2e golden policy).
+*Tests:* `scripts/check-docs.sh` (links + `.pcd` fences) + a manual diff of FR list vs code grep.
+
+### F-27 Performance guard for the new sync path
+Benchmark 500 objects with a single rename; assert ≤ the M7 budget in `engine/perf/nfr.test.ts`; confirm no
+regression from minimal-diff sync and merge-based saves.
+*Tests:* the benchmark itself plus the existing N1–N3 gates.
+
+---
+
+## Sequencing & dependencies
+
+```
+P0: F-01 → F-02 → F-03 → F-04 → F-05 → F-06 → F-07 → F-08 → F-09
+P1: F-13(format first) → F-14 → F-12 → F-10 → F-11 → F-15
+P2: F-16 → F-17 → F-18
+P3: F-19 → F-20 → F-21 → F-22 → F-23 → F-24
+P4: F-25 → F-26 → F-27
+```
+Rationale: F-01/F-02 unblock every geometry/task; F-13's `size` attribute must land before F-14 commits
+positions; F-12 wants the same merge path; P2 has no format risk and can ship independently if needed.
+
+## Definition of done (programme)
+
+1. Every `F-xx` row closed with its test, and no open issue rows in this file.
+2. `npm run check`, `npx vitest run` (coverage thresholds), `npm run e2e`, `bash scripts/verify.sh m7` all
+   green; `git status --porcelain` empty after a full e2e run.
+3. `git ls-files dist` empty; no generated artefact tracked anywhere.
+4. Visual evidence captured for F-12, F-13, F-15, F-16, F-17, F-22 (light + dark screenshots) and stored
+   per F-09's policy.
+5. `REVIEW-enhancements.md` §2 defects marked FIXED with the commit shas; SPEC/USER-GUIDE/CHANGELOG updated.

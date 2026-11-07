@@ -2,18 +2,12 @@ pcd 1.0
 level container
 direction TB
 
-person u "Alice" {
-}
-container web "Web Shop" {
-}
-datastore db "Orders DB" {
-}
-system_ext psp "PSP" {
-}
-queue q "order events" {
-}
-note n "fraud?" {
-}
+person u "Alice"
+container web "Web Shop"
+datastore db "Orders DB"
+system_ext psp "PSP"
+queue q "order events"
+note n "fraud?"
 
 u -> web
 web -> db

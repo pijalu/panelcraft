@@ -184,6 +184,82 @@ describe('canvas ⇄ file (M3 mapping)', () => {
   });
 });
 
+describe('canvas writes merge into the document (F-01)', () => {
+  const RICH = `pcd 1.0
+title "Payments"
+direction LR
+
+system api "API" {
+  tag public
+}
+
+datastore db "DB"
+
+api -requests-> db : "reads" as L1 {
+  waypoint (10, 20)
+}
+
+flow "Checkout" as f1 {
+  intro "start"
+}
+
+view "Default" {
+  layout saved
+  position api (120, 240)
+}
+
+style api {
+  fill #ff0000
+}
+`;
+
+  it('a simulated drag/rename keeps flow, view, position, style and link semantics', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', RICH);
+    const st = pcdToState(RICH);
+    const drag = {
+      objects: st.objects.map((o) => ({ ...o, x: o.x + 40, y: o.y + 10 })),
+      links: st.links,
+    };
+    ws.saveCanvas('a.pcd', drag);
+    const text = ws.text('a.pcd');
+    expect(text).toContain('flow "Checkout" as f1');
+    expect(text).toContain('view "Default"');
+    expect(text).toContain('position api (120, 240)');
+    expect(text).toContain('style api {');
+    expect(text).toContain('waypoint (10, 20)');
+    expect(text).toContain('api -requests-> db : "reads" as L1');
+    // and the merged text still re-parses to the same model
+    expect(parsePDL(text).doc?.flows).toHaveLength(1);
+  });
+
+  it('keeps a bidirectional arrow bidirectional', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\n\nsystem a "A"\n\nsystem b "B"\n\na <-> b as L\n');
+    const st = pcdToState(ws.text('a.pcd'));
+    ws.saveCanvas('a.pcd', { objects: st.objects, links: st.links });
+    expect(ws.text('a.pcd')).toContain('a <-> b');
+    expect(ws.text('a.pcd')).not.toContain('uses');
+  });
+
+  it('keeps group and note objects (F-06)', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\n\ngroup g1 "Tier"\n\nnote n1 "memo"\n\nsystem s1 "S"\n');
+    const st = ws.canvasState('a.pcd');
+    expect(st.objects.map((o) => o.id)).toEqual(['g1', 'n1', 's1']);
+    ws.saveCanvas('a.pcd', st);
+    expect(ws.text('a.pcd')).toContain('group g1 "Tier"');
+    expect(ws.text('a.pcd')).toContain('note n1 "memo"');
+  });
+
+  it('falls back to the projection when the file does not parse', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\nsystem');
+    ws.saveCanvas('a.pcd', state());
+    expect(ws.text('a.pcd')).toBe(stateToPcd(state()));
+  });
+});
+
 describe('autosave → storage (FR-S1)', () => {
   it('flush persists the latest record with tree + tabs', async () => {
     const port = new MemoryStorage();

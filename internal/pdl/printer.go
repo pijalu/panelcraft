@@ -55,6 +55,9 @@ func (p *printer) comment(comments []string, depth int) {
 
 func (p *printer) text() string { return strings.Join(p.out, "\n") + "\n" }
 
+// lines returns the collected lines (used to decide whether a block has content).
+func (p *printer) lines() []string { return append([]string(nil), p.out...) }
+
 // styleLines prints a style block body (nil = no style, print nothing).
 func styleLines(sb *ir.StyleBlock, depth int, p *printer) {
 	if sb == nil {
@@ -210,16 +213,26 @@ func printObject(o ir.Obj, p *printer) {
 	if o.Name != nil {
 		name = *o.Name
 	}
-	p.add(o.Kind + " " + o.ID + " " + Quote(name) + " {")
-	objectAttrLines(o, p)
+	head := o.Kind + " " + o.ID + " " + Quote(name)
+	// F-05: emit the block only when it has content (grammar allows omission;
+	// an unconditional `{ }` touched every line on every canvas-origin write).
+	body := &printer{}
+	objectAttrLines(o, body)
 	if hasStyle(o.Style) {
-		p.add(indent + "style {")
-		styleLines(o.Style, 2, p)
-		p.add(indent + "}")
+		body.add(indent + "style {")
+		styleLines(o.Style, 2, body)
+		body.add(indent + "}")
 	}
 	for _, r := range o.Attributes {
-		p.add(indent + r.Raw)
+		body.add(indent + r.Raw)
 	}
+	lines := body.lines()
+	if len(lines) == 0 {
+		p.add(head)
+		return
+	}
+	p.add(head + " {")
+	p.out = append(p.out, lines...)
 	p.add("}")
 }
 

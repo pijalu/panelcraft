@@ -54,9 +54,12 @@ export interface DiagramLink {
   id: string;
   from: string;
   to: string;
-  type: string;
+  /** Arrow type; absent = untyped arrow (F-08: the canvas never invents one). */
+  type?: string;
   label?: string;
   dashed?: boolean;
+  /** `<->` double-headed link (F-07). */
+  bidir?: boolean;
 }
 
 export interface DiagramState {
@@ -123,6 +126,23 @@ export function labelFor(kind: Kind): string {
     .split('_')
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(' ');
+}
+
+/** Numeric suffix of a generated id (`o12` → 12); 0 when it is not one. */
+function seqOf(id: string, prefix: 'o' | 'l'): number {
+  const m = new RegExp(`^${prefix}(\\d+)$`).exec(id);
+  return m ? Number(m[1]) : 0;
+}
+
+/**
+ * F-02: ids must be stable and never reuse an id that already exists in the
+ * loaded file (a duplicate id printed twice loses one entity on reload).
+ * Returns `prefix<n>` starting at `from` that no id in `taken` uses.
+ */
+export function uniqueId(taken: ReadonlySet<string>, prefix: 'o' | 'l', from: number): string {
+  let n = Math.max(from, 1);
+  while (taken.has(`${prefix}${n}`)) n++;
+  return `${prefix}${n}`;
 }
 
 function rectOf(o: Rect): Rect {
@@ -223,14 +243,24 @@ export class CanvasController {
     const p = at ?? this.centerOfView();
     const x = at ? Math.round(p.x - size.w / 2) : snapToGrid(p.x - size.w / 2);
     const y = at ? Math.round(p.y - size.h / 2) : snapToGrid(p.y - size.h / 2);
-    const id = `o${++this.seq}`;
-    const obj: DiagramObject = { id, kind, x, y, w: size.w, h: size.h, name: `${labelFor(kind)} ${this.seq}` };
+    // F-02: probe for a free id — never reuse an id loaded from the file
+    const id = uniqueId(this.takenObjectIds(), 'o', ++this.seq);
+    this.seq = Math.max(this.seq, seqOf(id, 'o'));
+    const obj: DiagramObject = { id, kind, x, y, w: size.w, h: size.h, name: `${labelFor(kind)} ${seqOf(id, 'o')}` };
     const before = this.state.objects;
     this.state = { ...this.state, objects: [...before, obj] };
     this.selectObjects([id]);
     this.undo.push(this.addRemoveCommand(obj, before));
     this.render();
     return id;
+  }
+
+  private takenObjectIds(): Set<string> {
+    return new Set(this.state.objects.map((o) => o.id));
+  }
+
+  private takenLinkIds(): Set<string> {
+    return new Set(this.state.links.map((l) => l.id));
   }
 
   /** Quick-add by palette index 1..9 (FR-C3). */
@@ -265,7 +295,10 @@ export class CanvasController {
   }
 
   /** Patch a link (type/label/dashed, FR-C7). */
-  updateLink(id: string, patch: Partial<Pick<DiagramLink, 'type' | 'label' | 'dashed'>>): void {
+  updateLink(
+    id: string,
+    patch: Partial<Pick<DiagramLink, 'type' | 'label' | 'dashed' | 'bidir'>>,
+  ): void {
     const before = this.state.links;
     const after = before.map((l) => (l.id === id ? { ...l, ...patch } : l));
     if (listEq(before, after)) return;
@@ -329,6 +362,14 @@ export class CanvasController {
 
   loadState(state: DiagramState): void {
     this.state = state;
+    // F-02: re-baseline the id sequence from the loaded ids, otherwise the
+    // first added object reuses an id that already exists in the file and one
+    // of the two entities is lost on reload.
+    this.seq = Math.max(
+      0,
+      ...state.objects.map((o) => seqOf(o.id, 'o')),
+      ...state.links.map((l) => seqOf(l.id, 'l')),
+    );
     this.selectObjects([]);
     this.recomputeRoutes();
     this.render();
@@ -857,8 +898,10 @@ export class CanvasController {
       this.toCanvas(e),
     );
     if (hit?.type !== 'object') return;
-    const id = `l${++this.seq}`;
-    const link: DiagramLink = { id, from: m.fromId, to: hit.id, type: 'uses' };
+    const id = uniqueId(this.takenLinkIds(), 'l', ++this.seq);
+    this.seq = Math.max(this.seq, seqOf(id, 'l'));
+    // F-08: a canvas-drawn link is untyped until the user picks a type
+    const link: DiagramLink = { id, from: m.fromId, to: hit.id };
     const before = this.state.links;
     const after = [...before, link];
     this.state = { ...this.state, links: after };

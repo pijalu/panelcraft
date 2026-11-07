@@ -2,9 +2,7 @@ pcd 1.0
 level container
 direction LR
 
-container a "Web" {
-}
-container b "API" {
-}
+container a "Web"
+container b "API"
 
 a -> b

@@ -18,7 +18,7 @@
     {
       "code": "P205",
       "message": "unknown attribute \"shine true\" kept verbatim",
-      "line": 11,
+      "line": 10,
       "col": 3,
       "severity": "warning"
     }

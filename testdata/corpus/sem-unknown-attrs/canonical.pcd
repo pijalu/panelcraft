@@ -4,8 +4,7 @@ person a "A" {
   blur "2px"
   glow on
 }
-person b "B" {
-}
+person b "B"
 
 a -> b {
   shine true

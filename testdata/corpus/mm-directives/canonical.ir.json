@@ -18,7 +18,7 @@
       "id": "b",
       "name": "API",
       "pos": {
-        "line": 7,
+        "line": 6,
         "col": 1
       }
     }
@@ -28,7 +28,7 @@
       "from": "a",
       "to": "b",
       "pos": {
-        "line": 10,
+        "line": 8,
         "col": 1
       }
     }
