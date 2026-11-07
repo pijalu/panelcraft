@@ -63,6 +63,12 @@ perf_smoke() {
 # e2e now includes S1 (canvas create-flow) next to the S7 no-network smoke.
 e2e_m2() { run npm run e2e -- --project=chromium; }
 
+# ---- m3 stages (workspace & storage; reuses m1 corpus gates) -----------------
+# workspace_unit: focused run of the workspace suite (fs/tabs/store/zip/io).
+workspace_unit() { run npx vitest run web/src/workspace/; }
+# e2e now includes S4 (workspace zip → clear → import; FR-S2/S3 paths).
+e2e_m3() { run npm run e2e -- --project=chromium; }
+
 case "$MILESTONE" in
   m0)
     STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test selfcontained e2e_smoke)
@@ -73,8 +79,11 @@ case "$MILESTONE" in
   m2)
     STAGES=(web_check web_test perf_smoke web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m2)
     ;;
+  m3)
+    STAGES=(web_check web_test perf_smoke workspace_unit web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m3)
+    ;;
   *)
-    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2)" >&2
+    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3)" >&2
     exit 2
     ;;
 esac
