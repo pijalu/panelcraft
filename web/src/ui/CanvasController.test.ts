@@ -362,4 +362,16 @@ describe('M6 session fade + positions (FR-V1/V2/V3)', () => {
     ctrl.applyPositions({ ghost: { x: 1, y: 1 } });
     expect(obj(id).x).not.toBe(1);
   });
+
+  it('reveal paints the selection immediately (search/deps jump, M6)', () => {
+    ctrl.addObject('system', { x: 15, y: 25 });
+    const id = ctrl.snapshot.objects[0]!.id;
+    ctrl.reveal(id);
+    const g = svg.querySelector(`g.pc-obj[data-id="${id}"]`);
+    expect(g?.classList.contains('pc-selected')).toBe(true); // rendered now
+    const world = svg.querySelector('.pc-world')?.getAttribute('transform');
+    expect(world).not.toBe('translate(0 0) scale(1)'); // camera centered
+    ctrl.reveal('ghost'); // unknown id: no-op, selection untouched
+    expect(svg.querySelector(`g.pc-obj[data-id="${id}"]`)?.classList.contains('pc-selected')).toBe(true);
+  });
 });

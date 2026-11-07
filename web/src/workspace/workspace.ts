@@ -108,17 +108,39 @@ function gridPos(index: number): { x: number; y: number } {
 }
 
 /**
+ * Stored `position` lines of `viewName` (M6 FR-V4; undefined = the explicit
+ * "Default" view — the UI's implicit-default session resolution). Local
+ * resolver: workspace sits below ui/, so it must not import viewDoc.
+ */
+function viewPositions(doc: Doc, viewName?: string): Map<string, { x: number; y: number }> {
+  const out = new Map<string, { x: number; y: number }>();
+  const view = doc.views.find((v) => v.name === (viewName ?? 'Default'));
+  if (!view) return out;
+  for (const l of view.lines) {
+    if (l.type === 'position') out.set(l.id, { x: l.x, y: l.y });
+  }
+  return out;
+}
+
+/**
  * Grid-layout canvas state for a parsed doc (position-free format). Link ids
  * are synthesized when the text has no `as` clause; the fallback must be a
  * valid ident (§1) — `from->to` would print `as from->to` and '>' is not an
  * ident char, so the buffer would never re-parse (M4 fix, FR-K2).
+ *
+ * `viewName` (M6 FR-V4): stored `position` lines of that view overlay the
+ * grid (default resolution = the explicit "Default" view, matching the UI's
+ * implicit-default session state). Objects without a stored position keep
+ * their grid slot.
  */
-export function docToState(doc: Doc): CanvasState {
+export function docToState(doc: Doc, viewName?: string): CanvasState {
+  const positions = viewPositions(doc, viewName);
   const objects: CanvasObject[] = doc.objects
     .filter((o) => o.kind !== 'group' && o.kind !== 'note')
     .map((o, i) => {
       const size = DEFAULT_SHAPE[o.kind];
-      const p = gridPos(i);
+      const grid = gridPos(i);
+      const p = positions.get(o.id) ?? grid;
       return {
         id: o.id,
         kind: o.kind,
@@ -147,9 +169,9 @@ export function docToState(doc: Doc): CanvasState {
 }
 
 /** File → canvas state; unparsable/empty text yields an empty state. */
-export function pcdToState(text: string): CanvasState {
+export function pcdToState(text: string, viewName?: string): CanvasState {
   const { doc } = parsePDL(text);
-  return doc === null ? { objects: [], links: [] } : docToState(doc);
+  return doc === null ? { objects: [], links: [] } : docToState(doc, viewName);
 }
 
 /* ---- manager ------------------------------------------------------------ */

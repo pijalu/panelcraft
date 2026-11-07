@@ -19,11 +19,15 @@ export function useQuickSearch(
   ctrlRef: { current: CanvasController | null },
 ): QuickSearch {
   const [open, setOpen] = useState(false);
+  // Always-attached: Esc must close even when the keydown lands before the
+  // dialog's autofocus/effects have run (close when closed = no-op).
   useEffect(() => {
     const onKey = (ev: KeyboardEvent): void => {
       if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'p') {
         ev.preventDefault();
         setOpen(true);
+      } else if (ev.key === 'Escape') {
+        setOpen(false); // no-op unless open
       }
     };
     window.addEventListener('keydown', onKey);

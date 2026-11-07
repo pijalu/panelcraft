@@ -385,6 +385,8 @@ export class CanvasController {
     const cy = o.y + o.h / 2;
     const { w, h } = this.viewSize();
     this.setTransform({ x: w / 2 - cx * this.t.k, y: h / 2 - cy * this.t.k, k: this.t.k });
+    // paint now: selection class + halo — no other render is pending
+    this.render();
   }
 
   // ---- undo command helpers ----------------------------------------------

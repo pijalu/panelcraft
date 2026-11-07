@@ -139,6 +139,22 @@ describe('canvas ⇄ file (M3 mapping)', () => {
     expect(st.links).toEqual([{ id: 'L1', from: 'api', to: 'db', type: 'uses', label: 'reads' }]);
   });
 
+  it('stored view positions overlay the grid (M6 FR-V4 apply roundtrip)', () => {
+    const text =
+      stateToPcd(state()) +
+      '\nview "Default" {\n  position api (500, 10)\n}\n';
+    const st = pcdToState(text);
+    expect(st.objects[0]?.id).toBe('api');
+    expect(st.objects[0]?.x).toBe(500); // stored position wins
+    expect(st.objects[0]?.y).toBe(10);
+    expect(st.objects[1]?.x).toBe(230); // unstored object keeps its grid slot
+    // a named view other than the active one does not leak
+    const st2 = pcdToState(
+      stateToPcd(state()) + '\nview "Other" {\n  position api (500, 10)\n}\n',
+    );
+    expect(st2.objects[0]?.x).toBe(40); // grid
+  });
+
   it('saveCanvas writes text, flags dirty, and skips identical content', () => {
     const ws = new WorkspaceManager({ skipWelcome: true });
     ws.createFileAt('a.pcd', '');

@@ -51,8 +51,11 @@ export function useCodeSync(deps: {
   version: number;
   ctrlRef: { current: CanvasController | null };
   snap: Snapshot | null;
+  /** Active view name ref (M6 FR-V4): the apply port loads that view's
+   * stored positions so an apply roundtrip doesn't reset the layout. */
+  viewRef?: { current: string | undefined };
 }): CodeSyncHandle {
-  const { manager, ready, activePath, version, ctrlRef, snap } = deps;
+  const { manager, ready, activePath, version, ctrlRef, snap, viewRef } = deps;
   const lastLoadedRef = useRef<string | null>(null);
   const appliedTextRef = useRef<string | null>(null);
   const lastBridgeTextRef = useRef<string | null>(null);
@@ -67,9 +70,10 @@ export function useCodeSync(deps: {
           const ctrl = ctrlRef.current;
           if (ctrl) {
             // canvas is the projection: load through the same doc→state path
-            // the file open uses (grid layout for new objects); the canvas
-            // then emits and the bridge confirms via applied() (echo).
-            const state = docToState(doc);
+            // the file open uses (grid layout for new objects; stored view
+            // positions overlay — M6 FR-V4); the canvas then emits and the
+            // bridge confirms via applied() (echo).
+            const state = docToState(doc, viewRef?.current);
             appliedTextRef.current = stateToPcd(state);
             ctrl.loadState(state);
           }
@@ -104,15 +108,19 @@ export function useCodeSync(deps: {
     if (!ready || snap === null) return;
     const state = { objects: snap.objects, links: snap.links };
     const text = stateToPcd(state);
-    if (text === lastBridgeTextRef.current) return; // drags/selection/viewport spam
-    lastBridgeTextRef.current = text;
     const path = manager.activePath;
+    // Echo check FIRST: a position-only apply (auto-layout, FR-V3) changes
+    // neither the serialized projection nor the buffer — the dedupe below
+    // would swallow the emission and the machine would stay pending-apply.
     if (text === appliedTextRef.current) {
       appliedTextRef.current = null;
+      lastBridgeTextRef.current = text;
       machine.applied(); // no-op unless pending-apply (formatNow applies from clean)
       if (path !== null) machine.markSaved(canon(manager.text(path)));
       return;
     }
+    if (text === lastBridgeTextRef.current) return; // drags/selection/viewport spam
+    lastBridgeTextRef.current = text;
     // Doc built directly from the canvas state: the projection text is not
     // guaranteed to re-parse, so a parse-first round trip silently dropped
     // genuine updates (M4 fix — buffer never updated after an apply).

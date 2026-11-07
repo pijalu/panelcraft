@@ -4,7 +4,7 @@
 // around the SVG, never inside it); the WorkspaceManager owns the virtual FS,
 // tabs and autosave; chrome re-renders via manager.subscribe(). Lifecycle and
 // sync wiring live in useWorkspace.ts; panels below are presentational.
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { PALETTE_ORDER, labelFor, CanvasController, type Snapshot } from './CanvasController';
 import { PropertiesPanel } from './PropertiesPanel';
 import { Palette } from './Palette';
@@ -144,14 +144,6 @@ export function App() {
   const ws = useWorkspace();
   const canvas = useCanvasController(ws.manager, ws.ready, ws.version);
   const activePath = ws.ready ? ws.manager.activePath : null;
-  const code = useCodeSync({
-    manager: ws.manager,
-    ready: ws.ready,
-    activePath,
-    version: ws.version,
-    ctrlRef: canvas.ctrlRef,
-    snap: canvas.snap,
-  });
   const { manager } = ws;
   const [clearOpen, setClearOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
@@ -162,6 +154,21 @@ export function App() {
   useEffect(() => {
     setViewName(undefined);
   }, [activePath]);
+  // Ref mirror for the code-sync apply port (loads the active view's stored
+  // positions on apply — M6 FR-V4); refs survive the machine's long lifetime.
+  const viewNameRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    viewNameRef.current = viewName;
+  }, [viewName]);
+  const code = useCodeSync({
+    manager: ws.manager,
+    ready: ws.ready,
+    activePath,
+    version: ws.version,
+    ctrlRef: canvas.ctrlRef,
+    snap: canvas.snap,
+    viewRef: viewNameRef,
+  });
   const player = useFlowStage({ manager, canvas, activePath });
   const ctrl = canvas.ctrlRef.current;
   const sel = selections(canvas.snap);
