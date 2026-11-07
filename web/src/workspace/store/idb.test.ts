@@ -127,6 +127,50 @@ describe('default storage selection', () => {
     expect(port).toBeInstanceOf(MemoryStorage);
   });
 
+  it('workspace + snapshots share ONE database (M6 fix: no per-feature version race)', async () => {
+    // order that used to break: snapshots open first (bumps the DB), then the
+    // workspace open at the old version → VersionError → restore failure
+    const snaps = await import('./snapshots');
+    const snapshotStore = snaps.SnapshotStore.open(factory);
+    const storage = IdbStorage.open(factory); // same factory, same database
+    const rec = sampleRecord('shared');
+    await storage.save(rec);
+    await snapshotStore.save('point-in-time', rec);
+    const restored = await storage.load();
+    expect(restored?.name).toBe('shared'); // workspace intact after snapshot write
+    expect((await snapshotStore.list()).length).toBe(1);
+    // reverse open order is symmetric
+    const storage2 = IdbStorage.open(factory);
+    expect((await storage2.load())?.name).toBe('shared');
+  });
+
+  it('v1 database (pre-M6) upgrades to v2 without losing the workspace', async () => {
+    // simulate the M3-era layout: version 1, 'workspace' store only
+    await new Promise<void>((resolve, reject) => {
+      const req = factory.open('panelcraft', 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains('workspace')) req.result.createObjectStore('workspace');
+      };
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('workspace', 'readwrite');
+        tx.objectStore('workspace').put(sampleRecord('legacy'), 'current');
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      };
+      req.onerror = () => reject(req.error);
+    });
+    const snaps = await import('./snapshots');
+    const store = snaps.SnapshotStore.open(factory); // triggers v1 → v2 upgrade
+    const storage = IdbStorage.open(factory);
+    expect((await storage.load())?.name).toBe('legacy'); // data survives
+    await store.save('after-upgrade', sampleRecord('snap'));
+    expect((await storage.load())?.name).toBe('legacy'); // snapshot write didn't clobber
+  });
+
   it('memory fallback behaves as a StoragePort (FR-S2 ephemeral base)', async () => {
     const mem = new MemoryStorage();
     expect(await mem.load()).toBeNull();

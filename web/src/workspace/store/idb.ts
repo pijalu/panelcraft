@@ -4,10 +4,8 @@
 // object store 'workspace' holds one record under the fixed key 'current'.
 import { decodeStored, mapStoreError, type StoragePort, type StoredWorkspace } from './port';
 import { MemoryStorage } from './memory';
+import { openPanelCraftDb, WORKSPACE_STORE } from './db';
 
-const DB_NAME = 'panelcraft';
-const DB_VERSION = 1;
-const STORE = 'workspace';
 const KEY = 'current';
 
 export class IdbStorage implements StoragePort {
@@ -15,34 +13,14 @@ export class IdbStorage implements StoragePort {
 
   /** Open (creating the store when needed). Rejects StoreError('unavailable'). */
   static open(factory: IDBFactory): IdbStorage {
-    const db = new Promise<IDBDatabase>((resolve, reject) => {
-      let req: IDBOpenDBRequest;
-      try {
-        req = factory.open(DB_NAME, DB_VERSION);
-      } catch (err) {
-        reject(mapStoreError(err));
-        return;
-      }
-      req.onupgradeneeded = () => {
-        const database = req.result;
-        if (!database.objectStoreNames.contains(STORE)) database.createObjectStore(STORE);
-      };
-      req.onsuccess = () => {
-        const database = req.result;
-        database.onversionchange = () => database.close(); // allow deletes/upgrades
-        resolve(database);
-      };
-      req.onerror = () => reject(mapStoreError(req.error));
-      req.onblocked = () => reject(new Error('indexedDB open blocked'));
-    });
-    return new IdbStorage(db);
+    return new IdbStorage(openPanelCraftDb(factory));
   }
 
   private async tx<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest): Promise<T> {
     const db = await this.db;
     return new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(STORE, mode);
-      const req = fn(tx.objectStore(STORE));
+      const tx = db.transaction(WORKSPACE_STORE, mode);
+      const req = fn(tx.objectStore(WORKSPACE_STORE));
       req.onsuccess = () => resolve(req.result as T);
       req.onerror = () => reject(mapStoreError(req.error));
     });
