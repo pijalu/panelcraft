@@ -1,0 +1,820 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "name": "magic-only",
+      "src": "pcd 1.0\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\"\n}",
+      "print": "pcd 1.0\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "lead-comments",
+      "src": "# hello\n// SPDX-License-Identifier: GPL-3.0-only\npcd 1.0\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"comments\": [\n    \"hello\",\n    \"SPDX-License-Identifier: GPL-3.0-only\"\n  ]\n}",
+      "print": "pcd 1.0\n# hello\n# SPDX-License-Identifier: GPL-3.0-only\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "metas",
+      "src": "pcd 1.0\ntitle \"Demo\"\nlevel container\ndirection LR\ntheme dark\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"Demo\",\n  \"level\": \"container\",\n  \"direction\": \"LR\",\n  \"theme\": \"dark\"\n}",
+      "print": "pcd 1.0\ntitle \"Demo\"\nlevel container\ndirection LR\ntheme dark\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "duplicate-meta-warns",
+      "src": "pcd 1.0\nlevel container\nlevel context\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"level\": \"container\"\n}",
+      "print": "pcd 1.0\nlevel container\n",
+      "parseDiags": [
+        {
+          "code": "W100",
+          "message": "duplicate level directive (first kept)",
+          "line": 3,
+          "col": 7,
+          "severity": "warning"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "object-full",
+      "src": "pcd 1.0\nperson alice \"Alice\" {\n  description \"The user\"\n  technology \"React\"\n  tag admin staff\n  property tier gold\n  contains cart\n  attach note1\n  icon user\n  style {\n    fill #ff00aa\n    stroke #fff\n    text #000\n    icon bolt\n    shape rounded\n    dashed\n  }\n  blur \"2px\"\n}\n# attached note\nnote note1 \"Note\"\ncontainer cart \"Cart\"\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "expected string, got 'gold'",
+          "line": 6,
+          "col": 17,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "object-no-block",
+      "src": "pcd 1.0\nperson a \"A\"\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P201",
+          "message": "\"a\" is orphaned (no links, no flow references)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "links-and-arrows",
+      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b : \"hello\" as l1\nb <- a\na -requests-> b\na <-> b\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"label\": \"hello\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"type\": \"requests\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"bidir\": true,\n      \"pos\": {\n        \"line\": 7,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\nperson b \"B\" {\n}\n\na -> b : \"hello\" as l1\na -> b\na -requests-> b\na <-> b\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "link-block",
+      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b : \"label\" as l1 {\n  style {\n    stroke #333\n    dashed\n  }\n  waypoint (10, 20)\n  waypoint (30.5, 40)\n  glow \"on\"\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"label\": \"label\",\n      \"style\": {\n        \"stroke\": \"#333\",\n        \"dashed\": true\n      },\n      \"waypoints\": [\n        [\n          10,\n          20\n        ],\n        [\n          30.5,\n          40\n        ]\n      ],\n      \"attributes\": [\n        {\n          \"raw\": \"glow \\\"on\\\"\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\nperson b \"B\" {\n}\n\na -> b : \"label\" as l1 {\n  style {\n    stroke #333\n    dashed\n  }\n  waypoint (10, 20)\n  waypoint (30.5, 40)\n  glow \"on\"\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P205",
+          "message": "unknown attribute \"glow \"on\"\" kept verbatim",
+          "line": 11,
+          "col": 3,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "flow-full",
+      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b as l1\nflow \"Checkout\" as checkout {\n  intro \"Welcome\"\n  a -> b : \"click\"\n  b -> a flip\n  a -> b : \"m1\" as l1 flip\n  process a\n  process b \"processing\"\n  info \"note\"\n  conclusion \"done\"\n  goto other\n  goto \"other.pcd#other\" return here\n  goto pay return end\n  alt \"path?\" {\n    \"yes\" {\n      a -> b\n    }\n    \"no\" {\n      # nothing\n      info \"skip\"\n    }\n  }\n  par {\n    { a -> b }\n    { info \"lane2\" }\n  }\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"checkout\",\n      \"title\": \"Checkout\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"Welcome\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"click\",\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"b\",\n          \"to\": \"a\",\n          \"flip\": true,\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"m1\",\n          \"linkRef\": \"l1\",\n          \"flip\": true,\n          \"pos\": {\n            \"line\": 9,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"target\": \"a\",\n          \"pos\": {\n            \"line\": 10,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"text\": \"processing\",\n          \"target\": \"b\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"info\",\n          \"text\": \"note\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"conclusion\",\n          \"text\": \"done\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"flow\": \"other\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"file\": \"other.pcd\",\n          \"flow\": \"other\",\n          \"ret\": \"here\",\n          \"pos\": {\n            \"line\": 15,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"flow\": \"pay\",\n          \"pos\": {\n            \"line\": 16,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"alt\",\n          \"label\": \"path?\",\n          \"branches\": [\n            {\n              \"label\": \"yes\",\n              \"steps\": [\n                {\n                  \"type\": \"msg\",\n                  \"from\": \"a\",\n                  \"to\": \"b\",\n                  \"pos\": {\n                    \"line\": 19,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 18,\n                \"col\": 5\n              }\n            },\n            {\n              \"label\": \"no\",\n              \"steps\": [\n                {\n                  \"type\": \"info\",\n                  \"text\": \"skip\",\n                  \"comments\": [\n                    \"nothing\"\n                  ],\n                  \"pos\": {\n                    \"line\": 23,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 21,\n                \"col\": 5\n              }\n            }\n          ],\n          \"pos\": {\n            \"line\": 17,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"par\",\n          \"lanes\": [\n            [\n              {\n                \"type\": \"msg\",\n                \"from\": \"a\",\n                \"to\": \"b\",\n                \"pos\": {\n                  \"line\": 27,\n                  \"col\": 7\n                }\n              }\n            ],\n            [\n              {\n                \"type\": \"info\",\n                \"text\": \"lane2\",\n                \"pos\": {\n                  \"line\": 28,\n                  \"col\": 7\n                }\n              }\n            ]\n          ],\n          \"pos\": {\n            \"line\": 26,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\nperson b \"B\" {\n}\n\na -> b as l1\n\nflow \"Checkout\" as checkout {\n  intro \"Welcome\"\n  a -> b : \"click\"\n  b -> a flip\n  a -> b : \"m1\" as l1 flip\n  process a\n  process b \"processing\"\n  info \"note\"\n  conclusion \"done\"\n  goto other\n  goto \"other.pcd#other\" return here\n  goto pay\n  alt \"path?\" {\n    \"yes\" {\n      a -> b\n    }\n    \"no\" {\n      # nothing\n      info \"skip\"\n    }\n  }\n  par {\n    {\n      a -> b\n    }\n    {\n      info \"lane2\"\n    }\n  }\n}\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "flow-minimal-msg",
+      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\nflow {\n a -> b\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\nperson b \"B\" {\n}\n\nflow {\n  a -> b\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P104",
+          "message": "no link between \"a\" and \"b\" (draw one or use `as`)",
+          "line": 5,
+          "col": 2,
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "name": "view-full",
+      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b\nview \"Main\" as main {\n  layout auto LR\n  layout saved\n  hide a\n  hide tag admin\n  position a (10, 20)\n  position b (10, 20)\n  pin b\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"id\": \"main\",\n      \"name\": \"Main\",\n      \"lines\": [\n        {\n          \"type\": \"layout\",\n          \"mode\": \"auto\",\n          \"dir\": \"LR\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"layout\",\n          \"mode\": \"saved\",\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"hide\",\n          \"id\": \"a\",\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"hideTag\",\n          \"id\": \"admin\",\n          \"pos\": {\n            \"line\": 9,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"a\",\n          \"x\": 10,\n          \"y\": 20,\n          \"pos\": {\n            \"line\": 10,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"b\",\n          \"x\": 10,\n          \"y\": 20,\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"pin\",\n          \"id\": \"b\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\nperson b \"B\" {\n}\n\na -> b\n\nview \"Main\" as main {\n  layout auto LR\n  layout saved\n  hide a\n  hide tag admin\n  position a (10, 20)\n  position b (10, 20)\n  pin b\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P204",
+          "message": "position overlap at (10, 20): \"a\" and \"b\"",
+          "line": 11,
+          "col": 3,
+          "severity": "info"
+        }
+      ]
+    },
+    {
+      "name": "style-stmt",
+      "src": "pcd 1.0\nperson a \"A\"\nstyle a {\n  fill #abcdef\n  shape rounded\n  glow \"x\"\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"styles\": [\n    {\n      \"target\": \"a\",\n      \"style\": {\n        \"fill\": \"#abcdef\",\n        \"shape\": \"rounded\",\n        \"raw\": [\n          {\n            \"raw\": \"glow \\\"x\\\"\",\n            \"pos\": {\n              \"line\": 6,\n              \"col\": 3\n            }\n          }\n        ]\n      },\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\n\nstyle a {\n  fill #abcdef\n  shape rounded\n  glow \"x\"\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P201",
+          "message": "\"a\" is orphaned (no links, no flow references)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "empty-style-block-omitted",
+      "src": "pcd 1.0\nperson a \"A\" {\n  style {\n  }\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P201",
+          "message": "\"a\" is orphaned (no links, no flow references)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "import",
+      "src": "pcd 1.0\nimport auth as \"../auth/auth.pcd\"\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"imports\": [\n    {\n      \"alias\": \"auth\",\n      \"path\": \"../auth/auth.pcd\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nimport auth as \"../auth/auth.pcd\"\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "color-vs-comment",
+      "src": "pcd 1.0\nperson a \"A\" {\n  style {\n    fill #f00\n  }\n}\n# not a color\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"style\": {\n        \"fill\": \"#f00\"\n      },\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n  style {\n    fill #f00\n  }\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P201",
+          "message": "\"a\" is orphaned (no links, no flow references)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "empty-strings",
+      "src": "pcd 1.0\ntitle \"\"\nimport i0 as \"\"\nperson a \"\" {\n  description \"\"\n  property k \"\"\n}\nperson b \"B\"\na -> b\nflow \"\" {\n  intro \"\"\n  a -> b : \"\"\n  alt \"\" {\n    \"\" {\n      process a \"\"\n    }\n  }\n}\nview \"\" {\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"\",\n  \"imports\": [\n    {\n      \"alias\": \"i0\",\n      \"path\": \"\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"\",\n      \"description\": \"\",\n      \"properties\": [\n        {\n          \"key\": \"k\",\n          \"value\": \"\"\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 8,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 9,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"title\": \"\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"alt\",\n          \"label\": \"\",\n          \"branches\": [\n            {\n              \"label\": \"\",\n              \"steps\": [\n                {\n                  \"type\": \"process\",\n                  \"text\": \"\",\n                  \"target\": \"a\",\n                  \"pos\": {\n                    \"line\": 15,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 14,\n                \"col\": 5\n              }\n            }\n          ],\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"name\": \"\",\n      \"pos\": {\n        \"line\": 19,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\ntitle \"\"\n\nimport i0 as \"\"\n\nperson a \"\" {\n  description \"\"\n  property k \"\"\n}\nperson b \"B\" {\n}\n\na -> b\n\nflow \"\" {\n  intro \"\"\n  a -> b : \"\"\n  alt \"\" {\n    \"\" {\n      process a \"\"\n    }\n  }\n}\n\nview \"\" {\n}\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "goto-empty-parts",
+      "src": "pcd 1.0\nflow {\n goto \"#f\"\n goto \"f#\"\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"goto\",\n          \"file\": \"\",\n          \"flow\": \"f\",\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 2\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"file\": \"f\",\n          \"flow\": \"\",\n          \"pos\": {\n            \"line\": 4,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nflow {\n  goto \"#f\"\n  goto \"f#\"\n}\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "missing-magic",
+      "src": "person a \"A\"\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E103",
+          "message": "missing \"pcd <version>\" magic line",
+          "line": 1,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "unsupported-major",
+      "src": "pcd 2.0\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E103",
+          "message": "unsupported major version 2",
+          "line": 1,
+          "col": 5,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "duplicate-magic",
+      "src": "pcd 1.0\npcd 1.0\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "duplicate magic line",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "stray-close",
+      "src": "pcd 1.0\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E105",
+          "message": "unknown top-level statement '}'",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "unclosed-object",
+      "src": "pcd 1.0\nperson a \"A\" {\n description \"x\"\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E104",
+          "message": "unclosed object block",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "unclosed-flow",
+      "src": "pcd 1.0\nflow {\n intro \"x\"\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E104",
+          "message": "unclosed flow block",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "unclosed-alt-branch",
+      "src": "pcd 1.0\nflow {\n alt {\n \"a\" {\n info \"x\"\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E104",
+          "message": "unclosed alt branch block",
+          "line": 4,
+          "col": 2,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "unclosed-par-lane",
+      "src": "pcd 1.0\nflow {\n par {\n {\n info \"x\"\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E104",
+          "message": "unclosed par lane block",
+          "line": 3,
+          "col": 2,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "unclosed-view",
+      "src": "pcd 1.0\nview \"v\" {\n pin a\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E104",
+          "message": "unclosed view block",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "duplicate-attr",
+      "src": "pcd 1.0\nperson a \"A\" {\n icon x\n icon y\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E110",
+          "message": "duplicate attribute 'icon'",
+          "line": 4,
+          "col": 2,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "arrow-needs-head",
+      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na - b\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E108",
+          "message": "arrow needs a head or tail",
+          "line": 4,
+          "col": 3,
+          "severity": "error"
+        },
+        {
+          "code": "E100",
+          "message": "expected arrow, got 'b'",
+          "line": 4,
+          "col": 5,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "stray-lt",
+      "src": "pcd 1.0\nperson a \"A\"\n<\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\n",
+      "parseDiags": [
+        {
+          "code": "E108",
+          "message": "stray '<'",
+          "line": 3,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": [
+        {
+          "code": "P201",
+          "message": "\"a\" is orphaned (no links, no flow references)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "unterminated-string",
+      "src": "pcd 1.0\ntitle \"abc\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"abc\"\n}",
+      "print": "pcd 1.0\ntitle \"abc\"\n",
+      "parseDiags": [
+        {
+          "code": "E101",
+          "message": "unterminated string",
+          "line": 2,
+          "col": 7,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "invalid-escape",
+      "src": "pcd 1.0\ntitle \"a\\nb\"\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"anb\"\n}",
+      "print": "pcd 1.0\ntitle \"anb\"\n",
+      "parseDiags": [
+        {
+          "code": "E106",
+          "message": "invalid escape \\n",
+          "line": 2,
+          "col": 7,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "ident-too-long",
+      "src": "pcd 1.0\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \"A\"\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E102",
+          "message": "identifier longer than 64 chars",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        },
+        {
+          "code": "E105",
+          "message": "unknown top-level statement 'A'",
+          "line": 2,
+          "col": 67,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "invalid-color",
+      "src": "pcd 1.0\nperson a \"A\" {\n style {\n  fill red\n }\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E111",
+          "message": "fill needs a #rgb/#rrggbb color",
+          "line": 4,
+          "col": 8,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "nesting-too-deep",
+      "src": "pcd 1.0\nflow {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nalt {\n\"arm\" {\nintro \"core\"\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E112",
+          "message": "nesting deeper than 32",
+          "line": 67,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "invalid-goto",
+      "src": "pcd 1.0\nflow {\n goto 5\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E113",
+          "message": "goto needs ident or \"path.pcd#flowId\"",
+          "line": 3,
+          "col": 7,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "goto-bad-return",
+      "src": "pcd 1.0\nperson a \"A\"\nflow {\n goto x return sideways\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "invalid goto return 'sideways'",
+          "line": 4,
+          "col": 16,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "bad-number-in-flow",
+      "src": "pcd 1.0\nperson a \"A\"\nflow {\n 5\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "unexpected number in flow body",
+          "line": 4,
+          "col": 2,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "bad-view-line",
+      "src": "pcd 1.0\nview \"v\" {\n zoom 2\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "unknown view line 'zoom'",
+          "line": 3,
+          "col": 2,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "bad-layout-mode",
+      "src": "pcd 1.0\nview \"v\" {\n layout zoomy\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "invalid layout mode 'zoomy'",
+          "line": 3,
+          "col": 2,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "hide-missing-id",
+      "src": "pcd 1.0\nview \"v\" {\n hide 5\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "hide needs an id",
+          "line": 3,
+          "col": 7,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "dup-ids",
+      "src": "pcd 1.0\nperson a \"A\"\nperson a \"A2\"\nflow \"f\" as f1 {\n info \"x\"\n}\nflow \"g\" as f1 {\n info \"y\"\n}\nview \"v1\" as v1 {\n layout saved\n}\nview \"v2\" as v1 {\n layout saved\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A2\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"f1\",\n      \"title\": \"f\",\n      \"steps\": [\n        {\n          \"type\": \"info\",\n          \"text\": \"x\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"f1\",\n      \"title\": \"g\",\n      \"steps\": [\n        {\n          \"type\": \"info\",\n          \"text\": \"y\",\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 7,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"id\": \"v1\",\n      \"name\": \"v1\",\n      \"lines\": [\n        {\n          \"type\": \"layout\",\n          \"mode\": \"saved\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"v1\",\n      \"name\": \"v2\",\n      \"lines\": [\n        {\n          \"type\": \"layout\",\n          \"mode\": \"saved\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 13,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\nperson a \"A2\" {\n}\n\nflow \"f\" as f1 {\n  info \"x\"\n}\nflow \"g\" as f1 {\n  info \"y\"\n}\n\nview \"v1\" as v1 {\n  layout saved\n}\nview \"v2\" as v1 {\n  layout saved\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P201",
+          "message": "\"a\" is orphaned (no links, no flow references)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        },
+        {
+          "code": "P100",
+          "message": "duplicate object id \"a\"",
+          "line": 3,
+          "col": 1,
+          "severity": "error"
+        },
+        {
+          "code": "P201",
+          "message": "\"a\" is orphaned (no links, no flow references)",
+          "line": 3,
+          "col": 1,
+          "severity": "warning"
+        },
+        {
+          "code": "P202",
+          "message": "flow \"f\" has no visual steps",
+          "line": 4,
+          "col": 1,
+          "severity": "warning"
+        },
+        {
+          "code": "P100",
+          "message": "duplicate flow id \"f1\"",
+          "line": 7,
+          "col": 1,
+          "severity": "error"
+        },
+        {
+          "code": "P202",
+          "message": "flow \"g\" has no visual steps",
+          "line": 7,
+          "col": 1,
+          "severity": "warning"
+        },
+        {
+          "code": "P100",
+          "message": "duplicate view id \"v1\"",
+          "line": 13,
+          "col": 1,
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "name": "unknown-endpoints",
+      "src": "pcd 1.0\nperson a \"A\"\na -> ghost\nflow {\n a -> b\n process ghost2\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"ghost\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"target\": \"ghost2\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\n\na -> ghost\n\nflow {\n  a -> b\n  process ghost2\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P101",
+          "message": "link \"a\" -> \"ghost\" resolves to nothing",
+          "line": 3,
+          "col": 1,
+          "severity": "error"
+        },
+        {
+          "code": "P101",
+          "message": "endpoint \"b\" resolves to nothing",
+          "line": 5,
+          "col": 2,
+          "severity": "error"
+        },
+        {
+          "code": "P104",
+          "message": "no link between \"a\" and \"b\" (draw one or use `as`)",
+          "line": 5,
+          "col": 2,
+          "severity": "error"
+        },
+        {
+          "code": "P101",
+          "message": "process target \"ghost2\" resolves to nothing",
+          "line": 6,
+          "col": 2,
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "name": "contains-rules",
+      "src": "pcd 1.0\ncontainer app \"App\" {\n contains ghost\n}\ngroup g \"G\" {\n contains app\n}\ngroup g2 \"G2\" {\n contains g\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"container\",\n      \"id\": \"app\",\n      \"name\": \"App\",\n      \"contains\": [\n        \"ghost\"\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"group\",\n      \"id\": \"g\",\n      \"name\": \"G\",\n      \"contains\": [\n        \"app\"\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"group\",\n      \"id\": \"g2\",\n      \"name\": \"G2\",\n      \"contains\": [\n        \"g\"\n      ],\n      \"pos\": {\n        \"line\": 8,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\ncontainer app \"App\" {\n  contains ghost\n}\ngroup g \"G\" {\n  contains app\n}\ngroup g2 \"G2\" {\n  contains g\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P105",
+          "message": "container \"app\" contains unknown id \"ghost\"",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        },
+        {
+          "code": "P201",
+          "message": "\"app\" is orphaned (no links, no flow references)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        },
+        {
+          "code": "P201",
+          "message": "\"g\" is orphaned (no links, no flow references)",
+          "line": 5,
+          "col": 1,
+          "severity": "warning"
+        },
+        {
+          "code": "P105",
+          "message": "group \"g2\" contains nested group \"g\" (v1: flat groups)",
+          "line": 8,
+          "col": 1,
+          "severity": "error"
+        },
+        {
+          "code": "P201",
+          "message": "\"g2\" is orphaned (no links, no flow references)",
+          "line": 8,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "attach-unknown",
+      "src": "pcd 1.0\nnote n \"N\" {\n attach ghost\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"note\",\n      \"id\": \"n\",\n      \"name\": \"N\",\n      \"attach\": \"ghost\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nnote n \"N\" {\n  attach ghost\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P106",
+          "message": "note/object \"n\" attaches to unknown id \"ghost\"",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        },
+        {
+          "code": "P201",
+          "message": "\"n\" is orphaned (no links, no flow references)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "p205-raw-attrs",
+      "src": "pcd 1.0\nperson a \"A\" {\n blur \"2px\"\n}\nperson b \"B\"\na -> b {\n glow \"on\"\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"attributes\": [\n        {\n          \"raw\": \"blur \\\"2px\\\"\",\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"attributes\": [\n        {\n          \"raw\": \"glow \\\"on\\\"\",\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n  blur \"2px\"\n}\nperson b \"B\" {\n}\n\na -> b {\n  glow \"on\"\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P205",
+          "message": "unknown attribute \"blur \"2px\"\" kept verbatim",
+          "line": 3,
+          "col": 2,
+          "severity": "warning"
+        },
+        {
+          "code": "P205",
+          "message": "unknown attribute \"glow \"on\"\" kept verbatim",
+          "line": 7,
+          "col": 2,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "msg-link-ref-missing",
+      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\nflow {\n a -> b as nolink\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"linkRef\": \"nolink\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\nperson b \"B\" {\n}\n\nflow {\n  a -> b as nolink\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P104",
+          "message": "msg step references link \"nolink\" which does not exist",
+          "line": 5,
+          "col": 2,
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "name": "alias-orphan-skip",
+      "src": "pcd 1.0\nimport auth as \"auth.pcd\"\nperson auth \"Auth\"\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"imports\": [\n    {\n      \"alias\": \"auth\",\n      \"path\": \"auth.pcd\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"auth\",\n      \"name\": \"Auth\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nimport auth as \"auth.pcd\"\n\nperson auth \"Auth\" {\n}\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "clean-doc",
+      "src": "pcd 1.0\ntitle \"Clean\"\nlevel container\nperson u \"User\"\nsystem web \"Web\"\nsystem db \"DB\" {\n  technology \"Postgres\"\n}\nu -> web : \"browse\"\nweb -> db : \"query\" as q\nflow \"Main\" as main {\n  intro \"start\"\n  u -> web\n  web -> db as q\n}\nview \"V\" {\n  position u (0, 0)\n  position web (100, 0)\n  position db (200, 0)\n}\nstyle u {\n  shape person\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"Clean\",\n  \"level\": \"container\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"u\",\n      \"name\": \"User\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"web\",\n      \"name\": \"Web\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"db\",\n      \"name\": \"DB\",\n      \"technology\": \"Postgres\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"u\",\n      \"to\": \"web\",\n      \"label\": \"browse\",\n      \"pos\": {\n        \"line\": 9,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"q\",\n      \"from\": \"web\",\n      \"to\": \"db\",\n      \"label\": \"query\",\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"main\",\n      \"title\": \"Main\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"start\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"u\",\n          \"to\": \"web\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"web\",\n          \"to\": \"db\",\n          \"linkRef\": \"q\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 11,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"name\": \"V\",\n      \"lines\": [\n        {\n          \"type\": \"position\",\n          \"id\": \"u\",\n          \"x\": 0,\n          \"y\": 0,\n          \"pos\": {\n            \"line\": 17,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"web\",\n          \"x\": 100,\n          \"y\": 0,\n          \"pos\": {\n            \"line\": 18,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"db\",\n          \"x\": 200,\n          \"y\": 0,\n          \"pos\": {\n            \"line\": 19,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 16,\n        \"col\": 1\n      }\n    }\n  ],\n  \"styles\": [\n    {\n      \"target\": \"u\",\n      \"style\": {\n        \"shape\": \"person\"\n      },\n      \"pos\": {\n        \"line\": 21,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\ntitle \"Clean\"\nlevel container\n\nperson u \"User\" {\n}\nsystem web \"Web\" {\n}\nsystem db \"DB\" {\n  technology \"Postgres\"\n}\n\nu -> web : \"browse\"\nweb -> db : \"query\" as q\n\nflow \"Main\" as main {\n  intro \"start\"\n  u -> web\n  web -> db as q\n}\n\nview \"V\" {\n  position u (0, 0)\n  position web (100, 0)\n  position db (200, 0)\n}\n\nstyle u {\n  shape person\n}\n",
+      "parseDiags": [],
+      "validateDiags": []
+    }
+  ]
+}

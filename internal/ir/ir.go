@@ -56,9 +56,9 @@ type ImportStmt struct {
 type Obj struct {
 	Kind        string      `json:"kind"`
 	ID          string      `json:"id"`
-	Name        string      `json:"name,omitempty"`
-	Description string      `json:"description,omitempty"`
-	Technology  string      `json:"technology,omitempty"`
+	Name        *string     `json:"name,omitempty"`
+	Description *string     `json:"description,omitempty"`
+	Technology  *string     `json:"technology,omitempty"`
 	Tags        []string    `json:"tags,omitempty"`
 	Properties  []Property  `json:"properties,omitempty"`
 	Contains    []string    `json:"contains,omitempty"`
@@ -76,7 +76,7 @@ type Link struct {
 	From       string       `json:"from"`
 	To         string       `json:"to"`
 	Type       string       `json:"type,omitempty"`
-	Label      string       `json:"label,omitempty"`
+	Label      *string      `json:"label,omitempty"`
 	Bidir      bool         `json:"bidir,omitempty"`
 	Style      *StyleBlock  `json:"style,omitempty"`
 	Waypoints  [][2]float64 `json:"waypoints,omitempty"`
@@ -85,9 +85,10 @@ type Link struct {
 	Pos        Pos          `json:"pos"`
 }
 
-// Branch is one alt arm (label + its steps).
+// Branch is one alt arm (label + its steps). Label is *string: the parser
+// always records it (even ""), matching the TS serializer.
 type Branch struct {
-	Label    string   `json:"label"`
+	Label    *string  `json:"label"`
 	Steps    []Step   `json:"steps,omitempty"`
 	Comments []string `json:"comments,omitempty"`
 	Pos      Pos      `json:"pos"`
@@ -97,17 +98,17 @@ type Branch struct {
 // one payload group is set, keyed by Type.
 type Step struct {
 	Type     string   `json:"type"`
-	Text     string   `json:"text,omitempty"`     // intro/info/conclusion
+	Text     *string  `json:"text,omitempty"`     // intro/info/conclusion
 	From     string   `json:"from,omitempty"`     // msg
 	To       string   `json:"to,omitempty"`       // msg
-	Label    string   `json:"label,omitempty"`    // msg/alt/par
+	Label    *string  `json:"label,omitempty"`    // msg/alt/par
 	LinkRef  string   `json:"linkRef,omitempty"`  // msg
 	Flip     bool     `json:"flip,omitempty"`     // msg
 	Target   string   `json:"target,omitempty"`   // process
 	Branches []Branch `json:"branches,omitempty"` // alt
 	Lanes    [][]Step `json:"lanes,omitempty"`    // par
-	File     string   `json:"file,omitempty"`     // goto
-	Flow     string   `json:"flow,omitempty"`     // goto
+	File     *string  `json:"file,omitempty"`     // goto
+	Flow     *string  `json:"flow,omitempty"`     // goto: always set for goto
 	Ret      string   `json:"ret,omitempty"`      // goto: "here" only
 	Comments []string `json:"comments,omitempty"`
 	Pos      Pos      `json:"pos"`
@@ -116,7 +117,7 @@ type Step struct {
 // Flow is a flow statement (§6).
 type Flow struct {
 	ID       string   `json:"id,omitempty"`
-	Title    string   `json:"title,omitempty"`
+	Title    *string  `json:"title,omitempty"`
 	Steps    []Step   `json:"steps,omitempty"`
 	Comments []string `json:"comments,omitempty"`
 	Pos      Pos      `json:"pos"`
@@ -152,10 +153,16 @@ type StyleStmt struct {
 }
 
 // Doc is one parsed .pcd file.
+//
+// Presence semantics (D-M1-22): the TS canonical serializer emits a field
+// whenever the parser recorded it — even with an empty-string value — so
+// "capable of being empty" fields are *string here: nil = absent, non-nil =
+// present ("" must marshal as ""), keeping Marshal byte-identical to
+// serializeDoc(). Plain string fields are never "" when present.
 type Doc struct {
 	IRVersion     int          `json:"irVersion"`
 	FormatVersion string       `json:"formatVersion"`
-	Title         string       `json:"title,omitempty"`
+	Title         *string      `json:"title,omitempty"`
 	Level         string       `json:"level,omitempty"`
 	Direction     string       `json:"direction,omitempty"`
 	Theme         string       `json:"theme,omitempty"`
