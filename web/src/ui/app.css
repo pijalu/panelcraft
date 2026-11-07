@@ -479,6 +479,78 @@ body {
   }
 }
 
+/* view bar (M6): views + tag filter chips + layout actions */
+.viewbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--pc-border);
+  background: var(--pc-surface);
+  font-size: var(--pc-text-xs);
+  flex-wrap: wrap;
+}
+
+.viewbar-empty {
+  min-height: 27px;
+}
+
+.viewbar select {
+  font-family: inherit;
+  font-size: var(--pc-text-xs);
+  padding: 2px 6px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+}
+
+.viewbar button {
+  font-family: inherit;
+  font-size: var(--pc-text-xs);
+  padding: 2px 6px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  cursor: pointer;
+}
+
+.viewbar button:hover:not(:disabled) {
+  border-color: var(--pc-accent);
+}
+
+.viewbar button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.viewbar-views,
+.viewbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.viewbar-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.chip {
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.chip-active {
+  background: var(--pc-accent);
+  border-color: var(--pc-accent);
+  color: var(--pc-bg);
+}
+
 /* file tree sidebar */
 .sidebar {
   width: 200px;
@@ -1122,6 +1194,12 @@ body {
 }
 
 .pc-dim {
+  opacity: 0.25;
+}
+
+/* Tag-filter/view fade (FR-V1/V2): same opacity as dim, its own class so play
+   mode dim and perspective fade never fight over one attribute. */
+.pc-faded {
   opacity: 0.25;
 }
 

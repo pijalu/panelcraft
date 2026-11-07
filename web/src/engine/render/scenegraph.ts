@@ -218,6 +218,7 @@ export class SceneRenderer {
     const stats: PatchStats = { created: 0, updated: 0, removed: 0, reordered: false };
     this.patchObjects(scene.objects, stats);
     this.patchLinks(scene.links, stats);
+    this.applyFade(); // rebuilds reset classes — fade state must survive patches
     return stats;
   }
 
@@ -317,6 +318,31 @@ export class SceneRenderer {
     this.selectedIds = new Set(ids);
     this.selectedLinkIds = new Set(linkIds);
     this.applySelection();
+  }
+
+  // ---- M6 fade (FR-V1): render-layer opacity via the pc-faded class --------
+
+  private fadedObjects = new Set<string>();
+  private fadedLinks = new Set<string>();
+
+  /**
+   * Set faded ids and apply classes. Called by the controller; re-applied on
+   * every render() so structural rebuilds (which reset the class attribute)
+   * cannot lose the fade state.
+   */
+  setFade(objects: Iterable<string>, links: Iterable<string>): void {
+    this.fadedObjects = new Set(objects);
+    this.fadedLinks = new Set(links);
+    this.applyFade();
+  }
+
+  private applyFade(): void {
+    for (const [id, entry] of this.objEntries) {
+      entry.el.classList.toggle('pc-faded', this.fadedObjects.has(id));
+    }
+    for (const [id, entry] of this.linkEntries) {
+      entry.el.classList.toggle('pc-faded', this.fadedLinks.has(id));
+    }
   }
 
   private applySelection(): void {

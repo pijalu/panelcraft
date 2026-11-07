@@ -323,3 +323,43 @@ describe('state notifications', () => {
     c2.destroy();
   });
 });
+
+describe('M6 session fade + positions (FR-V1/V2/V3)', () => {
+  it('setFaded applies pc-faded classes without emitting state or touching undo', () => {
+    ctrl.addObject('system', { x: 10, y: 10 });
+    const id = ctrl.snapshot.objects[0]!.id;
+    const before = snapshots.length;
+    ctrl.setFaded([id], []);
+    expect(svg.querySelector('g.pc-obj')?.classList.contains('pc-faded')).toBe(true);
+    expect(snapshots.length).toBe(before); // visual only — no state emit
+    ctrl.setFaded([], []);
+    expect(svg.querySelector('g.pc-obj')?.classList.contains('pc-faded')).toBe(false);
+  });
+
+  it('applyPositions moves objects + recomputes routes, not undoable, not persisted', () => {
+    ctrl.addObject('system', { x: 10, y: 10 });
+    ctrl.addObject('datastore', { x: 300, y: 200 });
+    const [a, b] = ctrl.snapshot.objects.map((o) => o.id);
+    const undoDepthBefore = ctrl.undo.size;
+    ctrl.applyPositions({ [a!]: { x: 500, y: 400 }, [b!]: { x: 40, y: 20 } });
+    const o1 = obj(a!);
+    expect({ x: o1.x, y: o1.y }).toEqual({ x: 500, y: 400 });
+    expect(obj(b!).y).toBe(20);
+    expect(snapshots.length).toBeGreaterThan(0); // re-render emits (session state)
+    const undoDepthAfter = ctrl.undo.size;
+    expect(undoDepthAfter).toBe(undoDepthBefore); // not undoable
+  });
+
+  it('currentPositions returns top-left coords keyed by id', () => {
+    ctrl.addObject('system', { x: 15, y: 25 });
+    const id = ctrl.snapshot.objects[0]!.id;
+    expect(ctrl.currentPositions()[id]).toEqual({ x: obj(id).x, y: obj(id).y });
+  });
+
+  it('applyPositions ignores unknown ids', () => {
+    ctrl.addObject('system', { x: 15, y: 25 });
+    const id = ctrl.snapshot.objects[0]!.id;
+    ctrl.applyPositions({ ghost: { x: 1, y: 1 } });
+    expect(obj(id).x).not.toBe(1);
+  });
+});

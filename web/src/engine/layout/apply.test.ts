@@ -58,14 +58,27 @@ describe('applyLayoutToView', () => {
     expect(posLines.find((l) => (l as { id: string }).id === 'api')).toMatchObject({ x: 10, y: 20 });
   });
 
-  it('targets the first view when viewName is undefined', () => {
+  it('targets the "Default" view when viewName is undefined, without hijacking named views', () => {
     const d = doc([
-      { name: 'First', lines: [], pos: { line: 1, col: 1 } },
+      { name: 'Roadmap', lines: [], pos: { line: 1, col: 1 } },
       { name: 'Second', lines: [], pos: { line: 1, col: 1 } },
     ]);
     const { doc: out } = applyLayoutToView(d, undefined, POS);
-    expect(out.views[0]!.lines).toHaveLength(2);
-    expect(out.views[1]!.lines).toHaveLength(0);
+    const def = out.views.find((v) => v.name === 'Default');
+    expect(def?.lines).toHaveLength(2);
+    expect(out.views.find((v) => v.name === 'Roadmap')?.lines).toHaveLength(0); // untouched
+  });
+
+  it('reuses the existing "Default" view on repeated undefined-name commits', () => {
+    const d0 = doc([]);
+    const first = applyLayoutToView(d0, undefined, POS);
+    const second = applyLayoutToView(first.doc, undefined, { api: { x: 1, y: 1 } });
+    expect(second.doc.views.filter((v) => v.name === 'Default')).toHaveLength(1);
+    const def = second.doc.views.find((v) => v.name === 'Default');
+    const posLines = def?.lines.filter((l) => l.type === 'position') ?? [];
+    expect(posLines).toHaveLength(2); // api updated, db kept from the first commit
+    expect(posLines.find((l) => (l as { id: string }).id === 'api')).toMatchObject({ x: 1, y: 1 });
+    expect(posLines.find((l) => (l as { id: string }).id === 'db')).toMatchObject({ x: 200, y: 40 });
   });
 
   it('creates a "Default" view when the doc has none (implicit default)', () => {

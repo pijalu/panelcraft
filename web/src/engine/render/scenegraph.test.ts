@@ -213,6 +213,24 @@ describe('selection (FR-C4 visual)', () => {
     // structural rebuild preserves the <g> and selection state must persist
     expect(r.elementFor('a')?.classList.contains('pc-selected')).toBe(true);
   });
+
+  it('setFade toggles pc-faded on objects + links and survives re-renders (M6 FR-V1)', () => {
+    r.render(scene([obj('a'), obj('b')], [{ id: 'l1', points: poly }]));
+    r.setFade(['a'], ['l1']);
+    expect(r.elementFor('a')?.classList.contains('pc-faded')).toBe(true);
+    expect(r.elementFor('b')?.classList.contains('pc-faded')).toBe(false);
+    expect(svg.querySelector('g.pc-link')?.classList.contains('pc-faded')).toBe(true);
+    // fade state survives a patch pass (rebuild resets class attributes)
+    r.render(scene([obj('a', { name: 'renamed' }), obj('b')], [{ id: 'l1', points: poly }]));
+    expect(r.elementFor('a')?.classList.contains('pc-faded')).toBe(true);
+    // clearing works
+    r.setFade([], []);
+    expect(r.elementFor('a')?.classList.contains('pc-faded')).toBe(false);
+    // new elements created while faded get the class applied on render
+    r.setFade(['new'], []);
+    r.render(scene([obj('a'), obj('new')]));
+    expect(r.elementFor('new')?.classList.contains('pc-faded')).toBe(true);
+  });
 });
 
 describe('pointsToPath + structuralKey', () => {

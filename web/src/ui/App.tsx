@@ -4,8 +4,8 @@
 // around the SVG, never inside it); the WorkspaceManager owns the virtual FS,
 // tabs and autosave; chrome re-renders via manager.subscribe(). Lifecycle and
 // sync wiring live in useWorkspace.ts; panels below are presentational.
-import { useState } from 'preact/hooks';
-import { PALETTE_ORDER, labelFor, type Snapshot } from './CanvasController';
+import { useEffect, useState } from 'preact/hooks';
+import { PALETTE_ORDER, labelFor, CanvasController, type Snapshot } from './CanvasController';
 import { PropertiesPanel } from './PropertiesPanel';
 import { Palette } from './Palette';
 import { FileTree } from './FileTree';
@@ -17,10 +17,13 @@ import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { CodePane } from './CodePane';
 import { FlowPane } from './flows/FlowPane';
 import { PlayBar } from './flows/PlayBar';
+import { ViewBar } from './views/ViewBar';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useCodeSync } from './useCodeSync';
 import { useDivergedClose } from './useDivergedClose';
 import { useFlowStage } from './useFlowStage';
+import type { FlowPlayerApi } from './flows/useFlowPlayer';
+import type { CodeSyncHandle } from './useCodeSync';
 import type { WorkspaceManager } from '../workspace/workspace';
 
 /** Single-selection for the properties panel (obj xor link). */
@@ -91,6 +94,58 @@ function SidePane(props: {
   );
 }
 
+/** Canvas + code split (extracted to keep App under the function-length gate). */
+function CanvasSplit(props: {
+  canvas: ReturnType<typeof useCanvasController>;
+  code: CodeSyncHandle;
+  player: FlowPlayerApi;
+}) {
+  return (
+    <div class="canvas-split">
+      <main class="canvas-wrap">
+        <svg ref={props.canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
+        <PlayBar player={props.player} />
+      </main>
+      <CodePane machine={props.code.machine} snapshot={props.code.snapshot} onFormat={props.code.formatNow} />
+    </div>
+  );
+}
+
+/** Tab strip + view bar row (extracted to keep App under the length gate). */
+function CanvasTopRow(props: {
+  manager: WorkspaceManager;
+  diverged: ReturnType<typeof useDivergedClose>;
+  activePath: string | null;
+  viewName: string | undefined;
+  onView(n: string | undefined): void;
+  onText(t: string): void;
+  ctrl: CanvasController | null;
+  selection: string[];
+}) {
+  return (
+    <>
+      <Tabs
+        tabs={props.manager.tabs.tabs}
+        active={props.manager.tabs.active}
+        onSelect={(i) => {
+          const t = props.manager.tabs.tabs[i];
+          if (t) props.manager.openFile(t.path);
+        }}
+        onClose={props.diverged.requestCloseTab}
+        onReorder={(from, to) => props.manager.moveTabAt(from, to)}
+      />
+      <ViewBar
+        text={props.activePath !== null ? props.manager.text(props.activePath) : null}
+        viewName={props.viewName}
+        onView={props.onView}
+        onChangeText={props.onText}
+        ctrl={props.ctrl}
+        selection={props.selection}
+      />
+    </>
+  );
+}
+
 export function App() {
   const ws = useWorkspace();
   const canvas = useCanvasController(ws.manager, ws.ready, ws.version);
@@ -108,6 +163,11 @@ export function App() {
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [sideTab, setSideTab] = useState<'files' | 'flows'>('files');
+  const [viewName, setViewName] = useState<string | undefined>(undefined);
+  // Views are per-file session state: switching files resets to the default view.
+  useEffect(() => {
+    setViewName(undefined);
+  }, [activePath]);
   const player = useFlowStage({ manager, canvas, activePath });
   const ctrl = canvas.ctrlRef.current;
   const sel = selections(canvas.snap);
@@ -168,23 +228,17 @@ export function App() {
           onDragDrop={canvas.onPaletteDrop}
         />
         <main class="canvas-col">
-          <Tabs
-            tabs={manager.tabs.tabs}
-            active={manager.tabs.active}
-            onSelect={(i) => {
-              const t = manager.tabs.tabs[i];
-              if (t) manager.openFile(t.path);
-            }}
-            onClose={diverged.requestCloseTab}
-            onReorder={(from, to) => manager.moveTabAt(from, to)}
+          <CanvasTopRow
+            manager={manager}
+            diverged={diverged}
+            activePath={activePath}
+            viewName={viewName}
+            onView={setViewName}
+            onText={(t) => code.machine.textChanged(t)}
+            ctrl={canvas.ctrlRef.current}
+            selection={canvas.snap?.selection.objects ?? []}
           />
-          <div class="canvas-split">
-            <main class="canvas-wrap">
-              <svg ref={canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
-              <PlayBar player={player} />
-            </main>
-            <CodePane machine={code.machine} snapshot={code.snapshot} onFormat={code.formatNow} />
-          </div>
+          <CanvasSplit canvas={canvas} code={code} player={player} />
         </main>
         <PropertiesPanel
           obj={sel.obj}

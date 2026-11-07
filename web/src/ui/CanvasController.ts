@@ -334,6 +334,45 @@ export class CanvasController {
     this.render();
   }
 
+  // ---- M6: session fade (FR-V1) + saved/auto positions (FR-V2/V3/V4) -------
+
+  private fadedObjects = new Set<string>();
+  private fadedLinks = new Set<string>();
+
+  /**
+   * Session fade: elements in the given id sets get the `pc-faded` class
+   * (render-layer opacity animation; FR-V1). Purely visual — no undo, no
+   * emit, survives re-renders until cleared.
+   */
+  setFaded(objects: Iterable<string>, links: Iterable<string>): void {
+    this.fadedObjects = new Set(objects);
+    this.fadedLinks = new Set(links);
+    this.renderer.setFade(this.fadedObjects, this.fadedLinks);
+  }
+
+  /**
+   * Session reposition (view switch / auto-layout preview): moves objects to
+   * the given top-left positions, recomputes routes, re-renders. Not undoable
+   * and not persisted — the file only changes via explicit apply-to-file
+   * (engine/layout/apply.ts, FILE-FORMAT §7.2). Ids without an entry stay put.
+   */
+  applyPositions(pos: Record<string, { x: number; y: number }>): void {
+    const objects = this.state.objects.map((o) => {
+      const p = pos[o.id];
+      return p ? { ...o, x: p.x, y: p.y } : o;
+    });
+    this.state = { ...this.state, objects };
+    this.recomputeRoutes();
+    this.render();
+  }
+
+  /** Current positions of all objects (top-left, canvas units). */
+  currentPositions(): Record<string, { x: number; y: number }> {
+    const out: Record<string, { x: number; y: number }> = {};
+    for (const o of this.state.objects) out[o.id] = { x: o.x, y: o.y };
+    return out;
+  }
+
   // ---- undo command helpers ----------------------------------------------
 
   private applyState(s: DiagramState): void {

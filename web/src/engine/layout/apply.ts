@@ -31,9 +31,11 @@ export function applyLayoutToView(
     .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
   const next: Doc = structuredClone(doc);
+  // `viewName === undefined` = the implicit default view: target the explicit
+  // "Default" view (create it when absent) — never the first named view.
   let view: View | undefined = viewName
     ? next.views.find((v) => v.name === viewName)
-    : next.views[0];
+    : next.views.find((v) => v.name === DEFAULT_VIEW_NAME);
 
   if (!view) {
     view = { name: viewName ?? DEFAULT_VIEW_NAME, lines: [], pos: { line: 0, col: 0 } };
