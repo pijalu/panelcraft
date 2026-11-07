@@ -169,6 +169,38 @@
       "validateDiags": []
     },
     {
+      "name": "step-delay",
+      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b as L\nflow \"F\" as f {\n  intro \"start\" delay 400\n  a -> b : \"hi\" as L delay 1200\n  process a \"work\" delay 250\n  info \"note\"\n  goto \"f\" return here delay 800\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E113",
+          "message": "goto needs ident or \"path.pcd#flowId\"",
+          "line": 10,
+          "col": 8,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "step-delay-negative",
+      "src": "pcd 1.0\nflow \"F\" {\n  intro \"x\" delay -5\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "delay must not be negative",
+          "line": 3,
+          "col": 13,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
       "name": "flow-minimal-msg",
       "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\nflow {\n a -> b\n}\n",
       "doc": "{\n  \"irVersion\": 2,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",

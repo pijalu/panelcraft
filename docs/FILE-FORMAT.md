@@ -134,6 +134,12 @@ a <-> b                         bidirectional
   rule, golden-tested.
 * **Multiple links between same pair**: allowed, distinguished by id.
 * Link endpoints must resolve to objects or imported aliases (§5) — semantic validation.
+* **Per-step dwell (F-18)**: a leaf step (`intro`, `info`, `conclusion`, `process`,
+  `msg`, `goto`) accepts a trailing `delay <ms>`, e.g.
+  `a -> b : "hi" delay 1200`. It overrides the beat's default auto-advance time for
+  that step only; the printer emits it only when present, and the IR carries it as
+  `delayMs`. `alt`/`par` blocks do not take a delay (their beats follow the branches).
+
 * Block form for link attributes (rare; printer uses it only when needed):
 
 ```
@@ -373,7 +379,8 @@ attr        = ("description" , string) | ("technology" , string) | ("tag" , iden
 link        = ident , arrow , ident , [ ":" , string ] , [ "as" , ident ] , [ linkblock ] ;
 arrow       = [ "<" ] , "-" , [ ident , "-" ] , [ ">" ] ;   (* <-, ->, <->, -type-> *)
 flow        = "flow" , [ string ] , [ "as" , ident ] , "{" , { step } , "}" ;
-step        = intro | msg | process | alt | par | goto | info | conclusion ;
+step        = ( intro | msg | process | alt | par | goto | info | conclusion ) , [ delay ] ;
+delay       = "delay" , number ;   (* per-step dwell in ms, F-18 *)
 alt         = "alt" , [ string ] , "{" , { branch } , "}" ;
 branch      = string , "{" , { step } , "}" ;
 par         = "par" , [ string ] , "{" , { lane } , "}" ;

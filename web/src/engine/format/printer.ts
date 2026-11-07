@@ -67,15 +67,19 @@ const arrowFor = (l: Pick<Link, 'type' | 'bidir'>): string =>
 
 type StepPrinter = (s: FlowStep, depth: number, p: Printer) => void;
 
+/** Append the optional per-step dwell (F-18). */
+const withDelay = (line: string, step: { delayMs?: number }): string =>
+  step.delayMs === undefined ? line : `${line} delay ${jsNum(step.delayMs)}`;
+
 const printSimpleStep: StepPrinter = (s, depth, p) => {
   const t = s as { type: string; text: string };
-  p.add(`${pad(depth)}${t.type} ${quote(t.text)}`);
+  p.add(withDelay(`${pad(depth)}${t.type} ${quote(t.text)}`, s));
 };
 
 const printProcessStep: StepPrinter = (s, depth, p) => {
   const pr = s as { target: string; text?: string };
   const body = pr.text === undefined ? `process ${pr.target}` : `process ${pr.target} ${quote(pr.text)}`;
-  p.add(pad(depth) + body);
+  p.add(withDelay(pad(depth) + body, s));
 };
 
 const printMsgStep: StepPrinter = (s, depth, p) => {
@@ -84,13 +88,13 @@ const printMsgStep: StepPrinter = (s, depth, p) => {
   if (m.label !== undefined) line += ` : ${quote(m.label)}`;
   if (m.linkRef !== undefined) line += ` as ${m.linkRef}`;
   if (m.flip === true) line += ' flip';
-  p.add(pad(depth) + line);
+  p.add(withDelay(pad(depth) + line, s));
 };
 
 const printGotoStep: StepPrinter = (s, depth, p) => {
   const g = s as { file?: string; flow: string; ret?: 'here' };
   const target = g.file === undefined ? g.flow : quote(`${g.file}#${g.flow}`);
-  p.add(`${pad(depth)}goto ${target}${g.ret === 'here' ? ' return here' : ''}`);
+  p.add(withDelay(`${pad(depth)}goto ${target}${g.ret === 'here' ? ' return here' : ''}`, s));
 };
 
 const printAltStep: StepPrinter = (s, depth, p) => {

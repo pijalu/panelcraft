@@ -151,6 +151,14 @@ flow "Checkout" as checkout {
 }
 `,
   },
+  {
+    name: 'step-delay',
+    src: 'pcd 1.0\nperson a "A"\nperson b "B"\na -> b as L\nflow "F" as f {\n  intro "start" delay 400\n  a -> b : "hi" as L delay 1200\n  process a "work" delay 250\n  info "note"\n  goto "f" return here delay 800\n}\n',
+  },
+  {
+    name: 'step-delay-negative',
+    src: 'pcd 1.0\nflow "F" {\n  intro "x" delay -5\n}\n',
+  },
   { name: 'flow-minimal-msg', src: 'pcd 1.0\nperson a "A"\nperson b "B"\nflow {\n a -> b\n}\n' },
   {
     name: 'view-full',

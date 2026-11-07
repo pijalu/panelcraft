@@ -10,6 +10,7 @@ import {
   addBranch,
   addFlow,
   addLane,
+  duplicateStep,
   appendStep,
   flatSteps,
   getAt,
@@ -190,5 +191,25 @@ describe('addFlow / doc-level edits', () => {
       addFlow(doc, 'Refund', 2);
     });
     expect((out as string)).toContain('flow "Refund" as flow2');
+  });
+});
+
+describe('duplicateStep (F-18)', () => {
+  const doc = (): Doc =>
+    parsePDL('pcd 1.0\nflow "F" as f {\n  intro "one"\n  info "two"\n}\n').doc!;
+
+  it('inserts a deep copy right after the original', () => {
+    const d = doc();
+    const flow = d.flows[0]!;
+    expect(duplicateStep(flow, [0])).toBe(true);
+    expect(flow.steps.map((s) => (s as { text: string }).text)).toEqual(['one', 'one', 'two']);
+    // the copy is independent (not the same object)
+    expect(flow.steps[0]).not.toBe(flow.steps[1]);
+  });
+
+  it('refuses an unknown path', () => {
+    const d = doc();
+    expect(duplicateStep(d.flows[0]!, [9])).toBe(false);
+    expect(d.flows[0]!.steps).toHaveLength(2);
   });
 });

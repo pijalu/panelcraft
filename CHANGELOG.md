@@ -88,6 +88,11 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   sequential-glow, packet-burst, compare-split, trail-fade) with per-kind defaults and
   a per-flow choice in the flow header; the planner is unchanged.
 
+- **F-18** Flow editing parity: steps drag-reorder, duplicate (deep copy) and carry an
+  editable per-step dwell — new `delay <ms>` step attribute (IR `delayMs`, TS + Go,
+  parity fixtures, applied by the planner); the step header is sticky with an `unsaved`
+  chip and every step offers "play from this step".
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

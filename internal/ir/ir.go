@@ -122,6 +122,8 @@ type Step struct {
 	File     *string  `json:"file,omitempty"`     // goto
 	Flow     *string  `json:"flow,omitempty"`     // goto: always set for goto
 	Ret      string   `json:"ret,omitempty"`      // goto: "here" only
+	// DelayMs overrides the beat dwell (F-18)
+	DelayMs  *float64 `json:"delayMs,omitempty"`
 	Comments []string `json:"comments,omitempty"`
 	Pos      Pos      `json:"pos"`
 }

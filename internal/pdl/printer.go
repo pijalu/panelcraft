@@ -116,17 +116,25 @@ func arrowFor(typ string, bidir bool) string {
 	return s + ">"
 }
 
+// withDelay appends the optional per-step dwell (F-18).
+func withDelay(line string, s ir.Step) string {
+	if s.DelayMs == nil {
+		return line
+	}
+	return line + " delay " + jsNum(*s.DelayMs)
+}
+
 func stepText(s ir.Step, depth int, p *printer) {
 	p.comment(s.Comments, depth)
 	switch s.Type {
 	case "intro", "info", "conclusion":
-		p.add(pad(depth) + s.Type + " " + Quote(deref(s.Text)))
+		p.add(withDelay(pad(depth)+s.Type+" "+Quote(deref(s.Text)), s))
 	case "process":
 		body := "process " + s.Target
 		if s.Text != nil {
 			body += " " + Quote(*s.Text)
 		}
-		p.add(pad(depth) + body)
+		p.add(withDelay(pad(depth)+body, s))
 	case "msg":
 		line := s.From + " -> " + s.To
 		if s.Label != nil {
@@ -138,7 +146,7 @@ func stepText(s ir.Step, depth int, p *printer) {
 		if s.Flip {
 			line += " flip"
 		}
-		p.add(pad(depth) + line)
+		p.add(withDelay(pad(depth)+line, s))
 	case "goto":
 		target := deref(s.Flow)
 		if s.File != nil {
@@ -148,6 +156,7 @@ func stepText(s ir.Step, depth int, p *printer) {
 		if s.Ret == "here" {
 			line += " return here"
 		}
+		line = withDelay(line, s)
 		p.add(line)
 	case "alt":
 		printAlt(s, depth, p)

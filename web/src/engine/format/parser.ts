@@ -481,12 +481,27 @@ class Parser {
     return t.value ?? '';
   }
 
+  /** Optional trailing `delay <ms>` on a step line (F-18). */
+  private stepDelay(line: number): { delayMs?: number } {
+    const t = this.peek();
+    if (t.type !== 'ident' || t.text !== 'delay' || t.line !== line) return {};
+    this.next();
+    const ms = this.num(this.expect('number'));
+    if (ms < 0) this.fail(t, E.unexpected, 'delay must not be negative');
+    return { delayMs: ms };
+  }
+
   private parseKeywordStep(kw: string, depth: number): FlowStep {
     const t0 = this.next();
     const comments = this.takeComments();
     const pos = tokPos(t0);
     const wrap = <T extends object>(base: T): FlowStep =>
-      ({ ...(comments.length ? { ...base, comments } : base), type: kw, pos }) as unknown as FlowStep;
+      ({
+        ...(comments.length ? { ...base, comments } : base),
+        type: kw,
+        pos,
+        ...(kw === 'alt' || kw === 'par' ? {} : this.stepDelay(t0.line)),
+      }) as unknown as FlowStep;
     switch (kw) {
       case 'intro':
       case 'info':
@@ -578,21 +593,35 @@ class Parser {
       pos: tokPos(t0),
       ...(comments.length ? { comments } : {}),
     } as { type: 'msg'; from: string; to: string; pos: Pos; label?: string; linkRef?: string; flip?: boolean; comments?: Comments };
-    // Modifiers are order-free (errata D-M1-9): : "label", as Ref, flip.
+    this.msgModifiers(t0, step);
+    const delay = this.stepDelay(t0.line);
+    return delay.delayMs === undefined ? step : { ...step, ...delay };
+  }
+
+  /** Order-free msg modifiers (errata D-M1-9): : "label", as Ref, flip. */
+  private msgModifiers(
+    t0: Token,
+    step: { label?: string; linkRef?: string; flip?: boolean },
+  ): void {
     for (;;) {
       const p = this.peek();
       if (p.type === 'punct' && p.text === ':') {
         this.next();
         step.label = this.expect('string').value ?? '';
-      } else if (p.type === 'ident' && p.text === 'as') {
+        continue;
+      }
+      if (p.type === 'ident' && p.text === 'as') {
         this.next();
         step.linkRef = this.ident();
-      } else if (p.type === 'ident' && p.text === 'flip') {
+        continue;
+      }
+      if (p.type === 'ident' && p.text === 'flip') {
         this.next();
         step.flip = true;
-      } else break;
+        continue;
+      }
+      return; // 'delay' and anything else are handled by the caller
     }
-    return step;
   }
 
   // ---- views ----------------------------------------------------------------

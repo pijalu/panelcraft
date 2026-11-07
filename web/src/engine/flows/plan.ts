@@ -326,6 +326,13 @@ export function collectAlts(flow: Flow): AltInfo[] {
   return out;
 }
 
+/** Beats of one step, with its per-step dwell applied (F-18). */
+function beatsForStep(s: FlowStep, ctx: ResolveCtx, index: number, next: { i: number }): Beat[] {
+  const produced = stepBeats(s, ctx, index, next);
+  if (s.delayMs !== undefined) for (const b of produced) b.delayMs = s.delayMs;
+  return produced;
+}
+
 export function buildPlan(input: PlanInput): PlaybackPlan {
   const { doc, flow } = input;
   const ctx: ResolveCtx = {
@@ -338,7 +345,7 @@ export function buildPlan(input: PlanInput): PlaybackPlan {
   const next = { i: 0 };
   for (const s of flow.steps) {
     next.i += 1;
-    beats.push(...stepBeats(s, ctx, next.i, next));
+    beats.push(...beatsForStep(s, ctx, next.i, next));
   }
   // numbering is final — compute dim sets over the complete id universe
   const all = [...doc.objects.map((o: Obj) => o.id), ...doc.links.map((l, li) => canvasLinkId(l, li))];

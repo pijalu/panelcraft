@@ -114,6 +114,8 @@ export interface Link {
 interface StepBase {
   comments?: Comments;
   pos: Pos;
+  /** Per-step dwell before auto-advance (F-18; overrides the beat default). */
+  delayMs?: number;
 }
 
 export interface Branch {

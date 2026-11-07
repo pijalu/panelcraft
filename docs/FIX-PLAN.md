@@ -295,6 +295,16 @@ Drag-reorder steps (exists as `moveStep`, wire the UI), duplicate step, per-step
 indicators, sticky flow header with "play from step".
 *Tests:* component + e2e reorder persists in code.
 
+**Done.** Steps drag-reorder (HTML5 DnD, same-parent only, wired to `moveStep`),
+duplicate is a deep copy inserted after the original (`duplicateStep`), and each leaf
+step carries an editable dwell — a new *format* attribute `delay <ms>` (FILE-FORMAT
+step grammar, IR `delayMs`, TS + Go parser/printer/serializer, parity fixtures, planner
+applies it per step). The step header is sticky and shows an `unsaved` chip while the
+buffer diverges, and every row has "play from this step". Tests:
+`ui/flows/flowDoc.test.ts` (duplicate), `engine/format/stepDelay.test.ts` (round-trip,
+IR, negative rejection, clearing, planner override), e2e `p2-flowedit.spec.ts`
+(duplicate, delay edit, drag-reorder reflected in the file, play-from-step).
+
 ---
 
 ## Phase P3 — Parity, fidelity, discoverability

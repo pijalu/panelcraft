@@ -61,6 +61,8 @@ function SidePane(props: {
   onCollapse?: () => void;
   illustration?: IllustrationId | 'auto';
   onIllustration?(id: IllustrationId | 'auto'): void;
+  onPlayFrom?(flowKey: string, index: number): void;
+  dirty?: boolean;
 }) {
   return (
     <aside class="sidebar">
@@ -108,6 +110,8 @@ function SidePane(props: {
           onPlay={props.onPlay}
           illustration={props.illustration}
           onIllustration={props.onIllustration}
+          onPlayFrom={props.onPlayFrom}
+          dirty={props.dirty}
         />
       )}
     </aside>
@@ -209,6 +213,8 @@ function SidebarSlot(props: {
   onPlay: (flowKey: string) => void;
   illustration: IllustrationId | 'auto';
   onIllustration: (id: IllustrationId | 'auto') => void;
+  onPlayFrom: (flowKey: string, index: number) => void;
+  dirty: boolean;
 }) {
   return slot(
     props.ui.layout.panels.sidebar === 'collapsed',
@@ -226,6 +232,8 @@ function SidebarSlot(props: {
       onCollapse={() => props.ui.togglePanel('sidebar')}
       illustration={props.illustration}
       onIllustration={props.onIllustration}
+      onPlayFrom={props.onPlayFrom}
+      dirty={props.dirty}
     />,
   );
 }
@@ -271,8 +279,14 @@ function AppBody(p: {
   diverged: ReturnType<typeof useDivergedClose>;
   illustration: IllustrationId | 'auto';
   onIllustration: (id: IllustrationId | 'auto') => void;
+  dirty: boolean;
 }) {
   const { ws, canvas, code, ui, player, activePath, viewName } = p;
+  const onPlayFrom = (flowKey: string, index: number): void => {
+    if (activePath === null) return;
+    player.start(activePath, flowKey);
+    player.stepTo(index);
+  };
   const ctrl = canvas.ctrlRef.current;
   return (
       <div class="app-body">
@@ -289,6 +303,8 @@ function AppBody(p: {
           }}
           illustration={p.illustration}
           onIllustration={p.onIllustration}
+          onPlayFrom={onPlayFrom}
+          dirty={p.dirty}
         />
         <Splitter
           id="sidebar"
@@ -457,6 +473,7 @@ export function App() {
         diverged={diverged}
         illustration={illustration}
         onIllustration={setIllustration}
+        dirty={code.snapshot.divergedFromSaved}
       />
       {presenting && <PresentLayer player={player} />}
       {renameTarget && (

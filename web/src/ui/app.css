@@ -2218,3 +2218,62 @@ marker .pc-arrow[fill='none'] {
   opacity: 0.5;
   cursor: default;
 }
+
+/* F-18 flow editing parity: sticky step header, draggable rows, inline controls */
+.flow-detail-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px;
+  background: var(--pc-surface);
+}
+
+.chip-dirty {
+  background: var(--pc-warn);
+  border-color: var(--pc-warn);
+  color: var(--pc-bg);
+  font-size: var(--pc-text-xs);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.flow-step {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.flow-step > button:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.flow-step-btn {
+  min-width: 26px;
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  background: transparent;
+  color: var(--pc-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.flow-step-btn:hover {
+  border-color: var(--pc-border);
+  color: var(--pc-accent);
+}
+
+.flow-step-delay {
+  width: 66px;
+  min-height: 28px;
+  font-size: var(--pc-text-xs);
+}
+
+.flow-step[draggable='true'] {
+  cursor: grab;
+}

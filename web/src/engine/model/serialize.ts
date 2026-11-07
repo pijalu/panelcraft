@@ -144,6 +144,7 @@ const stepToJSON = (s: FlowStep): JSONRecord => {
   return obj(
     ['type', s.type],
     ...payload,
+    ['delayMs', s.delayMs],
     comments(s.comments),
     ['pos', pos(s.pos)],
   );

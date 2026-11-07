@@ -160,6 +160,19 @@ export function moveStep(flow: Flow, path: number[], toIndex: number): void {
   loc.list.splice(clamped, 0, moved);
 }
 
+/**
+ * F-18: clone the step at `path` and insert the copy right after it (deep
+ * clone — branches/lanes travel with it). Returns false for an unknown path.
+ */
+export function duplicateStep(flow: Flow, path: number[]): boolean {
+  const at = holder(flow, path);
+  if (at === null) return false;
+  const step = at.list[at.index];
+  if (step === undefined) return false;
+  at.list.splice(at.index + 1, 0, structuredClone(step));
+  return true;
+}
+
 export function addBranch(flow: Flow, altPath: number[], label: string): void {
   const step = getAt(flow, altPath);
   if (step?.type !== 'alt') return;

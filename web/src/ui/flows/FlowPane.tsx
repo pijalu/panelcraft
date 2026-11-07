@@ -11,6 +11,7 @@ import { parsePDL } from '../../engine/format/parser';
 import type { Branch, Doc, Flow, FlowStep } from '../../engine/model/types';
 import {
   addBranch,
+  duplicateStep,
   addFlow,
   addLane,
   appendStep,
@@ -33,6 +34,10 @@ export interface FlowPaneProps {
   onChangeText(text: string): void;
   /** Start playback of a flow in the active file. */
   onPlay(flowKey: string): void;
+  /** F-18: start playback at a step (1-based) of a flow. */
+  onPlayFrom?(flowKey: string, index: number): void;
+  /** F-18: the active file's buffer has unapplied changes. */
+  dirty?: boolean;
   /** F-17: illustration style for playback ('auto' follows the beat kind). */
   illustration?: IllustrationId | 'auto';
   onIllustration?(id: IllustrationId | 'auto'): void;
@@ -207,22 +212,95 @@ function stepTitle(s: FlowStep): string {
   return s.text;
 }
 
-function StepList(props: { steps: FlatStep[]; sel: number[]; onSelect: (p: number[]) => void }) {
+export interface StepOps {
+  select(path: number[]): void;
+  /** Move the step at `path` to sibling index `to` (drag-reorder). */
+  move(path: number[], to: number): void;
+  duplicate(path: number[]): void;
+  /** Per-step dwell; undefined clears it (F-18 format attribute). */
+  delay(path: number[], ms: number | undefined): void;
+  /** Start playback at this step (1-based beat-ish index). */
+  playFrom(index: number): void;
+}
+
+const isBlockStep = (t: FlowStep['type']): boolean => t === 'alt' || t === 'par';
+
+function StepList(props: { steps: FlatStep[]; sel: number[]; ops: StepOps }) {
   return (
     <ol class="flow-steps" data-testid="flow-steps">
       {props.steps.map((fs, i) => {
-        const active = fs.path.length === props.sel.length && fs.path.every((v, j) => v === props.sel[j]);
+        const active =
+          fs.path.length === props.sel.length && fs.path.every((v, j) => v === props.sel[j]);
+        const parent = fs.path.slice(0, -1).join('.');
         return (
-          <li key={fs.path.join('.')} class={`flow-step${active ? ' active' : ''}`}>
+          <li
+            key={fs.path.join('.')}
+            class={`flow-step${active ? ' active' : ''}`}
+            draggable={true}
+            data-testid={`step-row-${i}`}
+            onDragStart={(e) => {
+              (e as DragEvent).dataTransfer?.setData('text/plain', fs.path.join('.'));
+              e.dataTransfer?.setData('application/x-pc-step', fs.path.join('.'));
+            }}
+            onDragOver={(e) => {
+              // only same-parent reordering is meaningful
+              if (e.dataTransfer?.types.includes('application/x-pc-step')) e.preventDefault();
+            }}
+            onDrop={(e) => {
+              const from = e.dataTransfer?.getData('application/x-pc-step') ?? '';
+              if (from === '') return;
+              const path = from.split('.').map(Number);
+              if (path.slice(0, -1).join('.') !== parent) return; // keep nesting intact
+              e.preventDefault();
+              const to = fs.path.at(-1);
+              if (to !== undefined) props.ops.move(path, to);
+            }}
+          >
             <button
               type="button"
               data-testid={`step-${i}`}
               style={`padding-left: ${8 + fs.depth * 14}px`}
-              onClick={() => props.onSelect(fs.path)}
+              onClick={() => props.ops.select(fs.path)}
             >
               <span class={`flow-step-kind kind-${fs.step.type}`}>{fs.step.type}</span>
               <span class="flow-step-title">{stepTitle(fs.step)}</span>
             </button>
+            <button
+              type="button"
+              class="flow-step-btn"
+              data-testid={`step-play-${i}`}
+              title="Play from this step"
+              aria-label={`Play from step ${i + 1}`}
+              onClick={() => props.ops.playFrom(i)}
+            >
+              ▶
+            </button>
+            <button
+              type="button"
+              class="flow-step-btn"
+              data-testid={`step-dup-${i}`}
+              title="Duplicate step"
+              aria-label={`Duplicate step ${i + 1}`}
+              onClick={() => props.ops.duplicate(fs.path)}
+            >
+              ⧉
+            </button>
+            {!isBlockStep(fs.step.type) && (
+              <input
+                type="number"
+                min={0}
+                step={100}
+                class="flow-step-delay"
+                data-testid={`step-delay-${i}`}
+                aria-label={`Step ${i + 1} delay in milliseconds`}
+                placeholder="delay"
+                value={fs.step.delayMs ?? ''}
+                onInput={(e) => {
+                  const raw = (e.target as HTMLInputElement).value;
+                  props.ops.delay(fs.path, raw === '' ? undefined : Number(raw));
+                }}
+              />
+            )}
           </li>
         );
       })}
@@ -364,6 +442,8 @@ function addKindStep(
 }
 
 function FlowDetail(props: {
+  ops: StepOps;
+  dirty?: boolean;
   flat: FlatStep[];
   selStep: number[];
   step: FlowStep | null;
@@ -374,7 +454,15 @@ function FlowDetail(props: {
 }) {
   return (
     <>
-      <StepList steps={props.flat} sel={props.selStep} onSelect={props.onPickStep} />
+      <div class="flow-detail-head">
+        <span class="panel-title">Steps</span>
+        {props.dirty === true && (
+          <span class="chip chip-dirty" data-testid="flow-dirty" title="Unapplied code edits">
+            unsaved
+          </span>
+        )}
+      </div>
+      <StepList steps={props.flat} sel={props.selStep} ops={props.ops} />
       <StepBar addKindRef={props.addKindRef} onAdd={props.onAddStep} />
       {props.step !== null && <StepInspector step={props.step} a={props.actions} />}
     </>
@@ -403,6 +491,20 @@ export function FlowPane(props: FlowPaneProps) {
   const actions = makeActions(mutateSel, step);
   const selFlow = sel?.flow ?? '';
   const selStep = sel?.step ?? [];
+  /** Mutate the selected flow by its key (stable across edits). */
+  const withFlow = (fn: (f: Flow) => void): void => {
+    apply((d) => {
+      const f = d.flows.find((x) => (x.id ?? x.title ?? '') === selFlow);
+      if (f !== undefined) fn(f);
+    });
+  };
+  const ops: StepOps = {
+    select: (p) => setSel({ flow: selFlow, step: p }),
+    move: (p, to) => withFlow((f) => moveStep(f, p, to)),
+    duplicate: (p) => withFlow((f) => duplicateStep(f, p)),
+    delay: (p, ms) => withFlow((f) => patchStep(f, p, { delayMs: ms })),
+    playFrom: (i) => props.onPlayFrom?.(selFlow, i + 1),
+  };
 
   const addStep = (): void => {
     if (sel !== null) addKindStep(doc, sel.flow, addKindRef, apply);
@@ -426,6 +528,8 @@ export function FlowPane(props: FlowPaneProps) {
       <button type="button" data-testid="flow-add" onClick={addFlowRow}>+ flow</button>
       {flow !== null && (
         <FlowDetail
+          ops={ops}
+          dirty={props.dirty}
           flat={flat}
           selStep={selStep}
           step={step}

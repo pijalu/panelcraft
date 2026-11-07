@@ -607,6 +607,20 @@ func (p *parser) quoted(t Token, what string) string {
 	return t.Value
 }
 
+// stepDelay consumes an optional trailing `delay <ms>` on the step's line (F-18).
+func (p *parser) stepDelay(line int, s *ir.Step) {
+	t := p.peek()
+	if t.Type != TokIdent || t.Text != "delay" || t.Line != line {
+		return
+	}
+	p.next()
+	ms := p.num(p.expect(TokNumber, ""))
+	if ms < 0 {
+		p.fail(t, ErrUnexpected, "delay must not be negative")
+	}
+	s.DelayMs = &ms
+}
+
 func (p *parser) parseKeywordStep(kw string, depth int) ir.Step {
 	t0 := p.next()
 	comments := p.takeComments()
@@ -627,6 +641,9 @@ func (p *parser) parseKeywordStep(kw string, depth int) ir.Step {
 		s.Label, s.Lanes = p.parseParBody(t0, depth)
 	default: // goto
 		p.parseGoto(&s)
+	}
+	if kw != "alt" && kw != "par" {
+		p.stepDelay(t0.Line, &s)
 	}
 	return s
 }
@@ -739,6 +756,9 @@ func (p *parser) parseMsgStep() ir.Step {
 		case t.Type == TokIdent && t.Text == "flip":
 			p.next()
 			s.Flip = true
+		case t.Type == TokIdent && t.Text == "delay" && t.Line == t0.Line:
+			p.stepDelay(t0.Line, &s)
+			return s
 		default:
 			return s
 		}
