@@ -260,6 +260,29 @@ style api {
   });
 });
 
+describe('content durability (F-29)', () => {
+  it('saveText persists to storage immediately, without waiting for the debounce', async () => {
+    const port = new MemoryStorage();
+    const ws = new WorkspaceManager({ storage: port, skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\n');
+    await ws.flush(); // baseline
+    ws.saveText('a.pcd', 'pcd 1.0\n\nsystem z "Z"\n');
+    // no flush() call — the content write must already be in the store
+    const rec = await port.load();
+    expect(getNode(rec!.tree, 'a.pcd')?.content).toContain('system z');
+  });
+
+  it('saveCanvas persists to storage immediately', async () => {
+    const port = new MemoryStorage();
+    const ws = new WorkspaceManager({ storage: port, skipWelcome: true });
+    ws.createFileAt('a.pcd', '');
+    await ws.flush();
+    ws.saveCanvas('a.pcd', state());
+    const rec = await port.load();
+    expect(getNode(rec!.tree, 'a.pcd')?.content).toContain('system api');
+  });
+});
+
 describe('autosave → storage (FR-S1)', () => {
   it('flush persists the latest record with tree + tabs', async () => {
     const port = new MemoryStorage();

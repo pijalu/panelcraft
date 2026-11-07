@@ -64,6 +64,11 @@ function wiredCtrl(manager: WorkspaceManager): Wired {
       w.loaded.push(s);
       w.emit(s);
     },
+    // F-28: the bridge only trusts a hydrated canvas and reads its live state
+    isHydrated: () => true,
+    get snapshot() {
+      return w.snap ?? emitSnap([], []);
+    },
   } as unknown as CanvasController;
   return w;
 }

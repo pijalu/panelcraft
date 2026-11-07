@@ -66,6 +66,9 @@ class SyncMachineImpl implements SyncMachine {
   private codeTimer: unknown = null;
   private idleTimer: unknown = null;
   private pendingCanvas: Doc | null = null;
+  /** Latest doc a canvas change asked to display (F-28: the last one wins,
+   * even when an intermediate render would be a no-op). */
+  private pendingRender: Doc | null = null;
   /** Cached canonical print of `buffer` (reset on every buffer change). */
   private bufferCanon: string | null = null;
   private readonly watchers = new Set<(s: SyncSnapshot) => void>();
@@ -182,11 +185,23 @@ class SyncMachineImpl implements SyncMachine {
 
   /** Debounced code re-render from `doc`; suppressed when already displayed. */
   private renderFrom(doc: Doc): void {
+    // F-28: a no-op request (the doc already prints like the buffer) must not
+    // cancel a *newer* pending render. Otherwise a stale canvas snapshot can
+    // discard the render that carries the real change.
     if (printDoc(doc) === this.buffer) return;
-    if (this.codeTimer !== null) this.port.cancel(this.codeTimer);
+    this.pendingRender = doc;
+    if (this.codeTimer !== null) {
+      this.port.cancel(this.codeTimer);
+      this.codeTimer = null;
+    }
     this.codeTimer = this.port.schedule(() => {
       this.codeTimer = null;
-      this.buffer = printDoc(doc);
+      const latest = this.pendingRender;
+      this.pendingRender = null;
+      if (latest === null) return;
+      const text = printDoc(latest);
+      if (text === this.buffer) return;
+      this.buffer = text;
       this.bufferCanon = this.buffer;
       this.emit();
     }, this.port.codeDebounceMs ?? CODE_MS);

@@ -4,6 +4,7 @@
 // the FR-K5 diverged-close prompt with FR-K4 apply blocking (WP4 acceptance:
 // type garbage → save blocked → apply/clear).
 import { expect, test } from '@playwright/test';
+import { capture } from './lib/screenshots';
 
 const MERMAID = 'flowchart TD\n  api[API Server] --> db[(Database)]\n';
 
@@ -44,15 +45,15 @@ test('S2: mermaid paste → canvas → canvas edit → code view updates', async
   await expect(content).toContainText('System 1', { timeout: 3000 });
   await expect(content).toContainText('container api');
   // F-01/D1: a canvas edit merges into the document — the mermaid paste kept
-  // `direction TD`, so the meta line must survive the canvas write (this
+  // `direction TB`, so the meta line must survive the canvas write (this
   // assertion used to bless the data-loss bug).
-  await expect(content).toContainText('direction TD');
+  await expect(content).toContainText('direction TB');
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
 
   // light + dark screenshots (vision round input for M4)
-  await page.screenshot({ path: 'e2e/__screenshots__/m4-s2-light.png', fullPage: true });
+  await capture(page, 'm4-s2-light');
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.screenshot({ path: 'e2e/__screenshots__/m4-s2-dark.png', fullPage: true });
+  await capture(page, 'm4-s2-dark');
 });
 
 test('S2/WP4: garbage buffer blocks apply; diverged close offers discard', async ({ page }) => {

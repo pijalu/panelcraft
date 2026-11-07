@@ -75,6 +75,10 @@ jobs:
           npx playwright install --with-deps chromium
           npm run e2e
 
+      # ---- repo hygiene (F-09): e2e must not dirty the worktree ----
+      - name: repo-hygiene
+        run: bash scripts/check-repo-clean.sh --worktree
+
       # ---- visual-harness noop ----
       # Playwright visual diff + pixelmatch harness activate with M2 canvas
       # screenshots (SPEC §8.3); S7 already captures light+dark baselines.

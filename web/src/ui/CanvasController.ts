@@ -191,6 +191,9 @@ export class CanvasController {
   private spaceDown = false;
   private routes = new Map<string, Polyline>();
   private seq = 0;
+  /** Set by loadState: the canvas only speaks for a file after it has one
+   * (F-28 — a pre-load empty snapshot must not be mistaken for a canvas edit). */
+  private hydrated = false;
   private readonly onState?: (s: Snapshot) => void;
   private readonly onRenameRequest?: (id: string) => void;
   private detach: Array<() => void> = [];
@@ -360,8 +363,14 @@ export class CanvasController {
     if (u) this.setTransform(fitRect(u, this.viewSize()));
   }
 
+  /** True once a file (or an explicit empty state) has been loaded. */
+  isHydrated(): boolean {
+    return this.hydrated;
+  }
+
   loadState(state: DiagramState): void {
     this.state = state;
+    this.hydrated = true;
     // F-02: re-baseline the id sequence from the loaded ids, otherwise the
     // first added object reuses an id that already exists in the file and one
     // of the two entities is lost on reload.

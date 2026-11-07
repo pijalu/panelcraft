@@ -3,6 +3,7 @@
 // external requests blocked — the runtime proof of self-containment (N7/N11).
 // Also asserts zero external requests are even attempted.
 import { expect, test } from '@playwright/test';
+import { capture } from './lib/screenshots';
 
 const EXTERNAL = /^https?:\/\/(?!localhost|127\.0\.0\.1)/;
 
@@ -32,8 +33,8 @@ test('S7 screenshots: light + dark baselines (vision-loop input, SPEC §8.4)', a
 }) => {
   await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
-  await page.screenshot({ path: 'e2e/__screenshots__/m0-light.png', fullPage: true });
+  await capture(page, 'm0-light');
 
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.screenshot({ path: 'e2e/__screenshots__/m0-dark.png', fullPage: true });
+  await capture(page, 'm0-dark');
 });

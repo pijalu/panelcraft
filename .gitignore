@@ -12,11 +12,13 @@ coverage/
 # Test / coverage artifacts
 *.out
 
-# Playwright
+# Build output (F-09: generated, never tracked)
+dist/
+
+# Playwright — run artifacts stay out of git; curated goldens live in e2e/goldens/
 test-results/
 playwright-report/
-e2e/__screenshots__/**/*-diff.png
-e2e/__screenshots__/**/*-failed.png
+e2e/__screenshots__/
 
 # OS
 .DS_Store

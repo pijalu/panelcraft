@@ -5,6 +5,7 @@
 // movement, alt-branch choice, ARIA narration — plus light/dark screenshots
 // for the vision review round 2 (STYLE-GUIDE §visual).
 import { expect, test } from '@playwright/test';
+import { capture } from './lib/screenshots';
 
 const DOC = `pcd 1.0
 
@@ -115,9 +116,9 @@ test('S3: 6-step flow playback — transport, alt chooser, par concurrency, dim,
   await expect(page.getByTestId('pb-progress')).toHaveText('7/7');
 
   // vision round 2 input: light (mid-flow) + dark (end-state) screenshots
-  await page.screenshot({ path: 'e2e/__screenshots__/m5-s3-light.png', fullPage: true });
+  await capture(page, 'm5-s3-light');
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.screenshot({ path: 'e2e/__screenshots__/m5-s3-dark.png', fullPage: true });
+  await capture(page, 'm5-s3-dark');
 
   // exit restores the pre-play viewport (FR-F3) — transform back to identity
   await page.getByTestId('pb-exit').click();

@@ -95,7 +95,16 @@ panelcraft serve --addr :8080 --open
 ## E2E + vision loop (UI work)
 
 1. Implement → `npm run build` → `npm run e2e` (Playwright chromium).
-2. Screenshot baselines land in `e2e/__screenshots__/`; review diffs deliberately.
+2. **Screenshot policy (F-09).** Every run writes captures to
+   `test-results/screenshots/` (gitignored artifact) — a full `npm run e2e` must
+   leave `git status --porcelain` empty (`scripts/check-repo-clean.sh --worktree`
+   enforces it locally and in CI). Curated, reviewable captures live in
+   `e2e/goldens/` and are refreshed **only** with
+   `UPDATE_GOLDENS=1 npm run e2e` — that diff is part of the commit under review.
+   Generated `dist/**` is never committed (the root `dist/release` dry-run
+   binaries were untracked in F-09; purge older history with
+   `git filter-repo --path dist --invert-paths` if the repository size matters,
+   then force-push the rewritten branch — coordinate first, it rewrites SHAs).
 3. Open the app (dev server or built dist) via browser automation; capture milestone
    screenshots (light+dark).
 4. Review screenshots vs STYLE-GUIDE checklist (alignment, contrast, spacing, empty
@@ -114,7 +123,7 @@ panelcraft serve --addr :8080 --open
 | `cmd/panelcraft` | Go CLI entry (serve/validate/convert/render) |
 | `internal/{ir,pdl,server,render}` | Go IR codec, PDL parser, embedded server, chromedp render |
 | `testdata/corpus` | golden .pcd + .ir.json (shared TS/Go) |
-| `e2e` | Playwright specs + screenshots |
+| `e2e` | Playwright specs + curated goldens (`e2e/goldens/`) |
 | `docs/architecture` | PDL workspace: PanelCraft's own architecture diagrams (corpus seeds) |
 | `docs` | SPEC, IMPLEMENTATION-PLAN, FILE-FORMAT, STYLE-GUIDE, milestones, adr/ |
 

@@ -152,6 +152,10 @@ export function useCanvasController(
     setSnap(s);
     const path = manager.activePath;
     if (path === null || loadingRef.current === path) return;
+    // F-28: never persist a snapshot the canvas emitted before it loaded the
+    // active file — a pre-load (empty) state would overwrite the file.
+    if (lastLoadedRef.current !== path) return;
+    if (!ctrlRef.current?.isHydrated()) return;
     /* Persist only real canvas-content changes: render/selection/camera
        churn re-emits the same objects/links, and writing the projection
        then would clobber the file's full text (flows/views/styles the

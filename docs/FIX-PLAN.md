@@ -99,6 +99,31 @@ empty after e2e; document the optional history purge in `agents.md`.
 
 ---
 
+### F-28 Startup snapshot must not be read as a canvas edit — **critical** (found in F-01 verification)
+*Problem:* the canvas emits a snapshot (empty) from its constructor and again before
+  its file load; `useCodeSync`'s bridge treated it as a genuine canvas edit, merged the
+  empty state into the document and the 150 ms code re-render — plus `saveCanvas` —
+  wrote an object-less document over the file. Separately, a *no-op* render request
+  (`printDoc(doc) === buffer`) cancelled a newer pending render, so the last real
+  change could be discarded and the code view stayed stale. Repro: seed a file with
+  objects, reload, read the code pane → `pcd 1.0` only.
+*Change:* `CanvasController.isHydrated()` (set by `loadState`); the bridge and
+`onCtrlState` ignore pre-load snapshots; the bridge reads the controller's live
+  snapshot instead of the possibly-stale prop; `renderFrom` no longer cancels a
+  pending render for a no-op request.
+*Tests:* `useCodeSync.test.tsx` (hydrated/live-state double), `sync.test.ts`
+  "a no-op canvas change does not cancel a newer pending render", e2e
+`p0-regressions.spec.ts` (reload keeps the document).
+
+### F-29 Content must survive a reload inside the autosave window — **critical** (found in F-01 verification)
+*Problem:* `Autosaver` debounces 800 ms (FR-S1) and `beforeunload` cannot await an
+  IndexedDB write, so a reload/close shortly after an edit lost it — the restored
+  workspace was the previous record (and, combined with F-28, sometimes an empty one).
+*Change:* document *content* writes (`saveCanvas`, `saveText`) persist immediately
+  (`Autosaver.flush()`); UI churn (tab order, focus) keeps the debounce.
+*Tests:* `workspace.test.ts` "content durability (F-29)" (store holds the new text
+  with no explicit flush), e2e reload assertions in `p0-regressions.spec.ts`.
+
 ## Phase P1 — Requested UX (all depend on P0)
 
 ### F-10 Collapsible, resizable shell — *items 1-3*

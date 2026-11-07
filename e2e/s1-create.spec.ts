@@ -3,6 +3,7 @@
 // from the palette onto the canvas → link them → set properties → diagram
 // renders live. Also captures light/dark screenshots (vision round 1 input).
 import { expect, test } from '@playwright/test';
+import { capture } from './lib/screenshots';
 
 test('S1: create diagram via palette drop + link + properties', async ({ page }) => {
   await page.goto('/');
@@ -70,7 +71,7 @@ test('S1: create diagram via palette drop + link + properties', async ({ page })
 
   // light + dark screenshots (vision round 1 input, committed baselines)
   await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
-  await page.screenshot({ path: 'e2e/__screenshots__/m2-s1-light.png', fullPage: true });
+  await capture(page, 'm2-s1-light');
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.screenshot({ path: 'e2e/__screenshots__/m2-s1-dark.png', fullPage: true });
+  await capture(page, 'm2-s1-dark');
 });

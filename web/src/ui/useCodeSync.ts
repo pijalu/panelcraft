@@ -127,7 +127,17 @@ export function useCodeSync(deps: {
   /* canvas → machine bridge (echo-suppressed; deduped by serialized text) */
   useEffect(() => {
     if (!ready || snap === null) return;
-    const state = { objects: snap.objects, links: snap.links };
+    const ctrl = ctrlRef.current;
+    // F-28: a snapshot taken before the canvas loaded its file is not a canvas
+    // edit. Without this gate the startup empty snapshot is merged into the
+    // document and the debounced render rewrites the code view (and the file)
+    // with an empty diagram.
+    if (ctrl === null || !ctrl.isHydrated()) return;
+    // F-28: read the controller's LIVE state — the `snap` prop can be one
+    // render behind (a file load inside the same commit), and merging that
+    // stale (empty) state would rewrite the document without its objects.
+    const live = ctrl.snapshot;
+    const state = { objects: live.objects, links: live.links };
     const text = stateToPcd(state);
     const path = manager.activePath;
     // Echo check FIRST: a position-only apply (auto-layout, FR-V3) changes

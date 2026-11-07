@@ -170,6 +170,10 @@ export class SceneRenderer {
   private buildObject(obj: SceneObject): SVGGElement {
     const g = this.el('g') as SVGGElement;
     g.setAttribute('class', `pc-obj pc-kind-${obj.kind}`);
+    // F-07: object `dashed` (style block on disk) must be visible, not just
+    // round-tripped — the properties checkbox and the file used to disagree
+    // with the drawing.
+    g.classList.toggle('pc-dashed', obj.dashed === true);
     g.setAttribute('data-id', obj.id);
     for (const spec of shapeGlyphs(obj)) this.applySpec(g, spec);
     return g;
@@ -236,6 +240,7 @@ export class SceneRenderer {
     const g = prev.el;
     g.textContent = '';
     g.setAttribute('class', `pc-obj pc-kind-${obj.kind}`);
+    g.classList.toggle('pc-dashed', obj.dashed === true);
     for (const spec of shapeGlyphs(obj)) this.applySpec(g, spec);
     this.positionObject(g, obj);
     this.objEntries.set(obj.id, { el: g, obj });

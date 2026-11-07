@@ -305,7 +305,19 @@ export class WorkspaceManager {
     writeFile(this.root, path, text);
     this.tabs = setDirty(this.tabs, path, true);
     this.emit();
+    this.saveContent();
+  }
+
+  /**
+   * F-29: document *content* is persisted immediately, not on the 800 ms
+   * autosave debounce (FR-S1 keeps the debounce for UI churn — tab order,
+   * focus). A reload/close inside the debounce window used to lose the edit:
+   * `beforeunload` cannot await an IndexedDB write, so the pending record died
+   * with the page.
+   */
+  private saveContent(): void {
     this.scheduleSave();
+    void this.autosaver.flush();
   }
 
   openFile(path: string): void {
@@ -381,7 +393,7 @@ export class WorkspaceManager {
     writeFile(this.root, path, text);
     this.tabs = setDirty(this.tabs, path, true);
     this.emit();
-    this.scheduleSave();
+    this.saveContent();
   }
 
   /**

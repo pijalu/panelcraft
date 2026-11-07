@@ -101,6 +101,11 @@ snapshots() { run npx vitest run web/src/workspace/store/; }
 # smoke, search jump; M6-WP8).
 e2e_m6() { run npm run e2e -- --project=chromium; }
 
+# ---- repo hygiene (F-09): no generated artefact tracked, e2e leaves no diff ---
+# repo_clean: `git ls-files dist`/screenshots empty; with --worktree (default
+# here) the worktree must be clean after the e2e stages ran.
+repo_clean()   { run bash scripts/check-repo-clean.sh --worktree; }
+
 # ---- m7 stages (hardening & release; reuses all earlier gates) ---------------
 # perf_nfr: N1–N3 budgets as hard assertions (M7-WP2, SPEC §5) — synthetic
 # scene ops budgets (N1), 100-object open-to-interactive (N2), 10k-line parse
@@ -131,7 +136,7 @@ e2e_m7() { run npm run e2e -- --project=chromium; }
 
 case "$MILESTONE" in
   m0)
-    STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test selfcontained e2e_smoke)
+    STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test selfcontained e2e_smoke repo_clean)
     ;;
   m1)
     STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_smoke)
@@ -152,7 +157,7 @@ case "$MILESTONE" in
     STAGES=(web_check web_test perf_smoke workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m6)
     ;;
   m7)
-    STAGES=(web_check web_test perf_smoke perf_nfr workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots svg_fuzz cli_traversal web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links selfcontained a11y_e2e offline_e2e e2e_m7 release_dry)
+    STAGES=(web_check web_test perf_smoke perf_nfr workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots svg_fuzz cli_traversal web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links selfcontained a11y_e2e offline_e2e e2e_m7 repo_clean release_dry)
     ;;
   *)
     echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4, m5, m6, m7)" >&2

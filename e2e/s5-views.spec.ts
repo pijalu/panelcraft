@@ -6,6 +6,7 @@
 // files. Plus light/dark screenshots for the vision review round 3
 // (STYLE-GUIDE §visual).
 import { expect, test, type Page } from '@playwright/test';
+import { capture } from './lib/screenshots';
 
 const DOC = `pcd 1.0
 
@@ -161,13 +162,13 @@ test('S5: quick search Ctrl+P — jump within file and across files (FR-W6)', as
   // vision round 3 input: light (filtered viewbar) + dark (search overlay)
   await page.keyboard.press('Control+p');
   await expect(page.getByTestId('search-overlay')).toBeVisible();
-  await page.screenshot({ path: 'e2e/__screenshots__/m6-s5-search.png', fullPage: true });
+  await capture(page, 'm6-s5-search');
   await page.keyboard.press('Escape');
   // back to the tagged file for the filter screenshots
   await page.getByTestId('tab-untitled.pcd').click();
   await page.getByTestId('tag-chip-core').click();
   await expect(canvas.locator('g.pc-faded').first()).toBeVisible();
-  await page.screenshot({ path: 'e2e/__screenshots__/m6-s5-light.png', fullPage: true });
+  await capture(page, 'm6-s5-light');
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.screenshot({ path: 'e2e/__screenshots__/m6-s5-dark.png', fullPage: true });
+  await capture(page, 'm6-s5-dark');
 });

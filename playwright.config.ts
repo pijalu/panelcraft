@@ -6,6 +6,9 @@ import { defineConfig, devices } from '@playwright/test';
 // docs/SPEC.md §3.
 export default defineConfig({
   testDir: 'e2e',
+  // F-09: run artifacts (screenshots, traces, diffs) go to the gitignored
+  // test-results/ dir — a full e2e run must leave `git status` clean.
+  outputDir: 'test-results/artifacts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0, // agents.md: no retries — flaky = fix root cause

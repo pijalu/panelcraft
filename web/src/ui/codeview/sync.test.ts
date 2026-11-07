@@ -174,6 +174,19 @@ describe('canvas → code (canvasChanged path)', () => {
     expect(machine.snapshot().codeText).toBe(PDL_A);
   });
 
+  it('a no-op canvas change does not cancel a newer pending render (F-28)', () => {
+    const { sched, machine } = rig();
+    // 1. a real change schedules a render
+    const change = parsePDL('pcd 1.0\n\nsystem c "C"\n').doc!;
+    machine.canvasChanged(change);
+    // 2. a stale request whose render equals the current buffer arrives —
+    //    it must NOT discard the pending render (the old code cancelled it,
+    //    leaving the code view stuck on stale text).
+    machine.canvasChanged(parsePDL(PDL_A).doc!);
+    sched.tickAll(150);
+    expect(machine.snapshot().codeText).toBe(printDoc(change));
+  });
+
   it('rapid canvas changes collapse to the last render', () => {
     const { sched, machine } = rig();
     machine.canvasChanged(parsePDL(PDL_B).doc!);

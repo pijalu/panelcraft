@@ -371,6 +371,12 @@ body {
   stroke-dasharray: 5 3;
 }
 
+/* Object dashed border (F-07): the properties checkbox must be visible in the
+   drawing, not only in the file. Groups already carry a dashed boundary. */
+.pc-obj.pc-dashed > .pc-shape {
+  stroke-dasharray: 6 4;
+}
+
 .pc-link-label {
   fill: var(--pc-muted);
   font-size: var(--pc-text-xs);

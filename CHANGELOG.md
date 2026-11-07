@@ -31,6 +31,16 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 - **F-08** Canvas-origin link semantics no longer mutate: untyped arrows stay
   untyped (no injected `uses`), `a <-> b` stays bidirectional, and the
   properties panel gained an explicit "(untyped)" option.
+- **F-09** Repo hygiene: `dist/**` and run screenshots are untracked; e2e captures
+  go to `test-results/screenshots/`, curated goldens live in `e2e/goldens/` and are
+  refreshed only with `UPDATE_GOLDENS=1`; `scripts/check-repo-clean.sh` gates
+  tracked generated content and worktree cleanliness (CI + `verify.sh`).
+
+- **F-28/F-29** Startup and durability defects found while verifying F-01: a
+  pre-load canvas snapshot is no longer mistaken for an edit (it could write an
+  object-less document over the file), a no-op render request no longer cancels a
+  newer pending render, and document content is persisted immediately instead of
+  riding the 800 ms autosave debounce (a reload inside that window lost the edit).
 
 ### Added — M2 Canvas MVP (PLAN §4)
 
