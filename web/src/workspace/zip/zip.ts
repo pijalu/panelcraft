@@ -67,10 +67,14 @@ async function pumpStream(
   xform: { readable: ReadableStream<Uint8Array>; writable: WritableStream<BufferSource> },
   data: Uint8Array,
 ): Promise<Uint8Array> {
+  /* Start draining the readable FIRST: writer.close() flushes through the
+     transform and only completes once the readable side is consumed —
+     writing (let alone closing) before reading deadlocks in browsers. */
+  const drained = streamToBytes(xform.readable);
   const writer = xform.writable.getWriter();
   await writer.write(data.slice());
   await writer.close();
-  return streamToBytes(xform.readable);
+  return drained;
 }
 
 async function deflateRaw(data: Uint8Array): Promise<Uint8Array> {

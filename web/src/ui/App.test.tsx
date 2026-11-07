@@ -227,7 +227,11 @@ describe('workspace chrome (M3)', () => {
   });
 
   it('clear-data dialog requires typing DELETE (FR-S4)', async () => {
-    await mountReady();
+    const { svg } = await mountReady();
+    // put an object on the canvas first — clear must wipe it too
+    fireEvent.click(screen.getByTestId('palette-system'));
+    await act(async () => {});
+    expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(1);
     fireEvent.click(screen.getByTestId('tb-clear-data'));
     const dialog = screen.getByTestId('clear-dialog');
     expect(dialog).not.toBeNull();
@@ -237,9 +241,11 @@ describe('workspace chrome (M3)', () => {
     expect((screen.getByTestId('clear-confirm-btn') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByTestId('clear-confirm-btn'));
     await act(async () => {});
-    // workspace reset → welcome file re-bootstrapped, dialog gone
+    // workspace reset → welcome file re-bootstrapped, canvas emptied, dialog gone
     expect(screen.queryByTestId('clear-dialog')).toBeNull();
     expect(screen.getByTestId('tree-row-untitled.pcd')).not.toBeNull();
+    await act(async () => {});
+    expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(0);
   });
 
   it('canvas edits mark the tab dirty; content lands in the file', async () => {

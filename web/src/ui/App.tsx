@@ -49,6 +49,7 @@ export function App() {
   const sel = selections(canvas.snap);
 
   const clearData = (): void => {
+    canvas.resync(); // forget the old active path — the workspace is wiped
     void manager.clearAll();
     setClearOpen(false);
   };
@@ -64,7 +65,10 @@ export function App() {
           ready={ws.ready}
           svgRef={canvas.svgRef}
           onFlash={setFlash}
-          onToggleEphemeral={ws.clearReminder}
+          onToggleEphemeral={(on) => {
+            ws.clearReminder();
+            void manager.setEphemeral(on);
+          }}
           onClearRequest={() => setClearOpen(true)}
         />
       </header>

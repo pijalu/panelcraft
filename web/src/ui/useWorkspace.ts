@@ -79,6 +79,8 @@ export interface CanvasHandle {
   snap: Snapshot | null;
   onCtrlState: (s: Snapshot) => void;
   onPaletteDrop: (kind: Kind, e: PointerEvent) => void;
+  /** Forget the last-loaded path (after clearAll reset the workspace). */
+  resync: () => void;
 }
 
 /**
@@ -97,7 +99,11 @@ export function useCanvasController(
   const nameFieldRef = useRef<HTMLInputElement | null>(null);
   const lastLoadedRef = useRef<string | null>(null);
   const loadingRef = useRef<string | null>(null);
+  const firstRunRef = useRef(true); // adoption only guards the initial load
   const [snap, setSnap] = useState<Snapshot | null>(null);
+  const resync = (): void => {
+    lastLoadedRef.current = null;
+  };
 
   /* active file → canvas */
   useEffect(() => {
@@ -107,18 +113,22 @@ export function useCanvasController(
     const path = manager.activePath;
     if (path === lastLoadedRef.current) return;
     /* adoption: work placed on the canvas before init finished (welcome file
-       just bootstrapped, still empty) must not be wiped by the empty load. */
+       just bootstrapped, still empty) must not be wiped by the empty load.
+       Only on the initial load — after clearAll() the empty file is the truth. */
     if (
+      firstRunRef.current &&
       path !== null &&
       lastLoadedRef.current === null &&
       ctrl.snapshot.objects.length > 0 &&
       manager.canvasState(path).objects.length === 0
     ) {
+      firstRunRef.current = false;
       manager.saveCanvas(path, { objects: ctrl.snapshot.objects, links: ctrl.snapshot.links });
       manager.markClean(path);
       lastLoadedRef.current = path;
       return;
     }
+    firstRunRef.current = false;
     lastLoadedRef.current = path;
     if (path === null) {
       loadingRef.current = '\u0000';
@@ -171,5 +181,5 @@ export function useCanvasController(
     });
   };
 
-  return { svgRef, ctrlRef, nameFieldRef, snap, onCtrlState, onPaletteDrop };
+  return { svgRef, ctrlRef, nameFieldRef, snap, onCtrlState, onPaletteDrop, resync };
 }
