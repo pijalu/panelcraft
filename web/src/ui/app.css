@@ -6,7 +6,8 @@
   --pc-bg: #ffffff;
   --pc-surface: #f5f6f8;
   --pc-fg: #1a1d21;
-  --pc-muted: #6b7280;
+  /* N5 (M7): muted text must clear AA 4.5:1 on bg AND surface — was #6b7280 (4.47:1 on surface) */
+  --pc-muted: #575e69;
   --pc-accent: #2563eb;
   --pc-border: #d1d5db;
   --pc-canvas: #fafafa;
@@ -22,7 +23,8 @@
     --pc-bg: #14161a;
     --pc-surface: #1e2126;
     --pc-fg: #e5e7eb;
-    --pc-muted: #9ca3af;
+    /* N5 (M7): 6.36:1 on surface (was #9ca3af — fine on bg, kept ratio headroom) */
+    --pc-muted: #a9b1ba;
     --pc-accent: #60a5fa;
     --pc-border: #374151;
     --pc-canvas: #111316;
@@ -693,16 +695,36 @@ body {
 .tab {
   display: inline-flex;
   align-items: center;
+  gap: 0; /* button carries the visual tab chrome now (N5 restructure) */
+  border: none;
+  padding: 0;
+  background: transparent;
+  font-size: var(--pc-text-sm);
+}
+
+.tab > .tab-name {
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
-  padding: 3px 6px;
+  padding: 3px 6px 3px 8px;
   border: 1px solid var(--pc-border);
   border-bottom: none;
   border-radius: var(--pc-radius-sm) var(--pc-radius-sm) 0 0;
   background: var(--pc-bg);
-  font-size: var(--pc-text-sm);
+  font-weight: inherit;
 }
 
-.tab-active {
+.tab > .tab-main {
+  display: inline-flex;
+}
+
+.tab > .tab-close {
+  margin-left: -2px;
+  padding-bottom: 3px;
+  align-self: stretch;
+}
+
+.tab > .tab-name[data-active="true"] {
   border-color: var(--pc-accent);
 }
 
@@ -951,7 +973,7 @@ body {
 /* PDL token colors (light) */
 .pc-tok-kw { color: #2563eb; font-weight: 600; }
 .pc-tok-str { color: #059669; }
-.pc-tok-num { color: #d97706; }
+.pc-tok-num { color: #b45309; }
 .pc-tok-com { color: var(--pc-muted); font-style: italic; }
 .pc-tok-op { color: var(--pc-fg); }
 .pc-tok-id { color: var(--pc-fg); }
@@ -1412,7 +1434,8 @@ body {
 }
 
 .search-row-active .search-kind {
-  color: rgb(255 255 255 / 75%);
+  /* N5 (M7): full white on accent — 75% white fails AA on both accents */
+  color: #ffffff;
 }
 
 .search-label {
@@ -1430,7 +1453,8 @@ body {
 }
 
 .search-row-active .search-path {
-  color: rgb(255 255 255 / 75%);
+  /* N5 (M7): AA on accent — see .search-kind above */
+  color: #ffffff;
 }
 
 .search-empty {

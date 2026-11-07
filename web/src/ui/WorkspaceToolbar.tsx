@@ -114,7 +114,7 @@ export function WorkspaceToolbar(props: WorkspaceToolbarProps) {
         Clear data…
       </button>
       <input
-        
+        aria-label="Import .pcd or mermaid files"
         type="file"
         multiple
         accept=".pcd,.mmd,.mermaid,.txt"
@@ -126,7 +126,7 @@ export function WorkspaceToolbar(props: WorkspaceToolbarProps) {
         }}
       />
       <input
-        
+        aria-label="Import workspace zip"
         type="file"
         accept=".zip"
         data-testid="import-zip-input"
