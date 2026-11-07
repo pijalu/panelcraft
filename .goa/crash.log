@@ -4501,3 +4501,18 @@ goa/protocol: 2026/11/07 07:34:28 max_tokens=131072 (no explicit value and no pr
 2026/11/07 12:20:53.730332 [StatusMsg] Show("Answering...") oldText="Sending request..." spinning=true
 2026/11/07 12:20:54.005891 [StatusMsg] Show("Calling bash...") oldText="Answering..." spinning=true
 2026/11/07 12:20:57.769076 [StatusMsg] Show("Tool calling") oldText="Calling bash..." spinning=true
+2026/11/07 12:20:57.935017 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 12:21:00.179133 [StatusMsg] Show("Calling goal...") oldText="Sending request..." spinning=true
+2026/11/07 12:21:00.262553 [StatusMsg] Show("Tool calling") oldText="Calling goal..." spinning=true
+2026/11/07 12:21:00.264343 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 12:21:03.145424 [StatusMsg] Show("Calling goal...") oldText="Sending request..." spinning=true
+2026/11/07 12:21:03.465402 [StatusMsg] Show("Tool calling") oldText="Calling goal..." spinning=true
+2026/11/07 12:21:03.467034 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 12:21:08.878704 [StatusMsg] Show("Answering...") oldText="Sending request..." spinning=true
+2026/11/07 12:21:09.189565 [StatusMsg] Show("Calling bash...") oldText="Answering..." spinning=true
+2026/11/07 12:21:09.848035 [StatusMsg] Show("Tool calling") oldText="Calling bash..." spinning=true
+2026/11/07 12:21:21.394728 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 12:21:26.288339 [StatusMsg] Show("Thinking...") oldText="Sending request..." spinning=true
+2026/11/07 12:21:35.889804 [StatusMsg] Show("Answering...") oldText="Thinking..." spinning=true
+2026/11/07 12:21:36.248168 [StatusMsg] Show("Calling bash...") oldText="Answering..." spinning=true
+2026/11/07 12:21:36.868232 [StatusMsg] Show("Tool calling") oldText="Calling bash..." spinning=true
