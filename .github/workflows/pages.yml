@@ -35,9 +35,10 @@ jobs:
         with:
           path: web/dist
 
-  # STUB: flip to `if: true` in M7 after configuring the Pages environment.
+  # Live since M7: Pages environment must exist (repo Settings → Pages →
+  # GitHub Actions source). Serves the SPA offline-capable (SPEC FR-H, N8).
   deploy:
-    if: false
+    if: true
     needs: build
     runs-on: ubuntu-latest
     environment:

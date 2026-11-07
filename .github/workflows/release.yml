@@ -1,6 +1,7 @@
-# Release — STUB (PLAN §2 M0-WP4). Real cross-compile matrix (GOOS/GOARCH,
-# CGO off), checksums and GitHub Release publishing land with M7 (SPEC §8.5).
-# Today: prove the tag trigger and that the binary builds embedded+clean.
+# Release — real cross-compile matrix (M7-WP6, SPEC §8.5): linux/darwin/windows
+# × amd64/arm64, CGO off, web/dist embedded, per-OS boot-smoke, merged
+# checksums, GitHub Release with artifacts. Local equivalent:
+# `bash scripts/release.sh --dry-run` (verify.sh m7 release_dry stage).
 name: release
 
 on:
@@ -8,23 +9,76 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  smoke:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: linux }
+          - { os: macos-latest, target: darwin }
+          - { os: windows-latest, target: windows }
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.27'
           cache: true
+
       - run: npm ci
-      - run: npm run build
-      - run: go build ./...
-      - name: release engineering lands in M7
-        run: echo "v${{ github.ref_name }} built OK — cross-compile + checksums + GitHub Release ship with M7"
+
+      - name: Build bundle (embedded in every binary)
+        run: npm run build
+
+      - name: Build ${{ matrix.target }} binaries + native boot-smoke
+        shell: bash
+        env:
+          RELEASE_OS: ${{ matrix.target }}
+        run: bash scripts/release.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Upload artifacts (${{ matrix.target }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/release/panelcraft-*
+          if-no-files-found: error
+
+  finalize:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist/release
+          merge-multiple: true
+
+      - name: Checksums (all six binaries)
+        run: |
+          cd dist/release
+          find . -maxdepth 1 -type f -name 'panelcraft-*' -print0 \
+            | sort -z | xargs -0 sha256sum > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/release/* \
+          --title "PanelCraft $GITHUB_REF_NAME" \
+          --notes-file RELEASE_NOTES.md \
+          --verify-tag
