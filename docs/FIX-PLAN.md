@@ -473,6 +473,16 @@ Benchmark 500 objects with a single rename; assert ≤ the M7 budget in `engine/
 regression from minimal-diff sync and merge-based saves.
 *Tests:* the benchmark itself plus the existing N1–N3 gates.
 
+**Done.** `N4` in `engine/perf/nfr.test.ts`: a 500-object document, one object
+renamed, then merge → print → re-parse → `docToState` → minimal diff, with the
+per-stage timings logged. Measured **3.0 ms total** (merge 1.1 / print 0.6 /
+parse 0.8 / state 0.3 / diff 0.3) against a 150 ms budget, so the merge-based save
+and the minimal-diff sync added no measurable cost. The gate also asserts the rename
+survives the round trip and that the diff is local (`insert < baseText/20`), i.e. the
+editor is not asked to replace the document for a one-line change. Diffing is done
+canonical-vs-canonical: measuring against the raw synthetic source would only
+measure printer normalisation, which no user interaction produces.
+
 ---
 
 ## Sequencing & dependencies

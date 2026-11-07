@@ -10,6 +10,9 @@ import { parsePDL } from '../format/parser';
 import { docToState } from '../../workspace/workspace';
 import { SceneRenderer } from '../render/scenegraph';
 import { routeOrtho } from '../render/router';
+import { applyCanvasState } from '../model/merge';
+import { printDoc } from '../format/printer';
+import { minimalChange } from '../../ui/codeview/diff';
 import type { Scene, SceneLink } from '../render/scenegraph';
 
 /** Emit a PDL source with `n` objects and roughly `n` links (valid grammar). */
@@ -89,5 +92,46 @@ describe('N1 — 2000 objects usable (render upper bound)', () => {
     // "usable" gate — not a frame budget; generous bound so CI stays stable
     expect(ms).toBeLessThan(4000);
     console.log(`perf N1/2000: initial render ${ms.toFixed(1)} ms`);
+  });
+});
+
+describe('N4 — sync path: rename in a 500-object file (F-27)', () => {
+  it('merge → print → parse → docToState → minimal diff stays inside the M7 budget', () => {
+    const src = syntheticPdl(500);
+    const parsed = parsePDL(src);
+    if (!parsed.doc) throw new Error('synthetic source must parse clean');
+    const before = parsed.doc;
+    const state = docToState(before);
+    // One object renamed — the case that used to rewrite the whole projection.
+    const renamed = {
+      ...state,
+      objects: state.objects.map((o) => (o.id === 'o0' ? { ...o, name: 'Renamed edge' } : o)),
+    };
+
+    const merge = timed(() => applyCanvasState(before, renamed));
+    const print = timed(() => printDoc(merge.result));
+    const reparse = timed(() => parsePDL(print.result));
+    const recalc = timed(() => docToState(reparse.result.doc ?? before));
+    // The buffer is canonical after the first apply, so the realistic diff is
+    // canonical-vs-canonical (diffing against the raw synthetic source would
+    // measure the printer's normalisation, not the edit).
+    const baseText = printDoc(before);
+    const diff = timed(() => minimalChange(baseText, print.result));
+    const total = merge.ms + print.ms + reparse.ms + recalc.ms + diff.ms;
+
+    // The rename must survive the round trip (no silent data loss).
+    expect(print.result).toContain('Renamed edge');
+    expect(recalc.result.objects.find((o) => o.id === 'o0')?.name).toBe('Renamed edge');
+    // The diff must be local: one changed line region, not the whole document.
+    expect(diff.result.insert.length).toBeLessThan(baseText.length / 20);
+    expect(diff.result.from).toBeGreaterThan(0);
+
+    // M7 budget for a single interactive edit: 150 ms end-to-end (jsdom upper bound).
+    expect(total).toBeLessThan(150);
+    console.log(
+      `perf N4: 500-object rename total ${total.toFixed(1)} ms ` +
+        `(merge ${merge.ms.toFixed(1)} / print ${print.ms.toFixed(1)} / parse ${reparse.ms.toFixed(1)} / ` +
+        `state ${recalc.ms.toFixed(1)} / diff ${diff.ms.toFixed(1)})`,
+    );
   });
 });

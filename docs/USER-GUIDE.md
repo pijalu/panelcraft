@@ -17,22 +17,47 @@ mirrors every feature.
 ## 2. Editing a diagram
 
 ### Canvas
-- **Palette** (left): click a kind (person, system, system_ext, container,
-  component, datastore, queue, group, note), click the canvas to drop it.
+- **Palette** (left): grouped by C4 level (Context/Container/Component, plus
+  Structure for group/note). Click a kind — or press `1`–`9` — then click the
+  canvas; dragging a palette row onto the canvas also places it.
 - **Select**: click; Shift-click adds to the selection. Drag moves (snaps to
-  the grid unless a view pins a position).
-- **Connect**: click a source object, then a target — the link gets the
-  default type; edit label/type in the properties panel (right).
-- **Keyboard**: arrows move the selection, Delete removes, Escape deselects
-  or closes the active overlay.
-- **Undo/redo**: Ctrl/Cmd+Z / Shift-Ctrl/Cmd+Z (canvas and code share the
-  history via the sync bridge).
+  the grid). **Rename** in place with `F2` or double-click; Enter commits,
+  Escape cancels.
+- **Resize**: select anything and drag one of the eight handles; the box stays
+  on the grid and never gets smaller than 48×32. An explicit size is saved as
+  `size <w> <h>`; "Fit to name" (properties → Advanced) recomputes it.
+- **Connect**: drag from an edge halo (or right-click → connect) to a target.
+  A link's type/label/arrowheads/line/width live in the properties panel;
+  `Shift+A` cycles the head shape. Drag a child link's midpoint to add a
+  waypoint, and drag waypoints to move them.
+- **Hover** an object to see its name, technology, description and tags.
+- **Keyboard**: arrows move the selection, Tab/Shift+Tab move focus between
+  objects, Delete removes, Escape deselects or closes the active overlay.
+- **Context menu** (right-click): copy/paste/duplicate, delete, align,
+  distribute, equalise size, bring to front.
+- **History**: Ctrl/Cmd+Z / Shift-Ctrl/Cmd+Z act on the surface that has focus;
+  the header's `⟲ History` lists the last actions across canvas and code with
+  routed Undo/Redo.
+
+### Saved state
+- The header pill says `Saved · HH:MM` or `Unsaved`, and shows a problem chip
+  while the buffer has parse errors. With errors the canvas keeps the last good
+  render, rings the offending object and shows an "out of date" banner instead of
+  freezing silently.
+
+### Empty file
+- A new file offers three templates (C4 context, flow, mermaid starter); picking
+  one inserts real `.pcd` text you can keep editing.
 
 ### Code view (source of truth)
 - The pane under the canvas always shows the canonical `.pcd` text; every
   canvas edit lands there, and every code edit re-patches the canvas
   (debounced; diverged states resolve through a guided dialog, M4).
 - `Shift-Alt-F` formats the buffer.
+- Clicking an object highlights its statement here (no caret stealing); putting
+  the caret on a statement selects that object on the canvas.
+- Mermaid: paste a `flowchart`/`graph`/`sequenceDiagram` block to convert it;
+  `docs/MERMAID-MATRIX.md` records exactly what imports and what is dropped.
 
 ### Views & tags (M6)
 - **Tags** (`tag core` lines): toggle via the chips above the canvas — hidden
@@ -53,10 +78,16 @@ mirrors every feature.
    in code, or via the pane).
 2. Each step targets an object/link with optional focus rules; reorder steps
    by drag.
-3. **Play**: the play bar steps through the plan — the active step's elements
-   highlight, the rest dim; the narration line is an ARIA live region
-   (screen readers announce every step). `prefers-reduced-motion` plays
-   without transition animation.
+3. **Play**: the docked transport steps through the plan — the active step's
+   elements highlight, the rest dim; the narration line is an ARIA live region
+   (screen readers announce every step). `prefers-reduced-motion` plays without
+   transition animation. Each step may carry `delay <ms>`; the flow's
+   illustration style (token, pulse, glow, burst, split, trail) is chosen per
+   flow in the Flows pane. When a flow ends, a closing card offers replay,
+   `Export SVG` and close.
+4. **Present**: `⛶` enters the chrome-free shell — click or press Space/→ to
+   advance, ← to go back, `P` pauses, `R` restarts, `Esc` exits and restores the
+   previous chrome and viewport.
 
 ## 4. Import / export
 

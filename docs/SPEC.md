@@ -418,7 +418,44 @@ target = link mode · `F` fit · `+/-/0` zoom in/out/reset.
 
 ---
 
-## 12. Open items (post-v1 backlog)
+## 12.1 v1.0 status of the requirement list
+
+The list above is the product vision; this section records what v1.0 actually ships
+so the document is not read as a promise. Everything not mentioned here is
+implemented and covered by tests.
+
+**Implemented in v1.0 (was listed as later/partial):**
+
+* FR-C5 inline rename (F2 / double-click), object icon per kind.
+* FR-C6 custom key-value properties and style overrides (fill, stroke, text, icon).
+* FR-C7 typed links, label, direction (uni/bi), arrowheads (`head`/`tail`:
+  arrow/open/diamond/circle/square/none), line texture (solid/dashed/dotted), width.
+* FR-C8 waypoints are draggable and persisted (`waypoint` lines); orthogonal routing.
+* FR-C10 canvas and object context menus (duplicate, delete, copy/paste, align,
+  distribute, equalise size).
+* FR-C12 copy/paste/duplicate within a file, with id re-allocation on paste.
+* FR-I1…FR-I3 imports: `import Alias as "./x.pcd"`, read-only ghosts rendered on the
+  canvas, click-through to the source file, cycle detection.
+
+**Moved to the post-v1 backlog (not implemented, deliberately):**
+
+* FR-C4 resize applies to *every* object kind (not only groups/boundaries); rotation
+  is still not supported (axis-aligned C4 shapes).
+* FR-C8 curved (bezier) and straight routing: v1.0 routes orthogonally only — the
+  router's timeboxed fallback, recorded in `docs/milestones/M2.md`.
+* FR-C9 cross-surface undo ordering is a shared journal (`HistoryFeed`) with
+  focus-aware routing, not a single stack for every surface.
+* FR-C12 cross-file paste resolves imports by *linking*, not inlining.
+* FR-K* curved camera paths, mini-map: mini-map remains post-v1 (see the list above).
+
+**Known UI limitations** (documented rather than silently different):
+
+* Object `description`/`technology`/`tags` are edited in the properties panel and
+  shown on the canvas hover card; there is no separate tooltip affordance.
+* The illustration styles in flow playback are chosen per flow (`auto` by default);
+  there is no per-step illustration override.
+
+## 12.2 Open items (post-v1 backlog)
 
 Comments/annotations on objects · export to draw.io/PlantUML · plugin API for custom
 stencils · additional diagram notations (sequence-native, deployment advanced) ·

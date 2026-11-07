@@ -45,12 +45,20 @@ render CLI). License **GPL-3.0-only**.
 ## Commands
 
 ```bash
+# gates that must also stay green after a format/IR change
+bash scripts/check-docs.sh        # doc links + every ```pcd fence parses
+bash scripts/check-repo-clean.sh  # no generated content tracked / dirty worktree
+node scripts/corpus-accept.mjs    # regenerate corpus + TS/Go parity fixtures
+npm run check && npx vitest run && npx playwright test && go test ./...
+
 # web
 npm ci                       # install (lockfile committed)
 npm run dev                  # vite dev server :5173
 npm run check                # tsc + eslint (CI gate)
 npm test                     # vitest run + coverage thresholds
-npm run e2e                  # playwright (build first: npm run build)
+npm run e2e                  # playwright (build first: npm run build — the
+                             # webServer runs `npm run preview` on the EXISTING
+                             # dist, so a stale bundle silently tests old code)
 npm run build                # static bundle → web/dist
 
 # go
@@ -75,6 +83,9 @@ panelcraft serve --addr :8080 --open
 - [ ] **Vision review pass if UI-touching**: screenshots reviewed against
       docs/STYLE-GUIDE.md checklist; defects filed or fixed (SPEC §8.4)
 - [ ] Docs updated (SPEC/FILE-FORMAT/ARCHITECTURE/CHANGELOG as applicable)
+- [ ] Format changes landed atomically: parser + printer + IR + `FILE-FORMAT.md`
+      + corpus regeneration (`node scripts/corpus-accept.mjs`) + Go parity
+- [ ] e2e goldens only via `UPDATE_GOLDENS=1`; run artefacts go to `test-results/`
 - [ ] GPL headers present on new files
 
 ## Working conventions

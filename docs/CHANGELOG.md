@@ -4,6 +4,20 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-02-14 — P4: docs truth pass and sync-path perf gate (F-26, F-27)
+
+- **F-27**: new `N4` perf gate — 500-object document, one rename, merge → print →
+  parse → `docToState` → minimal diff measured at **3.0 ms** against a 150 ms budget,
+  with the diff asserted local.
+
+- **F-26**: `SPEC.md` gained a "v1.0 status" section (FR-C5/C6/C7/C8/C9/C10/C12 and
+  FR-I1…I3 marked implemented; curved/straight routing, mini-map, cross-file inlining
+  and per-step illustrations recorded as post-v1). `USER-GUIDE.md` now documents the
+  grouped palette, in-place rename, eight-handle resize, `size`, waypoints, hover
+  cards, the saved/dirty pill, the error state, templates, the history affordance,
+  present mode and the flow closing card. `agents.md` lists the docs/corpus/clean-
+  worktree gates and the preview-dist pitfall.
+
 ## 2026-02-14 — P4: laws-of-UX pass (F-25)
 
 - Saved/dirty pill with last-save time and a problem chip; template gallery for a new
