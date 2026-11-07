@@ -155,6 +155,11 @@ function requireFolder(root: FsNode, path: string): FsNode {
   return node;
 }
 
+/** Create a folder chain (idempotent); throws is-file when a file is in the way. */
+export function createFolder(root: FsNode, path: string): void {
+  mkdirp(root, path);
+}
+
 /** Create a file (missing parent folders are auto-created). Throws exists. */
 export function createFile(root: FsNode, path: string, content = ''): FsNode {
   const segs = splitPath(path);
