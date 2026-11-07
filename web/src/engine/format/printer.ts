@@ -147,7 +147,10 @@ const printObject = (o: Obj, p: Printer): void => {
 /** Link ids are data: always emitted when present (lossless round-trip,
  * design goal §1.2 — D-M1-16 supersedes §4's minimal-noise sketch). */
 const linkNeedsBlock = (l: Link): boolean =>
-  hasStyle(l.style) || (l.waypoints?.length ?? 0) > 0 || (l.attributes?.length ?? 0) > 0;
+  hasStyle(l.style) ||
+  (l.waypoints?.length ?? 0) > 0 ||
+  (l.tags?.length ?? 0) > 0 ||
+  (l.attributes?.length ?? 0) > 0;
 
 const printLink = (l: Link, p: Printer): void => {
   p.comment(l.comments, 0);
@@ -159,6 +162,7 @@ const printLink = (l: Link, p: Printer): void => {
     return;
   }
   p.add(line + ' {');
+  if (l.tags?.length) p.add(`${INDENT}tag ${l.tags.join(' ')}`);
   if (hasStyle(l.style)) {
     p.add(`${INDENT}style {`);
     styleLines(l.style, 2, p);

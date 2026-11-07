@@ -392,6 +392,7 @@ class Parser {
       if (this.peek().type === 'punct' && this.peek().text === '}') { this.next(); return; }
       const t = this.expect('ident');
       if (t.text === 'label') l.label = this.expect('string').value;
+      else if (t.text === 'tag') (l.tags ??= []).push(...this.identList());
       else if (t.text === 'style') l.style = this.parseStyleBlock(t0, 'link');
       else if (t.text === 'waypoint') {
         this.expect('punct', '(');

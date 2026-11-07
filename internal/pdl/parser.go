@@ -511,6 +511,8 @@ func (p *parser) linkBlock(l *ir.Link, t0 Token) {
 		case "label":
 			v := p.expect(TokString, "").Value
 			l.Label = &v
+		case "tag":
+			l.Tags = append(l.Tags, p.identList()...)
 		case "style":
 			l.Style = p.parseStyleBlock(t0, "link")
 		case "waypoint":

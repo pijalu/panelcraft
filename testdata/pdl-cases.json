@@ -83,15 +83,15 @@
     },
     {
       "name": "link-block",
-      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b : \"label\" as l1 {\n  style {\n    stroke #333\n    dashed\n  }\n  waypoint (10, 20)\n  waypoint (30.5, 40)\n  glow \"on\"\n}\n",
-      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"label\": \"label\",\n      \"style\": {\n        \"stroke\": \"#333\",\n        \"dashed\": true\n      },\n      \"waypoints\": [\n        [\n          10,\n          20\n        ],\n        [\n          30.5,\n          40\n        ]\n      ],\n      \"attributes\": [\n        {\n          \"raw\": \"glow \\\"on\\\"\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
-      "print": "pcd 1.0\n\nperson a \"A\" {\n}\nperson b \"B\" {\n}\n\na -> b : \"label\" as l1 {\n  style {\n    stroke #333\n    dashed\n  }\n  waypoint (10, 20)\n  waypoint (30.5, 40)\n  glow \"on\"\n}\n",
+      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b : \"label\" as l1 {\n  tag sync critical\n  tag sync\n  style {\n    stroke #333\n    dashed\n  }\n  waypoint (10, 20)\n  waypoint (30.5, 40)\n  glow \"on\"\n}\n",
+      "doc": "{\n  \"irVersion\": 1,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"label\": \"label\",\n      \"tags\": [\n        \"sync\",\n        \"critical\",\n        \"sync\"\n      ],\n      \"style\": {\n        \"stroke\": \"#333\",\n        \"dashed\": true\n      },\n      \"waypoints\": [\n        [\n          10,\n          20\n        ],\n        [\n          30.5,\n          40\n        ]\n      ],\n      \"attributes\": [\n        {\n          \"raw\": \"glow \\\"on\\\"\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\" {\n}\nperson b \"B\" {\n}\n\na -> b : \"label\" as l1 {\n  tag sync critical sync\n  style {\n    stroke #333\n    dashed\n  }\n  waypoint (10, 20)\n  waypoint (30.5, 40)\n  glow \"on\"\n}\n",
       "parseDiags": [],
       "validateDiags": [
         {
           "code": "P205",
           "message": "unknown attribute \"glow \"on\"\" kept verbatim",
-          "line": 11,
+          "line": 13,
           "col": 3,
           "severity": "warning"
         }

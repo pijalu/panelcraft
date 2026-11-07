@@ -223,10 +223,10 @@ func printObject(o ir.Obj, p *printer) {
 	p.add("}")
 }
 
-// linkNeedsBlock: block form for style/waypoints/raw attributes. Link ids are
-// data and always printed inline (D-M1-16).
+// linkNeedsBlock: block form for tags/style/waypoints/raw attributes. Link ids
+// are data and always printed inline (D-M1-16).
 func linkNeedsBlock(l ir.Link) bool {
-	return hasStyle(l.Style) || len(l.Waypoints) > 0 || len(l.Attributes) > 0
+	return hasStyle(l.Style) || len(l.Waypoints) > 0 || len(l.Tags) > 0 || len(l.Attributes) > 0
 }
 
 func printLink(l ir.Link, p *printer) {
@@ -243,6 +243,9 @@ func printLink(l ir.Link, p *printer) {
 		return
 	}
 	p.add(line + " {")
+	if len(l.Tags) > 0 {
+		p.add(indent + "tag " + strings.Join(l.Tags, " "))
+	}
 	if hasStyle(l.Style) {
 		p.add(indent + "style {")
 		styleLines(l.Style, 2, p)

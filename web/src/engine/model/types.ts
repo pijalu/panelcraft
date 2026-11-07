@@ -83,6 +83,7 @@ export interface Link {
   type?: string;
   label?: string;
   bidir?: boolean;
+  tags?: string[];
   style?: StyleBlock;
   waypoints?: [number, number][];
   attributes?: RawAttr[];

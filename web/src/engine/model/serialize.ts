@@ -82,6 +82,7 @@ const linkStmt = (l: Link): JSONRecord =>
     ['type', l.type],
     ['label', l.label],
     ['bidir', l.bidir === true ? true : undefined],
+    ['tags', arr(l.tags ?? [])],
     styleBlock(l.style),
     ['waypoints', arr(l.waypoints ?? [])],
     [

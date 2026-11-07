@@ -89,6 +89,8 @@ a <-> b
 person a "A"
 person b "B"
 a -> b : "label" as l1 {
+  tag sync critical
+  tag sync
   style {
     stroke #333
     dashed

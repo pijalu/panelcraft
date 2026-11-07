@@ -132,8 +132,9 @@ a <-> b                         bidirectional
 ```
 api -publishes-> events as L7 {
   label "order created v2"
+  tag critical async           ← repeatable; merges (M6: tag filter fade)
   style { dashed }
-  waypoint (120, 300)         ← 0..n, canvas routing hints, view-independent
+  waypoint (120, 300)          ← 0..n, canvas routing hints, view-independent
 }
 ```
 

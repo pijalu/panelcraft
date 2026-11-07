@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parsePDL } from './parser';
 import { lex } from './lexer';
+import { printDoc } from './printer';
 import { CHECKOUT_SRC } from './format.testdata';
 
 describe('lexer', () => {
@@ -109,6 +110,19 @@ describe('parser — happy paths', () => {
     const l = doc!.links[0]!;
     expect(l.style).toEqual({ dashed: true, stroke: '#333' });
     expect(l.waypoints).toEqual([[120, 300]]);
+  });
+
+  it('parses and canonically prints link tags (FR-V1, M6)', () => {
+    const src = 'pcd 1.0\na -> b as L9 {\n tag sync critical\n tag sync\n}\n';
+    const { doc } = parsePDL(src);
+    expect(doc!.links[0]!.tags).toEqual(['sync', 'critical', 'sync']); // repeatable merges, order kept
+    const printed = printDoc(doc!);
+    const { doc: reparsed } = parsePDL(printed);
+    expect(reparsed!.links[0]!.tags).toEqual(['sync', 'critical', 'sync']);
+    expect(printed).toContain('tag sync critical sync');
+    // no tags → no block
+    const plain = parsePDL('pcd 1.0\na -> b\n');
+    expect(printDoc(plain.doc!)).not.toContain('{');
   });
 
   it('keeps unknown attributes as raw data with positions (§12)', () => {

@@ -78,6 +78,7 @@ type Link struct {
 	Type       string       `json:"type,omitempty"`
 	Label      *string      `json:"label,omitempty"`
 	Bidir      bool         `json:"bidir,omitempty"`
+	Tags       []string     `json:"tags,omitempty"`
 	Style      *StyleBlock  `json:"style,omitempty"`
 	Waypoints  [][2]float64 `json:"waypoints,omitempty"`
 	Attributes []RawAttr    `json:"attributes,omitempty"`

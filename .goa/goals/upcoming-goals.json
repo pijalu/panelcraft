@@ -2,39 +2,6 @@
   "version": 1,
   "goals": [
     {
-      "id": "qg-1794034657105651000-7716b7d5337c",
-      "name": "emerald.wolf",
-      "objective": "Deliver milestone M4 — Code view \u0026 mermaid export — per docs/IMPLEMENTATION-PLAN.md §6, WPs M4-WP1..M4-WP6: CodeMirror 6 component + PDL mode, two-way sync state machine (test-first), diagnostics line:col mapping + problems panel, format-on-save + diverged-buffer prompt, mermaid exporter with declared feature drop + golden outputs, S2 e2e.",
-      "completionCriterion": "S2 e2e passes (mermaid paste → canvas renders → canvas edit → code view updates), two-way sync state machine fully transition-tested, mermaid exporter goldens committed per corpus file, FR-K1–K5 + FR-M4/M5 covered, and `bash scripts/verify.sh m4` exits 0 with evidence in docs/milestones/M4.md.",
-      "verifyCommand": "bash scripts/verify.sh m4",
-      "freshContext": true,
-      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §6; tail docs/milestones/M3.md (FS API signatures); grep SPEC §4.3 (FR-K*), §4.4 (FR-M4/M5), FILE-FORMAT §9 (export contract). PROTOCOL: (a) evidence → docs/milestones/M4.md continuously; (b) FIRST task: extend scripts/verify.sh stage m4; (c) sync state machine is the bug-prone core — TEST-FIRST mandate: exhaustive transition table before UI wiring (agents.md stuck-protocol applies hard here); (d) exporter emits FILE-FORMAT §9 exact shape — golden tests per corpus file, re-import property test (lossless-to-declared-subset); (e) CodeMirror integration stays thin over engine/format diagnostics. EXIT CONTRACT: verify.sh m4 exit 0; S2 green; exporter goldens committed; M4.md complete. Next goal (M5) cold-starts from its handover + PLAN §7 + M4.md tail.",
-      "createdAt": "2026-11-07T07:57:37.105651+01:00",
-      "updatedAt": "2026-11-07T07:57:37.105651+01:00"
-    },
-    {
-      "id": "qg-1794034657105859000-4b36a777e9e1",
-      "name": "honest.dog",
-      "objective": "Deliver milestone M5 — Flows \u0026 animation — per docs/IMPLEMENTATION-PLAN.md §7, WPs M5-WP1..M5-WP8: step machine (refs, playback plan builder), anim engine (WAAPI, token travel, dim sets, reduced-motion) with Clock/AnimPlayer ports, camera controller, flow editor UI (inspectors per step type), play mode UI + ARIA narration hook, inline SVG icon set (GPL-checked sources), theme polish, S3 e2e + vision round 2.",
-      "completionCriterion": "S3 e2e passes (6-step flow incl. alt branch chooser + par concurrency assertions + camera + dim end-states), all 8 step types unit-covered incl. cross-file goto, reduced-motion path asserted, FR-F1–F6 covered, vision review round 2 closed in docs/milestones/M5.md, and `bash scripts/verify.sh m5` exits 0.",
-      "verifyCommand": "bash scripts/verify.sh m5",
-      "freshContext": true,
-      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §7; tail docs/milestones/M4.md; grep SPEC §4.5 (FR-F*, step table), STYLE-GUIDE motion tokens. PROTOCOL: (a) evidence → docs/milestones/M5.md continuously; (b) FIRST task: extend scripts/verify.sh stage m5; (c) flows+anim are pure TS with Clock/AnimPlayer ports — deterministic fake-clock tests, no real timers in CI; (d) playback plan builder separated from executor (unit-test the plan, snapshot end-states); (e) icon set: inline SVG only, license check noted in M5.md per ADR-0005 — no icon fonts/CDN (agents.md rule 8); (f) timings come from theme config, never hard-coded. EXIT CONTRACT: verify.sh m5 exit 0; S3 green; reduced-motion asserted; vision round 2 logged+closed; M5.md complete. Next goal (M6) cold-starts from its handover + PLAN §8 + M5.md tail.",
-      "createdAt": "2026-11-07T07:57:37.105859+01:00",
-      "updatedAt": "2026-11-07T07:57:37.105859+01:00"
-    },
-    {
-      "id": "qg-1794034657106060000-9fa49aa21a3c",
-      "name": "honest.ursa",
-      "objective": "Deliver milestone M6 — Views, tags, layout, search, snapshots — per docs/IMPLEMENTATION-PLAN.md §8, WPs M6-WP1..M6-WP8: tags + filter fade, named views (hide tags/ids, saved positions, pins), dagre auto-layout behind LayoutEngine port with deterministic ordering + apply-to-file, dependencies view, quick search (Ctrl+P), snapshots in IDB, optional seq export (M6-WP7, droppable per slip protocol), e2e additions + vision round 3.",
-      "completionCriterion": "FR-V1–V4 + FR-W6/W7 covered by tests and e2e additions green (tag filter fade, view switch, deterministic layout smoke, search jump), vision review round 3 closed in docs/milestones/M6.md, and `bash scripts/verify.sh m6` exits 0. M6-WP7 (seq export) is optional: if cut, backlog entry exists in SPEC §12 per slip protocol.",
-      "verifyCommand": "bash scripts/verify.sh m6",
-      "freshContext": true,
-      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §8 + §10 slip protocol; tail docs/milestones/M5.md; grep SPEC §4.6 (FR-V*), §4.1 (FR-W6/W7). PROTOCOL: (a) evidence → docs/milestones/M6.md continuously; (b) FIRST task: extend scripts/verify.sh stage m6; (c) auto-layout must be deterministic — stable sort by id pre/post dagre, pinned nodes excluded, determinism unit test is the gate; (d) \"apply layout to file\" writes positions only on explicit commit; (e) schedule slip → cut order: M6-WP7 first (backlog entry REQUIRED in same PR), then scope-reduce M6-WP4/WP5 — never silently. EXIT CONTRACT: verify.sh m6 exit 0; vision round 3 logged+closed; any scope cuts recorded in SPEC §12 + M6.md. Next goal (M7) cold-starts from its handover + PLAN §9 + M6.md tail.",
-      "createdAt": "2026-11-07T07:57:37.10606+01:00",
-      "updatedAt": "2026-11-07T07:57:37.10606+01:00"
-    },
-    {
       "id": "qg-1794034657106238000-0bbccc765e78",
       "name": "gleaming.quail",
       "objective": "Deliver milestone M7 — Hardening \u0026 release v1.0 — per docs/IMPLEMENTATION-PLAN.md §9, WPs M7-WP1..M7-WP7: a11y pass (keyboard-only, ARIA narration wired, contrast both themes), perf vs N1–N3 budgets (virtualize/cull only if missed), service worker offline shell, security audit (SVG sanitizer fuzz, CLI traversal), docs complete (README/ARCHITECTURE/user guide/CLI ref/CHANGELOG), release engineering (binary matrix + checksums + pages live + boot-smoke per OS), v1.0 corpus freeze + final vision round + retro.",
