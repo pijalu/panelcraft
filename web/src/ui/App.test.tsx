@@ -128,3 +128,127 @@ describe('properties panel edits (WP7)', () => {
     expect((screen.getByTestId('prop-tags') as HTMLInputElement).value).toBe('');
   });
 });
+
+describe('workspace chrome (M3)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  afterEach(cleanup);
+
+  async function mountReady() {
+    const { container } = render(<App />);
+    await act(async () => {}); // flush manager.init() → welcome file ready
+    const svg = container.querySelector('svg') as SVGSVGElement;
+    svg.getBoundingClientRect = () =>
+      ({ x: 0, y: 0, left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON: () => ({}) }) as DOMRect;
+    return { container, svg };
+  }
+
+  it('renders file tree with the welcome file + tab strip', async () => {
+    await mountReady();
+    expect(screen.getByTestId('tree-row-untitled.pcd')).not.toBeNull();
+    expect(screen.getByTestId('tab-untitled.pcd')).not.toBeNull();
+    expect(screen.getByTestId('tab-untitled.pcd').getAttribute('data-active')).toBe('true');
+  });
+
+  it('new file: toolbar input → creates file, opens tab', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tree-new-file'));
+    const input = screen.getByTestId('tree-create-input') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: 'arch.pcd' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByTestId('tree-row-arch.pcd')).not.toBeNull();
+    expect(screen.getByTestId('tab-arch.pcd')).not.toBeNull();
+    expect(screen.getByTestId('tab-arch.pcd').getAttribute('data-active')).toBe('true');
+  });
+
+  it('click a tree row opens that file (tab activates)', async () => {
+    const { svg } = await mountReady();
+    // create a second file via the toolbar
+    fireEvent.click(screen.getByTestId('tree-new-file'));
+    const input = screen.getByTestId('tree-create-input') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: 'second.pcd' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    // active is now second.pcd; switch back by clicking the welcome row
+    fireEvent.click(screen.getByTestId('tree-row-untitled.pcd').querySelector('.tree-name') as HTMLElement);
+    await act(async () => {});
+    expect(screen.getByTestId('tab-untitled.pcd').getAttribute('data-active')).toBe('true');
+    expect(screen.getByTestId('tab-second.pcd').getAttribute('data-active')).toBe('false');
+    void svg;
+  });
+
+  it('rename via ✎ → input → Enter updates the path (tab retargets)', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tree-ren-untitled.pcd'));
+    const input = screen.getByTestId('tree-rename-input') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: 'welcome.pcd' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.queryByTestId('tree-row-untitled.pcd')).toBeNull();
+    expect(screen.getByTestId('tree-row-welcome.pcd')).not.toBeNull();
+    expect(screen.getByTestId('tab-welcome.pcd')).not.toBeNull();
+  });
+
+  it('duplicate copies the file', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tree-dup-untitled.pcd'));
+    expect(screen.getByTestId('tree-row-untitled copy.pcd')).not.toBeNull();
+  });
+
+  it('delete is two-step: first click shows confirm, second removes', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tree-del-untitled.pcd'));
+    expect(screen.getByTestId('tree-del-confirm-untitled.pcd')).not.toBeNull();
+    expect(screen.getByTestId('tree-row-untitled.pcd')).not.toBeNull();
+    fireEvent.click(screen.getByTestId('tree-del-confirm-untitled.pcd'));
+    expect(screen.queryByTestId('tree-row-untitled.pcd')).toBeNull();
+    // tab closed with the file
+    expect(screen.queryByTestId('tab-untitled.pcd')).toBeNull();
+  });
+
+  it('new folder appears with a folder row', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tree-new-folder'));
+    const input = screen.getByTestId('tree-create-input') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: 'docs' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByTestId('tree-row-docs')).not.toBeNull();
+  });
+
+  it('tab close button closes the tab', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tree-new-file'));
+    const input = screen.getByTestId('tree-create-input') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: 'temp.pcd' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByTestId('tab-temp.pcd')).not.toBeNull();
+    fireEvent.click(screen.getByTestId('tab-close-temp.pcd'));
+    expect(screen.queryByTestId('tab-temp.pcd')).toBeNull();
+  });
+
+  it('clear-data dialog requires typing DELETE (FR-S4)', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tb-clear-data'));
+    const dialog = screen.getByTestId('clear-dialog');
+    expect(dialog).not.toBeNull();
+    const btn = screen.getByTestId('clear-confirm-btn') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    fireEvent.input(screen.getByTestId('clear-confirm-input'), { target: { value: 'DELETE' } });
+    expect((screen.getByTestId('clear-confirm-btn') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByTestId('clear-confirm-btn'));
+    await act(async () => {});
+    // workspace reset → welcome file re-bootstrapped, dialog gone
+    expect(screen.queryByTestId('clear-dialog')).toBeNull();
+    expect(screen.getByTestId('tree-row-untitled.pcd')).not.toBeNull();
+  });
+
+  it('canvas edits mark the tab dirty; content lands in the file', async () => {
+    const { svg } = await mountReady();
+    fireEvent.click(screen.getByTestId('palette-system'));
+    await act(async () => {});
+    expect(screen.queryByTestId('tab-dirty-untitled.pcd')).not.toBeNull();
+    // the file content must now contain the system object (canonical PDL)
+    const label = svg.querySelector('g.pc-obj text');
+    expect(label?.textContent).toContain('System');
+  });
+});

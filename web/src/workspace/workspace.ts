@@ -8,7 +8,7 @@ import {
   basename, createFile, deleteNode, duplicateNode, filesUnder, getNode, newRoot,
   parentPath, readFile, renameNode, moveNode, writeFile, FsError, type FsNode,
 } from './fs';
-import { initialTabs, openTab, closeTab, setDirty, type TabsState } from './tabs';
+import { initialTabs, openTab, closeTab, moveTab, setDirty, type TabsState } from './tabs';
 import { Autosaver } from './store/autosave';
 import { MemoryStorage } from './store/memory';
 import {
@@ -162,6 +162,11 @@ export class WorkspaceManager {
     return () => this.listeners.delete(listener);
   }
 
+  /** Swap the backing store before init() (app wiring: IDB in the browser). */
+  attachStorage(port: StoragePort): void {
+    this.storage = port;
+  }
+
   private emit(): void {
     for (const l of [...this.listeners]) l();
   }
@@ -237,6 +242,13 @@ export class WorkspaceManager {
 
   closeTabAt(index: number): void {
     this.tabs = closeTab(this.tabs, index);
+    this.emit();
+    this.scheduleSave();
+  }
+
+  /** Reorder tabs (drag & drop); no-op for out-of-range indices. */
+  moveTabAt(from: number, to: number): void {
+    this.tabs = moveTab(this.tabs, from, to);
     this.emit();
     this.scheduleSave();
   }

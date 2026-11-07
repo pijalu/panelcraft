@@ -385,3 +385,363 @@ body {
   stroke-width: 12;
   pointer-events: stroke;
 }
+
+/* ---- M3 workspace chrome ------------------------------------------------ */
+
+/* header toolbar */
+.toolbar {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.toolbar button {
+  font-family: inherit;
+  font-size: var(--pc-text-xs);
+  padding: 3px 8px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  cursor: pointer;
+}
+
+.toolbar button:hover:not(:disabled) {
+  border-color: var(--pc-accent);
+}
+
+.toolbar button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.toolbar-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+  cursor: pointer;
+}
+
+.tb-danger {
+  color: #b91c1c;
+  border-color: #b91c1c;
+}
+
+/* banners */
+.banners {
+  display: flex;
+  flex-direction: column;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 16px;
+  font-size: var(--pc-text-sm);
+  border-bottom: 1px solid var(--pc-border);
+}
+
+.banner button {
+  font-family: inherit;
+  font-size: var(--pc-text-xs);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.banner-error {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
+.banner-warn {
+  background: #fef3c7;
+  color: #78350f;
+}
+
+@media (prefers-color-scheme: dark) {
+  .banner-error {
+    background: #450a0a;
+    color: #fecaca;
+  }
+
+  .banner-warn {
+    background: #451a03;
+    color: #fde68a;
+  }
+}
+
+/* file tree sidebar */
+.sidebar {
+  width: 200px;
+  flex: none;
+  border-right: 1px solid var(--pc-border);
+  background: var(--pc-surface);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.tree-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+}
+
+.tree-toolbar button {
+  flex: 1;
+  font-family: inherit;
+  font-size: var(--pc-text-xs);
+  padding: 3px 6px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  cursor: pointer;
+}
+
+.tree-toolbar button:hover {
+  border-color: var(--pc-accent);
+}
+
+.tree-create {
+  padding: 0 8px 8px;
+}
+
+.tree-create input,
+.tree-row input {
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--pc-text-sm);
+  padding: 2px 6px;
+  border: 1px solid var(--pc-accent);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+}
+
+.tree-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 8px;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 26px;
+  border-radius: var(--pc-radius-sm);
+  touch-action: none;
+}
+
+.tree-row:hover {
+  background: var(--pc-bg);
+}
+
+.tree-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-family: inherit;
+  font-size: var(--pc-text-sm);
+  padding: 3px 4px;
+  border: none;
+  background: transparent;
+  color: var(--pc-fg);
+  cursor: pointer;
+}
+
+.tree-folder > .tree-label > .tree-name {
+  font-weight: 600;
+}
+
+.tree-actions {
+  display: none;
+  gap: 2px;
+}
+
+.tree-row:hover .tree-actions,
+.tree-row:focus-within .tree-actions {
+  display: inline-flex;
+}
+
+.tree-actions button {
+  font-family: inherit;
+  font-size: var(--pc-text-xs);
+  line-height: 1;
+  padding: 2px 4px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  cursor: pointer;
+}
+
+.tree-actions button:hover {
+  border-color: var(--pc-accent);
+}
+
+.tree-actions .tree-danger {
+  color: #b91c1c;
+  border-color: #b91c1c;
+}
+
+/* editor column + tab strip */
+.canvas-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px 0;
+  border-bottom: 1px solid var(--pc-border);
+  background: var(--pc-surface);
+  min-height: 30px;
+  overflow-x: auto;
+  touch-action: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid var(--pc-border);
+  border-bottom: none;
+  border-radius: var(--pc-radius-sm) var(--pc-radius-sm) 0 0;
+  background: var(--pc-bg);
+  font-size: var(--pc-text-sm);
+}
+
+.tab-active {
+  border-color: var(--pc-accent);
+}
+
+.tab-name {
+  border: none;
+  background: transparent;
+  color: var(--pc-fg);
+  font-family: inherit;
+  font-size: var(--pc-text-sm);
+  padding: 0;
+  cursor: pointer;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-dirty {
+  color: var(--pc-accent);
+  font-size: var(--pc-text-xs);
+}
+
+.tab-close {
+  border: none;
+  background: transparent;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-md);
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.tab-close:hover {
+  color: #b91c1c;
+}
+
+.tab-empty {
+  color: var(--pc-muted);
+  font-size: var(--pc-text-sm);
+  padding: 4px;
+}
+
+/* clear-data dialog (FR-S4) */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 45%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.dialog {
+  width: min(420px, 90vw);
+  background: var(--pc-bg);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  padding: 16px;
+}
+
+.dialog-title {
+  margin: 0 0 8px;
+  font-size: var(--pc-text-md);
+}
+
+.dialog-text {
+  margin: 0 0 12px;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-muted);
+}
+
+.dialog input {
+  width: 100%;
+  font-family: inherit;
+  font-size: var(--pc-text-sm);
+  padding: 4px 8px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dialog-actions button {
+  font-family: inherit;
+  font-size: var(--pc-text-sm);
+  padding: 4px 10px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  cursor: pointer;
+}
+
+.dialog-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
