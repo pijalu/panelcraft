@@ -424,6 +424,10 @@ Comments/annotations on objects · export to draw.io/PlantUML · plugin API for 
 stencils · additional diagram notations (sequence-native, deployment advanced) ·
 optional file-system access API for real folders · flow→`sequenceDiagram` export
 (`.seq.mmd`, slipped from M6-WP7 per PLAN §10 — first M6 slip, nothing else cut).
+M7 groom adds: full i18n string centralization (`strings.ts`; N10 shipped English-only,
+see M7.md) · flow-playback camera edge containment (centered step can clip partially
+off-canvas near diagram borders) · deps panel heading naming the owning file (carried
+from M6 vision round 3)
 
 ---
 
