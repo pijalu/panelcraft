@@ -1,0 +1,82 @@
+# CI — SPEC §8.5 stage chain:
+# lint-go → lint-web → test-go → test-web → build → asset-origin scan
+# → e2e smoke (network blocked in-spec, S7) → visual-harness noop.
+# Local equivalent: bash scripts/verify.sh m0
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache: true
+
+      - name: Deps
+        run: |
+          npm ci
+          go mod download
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+
+      # ---- lint-go ----
+      - name: lint-go (vet + staticcheck + gocyclo ≤15)
+        run: |
+          go vet ./...
+          staticcheck ./...
+          gocyclo -over 15 cmd internal web
+
+      # ---- lint-web ----
+      - name: lint-web (tsc + eslint, complexity ≤12)
+        run: npm run check
+
+      # ---- test-go ----
+      - name: test-go
+        run: go test ./...
+
+      # ---- test-web ----
+      - name: test-web (vitest + coverage thresholds 80/60)
+        run: npm test
+
+      # ---- build ----
+      - name: build web
+        run: npm run build
+
+      - name: build go (embeds web/dist)
+        run: go build ./...
+
+      # ---- asset-origin scan (SPEC §8.6, N7/N11) ----
+      - name: asset-origin scan
+        run: bash scripts/check-selfcontained.sh web/dist
+
+      # ---- e2e smoke (S7 skeleton, all external requests blocked in-spec) ----
+      - name: e2e smoke
+        run: |
+          npx playwright install --with-deps chromium
+          npm run e2e
+
+      # ---- visual-harness noop ----
+      # Playwright visual diff + pixelmatch harness activate with M2 canvas
+      # screenshots (SPEC §8.3); S7 already captures light+dark baselines.
+      - name: visual-harness (noop until M2)
+        run: echo "visual diff harness lands with M2 — noop in M0"

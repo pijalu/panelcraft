@@ -1,0 +1,30 @@
+# Release — STUB (PLAN §2 M0-WP4). Real cross-compile matrix (GOOS/GOARCH,
+# CGO off), checksums and GitHub Release publishing land with M7 (SPEC §8.5).
+# Today: prove the tag trigger and that the binary builds embedded+clean.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache: true
+      - run: npm ci
+      - run: npm run build
+      - run: go build ./...
+      - name: release engineering lands in M7
+        run: echo "v${{ github.ref_name }} built OK — cross-compile + checksums + GitHub Release ship with M7"
