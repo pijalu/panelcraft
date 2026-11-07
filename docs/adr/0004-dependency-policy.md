@@ -26,7 +26,7 @@
 | Dependency | Why | Alternative rejected |
 |---|---|---|
 | preact (+ htm via jsx runtime) | UI chrome: panels, trees, dialogs — state wiring by hand would dominate complexity | vanilla custom vdom (slow, risky); react (heavier) |
-| codemirror 6 | code view: incremental parse, diagnostics gutters, performs on big files | textarea + highlighting lib (no gutter/diag model) |
+| codemirror 6 (`codemirror`, `@codemirror/{state,view,language,commands,search}`) | code view: incremental parse, diagnostics gutters, performs on big files (FR-K1, M4-WP1). MIT. Used at M4: ~6 packages, tree-shaken bundle impact ≈ 300 kB min / ≈ 90 kB gzip (vite build evidence in M4.md) | textarea + highlighting lib (no gutter/diag model) |
 | dagre | layered auto-layout (N1); hand-rolling Sugiyama = high-risk algorithm code | own Sugiyama (post-v1 candidate); ELK (wasm, heavy) |
 | chromedp (Go) | headless render CLI via CDP; pure Go, no cgo | os/exec chrome --screenshot (no settle control) |
 | fflate *(conditional)* | ZIP fallback **only** when `CompressionStream`/`DecompressionStream` unavailable (Safari <16.4); loaded lazily | always-on zip lib (violates stdlib-first) |

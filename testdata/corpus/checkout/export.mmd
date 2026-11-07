@@ -1,0 +1,20 @@
+flowchart TD
+  %% import common (../common/actors.pcd) unresolved — not inlined
+  subgraph ctx[Checkout context]
+    api[Checkout API]
+    db[(Orders DB)]
+  end
+  user((Shopper))
+  shop[Webshop]
+  events>order.events]
+  psp([Payment Provider])
+  user -->|browses catalog| shop
+  shop -->|requests: POST /checkout| api
+  api -->|writes:| db
+  api -->|publishes:| events
+  api -->|requests: charge card| psp
+  classDef core fill:#ffeeaa,stroke:#333;
+  classDef pci fill:#ffeeaa,stroke:#333;
+  class shop core;
+  class api core,pci;
+  style api fill:#2d6cdf

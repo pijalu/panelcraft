@@ -745,3 +745,153 @@ body {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ---- code view split (M4, FR-K1) ------------------------------------- */
+
+.canvas-split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.canvas-split .canvas-wrap {
+  border-bottom: none;
+}
+
+.code-pane {
+  width: clamp(320px, 34%, 520px);
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--pc-border);
+  background: var(--pc-bg);
+  min-height: 0;
+}
+
+.code-pane-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--pc-border);
+  background: var(--pc-surface);
+}
+
+.code-pane-head .panel-title {
+  margin: 0;
+  flex: none;
+}
+
+.code-pane-head .muted {
+  flex: 1;
+  font-size: var(--pc-text-xs);
+}
+
+.code-pane-btn {
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  font-size: var(--pc-text-xs);
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.code-pane-btn:hover {
+  background: var(--pc-surface);
+}
+
+/* CodeMirror host */
+.code-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-editor-host {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.code-editor-host .cm-editor {
+  height: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--pc-text-sm);
+}
+
+.code-editor-host .cm-scroller {
+  overflow: auto;
+}
+
+/* problems panel (FR-K3) */
+.problems {
+  flex: none;
+  max-height: 140px;
+  overflow-y: auto;
+  border-top: 1px solid var(--pc-border);
+  background: var(--pc-surface);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.problem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--pc-fg);
+  font-size: var(--pc-text-xs);
+  font-family: inherit;
+  text-align: left;
+  padding: 2px 4px;
+  border-radius: var(--pc-radius-sm);
+  cursor: pointer;
+}
+
+.problem:hover {
+  background: var(--pc-bg);
+}
+
+.problem-loc {
+  flex: none;
+  color: var(--pc-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.problem-msg {
+  flex: 1;
+}
+
+.problem-error .problem-msg {
+  color: #dc2626;
+}
+
+.problem-warning .problem-msg {
+  color: #d97706;
+}
+
+/* PDL token colors (light) */
+.pc-tok-kw { color: #2563eb; font-weight: 600; }
+.pc-tok-str { color: #059669; }
+.pc-tok-num { color: #d97706; }
+.pc-tok-com { color: var(--pc-muted); font-style: italic; }
+.pc-tok-op { color: var(--pc-fg); }
+.pc-tok-id { color: var(--pc-fg); }
+.pc-tok-meta { color: #7c3aed; }
+
+@media (prefers-color-scheme: dark) {
+  .problem-error .problem-msg { color: #f87171; }
+  .problem-warning .problem-msg { color: #fbbf24; }
+
+  /* PDL token colors (dark) */
+  .pc-tok-kw { color: #60a5fa; }
+  .pc-tok-str { color: #34d399; }
+  .pc-tok-num { color: #fbbf24; }
+  .pc-tok-meta { color: #c4b5fd; }
+}

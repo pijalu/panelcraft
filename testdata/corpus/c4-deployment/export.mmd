@@ -1,0 +1,9 @@
+flowchart TD
+  subgraph prod[Prod]
+  end
+  subgraph node1[Node 1]
+    api[API]
+    db[(DB)]
+  end
+  db -->|psql| Queries
+  prod <-->|Manages| api

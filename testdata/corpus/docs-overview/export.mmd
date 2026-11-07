@@ -1,0 +1,33 @@
+flowchart TD
+  author((Architect))
+  spa[PanelCraft SPA]
+  idb[(Browser IndexedDB)]
+  pages[GitHub Pages]
+  bin[panelcraft binary]
+  chrome[Headless Chrome]
+  fs[(Local .pcd files)]
+  docsarch[docs/architecture]
+  n1{No write endpoints exist server-side; storage stays in the browser}
+  n2{Render CLI reuses the same SPA for pixel-identical output}
+  author -->|edits diagrams (browser-local only)| spa
+  spa -->|autosave workspace| idb
+  author -->|uses hosted app| pages
+  pages -->|serves: static assets| spa
+  author -->|serve locally / run CLI| bin
+  bin -->|embeds: go:embed assets| spa
+  bin -->|validates: panelcraft validate/convert| fs
+  bin -->|validates: CI validates doc diagrams| docsarch
+  bin -->|drives: panelcraft render| chrome
+  chrome -->|loads: renders file to PNG/SVG| spa
+  classDef product fill:#ffeeaa,stroke:#333;
+  classDef storage fill:#ffeeaa,stroke:#333;
+  classDef hosting fill:#ffeeaa,stroke:#333;
+  classDef cli fill:#ffeeaa,stroke:#333;
+  classDef docs fill:#ffeeaa,stroke:#333;
+  class spa product;
+  class idb product,storage;
+  class pages product,hosting;
+  class bin product,cli;
+  class chrome cli;
+  class fs cli;
+  class docsarch docs;

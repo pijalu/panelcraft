@@ -55,7 +55,13 @@ export interface CanvasState {
 
 /* ---- canvas ⇄ PDL ------------------------------------------------------- */
 
-export function stateToPcd(state: CanvasState): string {
+/**
+ * Canvas projection doc: objects + links only — flows/views/styles are
+ * dropped (D-M4-6: the canvas cannot model them). Fed to the sync machine
+ * by useCodeSync and printed by stateToPcd; must always re-parse, so link
+ * ids must be valid idents.
+ */
+export function stateToDoc(state: CanvasState): Doc {
   const objects: Obj[] = state.objects.map((o) => ({
     kind: o.kind,
     id: o.id,
@@ -74,7 +80,7 @@ export function stateToPcd(state: CanvasState): string {
     bidir: false,
     pos: { line: 0, col: 0 },
   }));
-  const doc: Doc = {
+  return {
     irVersion: IR_VERSION,
     formatVersion: FORMAT_VERSION,
     objects,
@@ -84,7 +90,11 @@ export function stateToPcd(state: CanvasState): string {
     views: [],
     styles: [],
   };
-  return printDoc(doc);
+}
+
+/** Canvas → file projection (D-M4-6): canonical text of stateToDoc. */
+export function stateToPcd(state: CanvasState): string {
+  return printDoc(stateToDoc(state));
 }
 
 /** Deterministic grid layout for files without geometry (position-free format). */
@@ -95,10 +105,13 @@ function gridPos(index: number): { x: number; y: number } {
   return { x: 40 + col * 190, y: 40 + row * 140 };
 }
 
-export function pcdToState(text: string): CanvasState {
-  const result = parsePDL(text);
-  if (!result.doc) return { objects: [], links: [] };
-  const doc = result.doc;
+/**
+ * Grid-layout canvas state for a parsed doc (position-free format). Link ids
+ * are synthesized when the text has no `as` clause; the fallback must be a
+ * valid ident (§1) — `from->to` would print `as from->to` and '>' is not an
+ * ident char, so the buffer would never re-parse (M4 fix, FR-K2).
+ */
+export function docToState(doc: Doc): CanvasState {
   const objects: CanvasObject[] = doc.objects
     .filter((o) => o.kind !== 'group' && o.kind !== 'note')
     .map((o, i) => {
@@ -120,8 +133,20 @@ export function pcdToState(text: string): CanvasState {
   const ids = new Set(objects.map((o) => o.id));
   const links: CanvasLink[] = doc.links
     .filter((l) => ids.has(l.from) && ids.has(l.to))
-    .map((l) => ({ id: l.id ?? `${l.from}->${l.to}`, from: l.from, to: l.to, type: l.type ?? 'uses', label: l.label }));
+    .map((l, i) => ({
+      id: l.id ?? `${l.from}-${l.to}-${i}`,
+      from: l.from,
+      to: l.to,
+      type: l.type ?? 'uses',
+      label: l.label,
+    }));
   return { objects, links };
+}
+
+/** File → canvas state; unparsable/empty text yields an empty state. */
+export function pcdToState(text: string): CanvasState {
+  const { doc } = parsePDL(text);
+  return doc === null ? { objects: [], links: [] } : docToState(doc);
 }
 
 /* ---- manager ------------------------------------------------------------ */
@@ -233,6 +258,16 @@ export class WorkspaceManager {
 
   text(path: string): string {
     return readFile(this.root, path);
+  }
+
+  /** Code view → file (format-on-save path; dirty + autosave). */
+  saveText(path: string, text: string): void {
+    const node = getNode(this.root, path);
+    if (node?.kind === 'file' && node.content === text) return;
+    writeFile(this.root, path, text);
+    this.tabs = setDirty(this.tabs, path, true);
+    this.emit();
+    this.scheduleSave();
   }
 
   openFile(path: string): void {

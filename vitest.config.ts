@@ -6,6 +6,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
+    // jsdom-only stubs (CodeMirror measures via Range.getClientRects, which
+    // jsdom lacks — the uncaught rAF exception poisoned full runs randomly).
+    setupFiles: ['web/src/test/setup.dom.ts'],
     include: ['web/src/**/*.test.ts', 'web/src/**/*.test.tsx'],
     coverage: {
       provider: 'v8',

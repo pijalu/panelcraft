@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, cleanup, screen } from '@testing-library/preact';
 import { act } from 'preact/test-utils';
+import { EditorView } from '@codemirror/view';
 import { App } from './App';
 
 describe('App shell + palette (WP9)', () => {
@@ -129,21 +130,32 @@ describe('properties panel edits (WP7)', () => {
   });
 });
 
+/** Mount App and settle the async init chain (storage → init → ready). */
+async function mountReady() {
+  const { container } = render(<App />);
+  await act(async () => {}); // flush manager.init() → welcome file ready
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 0)); // storage fallback macrotask → setReady
+  });
+  const svg = container.querySelector('svg') as SVGSVGElement;
+  svg.getBoundingClientRect = () =>
+    ({ x: 0, y: 0, left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON: () => ({}) }) as DOMRect;
+  return { container, svg };
+}
+
+/** The code view's EditorView (single instance in the App shell). */
+function codeView(): EditorView {
+  const view = EditorView.findFromDOM(document.querySelector('.cm-editor') as HTMLElement);
+  if (!view) throw new Error('no EditorView in DOM');
+  return view;
+}
+
 describe('workspace chrome (M3)', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
   });
 
   afterEach(cleanup);
-
-  async function mountReady() {
-    const { container } = render(<App />);
-    await act(async () => {}); // flush manager.init() → welcome file ready
-    const svg = container.querySelector('svg') as SVGSVGElement;
-    svg.getBoundingClientRect = () =>
-      ({ x: 0, y: 0, left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON: () => ({}) }) as DOMRect;
-    return { container, svg };
-  }
 
   it('renders file tree with the welcome file + tab strip', async () => {
     await mountReady();
@@ -256,5 +268,56 @@ describe('workspace chrome (M3)', () => {
     // the file content must now contain the system object (canonical PDL)
     const label = svg.querySelector('g.pc-obj text');
     expect(label?.textContent).toContain('System');
+  });
+});
+
+describe('code view sync + close guard (M4-WP3/4/5)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  afterEach(cleanup);
+
+  it('closing a tab with a diverged buffer prompts apply/discard (FR-K5)', async () => {
+    await mountReady();
+    const view = codeView();
+    // type garbage (buffer diverges; idle parse has not fired yet → editing)
+    act(() => {
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: 'pcd 1.0\nsystem' } });
+    });
+    // close the active tab → the FR-K5 prompt intercepts
+    fireEvent.click(screen.getByTestId('tab-close-untitled.pcd'));
+    await act(async () => {});
+    expect(screen.getByTestId('diverged-dialog')).not.toBeNull();
+    // FR-K4: applying unparseable text is blocked — the dialog shows the error
+    fireEvent.click(screen.getByTestId('diverged-apply'));
+    await act(async () => {});
+    expect(screen.getByTestId('diverged-dialog')).not.toBeNull();
+    expect(screen.getByTestId('diverged-error')?.textContent).toContain('Cannot apply');
+    expect((screen.getByTestId('diverged-apply') as HTMLButtonElement).disabled).toBe(true);
+    // discard keeps the file and closes the tab
+    fireEvent.click(screen.getByTestId('diverged-discard'));
+    await act(async () => {});
+    expect(screen.queryByTestId('diverged-dialog')).toBeNull();
+    expect(screen.queryByTestId('tab-untitled.pcd')).toBeNull();
+  });
+
+  it('clean buffer closes without a prompt', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tab-close-untitled.pcd'));
+    await act(async () => {});
+    expect(screen.queryByTestId('diverged-dialog')).toBeNull();
+    expect(screen.queryByTestId('tab-untitled.pcd')).toBeNull();
+  });
+
+  it('canvas edit (palette add) updates the code view (FR-K2, ≤150 ms)', async () => {
+    const { svg } = await mountReady();
+    fireEvent.click(screen.getByTestId('palette-system'));
+    // real 150 ms debounce in the machine → poll for the buffer update
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 250));
+    });
+    expect(codeView().state.doc.toString()).toContain('system');
+    expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(1);
   });
 });

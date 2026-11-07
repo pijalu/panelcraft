@@ -1,0 +1,10 @@
+flowchart TD
+  subgraph shop[Webshop]
+    web[Web SPA]
+    db[(Orders)]
+    cdn[CDN]
+  end
+  web -->|Reads/writes| db
+  web -->|Uses| customer
+  classDef external fill:#ffeeaa,stroke:#333;
+  class cdn external;

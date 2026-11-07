@@ -2,16 +2,18 @@
 // M3-WP4: per-file import/export (FR-W3/W4).
 // - import: .pcd passthrough; .mmd/.mermaid/.txt via the M1 mermaid import
 //   converter (target files are always .pcd in the workspace).
-// - export: .pcd (canonical re-print), .mmd (flowchart exporter — the full
-//   kind→shape inverse map + goldens land with M4-WP5), .svg (renderer
-//   serialize + sanitize, N6), .png (OffscreenCanvas).
+// - export: .pcd (canonical re-print), .mmd (engine/format/mermaidExport —
+//   full FILE-FORMAT §9 exporter with declared drops, M4-WP5), .svg
+//   (renderer serialize + sanitize, N6), .png (OffscreenCanvas).
 // Browser-only adapters (download anchors, file pickers) live in ui/ — this
 // module stays DOM-safe except where an SVGElement is passed in.
 import { readFile, type FsNode } from './fs';
 import { parsePDL } from '../engine/format/parser';
 import { printDoc } from '../engine/format/printer';
 import { fromMermaid, M } from '../engine/format/mermaid';
-import type { Doc, Obj, Link } from '../engine/model/types';
+import { docToMermaid, type MermaidExportResult as MermaidExport } from '../engine/format/mermaidExport';
+
+export { docToMermaid } from '../engine/format/mermaidExport';
 
 export const PCARD_IMPORT_EXTS = ['.pcd', '.mmd', '.mermaid', '.txt'] as const;
 export const EXPORT_EXTS = ['.pcd', '.mmd', '.svg', '.png'] as const;
@@ -68,16 +70,11 @@ export function exportPcd(root: FsNode, path: string): string {
   return printDoc(result.doc);
 }
 
-export interface MermaidExport {
-  text: string;
-  /** Features present in the source but dropped, per FILE-FORMAT §9 / FR-M4. */
-  dropped: string[];
-}
-
 /**
- * PDL → mermaid flowchart TD (FILE-FORMAT §9). M3 ships the structural
- * exporter (objects/links/subgraphs/classDef); the complete kind→shape
- * inverse table + corpus goldens + re-import property test arrive M4-WP5.
+ * PDL → mermaid flowchart TD (FILE-FORMAT §9, M4-WP5): kind→shape inverse,
+ * tag→classDef, fill→style, imports flattened with %% marks, declared feature
+ * drop. Imports resolve inside this workspace; a missing import is reported
+ * (P200 semantics), never silently skipped.
  */
 export function exportMmd(root: FsNode, path: string): MermaidExport {
   const result = parsePDL(readFile(root, path));
@@ -85,80 +82,15 @@ export function exportMmd(root: FsNode, path: string): MermaidExport {
     const first = result.diagnostics[0];
     throw new Error(`cannot export invalid .pcd (${path}): ${first?.message ?? 'parse error'}`);
   }
-  return docToMermaid(result.doc);
-}
-
-function emitObjects(doc: Doc, lines: string[]): void {
-  const idOf = sanitizeMermaidId;
-  const groups = doc.objects.filter((o) => o.kind === 'group');
-  const plain = doc.objects.filter((o) => o.kind !== 'group');
-  for (const o of plain) lines.push(`  ${idOf(o.id)}[${mermaidLabel(o)}]`);
-  for (const g of groups) {
-    lines.push(`  subgraph ${idOf(g.id)}[${mermaidLabel(g)}]`);
-    const children = (g.contains ?? [])
-      .map((c) => doc.objects.find((o) => o.id === c))
-      .filter((o): o is Obj => o !== undefined && o.kind !== 'group');
-    for (const child of children) lines.push(`    ${idOf(child.id)}[${mermaidLabel(child)}]`);
-    lines.push('  end');
-  }
-}
-
-function emitLinks(doc: Doc, lines: string[]): void {
-  const idOf = sanitizeMermaidId;
-  for (const l of doc.links) {
-    const labelParts: string[] = [];
-    if (l.type && l.type !== 'uses') labelParts.push(`${l.type}:`);
-    if (l.label) labelParts.push(l.label);
-    const arrow = l.bidir ? '<-->' : '-->';
-    lines.push(
-      labelParts.length > 0
-        ? `  ${idOf(l.from)} ${arrow}|${labelParts.join(' ')}| ${idOf(l.to)}`
-        : `  ${idOf(l.from)} ${arrow} ${idOf(l.to)}`,
-    );
-  }
-}
-
-function emitTags(doc: Doc, lines: string[]): void {
-  const idOf = sanitizeMermaidId;
-  const seenTags = new Set<string>();
-  for (const o of doc.objects) {
-    if ((o.tags?.length ?? 0) === 0) continue;
-    for (const tag of o.tags ?? []) {
-      if (!seenTags.has(tag)) {
-        seenTags.add(tag);
-        lines.push(`  classDef ${idOf(tag)} fill:#ffeeaa,stroke:#333;`);
+  return docToMermaid(result.doc, {
+    resolveImport: (p) => {
+      try {
+        return readFile(root, p);
+      } catch {
+        return null; // missing import (P200) — exporter declares it
       }
-    }
-    lines.push(`  class ${idOf(o.id)} ${(o.tags ?? []).map(idOf).join(',')};`);
-  }
-}
-
-function collectDrops(doc: Doc): string[] {
-  const dropped: string[] = [];
-  if (doc.imports.length > 0) dropped.push('imports (source text not inlined)');
-  if (doc.flows.length > 0) dropped.push('flows');
-  if (doc.views.length > 0) dropped.push('views');
-  if (doc.objects.some((o) => o.properties?.length)) dropped.push('properties');
-  if (doc.objects.some((o) => o.icon)) dropped.push('icons');
-  if (doc.links.some((l) => l.waypoints?.length)) dropped.push('waypoints');
-  return dropped;
-}
-
-export function docToMermaid(doc: Doc): MermaidExport {
-  const lines: string[] = ['flowchart TD'];
-  emitObjects(doc, lines);
-  emitLinks(doc, lines);
-  emitTags(doc, lines);
-  return { text: `${lines.join('\n')}\n`, dropped: collectDrops(doc) };
-}
-
-function mermaidLabel(o: Obj): string {
-  const text = o.name ?? o.id;
-  return text.replace(/"/g, '&quot;');
-}
-
-function sanitizeMermaidId(id: string): string {
-  return id.replace(/[^A-Za-z0-9_]/g, '_');
+    },
+  });
 }
 
 /* ---- SVG/PNG export ---- */
@@ -209,4 +141,3 @@ export async function exportPng(svg: SVGSVGElement, scale = 2): Promise<PngExpor
 /* ---- shared bits ---- */
 
 export const MERMAID_DIAG = M;
-export type { Link };

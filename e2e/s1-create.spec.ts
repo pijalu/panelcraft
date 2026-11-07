@@ -10,11 +10,15 @@ test('S1: create diagram via palette drop + link + properties', async ({ page })
   await expect(canvas).toBeVisible();
 
   const box = (await canvas.boundingBox()) ?? { x: 0, y: 0, width: 800, height: 600 };
-  // drop targets (client coords): three shapes in a row inside the canvas
+  // drop targets relative to the live canvas box (the code pane shares the
+  // row since M4, so absolute x offsets would leave the canvas)
+  const fx = (f: number): number => box.x + Math.round((box.width ?? 0) * f);
+  const fy = (f: number): number => box.y + Math.round((box.height ?? 0) * f);
+  // drop targets: three shapes — left / mid / lower-mid inside the canvas
   const drops = [
-    { kind: 'palette-person', x: box.x + 120, y: box.y + 160 },
-    { kind: 'palette-system', x: box.x + 420, y: box.y + 160 },
-    { kind: 'palette-container', x: box.x + 420, y: box.y + 420 },
+    { kind: 'palette-person', x: fx(0.2), y: fy(0.22) },
+    { kind: 'palette-system', x: fx(0.62), y: fy(0.22) },
+    { kind: 'palette-container', x: fx(0.62), y: fy(0.62) },
   ];
   for (const d of drops) {
     const item = page.getByTestId(d.kind);
@@ -35,7 +39,7 @@ test('S1: create diagram via palette drop + link + properties', async ({ page })
   const hb = (await halo.boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 };
   await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
   await page.mouse.down();
-  // drag to system's left edge midpoint
+  // drag to system's left edge midpoint (object w = 160 → half width)
   await page.mouse.move(drops[1]!.x - 80, drops[1]!.y, { steps: 6 });
   await page.mouse.up();
   await expect(canvas.locator('g.pc-link')).toHaveCount(1);

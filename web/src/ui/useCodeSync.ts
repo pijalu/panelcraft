@@ -1,0 +1,127 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Code view ⇄ canvas ⇄ workspace wiring (M4-WP2/3/4). The sync machine is
+// owned here (one per App lifetime); CodeEditor receives it as a prop.
+//
+// apply(doc) → canvas loadState (docToState, the file-open path, FR-K5); the
+// canvas then saves through the existing M3 onCtrlState→saveCanvas bridge, so
+// saveText runs AFTER loadState — the load synchronously writes the canvas
+// projection to the file, and the FULL canonical text must win (D-M4-6). The
+// canvas→machine bridge watches controller snapshots (serialized via
+// stateToPcd — the format is position-free, so drags produce identical text
+// and are deduped): an emission equal to the last applied text is an echo →
+// machine.applied() + machine.markSaved(canonical file text); anything else
+// is a genuine canvas change → machine.canvasChanged(stateToDoc(...)) — the
+// Doc is built directly from the state because the projection text is not
+// guaranteed to re-parse (M4 fix: synthesized ids, dropped sections).
+// mermaid pastes convert in the editor (D-M4-4). formatNow() is exposed for
+// the format button (FR-K4).
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import type { CanvasController, Snapshot } from './CanvasController';
+import type { WorkspaceManager } from '../workspace/workspace';
+import { docToState, stateToDoc, stateToPcd } from '../workspace/workspace';
+import { printDoc } from '../engine/format/printer';
+import { parsePDL } from '../engine/format/parser';
+import { createSyncMachine, type SyncMachine, type SyncSnapshot } from './codeview/sync';
+
+/** Canonical print of `text`; the text itself if it does not parse. */
+function canon(text: string): string {
+  const { doc } = parsePDL(text);
+  return doc === null ? text : printDoc(doc);
+}
+
+export interface CodeSyncHandle {
+  machine: SyncMachine;
+  /** Latest machine snapshot (sync-state chip, FR-K5 close prompt). */
+  snapshot: SyncSnapshot;
+  /** Format button / save hook (FR-K4). */
+  formatNow: () => void;
+}
+
+/**
+ * @param deps.ready        workspace initialized
+ * @param deps.activePath   active file path (null = no file)
+ * @param deps.version      manager version bump (file switches)
+ * @param deps.ctrlRef      canvas controller ref (apply target)
+ * @param deps.snap         latest canvas snapshot (canvas → machine bridge)
+ */
+export function useCodeSync(deps: {
+  manager: WorkspaceManager;
+  ready: boolean;
+  activePath: string | null;
+  version: number;
+  ctrlRef: { current: CanvasController | null };
+  snap: Snapshot | null;
+}): CodeSyncHandle {
+  const { manager, ready, activePath, version, ctrlRef, snap } = deps;
+  const lastLoadedRef = useRef<string | null>(null);
+  const appliedTextRef = useRef<string | null>(null);
+  const lastBridgeTextRef = useRef<string | null>(null);
+
+  const machine = useMemo(
+    () =>
+      createSyncMachine({
+        schedule: (fn, ms) => setTimeout(fn, ms) as unknown as number,
+        cancel: (id) => clearTimeout(id as unknown as ReturnType<typeof setTimeout>),
+        apply: (doc) => {
+          const text = printDoc(doc);
+          const ctrl = ctrlRef.current;
+          if (ctrl) {
+            // canvas is the projection: load through the same doc→state path
+            // the file open uses (grid layout for new objects); the canvas
+            // then emits and the bridge confirms via applied() (echo).
+            const state = docToState(doc);
+            appliedTextRef.current = stateToPcd(state);
+            ctrl.loadState(state);
+          }
+          // FR-K5, file = source of truth: persist the FULL canonical text —
+          // AFTER loadState, which synchronously drives the M3
+          // onCtrlState→saveCanvas bridge writing the canvas projection (it
+          // drops flows/views/styles; the buffer text must win, D-M4-6).
+          const path = manager.activePath;
+          if (path !== null) manager.saveText(path, text);
+        },
+      }),
+    // ctrlRef is a stable ref; the machine lives for the App lifetime
+    [],
+  );
+
+  const [snapshot, setSnapshot] = useState<SyncSnapshot>(machine.snapshot());
+  useEffect(() => machine.subscribe(setSnapshot), [machine]);
+
+  /* active file → machine (reset buffer on open/switch) */
+  useEffect(() => {
+    if (!ready) return;
+    if (activePath === lastLoadedRef.current) return;
+    lastLoadedRef.current = activePath;
+    const text = activePath === null ? '' : manager.text(activePath);
+    appliedTextRef.current = null;
+    lastBridgeTextRef.current = null;
+    machine.loadFile(text);
+  }, [ready, activePath, version, manager, machine]);
+
+  /* canvas → machine bridge (echo-suppressed; deduped by serialized text) */
+  useEffect(() => {
+    if (!ready || snap === null) return;
+    const state = { objects: snap.objects, links: snap.links };
+    const text = stateToPcd(state);
+    if (text === lastBridgeTextRef.current) return; // drags/selection/viewport spam
+    lastBridgeTextRef.current = text;
+    const path = manager.activePath;
+    if (text === appliedTextRef.current) {
+      appliedTextRef.current = null;
+      machine.applied(); // no-op unless pending-apply (formatNow applies from clean)
+      if (path !== null) machine.markSaved(canon(manager.text(path)));
+      return;
+    }
+    // Doc built directly from the canvas state: the projection text is not
+    // guaranteed to re-parse, so a parse-first round trip silently dropped
+    // genuine updates (M4 fix — buffer never updated after an apply).
+    machine.canvasChanged(stateToDoc(state));
+    // the emission's saveCanvas (onCtrlState) already wrote the projection
+    // to the file synchronously — record it, or the chip would show a
+    // diverged false alarm whenever canvas edits re-canonicalize ids/types.
+    if (path !== null) machine.markSaved(canon(manager.text(path)));
+  }, [ready, snap, manager, machine]);
+
+  return { machine, snapshot, formatNow: () => machine.formatNow() };
+}

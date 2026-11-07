@@ -81,15 +81,16 @@ describe('export .pcd (FR-W4)', () => {
   });
 });
 
-describe('export .mmd (FR-W4; structural exporter, goldens in M4-WP5)', () => {
+describe('export .mmd (FR-W4; §9 exporter, M4-WP5)', () => {
   it('emits flowchart with nodes, links, labels and type prefixes', () => {
     const root = newRoot();
     writeFile(root, 'a.pcd', PCD);
     const { text, dropped } = exportMmd(root, 'a.pcd');
     expect(text).toContain('flowchart TD');
-    expect(text).toMatch(/api\["?API"?\]/);
+    expect(text).toContain('api[API]');
     expect(text).toContain('api -->|reads| db');
-    expect(dropped).toEqual([]);
+    // systems export as rect (container-aliased) — declared, not silent
+    expect(dropped).toEqual(['system vs container kind distinction (both export as rect)']);
   });
 
   it('groups become subgraphs, bidir links use <-->', () => {

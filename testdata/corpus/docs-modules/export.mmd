@@ -1,0 +1,53 @@
+flowchart TD
+  app[App shell]
+  ui_panels(ui/panels)
+  ui_code(ui/codeview)
+  wk_fs(workspace/fs)
+  wk_zip(workspace/zip)
+  wk_store(workspace/store)
+  wk_undo(workspace/undo)
+  eng_format(engine/format)
+  eng_model(engine/model)
+  eng_render(engine/render)
+  eng_layout(engine/layout)
+  eng_flows(engine/flows)
+  eng_anim(engine/anim)
+  idb[(IndexedDB)]
+  dagre(dagre)
+  n1{Engine packages depend on ports only: LayoutEngine, Storage, Clock, AnimPlayer}
+  n2{Deps arrow points from consumer to provider; no cycles inside engine/}
+  app --> ui_panels
+  app --> ui_code
+  app --> wk_fs
+  ui_panels -->|canvas projection| eng_render
+  ui_panels -->|playback controls| eng_flows
+  ui_code -->|parse + diagnostics| eng_format
+  wk_fs -->|load/save .pcd| eng_format
+  wk_fs -->|workspace import/export| wk_zip
+  wk_fs -->|Storage port| wk_store
+  wk_fs --> wk_undo
+  wk_store -->|persistence| idb
+  eng_layout -->|auto-layout adapter| dagre
+  eng_render --> eng_model
+  eng_format --> eng_model
+  eng_flows --> eng_model
+  eng_flows -->|AnimPlayer port| eng_anim
+  classDef web fill:#ffeeaa,stroke:#333;
+  classDef internal fill:#ffeeaa,stroke:#333;
+  classDef core fill:#ffeeaa,stroke:#333;
+  classDef external fill:#ffeeaa,stroke:#333;
+  class app web;
+  class ui_panels web;
+  class ui_code web;
+  class wk_fs web;
+  class wk_zip web,internal;
+  class wk_store web,internal;
+  class wk_undo web,internal;
+  class eng_format core;
+  class eng_model core;
+  class eng_render core;
+  class eng_layout core,internal;
+  class eng_flows core;
+  class eng_anim core,internal;
+  class idb external;
+  class dagre external;

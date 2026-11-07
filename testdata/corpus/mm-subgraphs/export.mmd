@@ -1,0 +1,8 @@
+flowchart TD
+  subgraph shop[Shop boundary]
+    web[Web]
+    api[API]
+  end
+  db[(DB)]
+  web --> api
+  api --> db

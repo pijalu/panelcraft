@@ -12,8 +12,12 @@ import { FileTree } from './FileTree';
 import { Tabs } from './Tabs';
 import { Banners } from './Banners';
 import { ClearDataDialog } from './ClearDataDialog';
+import { DivergedDialog } from './DivergedDialog';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
+import { CodePane } from './CodePane';
 import { useCanvasController, useWorkspace } from './useWorkspace';
+import { useCodeSync } from './useCodeSync';
+import { useDivergedClose } from './useDivergedClose';
 import type { WorkspaceManager } from '../workspace/workspace';
 
 /** Single-selection for the properties panel (obj xor link). */
@@ -41,12 +45,27 @@ function errorToShow(manager: WorkspaceManager, dismissed: string | null, ready:
 export function App() {
   const ws = useWorkspace();
   const canvas = useCanvasController(ws.manager, ws.ready, ws.version);
+  const activePath = ws.ready ? ws.manager.activePath : null;
+  const code = useCodeSync({
+    manager: ws.manager,
+    ready: ws.ready,
+    activePath,
+    version: ws.version,
+    ctrlRef: canvas.ctrlRef,
+    snap: canvas.snap,
+  });
   const [clearOpen, setClearOpen] = useState(false);
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const { manager } = ws;
   const ctrl = canvas.ctrlRef.current;
   const sel = selections(canvas.snap);
+  const diverged = useDivergedClose({
+    manager: ws.manager,
+    activePath,
+    machine: code.machine,
+    snapshot: code.snapshot,
+  });
 
   const clearData = (): void => {
     canvas.resync(); // forget the old active path — the workspace is wiped
@@ -97,12 +116,15 @@ export function App() {
               const t = manager.tabs.tabs[i];
               if (t) manager.openFile(t.path);
             }}
-            onClose={(i) => manager.closeTabAt(i)}
+            onClose={diverged.requestCloseTab}
             onReorder={(from, to) => manager.moveTabAt(from, to)}
           />
-          <main class="canvas-wrap">
-            <svg ref={canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
-          </main>
+          <div class="canvas-split">
+            <main class="canvas-wrap">
+              <svg ref={canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
+            </main>
+            <CodePane machine={code.machine} snapshot={code.snapshot} onFormat={code.formatNow} />
+          </div>
         </main>
         <PropertiesPanel
           obj={sel.obj}
@@ -113,6 +135,15 @@ export function App() {
         />
       </div>
       {clearOpen && <ClearDataDialog onConfirm={clearData} onCancel={() => setClearOpen(false)} />}
+      {diverged.prompt !== null && (
+        <DivergedDialog
+          path={diverged.prompt.path}
+          parseError={diverged.prompt.parseError}
+          onApply={diverged.prompt.onApply}
+          onDiscard={diverged.prompt.onDiscard}
+          onCancel={diverged.prompt.onCancel}
+        />
+      )}
       {flash !== null && (
         <div class="banner banner-error" data-testid="banner-flash" role="alert">
           <span>{flash}</span>

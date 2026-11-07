@@ -1,0 +1,8 @@
+flowchart TD
+  customer((Customer))
+  shop[Webshop]
+  psp([PSP])
+  customer -->|Browses| shop
+  shop -->|Charges card| psp
+  classDef external fill:#ffeeaa,stroke:#333;
+  class psp external;

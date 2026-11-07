@@ -69,6 +69,16 @@ workspace_unit() { run npx vitest run web/src/workspace/; }
 # e2e now includes S4 (workspace zip → clear → import; FR-S2/S3 paths).
 e2e_m3() { run npm run e2e -- --project=chromium; }
 
+# ---- m4 stages (code view & mermaid export; reuses m1 corpus gates) ----------
+# sync_machine: focused run of the code view suite — sync state machine
+# transition tests (M4-WP2, test-first), CodeMirror adapter, diagnostics map.
+sync_machine() { run npx vitest run web/src/ui/codeview/; }
+# exporter_goldens: mermaid export goldens per corpus file + re-import
+# property test (M4-WP5, FILE-FORMAT §9 / FR-M4).
+exporter_goldens() { run npx vitest run web/src/engine/format/mermaidExport.test.ts; }
+# e2e now includes S2 (mermaid paste → canvas → edit → code updates; M4-WP6).
+e2e_m4() { run npm run e2e -- --project=chromium; }
+
 case "$MILESTONE" in
   m0)
     STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test selfcontained e2e_smoke)
@@ -82,8 +92,11 @@ case "$MILESTONE" in
   m3)
     STAGES=(web_check web_test perf_smoke workspace_unit web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m3)
     ;;
+  m4)
+    STAGES=(web_check web_test perf_smoke workspace_unit sync_machine exporter_goldens web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m4)
+    ;;
   *)
-    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3)" >&2
+    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4)" >&2
     exit 2
     ;;
 esac

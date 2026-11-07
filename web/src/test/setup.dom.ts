@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// jsdom setup loaded before every test file (vitest `setupFiles`). CodeMirror's
+// measuring code calls Range.getClientRects, which jsdom does not implement
+// (the uncaught rAF-driven measure exception poisoned full runs randomly); a
+// no-op stub keeps the editor tests deterministic. Real browsers implement it —
+// production measurement is unaffected. Node-environment files have no Range
+// and are untouched.
+import { beforeEach } from 'vitest';
+
+beforeEach(() => {
+  const rangeCtor = (globalThis as unknown as { Range?: new () => Range }).Range;
+  if (rangeCtor === undefined) return; // node environment — nothing to stub
+  const proto = rangeCtor.prototype as unknown as Record<string, unknown>;
+  if (typeof proto.getClientRects !== 'function') {
+    proto.getClientRects = () => ({
+      length: 0,
+      item: () => null,
+      [Symbol.iterator]: function* () {},
+    });
+  }
+  if (typeof proto.getBoundingClientRect !== 'function') {
+    proto.getBoundingClientRect = () => ({
+      x: 0, y: 0, left: 0, top: 0, width: 0, height: 0, right: 0, bottom: 0,
+      toJSON: () => ({}),
+    });
+  }
+});
