@@ -173,6 +173,17 @@ debounced 250 ms, undoable; opening/switching never re-positions; only `Auto-lay
 *Tests:* unit — commit path writes `position` lines only for moved ids; e2e — drag 3 nodes, reload, identical
 transforms; `Auto-layout` changes them and undo restores.
 
+**Done.** `CanvasController` gained an `onGeometry` hook fired at drag/resize end
+with only the ids that moved; the consumer (`useCanvasController`) debounces 250 ms
+and merges them into the active view through `applyLayoutToView`, routing the result
+through the sync machine (`CodeSyncHandle.commitDoc`) so the code view and the file
+agree immediately. Opening/switching files only *applies* stored positions.
+`Auto-layout` runs through `applyLayoutCommand` (one undo entry, persisted via the
+hook) and a new `Reset layout` button drops the active view's `position` lines. Tests:
+`engine/layout/apply.test.ts` (moved-ids-only commit), e2e `p1-geometry.spec.ts`
+(drag → reload → identical transforms → reload again; file switch keeps geometry;
+auto-layout differs, undo restores, reset keeps the diagram).
+
 ### F-15 In-place rename — *item 6*
 `F2` / double-click opens an overlay input positioned in screen space (repositioned on pan/zoom, chip above
 200 % zoom), Enter commits, Esc cancels, `aria-label="Rename <kind>"`, routed through `updateObject`

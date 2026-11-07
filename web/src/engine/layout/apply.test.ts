@@ -106,6 +106,33 @@ describe('applyLayoutToView', () => {
     expect(ghost.doc.views[0]!.lines).toHaveLength(0);
   });
 
+  it('commits only the moved ids and leaves other positions alone (F-14)', () => {
+    const base = doc([
+      {
+        name: DEFAULT_VIEW_NAME,
+        pos: { line: 1, col: 1 },
+        lines: [
+          { type: 'position', id: 'api', x: 10, y: 10, pos: { line: 1, col: 1 } },
+          { type: 'position', id: 'db', x: 20, y: 20, pos: { line: 1, col: 1 } },
+          { type: 'position', id: 'web', x: 30, y: 30, pos: { line: 1, col: 1 } },
+        ],
+      },
+    ]);
+    const { doc: after, written } = applyLayoutToView(base, undefined, {
+      db: { x: 200, y: 120 },
+    });
+    expect(written).toEqual(['db']);
+    const positions = after.views[0]!.lines
+      .filter((l) => l.type === 'position')
+      .map((l) => [l.id, l.x, l.y])
+      .sort();
+    expect(positions).toEqual([
+      ['api', 10, 10],
+      ['db', 200, 120],
+      ['web', 30, 30],
+    ]);
+  });
+
   it('round-trips through the printer/parser pipeline without loss', () => {
     // If format exports exist, sanity-check text round-trip; otherwise IR-level.
     const d = doc([{ name: 'V1', lines: [{ type: 'pin', id: 'db', pos: { line: 1, col: 1 } }], pos: { line: 1, col: 1 } }]);

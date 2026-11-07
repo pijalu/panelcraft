@@ -129,6 +129,12 @@ export interface ControllerOptions {
   onRenameRequest?: (id: string) => void;
   /** Text measurement port (F-13); defaults to an offscreen canvas in a DOM. */
   measure?: TextMeasurer;
+  /**
+   * Geometry commit hook (F-14): called at the end of a drag/resize with the
+   * positions that actually changed. The consumer persists them into the
+   * active view (debounced) — the canvas never writes the file itself.
+   */
+  onGeometry?: (positions: Record<string, { x: number; y: number }>) => void;
 }
 
 export function labelFor(kind: Kind): string {
@@ -210,6 +216,7 @@ export class CanvasController {
   private readonly onState?: (s: Snapshot) => void;
   private readonly onRenameRequest?: (id: string) => void;
   private readonly measure: TextMeasurer;
+  private readonly onGeometry?: (positions: Record<string, { x: number; y: number }>) => void;
   private detach: Array<() => void> = [];
 
   constructor(svg: SVGSVGElement, opts: ControllerOptions = {}) {
@@ -218,6 +225,7 @@ export class CanvasController {
     this.onState = opts.onState;
     this.onRenameRequest = opts.onRenameRequest;
     this.measure = opts.measure ?? canvasMeasurer();
+    this.onGeometry = opts.onGeometry;
     this.renderer = new SceneRenderer(svg);
     this.attach();
     this.render();
@@ -501,6 +509,41 @@ export class CanvasController {
     this.state = { ...this.state, objects };
     this.recomputeRoutes();
     this.render();
+  }
+
+  /**
+   * Apply a computed layout and record it on the undo stack (F-14: only
+   * Auto-layout/Reset reorganise, and both are undoable). Positions are then
+   * persisted through the geometry hook.
+   */
+  applyLayoutCommand(next: Record<string, { x: number; y: number }>, label = 'auto-layout'): void {
+    const before = this.currentPositions();
+    this.applyPositions(next);
+    this.geometryChanged(before);
+    this.undo.push({
+      label,
+      undo: () => {
+        this.applyPositions(before);
+        this.geometryChanged(this.currentPositions());
+      },
+      redo: () => {
+        this.applyPositions(next);
+        this.geometryChanged(this.currentPositions());
+      },
+      coalesce: () => null,
+    });
+  }
+
+  /** Emit the positions that differ from `before` (F-14 commit hook). */
+  private geometryChanged(before?: Record<string, { x: number; y: number }>): void {
+    if (!this.onGeometry) return;
+    const now = this.currentPositions();
+    const changed: Record<string, { x: number; y: number }> = {};
+    for (const [id, p] of Object.entries(now)) {
+      const b = before?.[id];
+      if (!b || b.x !== p.x || b.y !== p.y) changed[id] = p;
+    }
+    if (Object.keys(changed).length > 0) this.onGeometry(changed);
   }
 
   /** Current positions of all objects (top-left, canvas units). */
@@ -971,10 +1014,20 @@ export class CanvasController {
     this.undo.push({
       label: 'move',
       coalesceKey: m.before.length === 1 ? `pos:${m.before[0]?.id}` : 'pos:multi',
-      undo: () => set(m.before),
-      redo: () => set(after),
+      undo: () => {
+        set(m.before);
+        this.geometryChanged();
+      },
+      redo: () => {
+        set(after);
+        this.geometryChanged();
+      },
       coalesce: () => null,
     });
+    // F-14: the drag end commits the moved positions to the active view
+    const beforePos: Record<string, { x: number; y: number }> = {};
+    for (const b of m.before) beforePos[b.id] = { x: b.x, y: b.y };
+    this.geometryChanged(beforePos);
   }
 
   private commitBand(e: PointerEvent): void {

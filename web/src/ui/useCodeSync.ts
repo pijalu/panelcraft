@@ -56,6 +56,12 @@ export interface CodeSyncHandle {
   snapshot: SyncSnapshot;
   /** Format button / save hook (FR-K4). */
   formatNow: () => void;
+  /**
+   * F-14: persist a document that the canvas produced out-of-band (geometry
+   * commits) — writes the file *and* re-renders the code view, so the buffer
+   * never goes stale behind a canvas-side write.
+   */
+  commitDoc: (doc: Doc) => void;
 }
 
 /**
@@ -166,5 +172,12 @@ export function useCodeSync(deps: {
     if (path !== null) machine.markSaved(canon(manager.text(path)));
   }, [ready, snap, manager, machine]);
 
-  return { machine, snapshot, formatNow: () => machine.formatNow() };
+  const commitDoc = (doc: Doc): void => {
+    const path = manager.activePath;
+    if (path !== null) manager.saveText(path, printDoc(doc));
+    machine.canvasChanged(doc);
+    if (path !== null) machine.markSaved(printDoc(doc));
+  };
+
+  return { machine, snapshot, formatNow: () => machine.formatNow(), commitDoc };
 }

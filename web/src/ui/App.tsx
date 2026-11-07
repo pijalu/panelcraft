@@ -142,7 +142,13 @@ function CanvasTopRow(props: {
 
 export function App() {
   const ws = useWorkspace();
-  const canvas = useCanvasController(ws.manager, ws.ready, ws.version);
+  // Ref mirror of the active view name (declared before the canvas so the
+  // geometry-commit hook can target the right view — F-14).
+  const viewNameRef = useRef<string | undefined>(undefined);
+  // Filled once the code-sync hook exists (geometry commits must render the
+  // code view too, not just write the file).
+  const commitDocRef = useRef<((doc: import('../engine/model/types').Doc) => void) | null>(null);
+  const canvas = useCanvasController(ws.manager, ws.ready, ws.version, viewNameRef, commitDocRef);
   const activePath = ws.ready ? ws.manager.activePath : null;
   const { manager } = ws;
   const [clearOpen, setClearOpen] = useState(false);
@@ -156,7 +162,6 @@ export function App() {
   }, [activePath]);
   // Ref mirror for the code-sync apply port (loads the active view's stored
   // positions on apply — M6 FR-V4); refs survive the machine's long lifetime.
-  const viewNameRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     viewNameRef.current = viewName;
   }, [viewName]);
@@ -169,6 +174,7 @@ export function App() {
     snap: canvas.snap,
     viewRef: viewNameRef,
   });
+  commitDocRef.current = code.commitDoc;
   const player = useFlowStage({ manager, canvas, activePath });
   const ctrl = canvas.ctrlRef.current;
   const sel = selections(canvas.snap);

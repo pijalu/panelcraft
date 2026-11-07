@@ -169,3 +169,16 @@ export function fadeSets(
   }
   return { objects, links };
 }
+
+/**
+ * F-14 `Reset layout`: drop every `position` line of the active view (creating
+ * nothing). The implicit default view has no syntax, so a doc without an
+ * explicit "Default" view is returned unchanged.
+ */
+export function clearPositions(doc: Doc, viewName: string | undefined): Doc {
+  const next: Doc = structuredClone(doc);
+  const target = next.views.find((v) => v.name === (viewName ?? DEFAULT_VIEW_NAME));
+  if (!target) return next;
+  target.lines = target.lines.filter((l) => l.type !== 'position');
+  return next;
+}

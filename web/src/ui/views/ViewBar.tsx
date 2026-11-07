@@ -8,11 +8,11 @@ import { parsePDL } from '../../engine/format/parser';
 import { printDoc } from '../../engine/format/printer';
 import type { Doc } from '../../engine/model/types';
 import { dagreLayoutEngine } from '../../engine/layout/dagre';
-import { applyLayoutToView } from '../../engine/layout/apply';
 import { CanvasController, DEFAULT_SHAPE } from '../CanvasController';
 import { retext } from '../flows/flowDoc';
 import {
   addView,
+  clearPositions,
   deleteView,
   effectiveView,
   setLayout,
@@ -33,12 +33,13 @@ export interface ViewBarProps {
   selection: string[];
 }
 
-/** One-shot layout application for a view (switch + apply button). */
-function applyViewLayout(d: Doc, ctrl: CanvasController, e: EffectiveView): void {
-  if (e.layout.mode === 'saved') {
-    ctrl.applyPositions(Object.fromEntries(e.positions));
-    return;
-  }
+/** Positions of a view's layout mode (saved = stored lines, auto = dagre). */
+function layoutPositions(
+  d: Doc,
+  ctrl: CanvasController,
+  e: EffectiveView,
+): Record<string, { x: number; y: number }> {
+  if (e.layout.mode === 'saved') return Object.fromEntries(e.positions);
   const current = ctrl.currentPositions();
   const nodes = d.objects.map((o) => ({
     id: o.id,
@@ -46,8 +47,12 @@ function applyViewLayout(d: Doc, ctrl: CanvasController, e: EffectiveView): void
     pinnedAt: e.pins.has(o.id) ? (e.positions.get(o.id) ?? current[o.id]) : undefined,
   }));
   const edges = d.links.map((l) => ({ from: l.from, to: l.to }));
-  const result = dagreLayoutEngine().layout(nodes, edges, { dir: e.layout.dir });
-  ctrl.applyPositions(result);
+  return dagreLayoutEngine().layout(nodes, edges, { dir: e.layout.dir });
+}
+
+/** Session-only positioning for a view (view switch — never persisted). */
+function applyViewLayout(d: Doc, ctrl: CanvasController, e: EffectiveView): void {
+  ctrl.applyPositions(layoutPositions(d, ctrl, e));
 }
 
 /** Distinct sorted tag names across objects + links (chip bar). */
@@ -63,6 +68,7 @@ function ViewActions(props: {
   layoutLabel: string;
   hasSelection: boolean;
   onApply(): void;
+  onReset(): void;
   onToggleMode(): void;
   onPin(): void;
   onHide(): void;
@@ -71,6 +77,9 @@ function ViewActions(props: {
     <span class="viewbar-actions">
       <button type="button" data-testid="apply-layout" onClick={props.onApply} title="Compute layout and write positions to the file">
         apply layout
+      </button>
+      <button type="button" data-testid="reset-layout" onClick={props.onReset} title="Forget this view's stored positions">
+        reset
       </button>
       <button type="button" data-testid="layout-mode" onClick={props.onToggleMode}>
         {props.layoutLabel}
@@ -163,10 +172,19 @@ export function ViewBar(props: ViewBarProps) {
         onApply={() => {
           const ctrl = props.ctrl;
           if (!ctrl) return;
-          applyViewLayout(doc, ctrl, ev);
-          // Explicit commit (FILE-FORMAT §7.2): write session positions back.
-          const { doc: updated } = applyLayoutToView(doc, props.viewName, ctrl.currentPositions());
-          props.onChangeText(printDoc(updated));
+          // F-14: Auto-layout is explicit, confirmed by the click, undoable,
+          // and it persists through the geometry hook — never on open/switch.
+          ctrl.applyLayoutCommand(layoutPositions(doc, ctrl, ev), 'auto-layout');
+        }}
+        onReset={() => {
+          const ctrl = props.ctrl;
+          if (!ctrl) return;
+          // Reset layout: drop this view's `position` lines, then re-run the
+          // view's own layout mode (auto → dagre, saved → default grid).
+          const cleared = clearPositions(doc, props.viewName);
+          props.onChangeText(printDoc(cleared));
+          const evNext = effectiveView(cleared, props.viewName);
+          applyViewLayout(cleared, ctrl, evNext);
         }}
         onToggleMode={() =>
           commit((d) =>

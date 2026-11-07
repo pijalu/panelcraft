@@ -48,6 +48,12 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   fit-to-name through an injectable text-measurement port (two-line wrapping,
   grow-only on create/rename/load) and an explicit `Fit` command.
 
+- **F-14** Geometry persists: a drag/resize end commits the moved positions into the
+  active view (implicit `Default`, 250 ms debounce) through the sync machine, so the
+  canvas, the code view and the file agree; opening/switching only applies stored
+  positions. `Auto-layout` is explicit, undoable and persisted; a new `Reset layout`
+  drops the view's `position` lines without touching the diagram.
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

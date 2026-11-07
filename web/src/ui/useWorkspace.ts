@@ -6,6 +6,9 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { CanvasController, type Snapshot } from './CanvasController';
 import type { Kind } from '../engine/model/types';
 import { stateToPcd, WorkspaceManager } from '../workspace/workspace';
+import { parsePDL } from '../engine/format/parser';
+import { printDoc } from '../engine/format/printer';
+import { applyLayoutToView } from '../engine/layout/apply';
 import { createDefaultStorage } from '../workspace/store/idb';
 
 /** Structurally-equal empty DiagramState (controller + manager share shape). */
@@ -93,6 +96,10 @@ export function useCanvasController(
   manager: WorkspaceManager,
   ready: boolean,
   version: number,
+  viewRef: { current: string | undefined } = { current: undefined },
+  commitDocRef: { current: ((doc: import('../engine/model/types').Doc) => void) | null } = {
+    current: null,
+  },
 ): CanvasHandle {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const ctrlRef = useRef<CanvasController | null>(null);
@@ -148,6 +155,35 @@ export function useCanvasController(
     manager.markClean(path);
   }, [ready, version, manager]);
 
+  /**
+   * F-14: persist drag/resize geometry into the active view (debounced 250 ms).
+   * Only the ids that moved are written; other `position` lines, other views,
+   * flows, styles and imports are untouched (applyLayoutToView replaces just
+   * those ids). Never called for open/switch — only for interaction end.
+   */
+  const geometryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingGeometry = useRef<Record<string, { x: number; y: number }>>({});
+  const commitGeometry = (positions: Record<string, { x: number; y: number }>): void => {
+    pendingGeometry.current = { ...pendingGeometry.current, ...positions };
+    if (geometryTimer.current !== null) clearTimeout(geometryTimer.current);
+    geometryTimer.current = setTimeout(() => {
+      geometryTimer.current = null;
+      const moved = pendingGeometry.current;
+      pendingGeometry.current = {};
+      const path = manager.activePath;
+      if (path === null) return;
+      const { doc } = parsePDL(manager.text(path));
+      if (doc === null) return;
+      const { doc: updated, written } = applyLayoutToView(doc, viewRef.current, moved);
+      if (written.length === 0) return;
+      // F-14: go through the sync machine so the code view shows the commit
+      // immediately (a bare file write would leave the buffer stale).
+      const commitDoc = commitDocRef.current;
+      if (commitDoc) commitDoc(updated);
+      else manager.saveText(path, printDoc(updated));
+    }, 250);
+  };
+
   const onCtrlState = (s: Snapshot): void => {
     setSnap(s);
     const path = manager.activePath;
@@ -173,6 +209,7 @@ export function useCanvasController(
     const ctrl = new CanvasController(svg, {
       onState: onCtrlState,
       onRenameRequest: () => nameFieldRef.current?.focus(),
+      onGeometry: commitGeometry,
     });
     ctrlRef.current = ctrl;
     return () => {
