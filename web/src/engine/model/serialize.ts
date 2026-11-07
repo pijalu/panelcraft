@@ -45,6 +45,10 @@ function styleBlock(s?: StyleBlock): Entry {
     ['icon', s.icon],
     ['shape', s.shape],
     ['dashed', s.dashed === true ? true : undefined],
+    ['head', s.head],
+    ['tail', s.tail],
+    ['line', s.line],
+    ['width', s.width],
     rawAttrs(s.raw),
   );
   return ['style', Object.keys(inner).length > 0 ? inner : undefined];

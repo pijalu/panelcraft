@@ -38,20 +38,28 @@ class Printer {
   }
 }
 
+/** Style keys printed as `key value` in this fixed order (§11). */
+const STYLE_TEXT_KEYS = ['fill', 'stroke', 'text', 'icon', 'shape', 'head', 'tail', 'line'] as const;
+
+/** Non-empty style lines of a block (order is canonical, §11). */
+function stylePairs(sb: StyleBlock): string[] {
+  const out = STYLE_TEXT_KEYS.flatMap((key) => {
+    const value = sb[key];
+    return value === undefined || value === '' ? [] : [`${key} ${value}`];
+  });
+  if (sb.dashed) out.push('dashed');
+  if (sb.width !== undefined) out.push(`width ${jsNum(sb.width)}`);
+  return out;
+}
+
 const styleLines = (sb: StyleBlock | undefined, depth: number, p: Printer): void => {
   if (sb === undefined) return;
-  if (sb.fill) p.add(`${pad(depth)}fill ${sb.fill}`);
-  if (sb.stroke) p.add(`${pad(depth)}stroke ${sb.stroke}`);
-  if (sb.text) p.add(`${pad(depth)}text ${sb.text}`);
-  if (sb.icon) p.add(`${pad(depth)}icon ${sb.icon}`);
-  if (sb.shape) p.add(`${pad(depth)}shape ${sb.shape}`);
-  if (sb.dashed) p.add(`${pad(depth)}dashed`);
+  for (const line of stylePairs(sb)) p.add(`${pad(depth)}${line}`);
   for (const r of sb.raw ?? []) p.add(`${pad(depth)}${r.raw}`);
 };
 
 const hasStyle = (sb: StyleBlock | undefined): boolean =>
-  !!sb && (sb.fill !== undefined || sb.stroke !== undefined || sb.text !== undefined ||
-    sb.icon !== undefined || sb.shape !== undefined || sb.dashed === true || (sb.raw?.length ?? 0) > 0);
+  !!sb && (stylePairs(sb).length > 0 || (sb.raw?.length ?? 0) > 0);
 
 /** Arrow text: optional type + direction (`->`, `<->`, `-requests->`, `<-r->`). */
 const arrowFor = (l: Pick<Link, 'type' | 'bidir'>): string =>

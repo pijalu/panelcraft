@@ -54,6 +54,18 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   positions. `Auto-layout` is explicit, undoable and persisted; a new `Reset layout`
   drops the view's `position` lines without touching the diagram.
 
+- **F-12** Arrow visual model: link style blocks carry `head`/`tail`/`line`/`width`
+  (TS + Go, corpus/parity fixtures cover it); the renderer has one marker per shape
+  (`arrow|open|diamond|circle|square|none`) for both ends, line textures and stroke
+  width, plus a per-type colour hint via `data-link-type`. Properties panel gained
+  head/tail/line/width controls and `Shift+A` cycles the head (undoable).
+- **F-30** Machine→editor projections are no longer fed back as user typing (they
+  could flip the sync chip to `editing`/`error` after a pure canvas write) and focus
+  is re-asserted after a projection.
+
+- **F-31** The offline e2e spec no longer races its own service worker (serial file +
+  cache selected by name), removing an intermittent red gate.
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

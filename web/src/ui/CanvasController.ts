@@ -4,7 +4,13 @@
 // mutations through the undo stack (FR-C1/C2/C4/C7/C9). DOM writes go to the
 // SceneRenderer only; App reads snapshots via onState.
 
-import { SceneRenderer, type Scene, type SceneLink } from '../engine/render/scenegraph';
+import {
+  SceneRenderer,
+  MARKER_SHAPES,
+  type MarkerShape,
+  type Scene,
+  type SceneLink,
+} from '../engine/render/scenegraph';
 import { routeOrtho, portPoint, type Side, type Polyline } from '../engine/render/router';
 import {
   invert,
@@ -67,6 +73,11 @@ export interface DiagramLink {
   dashed?: boolean;
   /** `<->` double-headed link (F-07). */
   bidir?: boolean;
+  /** Arrow visual model (F-12). */
+  head?: string;
+  tail?: string;
+  line?: string;
+  width?: number;
 }
 
 export interface DiagramState {
@@ -321,6 +332,35 @@ export class CanvasController {
    * F-13 `Fit` command: size the selected objects to their labels and record
    * the result as explicit geometry (which then disables further auto-fit).
    */
+  /** F-12 `Shift+A`: cycle the selected links' arrow head shape. */
+  cycleArrowHead(): void {
+    const ids = [...this.selLinks];
+    if (ids.length === 0) return;
+    const step = (cur: string | undefined): string => {
+      const at = MARKER_SHAPES.indexOf((cur ?? 'arrow') as MarkerShape);
+      return MARKER_SHAPES[(at + 1) % MARKER_SHAPES.length] ?? 'arrow';
+    };
+    const before = this.state.links;
+    const after = before.map((l) => (this.selLinks.has(l.id) ? { ...l, head: step(l.head) } : l));
+    if (listEq(before, after)) return;
+    this.state = { ...this.state, links: after };
+    this.undo.push(
+      new ValueChange<DiagramLink[]>(
+        (links) => {
+          this.state = { ...this.state, links };
+          this.recomputeRoutes();
+          this.render();
+        },
+        before,
+        after,
+        `link:${ids.join(',')}`,
+        'arrow head',
+        listEq,
+      ),
+    );
+    this.render();
+  }
+
   fitSelection(): void {
     const targets = this.state.objects.filter((o) => this.selObjects.has(o.id));
     if (targets.length === 0) return;
@@ -392,7 +432,9 @@ export class CanvasController {
   /** Patch a link (type/label/dashed, FR-C7). */
   updateLink(
     id: string,
-    patch: Partial<Pick<DiagramLink, 'type' | 'label' | 'dashed' | 'bidir'>>,
+    patch: Partial<
+      Pick<DiagramLink, 'type' | 'label' | 'dashed' | 'bidir' | 'head' | 'tail' | 'line' | 'width'>
+    >,
   ): void {
     const before = this.state.links;
     const after = before.map((l) => (l.id === id ? { ...l, ...patch } : l));
@@ -635,7 +677,20 @@ export class CanvasController {
   private sceneLinks(): SceneLink[] {
     return this.state.links.flatMap((l) => {
       const points = this.routes.get(l.id);
-      return points ? [{ id: l.id, points, label: l.label, dashed: l.dashed }] : [];
+      if (!points) return [];
+      return [
+        {
+          id: l.id,
+          points,
+          label: l.label,
+          dashed: l.dashed,
+          type: l.type,
+          head: (l.head ?? 'arrow') as MarkerShape,
+          tail: (l.tail ?? 'none') as MarkerShape,
+          line: (l.line ?? (l.dashed ? 'dashed' : 'solid')) as 'solid' | 'dashed' | 'dotted',
+          width: l.width,
+        },
+      ];
     });
   }
 
@@ -730,6 +785,7 @@ export class CanvasController {
       this.quickAdd(Number(e.key));
       return;
     }
+    if (this.handleArrowKey(e)) return;
     if (this.handleActionKey(e)) return;
   }
 
@@ -743,6 +799,14 @@ export class CanvasController {
     if (k === 'z' && !e.shiftKey) this.undo.undo();
     else this.undo.redo();
     this.applyState(this.state);
+    return true;
+  }
+
+  /** F-12 Shift+A: cycle the arrow head of the selected links — true when consumed. */
+  private handleArrowKey(e: KeyboardEvent): boolean {
+    if (!e.shiftKey || e.metaKey || e.ctrlKey || e.key.toLowerCase() !== 'a') return false;
+    e.preventDefault();
+    this.cycleArrowHead();
     return true;
   }
 

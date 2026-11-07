@@ -145,6 +145,23 @@ api -publishes-> events as L7 {
 }
 ```
 
+* **Arrow visual model (F-12)** — links accept these `style` keys, all optional:
+
+```
+style {
+  head diamond                 ← arrow-head marker: arrow | open | diamond | circle | square | none
+  tail circle                  ← marker at the link's tail (same set; default none)
+  line dotted                  ← texture: solid | dashed | dotted
+  width 2.5                    ← stroke width in document units
+  dashed                       ← legacy alias of `line dashed`
+}
+```
+
+  Absent keys fall back to `head arrow`, `tail none`, `line solid`, width 1.5. The
+  printer emits only the keys the document carries, so canvas writes stay minimal.
+  `head`/`tail`/`line`/`width` are link-only; the object style block rejects neither
+  (they round-trip) but the renderer ignores them there.
+
 ## 5. Imports (hybrid reuse, SPEC D1)
 
 ```

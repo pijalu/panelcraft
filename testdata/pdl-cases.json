@@ -74,6 +74,69 @@
       ]
     },
     {
+      "name": "object-size",
+      "src": "pcd 1.0\nsystem a \"A\" {\n  size 200 96\n}\nsystem b \"B\" {\n  size 48.5 32\n}\n",
+      "doc": "{\n  \"irVersion\": 2,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"size\": {\n        \"w\": 200,\n        \"h\": 96\n      },\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"size\": {\n        \"w\": 48.5,\n        \"h\": 32\n      },\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nsystem a \"A\" {\n  size 200 96\n}\nsystem b \"B\" {\n  size 48.5 32\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P201",
+          "message": "\"a\" is orphaned (no links, no flow references)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        },
+        {
+          "code": "P201",
+          "message": "\"b\" is orphaned (no links, no flow references)",
+          "line": 5,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "object-size-invalid",
+      "src": "pcd 1.0\nsystem a \"A\" {\n  size 0 10\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "size must be positive",
+          "line": 3,
+          "col": 3,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "link-style-model",
+      "src": "pcd 1.0\nsystem a \"A\"\nsystem b \"B\"\na -requests-> b as L1 {\n  style {\n    head diamond\n    tail circle\n    line dotted\n    width 2.5\n  }\n}\n",
+      "doc": "{\n  \"irVersion\": 2,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"type\": \"requests\",\n      \"style\": {\n        \"head\": \"diamond\",\n        \"tail\": \"circle\",\n        \"line\": \"dotted\",\n        \"width\": 2.5\n      },\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nsystem a \"A\"\nsystem b \"B\"\n\na -requests-> b as L1 {\n  style {\n    head diamond\n    tail circle\n    line dotted\n    width 2.5\n  }\n}\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "link-style-invalid-line",
+      "src": "pcd 1.0\nsystem a \"A\"\nsystem b \"B\"\na -> b as L {\n  style {\n    line dashdot\n  }\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "invalid line style 'dashdot'",
+          "line": 6,
+          "col": 5,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
       "name": "links-and-arrows",
       "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b : \"hello\" as l1\nb <- a\na -requests-> b\na <-> b\n",
       "doc": "{\n  \"irVersion\": 2,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"label\": \"hello\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"type\": \"requests\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"bidir\": true,\n      \"pos\": {\n        \"line\": 7,\n        \"col\": 1\n      }\n    }\n  ]\n}",

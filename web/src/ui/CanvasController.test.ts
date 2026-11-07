@@ -315,6 +315,48 @@ describe('properties + grid + resize', () => {
   });
 });
 
+describe('link visual model (F-12)', () => {
+  const seed = (): void => {
+    ctrl.loadState({
+      objects: [
+        { id: 'o1', kind: 'system', x: 0, y: 0, w: 160, h: 60, name: 'A' },
+        { id: 'o2', kind: 'system', x: 300, y: 0, w: 160, h: 60, name: 'B' },
+      ],
+      links: [{ id: 'L1', from: 'o1', to: 'o2' }],
+    });
+  };
+
+  it('Shift+A cycles the selected link head through the marker shapes', () => {
+    seed();
+    ctrl.setSelection([], ['L1']);
+    const heads: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      window.dispatchEvent(key('keydown', { key: 'A', shiftKey: true }));
+      heads.push(ctrl.snapshot.links[0]?.head ?? 'arrow');
+    }
+    expect(heads).toEqual(['open', 'diamond', 'circle']);
+  });
+
+  it('Shift+A is undoable as one command per press', () => {
+    seed();
+    ctrl.setSelection([], ['L1']);
+    window.dispatchEvent(key('keydown', { key: 'A', shiftKey: true }));
+    expect(ctrl.snapshot.links[0]?.head).toBe('open');
+    ctrl.undo.undo();
+    expect(ctrl.snapshot.links[0]?.head).toBeUndefined();
+  });
+
+  it('renders the marker for the selected head/tail model', () => {
+    seed();
+    ctrl.updateLink('L1', { head: 'diamond', tail: 'circle', line: 'dotted', width: 3 });
+    const path = svg.querySelector('g.pc-link[data-id="L1"] path.pc-route')!;
+    expect(path.getAttribute('marker-end')).toBe('url(#pc-marker-diamond)');
+    expect(path.getAttribute('marker-start')).toBe('url(#pc-marker-circle)');
+    expect(path.getAttribute('stroke-width')).toBe('3');
+    expect(svg.querySelector('g.pc-link[data-id="L1"]')!.classList.contains('pc-dotted')).toBe(true);
+  });
+});
+
 describe('state notifications', () => {
   it('onState fires on mutations', () => {
     const spy = vi.fn();

@@ -27,6 +27,9 @@ export interface CodeEditorProps {
 export function CodeEditor({ machine }: CodeEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
+  /** True while the editor applies a machine write — those are not user edits
+   * (F-30: feeding them back made the machine believe it was being typed into). */
+  const projecting = useRef(false);
   const [snap, setSnap] = useState<SyncSnapshot>(() => machine.snapshot());
 
   // Machine → editor buffer (echo-suppressed inside the machine).
@@ -46,7 +49,14 @@ export function CodeEditor({ machine }: CodeEditorProps) {
         if (change.from === change.to && change.insert === '') return;
         // no explicit `selection`: CodeMirror maps the current selection
         // through the change, so a caret in an untouched region stays put
+        projecting.current = true;
+        const hadFocus = v.hasFocus;
         v.dispatch({ changes: change, scrollIntoView: false });
+        projecting.current = false;
+        // F-30: a programmatic write can leave CodeMirror believing it lost
+        // focus, which silently disables its keymap (Ctrl+A, undo, search).
+        // Re-assert focus when the editor was the focused element.
+        if (hadFocus && !v.hasFocus) v.focus();
       }),
     [machine],
   );

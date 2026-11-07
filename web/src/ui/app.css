@@ -9,6 +9,9 @@
   /* N5 (M7): muted text must clear AA 4.5:1 on bg AND surface — was #6b7280 (4.47:1 on surface) */
   --pc-muted: #575e69;
   --pc-accent: #2563eb;
+  /* F-12 link-type colour hints (AA on bg/surface for 1.5px non-text strokes) */
+  --pc-info: #0f766e;
+  --pc-warn: #a93b16;
   --pc-border: #d1d5db;
   --pc-canvas: #fafafa;
   --pc-text-xs: 11px;
@@ -26,6 +29,8 @@
     /* N5 (M7): 6.36:1 on surface (was #9ca3af — fine on bg, kept ratio headroom) */
     --pc-muted: #a9b1ba;
     --pc-accent: #60a5fa;
+    --pc-info: #5eead4;
+    --pc-warn: #fca88a;
     --pc-border: #374151;
     --pc-canvas: #111316;
   }
@@ -369,6 +374,39 @@ body {
 
 .pc-dashed .pc-route {
   stroke-dasharray: 5 3;
+}
+
+/* F-12 line textures + arrow markers follow the stroke colour */
+.pc-dotted .pc-route {
+  stroke-dasharray: 1.5 3;
+  stroke-linecap: round;
+}
+
+.pc-arrow {
+  fill: var(--pc-fg);
+  stroke: none;
+}
+
+marker .pc-arrow[fill='none'] {
+  fill: none;
+  stroke: var(--pc-fg);
+}
+
+/* F-12 per-type colour hint: semantic colour per relation, neutral fallback */
+.pc-link[data-link-type='reads'] .pc-route,
+.pc-link[data-link-type='writes'] .pc-route {
+  stroke: var(--pc-info);
+}
+.pc-link[data-link-type='requests'] .pc-route,
+.pc-link[data-link-type='returns'] .pc-route {
+  stroke: var(--pc-accent);
+}
+.pc-link[data-link-type='publishes'] .pc-route,
+.pc-link[data-link-type='subscribes'] .pc-route {
+  stroke: var(--pc-warn);
+}
+.pc-link[data-link-type='includes'] .pc-route {
+  stroke: var(--pc-muted);
 }
 
 /* Object dashed border (F-07): the properties checkbox must be visible in the

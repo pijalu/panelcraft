@@ -5,6 +5,12 @@
 // boots). User data lives in IDB, never in the SW (FR-S1).
 import { test, expect } from '@playwright/test';
 
+// Both tests install/claim the same service worker in the same origin; running
+// them concurrently races the precache (observed: `caches.keys()[0]` may be an
+// empty cache left by the other test). Serial keeps the gate deterministic
+// without retries (agents.md: no retries, fix the root cause).
+test.describe.configure({ mode: 'serial' });
+
 test('offline reload serves the app shell from the service worker', async ({ page }) => {
   await page.goto('/');
 
@@ -38,10 +44,13 @@ test('SW caches the hashed bundle (assets served cache-first)', async ({ page })
   }, undefined, { timeout: 15_000 });
 
   const cached = await page.evaluate(async () => {
+    // pick the app's cache by name, never by index (an empty stale cache can
+    // be first), and report what was found for a readable failure
     const names = await caches.keys();
-    const cache = await caches.open(names[0] ?? '');
-    return (await cache.keys()).length;
+    const name = names.find((n) => n.toLowerCase().includes('panelcraft')) ?? names[0] ?? '';
+    const cache = await caches.open(name);
+    return { name, keys: (await cache.keys()).length };
   });
   // index.html + every hashed asset must be precached
-  expect(cached).toBeGreaterThanOrEqual(3);
+  expect(cached.keys, `cache ${cached.name}`).toBeGreaterThanOrEqual(3);
 });

@@ -73,6 +73,22 @@ container cart "Cart"
   },
   { name: 'object-no-block', src: 'pcd 1.0\nperson a "A"\n' },
   {
+    name: 'object-size',
+    src: 'pcd 1.0\nsystem a "A" {\n  size 200 96\n}\nsystem b "B" {\n  size 48.5 32\n}\n',
+  },
+  {
+    name: 'object-size-invalid',
+    src: 'pcd 1.0\nsystem a "A" {\n  size 0 10\n}\n',
+  },
+  {
+    name: 'link-style-model',
+    src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -requests-> b as L1 {\n  style {\n    head diamond\n    tail circle\n    line dotted\n    width 2.5\n  }\n}\n',
+  },
+  {
+    name: 'link-style-invalid-line',
+    src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -> b as L {\n  style {\n    line dashdot\n  }\n}\n',
+  },
+  {
     name: 'links-and-arrows',
     src: `pcd 1.0
 person a "A"

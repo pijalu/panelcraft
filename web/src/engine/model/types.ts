@@ -49,6 +49,10 @@ export interface Property {
   value: string;
 }
 
+/**
+ * Style block (§7.3). Link blocks additionally carry the arrow visual model
+ * (F-12): `head`/`tail` marker shapes, `line` texture and `width`.
+ */
 export interface StyleBlock {
   fill?: string;
   stroke?: string;
@@ -56,6 +60,14 @@ export interface StyleBlock {
   icon?: string;
   shape?: string;
   dashed?: boolean;
+  /** Link arrow-head marker (F-12). */
+  head?: string;
+  /** Link arrow-tail marker (F-12). */
+  tail?: string;
+  /** Link line texture: solid | dashed | dotted (F-12). */
+  line?: string;
+  /** Link stroke width in document units (F-12). */
+  width?: number;
   raw?: RawAttr[];
 }
 

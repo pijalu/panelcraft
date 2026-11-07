@@ -17,11 +17,33 @@ import { GRID_SIZE } from './snap';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+/** Marker geometry per shape, in a 10×10 viewBox (F-12). */
+const MARKER_GLYPHS: Record<Exclude<MarkerShape, 'none'>, { tag: string; attrs: Record<string, string> }> = {
+  arrow: { tag: 'path', attrs: { d: 'M 0 0 L 10 5 L 0 10 z' } },
+  open: { tag: 'path', attrs: { d: 'M 0 0 L 10 5 L 0 10', fill: 'none', 'stroke-width': '1.6' } },
+  diamond: { tag: 'path', attrs: { d: 'M 0 5 L 5 0 L 10 5 L 5 10 z' } },
+  circle: { tag: 'circle', attrs: { cx: '5', cy: '5', r: '4' } },
+  square: { tag: 'rect', attrs: { x: '1.5', y: '1.5', width: '7', height: '7' } },
+};
+
+/** Arrow marker shapes (F-12); `none` draws no marker. */
+export type MarkerShape = 'arrow' | 'open' | 'diamond' | 'circle' | 'square' | 'none';
+
+export const MARKER_SHAPES: readonly MarkerShape[] = ['arrow', 'open', 'diamond', 'circle', 'square', 'none'];
+
 export interface SceneLink {
   id: string;
   points: Polyline;
   label?: string;
   dashed?: boolean;
+  /** Arrow type — drives the per-type colour hint (F-12). */
+  type?: string;
+  head?: MarkerShape;
+  tail?: MarkerShape;
+  /** Line texture (F-12). */
+  line?: 'solid' | 'dashed' | 'dotted';
+  /** Stroke width in document units (F-12). */
+  width?: number;
 }
 
 export interface Scene {
@@ -54,6 +76,16 @@ export function structuralKey(o: SceneObject): string {
 
 function structuralKeyLink(l: SceneLink): string {
   return l.label === undefined ? 'nolabel' : 'label';
+}
+
+/** `url(#…)` for a marker shape; `none` removes the marker attribute. */
+function markerRef(shape: MarkerShape): string {
+  return shape === 'none' ? 'none' : `url(#pc-marker-${shape})`;
+}
+
+/** Everything `updateLink` writes besides the polyline (F-12 visual model). */
+function visualKey(l: SceneLink): string {
+  return [l.head ?? 'arrow', l.tail ?? 'none', l.line ?? (l.dashed ? 'dashed' : 'solid'), l.width ?? '', l.type ?? ''].join('|');
 }
 
 function polylineKey(points: Polyline): string {
@@ -137,22 +169,30 @@ export class SceneRenderer {
     return g;
   }
 
+  /** One marker per head/tail shape (F-12), coloured by `context-stroke`. */
   private makeDefs(): SVGDefsElement {
     const defs = this.el('defs') as SVGDefsElement;
+    for (const shape of ['arrow', 'open', 'diamond', 'circle', 'square'] as const) {
+      defs.appendChild(this.makeMarker(shape));
+    }
+    return defs;
+  }
+
+  private makeMarker(shape: Exclude<MarkerShape, 'none'>): SVGMarkerElement {
     const marker = this.el('marker') as SVGMarkerElement;
-    marker.setAttribute('id', 'pc-arrow');
+    marker.setAttribute('id', `pc-marker-${shape}`);
     marker.setAttribute('viewBox', '0 0 10 10');
-    marker.setAttribute('refX', '9');
+    marker.setAttribute('refX', shape === 'circle' || shape === 'diamond' || shape === 'square' ? '5' : '9');
     marker.setAttribute('refY', '5');
     marker.setAttribute('markerWidth', '7');
     marker.setAttribute('markerHeight', '7');
     marker.setAttribute('orient', 'auto-start-reverse');
-    const path = this.el('path') as SVGPathElement;
-    path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-    path.setAttribute('class', 'pc-arrow');
-    marker.appendChild(path);
-    defs.appendChild(marker);
-    return defs;
+    const spec = MARKER_GLYPHS[shape];
+    const node = this.el(spec.tag) as SVGElement;
+    for (const [k, v] of Object.entries(spec.attrs)) node.setAttribute(k, v);
+    node.setAttribute('class', 'pc-arrow');
+    marker.appendChild(node);
+    return marker;
   }
 
   private el(tag: string): Element {
@@ -189,7 +229,6 @@ export class SceneRenderer {
     g.setAttribute('data-id', link.id);
     const path = this.el('path') as SVGPathElement;
     path.setAttribute('class', 'pc-route');
-    path.setAttribute('marker-end', 'url(#pc-arrow)');
     g.appendChild(path);
     let label: SVGTextElement | null = null;
     if (link.label) {
@@ -206,7 +245,15 @@ export class SceneRenderer {
 
   private updateLink(entry: LinkEntry, link: SceneLink): void {
     entry.link = link;
-    entry.el.classList.toggle('pc-dashed', link.dashed === true);
+    const line = link.line ?? (link.dashed === true ? 'dashed' : 'solid');
+    entry.el.classList.toggle('pc-dashed', line === 'dashed');
+    entry.el.classList.toggle('pc-dotted', line === 'dotted');
+    // F-12: per-type colour hint (unknown types fall back to the base token)
+    entry.el.setAttribute('data-link-type', link.type ?? '');
+    entry.path.setAttribute('marker-end', markerRef(link.head ?? 'arrow'));
+    entry.path.setAttribute('marker-start', markerRef(link.tail ?? 'none'));
+    if (link.width !== undefined) entry.path.setAttribute('stroke-width', String(link.width));
+    else entry.path.removeAttribute('stroke-width');
     entry.path.setAttribute('d', pointsToPath(link.points));
     if (entry.label) {
       const mid = labelPoint(link.points);
@@ -310,7 +357,8 @@ export class SceneRenderer {
       }
       if (
         polylineKey(prev.link.points) !== polylineKey(link.points) ||
-        prev.link.dashed !== link.dashed
+        prev.link.dashed !== link.dashed ||
+        visualKey(prev.link) !== visualKey(link)
       ) {
         this.updateLink(prev, link);
         stats.updated++;

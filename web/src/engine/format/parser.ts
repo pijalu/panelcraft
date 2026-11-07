@@ -321,8 +321,38 @@ class Parser {
     }
   }
 
-  /** Style line dispatch (§7.3 + errata `dashed`). */
+  /** F-12 link visual keys (`head`/`tail`/`line`/`width`). */
+  private linkStyleHandler(seen: Set<string>, t: Token): ((sb: StyleBlock) => void) | undefined {
+    if (t.text === 'head' || t.text === 'tail') {
+      const key = t.text;
+      this.once(seen, t, key);
+      return (sb) => {
+        sb[key] = this.ident();
+      };
+    }
+    if (t.text === 'line') {
+      this.once(seen, t, 'line');
+      return (sb) => {
+        const id = this.ident();
+        if (id !== 'solid' && id !== 'dashed' && id !== 'dotted') {
+          this.fail(t, E.unexpected, `invalid line style '${id}'`);
+        }
+        sb.line = id;
+      };
+    }
+    if (t.text === 'width') {
+      this.once(seen, t, 'width');
+      return (sb) => {
+        sb.width = this.num(this.expect('number'));
+      };
+    }
+    return undefined;
+  }
+
+  /** Style line dispatch (§7.3 + errata `dashed`, F-12 link keys). */
   private styleLineHandler(seen: Set<string>, t: Token): ((sb: StyleBlock) => void) | undefined {
+    const linkKey = this.linkStyleHandler(seen, t);
+    if (linkKey) return linkKey;
     const colorKey = t.text === 'fill' || t.text === 'stroke' || t.text === 'text' ? t.text : null;
     if (colorKey) {
       this.once(seen, t, colorKey);

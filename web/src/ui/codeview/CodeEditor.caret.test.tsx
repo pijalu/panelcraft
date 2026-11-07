@@ -114,6 +114,21 @@ describe('caret preservation on machine writes (F-03)', () => {
   });
 });
 
+describe('machine writes are not user edits (F-30)', () => {
+  it('a projected canvas render does not put the machine into editing', () => {
+    const { machine } = makeMachine();
+    render(<CodeEditor machine={machine} />);
+    act(() => {
+      machine.canvasChanged(docOf([['a', 'A'], ['b', 'B'], ['c', 'C']]));
+    });
+    // the render reached the buffer …
+    expect(view().state.doc.toString()).toContain('system c "C"');
+    // … without the editor claiming the user typed (which armed a parse and
+    // could surface a bogus error state mid-render)
+    expect(machine.snapshot().state).toBe('clean');
+  });
+});
+
 describe('no canonicalisation under the caret (F-04)', () => {
   it('an idle apply leaves the typed buffer verbatim', () => {
     const { machine, applied } = makeMachine('pcd 1.0\n');

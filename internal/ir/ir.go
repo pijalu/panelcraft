@@ -41,6 +41,10 @@ type StyleBlock struct {
 	Icon   string    `json:"icon,omitempty"`
 	Shape  string    `json:"shape,omitempty"`
 	Dashed bool      `json:"dashed,omitempty"`
+	Head   string    `json:"head,omitempty"`
+	Tail   string    `json:"tail,omitempty"`
+	Line   string    `json:"line,omitempty"`
+	Width  *float64  `json:"width,omitempty"`
 	Raw    []RawAttr `json:"raw,omitempty"`
 }
 

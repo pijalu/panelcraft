@@ -63,7 +63,7 @@ describe('renderer scaffolding', () => {
   });
 
   it('creates the shared arrowhead marker def', () => {
-    const marker = svg.querySelector('marker#pc-arrow');
+    const marker = svg.querySelector('marker#pc-marker-arrow');
     expect(marker).not.toBeNull();
     expect(marker?.getAttribute('orient')).toBe('auto-start-reverse');
   });
@@ -150,7 +150,7 @@ describe('links', () => {
     r.render(scene([obj('a')], [{ id: 'l1', points: poly, label: 'uses' }]));
     const path = svg.querySelector('.pc-route');
     expect(path?.getAttribute('d')).toBe('M 120 30 L 200 30');
-    expect(path?.getAttribute('marker-end')).toBe('url(#pc-arrow)');
+    expect(path?.getAttribute('marker-end')).toBe('url(#pc-marker-arrow)');
     const label = svg.querySelector('.pc-link-label');
     expect(label?.textContent).toBe('uses');
     // label anchored at longest-segment midpoint

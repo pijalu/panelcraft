@@ -87,6 +87,24 @@ the border still dashed.
 *Change:* remove the defaults from the projection; carry type/head/tail/line/dashed from the doc.
 *Tests:* unit — load `<->`, drag a node, link stays `<->` with the original type; e2e assertion updated.
 
+### F-30 Machine writes must not masquerade as user typing (found in F-12 verification)
+*Problem:* every machine→editor projection was fed back through `textChanged`, so the
+machine armed an idle parse for text the user never typed — a stale pose could flip the
+chip to `editing` (and, from there, to `error`) after a pure canvas write. A projection
+could also leave CodeMirror believing it had lost focus, silently disabling its keymap.
+*Change:* programmatic dispatches are flagged (`projecting`) and skipped in the
+update-listener; focus is re-asserted when the editor was the focused element.
+*Tests:* `codeview/CodeEditor.caret.test.tsx` "machine writes are not user edits"
+(a canvas render reaches the buffer while the sync state stays `clean`).
+
+### F-31 Offline spec raced its own service worker (found in F-12 gate run)
+*Problem:* `e2e/m7-offline.spec.ts` runs two tests against the same origin; with
+`fullyParallel` they install/claim the SW concurrently and `caches.keys()[0]` could be
+an empty cache created by the sibling test — an intermittent red gate.
+*Change:* the file is `serial` and the app cache is selected by name (not index), with
+the cache name in the assertion message. No retries, no weakened assertion.
+*Tests:* the spec itself, run twice in a full-suite pass.
+
 ### F-09 Repo hygiene: no generated content
 *Problem:* `dist/release/**` (12 files, 46 MB of dry-run binaries + built pages) and
 `e2e/__screenshots__/**` are tracked, and the specs write into the tracked directory — every e2e run leaves
@@ -146,6 +164,16 @@ shape; format carries `head/tail/line` inside the existing link `style` block; U
 `Shift+A` cycle.
 *Tests:* unit — marker selection per link, style block round-trip; e2e — set "diamond tail", reload, assert
 `marker-start` and the code line; visual screenshot (light+dark) of 5 link styles.
+
+**Done.** Link style blocks carry `head`/`tail`/`line`/`width` (IR v2, FILE-FORMAT §4,
+TS + Go parser/printer/serializer, corpus + parity fixtures cover the new syntax). The
+renderer defines one marker per shape (`arrow|open|diamond|circle|square|none`) for head
+and tail, applies line texture/width, and exposes `data-link-type` for a per-type colour
+hint (new `--pc-info`/`--pc-warn` tokens, light + dark). The properties panel has head/
+tail/line/width controls and `Shift+A` cycles the head (undoable). Tests:
+`engine/format/linkStyle.test.ts`, `engine/render/markers.test.ts`,
+`ui/CanvasController.test.ts` (cycle + marker render), e2e `p1-links.spec.ts`
+(persist → reload → markers, colour hint, five styles light+dark screenshots).
 
 ### F-13 Size: format, fit-to-name, manual resize — *items 7, 8*
 `size <w> <h>` object attribute (known attr, `IR_VERSION` 2); measurement port for text; `autoSize` on

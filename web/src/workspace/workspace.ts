@@ -23,7 +23,10 @@ import { parsePDL } from '../engine/format/parser';
 import { printDoc } from '../engine/format/printer';
 import { DEFAULT_SHAPE } from '../ui/CanvasController';
 import { applyCanvasState } from '../engine/model/merge';
-import { IR_VERSION, FORMAT_VERSION, type Doc, type Kind, type Link, type Obj } from '../engine/model/types';
+import {
+  IR_VERSION, FORMAT_VERSION,
+  type Doc, type Kind, type Link, type Obj, type StyleBlock,
+} from '../engine/model/types';
 
 /** Canvas-side state (structurally compatible with ui CanvasController). */
 export interface CanvasObject {
@@ -53,6 +56,11 @@ export interface CanvasLink {
   dashed?: boolean;
   /** `<->` double-headed link (F-07). */
   bidir?: boolean;
+  /** Arrow visual model (F-12). */
+  head?: string;
+  tail?: string;
+  line?: string;
+  width?: number;
 }
 
 export interface CanvasState {
@@ -61,6 +69,19 @@ export interface CanvasState {
 }
 
 /* ---- canvas ⇄ PDL ------------------------------------------------------- */
+
+/** Style block of a canvas link (F-12 keys + dashed), or undefined when empty. */
+function linkStyle(l: CanvasLink): StyleBlock | undefined {
+  const style: StyleBlock = {
+    dashed: l.dashed === true ? true : undefined,
+    head: l.head,
+    tail: l.tail,
+    line: l.line,
+    width: l.width,
+  };
+  const empty = Object.values(style).every((v) => v === undefined);
+  return empty ? undefined : style;
+}
 
 /**
  * Canvas → doc *projection*: objects + links only, no flows/views/styles.
@@ -91,7 +112,9 @@ export function stateToDoc(state: CanvasState): Doc {
     type: l.type === '' ? undefined : l.type,
     label: l.label,
     bidir: l.bidir === true ? true : undefined,
-    style: l.dashed === true ? { dashed: true } : undefined,
+    // F-12: the arrow model lives inside the link style block on disk, so the
+    // projection must print it there too (it is also the change fingerprint)
+    style: linkStyle(l),
     pos: { line: 0, col: 0 },
   }));
   return {
@@ -195,6 +218,10 @@ export function docToState(doc: Doc, viewName?: string): CanvasState {
       label: l.label,
       dashed: l.style?.dashed === true ? true : undefined,
       bidir: l.bidir === true ? true : undefined,
+      head: l.style?.head,
+      tail: l.style?.tail,
+      line: l.style?.line,
+      width: l.style?.width,
     }));
   return { objects, links };
 }

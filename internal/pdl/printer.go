@@ -81,6 +81,18 @@ func styleLines(sb *ir.StyleBlock, depth int, p *printer) {
 	if sb.Dashed {
 		p.add(pad(depth) + "dashed")
 	}
+	if sb.Head != "" {
+		p.add(pad(depth) + "head " + sb.Head)
+	}
+	if sb.Tail != "" {
+		p.add(pad(depth) + "tail " + sb.Tail)
+	}
+	if sb.Line != "" {
+		p.add(pad(depth) + "line " + sb.Line)
+	}
+	if sb.Width != nil {
+		p.add(pad(depth) + "width " + jsNum(*sb.Width))
+	}
 	for _, r := range sb.Raw {
 		p.add(pad(depth) + r.Raw)
 	}
@@ -88,7 +100,8 @@ func styleLines(sb *ir.StyleBlock, depth int, p *printer) {
 
 func hasStyle(sb *ir.StyleBlock) bool {
 	return sb != nil && (sb.Fill != "" || sb.Stroke != "" || sb.Text != "" ||
-		sb.Icon != "" || sb.Shape != "" || sb.Dashed || len(sb.Raw) > 0)
+		sb.Icon != "" || sb.Shape != "" || sb.Dashed || sb.Head != "" ||
+		sb.Tail != "" || sb.Line != "" || sb.Width != nil || len(sb.Raw) > 0)
 }
 
 // arrowFor renders the arrow text: optional type + direction (§4).

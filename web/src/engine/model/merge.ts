@@ -45,6 +45,11 @@ export interface CanvasLinkLike {
   dashed?: boolean;
   /** `<->` double-headed link (F-07). */
   bidir?: boolean;
+  /** Arrow visual model (F-12). */
+  head?: string;
+  tail?: string;
+  line?: string;
+  width?: number;
 }
 
 export interface CanvasStateLike {
@@ -66,12 +71,12 @@ const styleIsEmpty = (s: StyleBlock | undefined): boolean =>
  */
 function withStyleKey(
   style: StyleBlock | undefined,
-  key: 'dashed',
-  value: boolean | undefined,
+  key: 'dashed' | 'head' | 'tail' | 'line' | 'width',
+  value: string | number | boolean | undefined,
 ): StyleBlock | undefined {
   const next: StyleBlock = { ...(style ?? {}) };
   if (value === undefined) delete next[key];
-  else next[key] = value;
+  else (next as Record<string, unknown>)[key] = value;
   return styleIsEmpty(next) ? undefined : next;
 }
 
@@ -108,7 +113,11 @@ function mergeLink(existing: Link | undefined, c: CanvasLinkLike): Link {
   setField(l, 'type', c.type === undefined || c.type === '' ? undefined : c.type);
   setField(l, 'label', c.label);
   setField(l, 'bidir', c.bidir === true ? true : undefined);
-  const style = withStyleKey(l.style, 'dashed', c.dashed === true ? true : undefined);
+  let style = withStyleKey(l.style, 'dashed', c.dashed === true ? true : undefined);
+  style = withStyleKey(style, 'head', c.head);
+  style = withStyleKey(style, 'tail', c.tail);
+  style = withStyleKey(style, 'line', c.line);
+  style = withStyleKey(style, 'width', c.width);
   if (style === undefined) delete l.style;
   else l.style = style;
   return l;
