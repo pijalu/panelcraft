@@ -36,6 +36,15 @@ fallback when the current text does not parse.
 e2e — paste a file with a flow, drag a node, assert the flow block is still in the code pane and in IDB.
 *Depends on:* none.
 
+**Done.** `applyCanvasState(doc, state)` in `engine/model/merge.ts` merges objects/links
+by id into the parsed document (update in place, append new, drop removed, and leave
+`flows`/`views`/`styles`/`imports`/`meta` untouched); `manager.saveCanvas` is
+`printDoc(applyCanvasState(parse(text), state))` with `stateToDoc` kept as the fallback
+when the current text does not parse. Tests: `engine/model/merge.test.ts`
+(`applyCanvasState` incl. flow/view/import/waypoint/`bidir` survival + structure),
+`workspace/workspace.test.ts` "canvas writes merge into the document", e2e
+`p0-regressions.spec.ts`. Commit `f9a0895`.
+
 ### F-02 Stable id allocation — **critical**
 *Problem:* session counter reuses ids of a loaded file (`CanvasController.ts:226`, `loadState` at `:293`);
 duplicate ids appear in the file and one entity is visually lost (review §2 D2).
@@ -43,6 +52,12 @@ duplicate ids appear in the file and one entity is visually lost (review §2 D2)
 `uniqueId(existing)` helper. Also regenerate ids on paste/duplicate (needed by F-19).
 *Tests:* unit — load `o1,o2`, add → `o3`; 20 sequential adds are unique; e2e — add 3 objects to a loaded
 file, file has 5 unique ids.
+
+**Done.** `loadState` re-baselines the object counter from the ids it just loaded and
+`addObject` probes for a free id (`uniqueId`), so a loaded file never has its ids
+reused; paste/duplicate re-allocate ids too. Tests: `CanvasController.ids.test.ts`
+("stable id allocation"), e2e `p0-regressions.spec.ts` (add to a loaded file, file has
+unique ids). Commit `f9a0895`.
 
 ### F-03 Caret-preserving editor sync
 *Problem:* full-document dispatch on every machine→editor write; caret lands at offset 0 (review §2 D4,
@@ -53,6 +68,12 @@ to the CM theme tests.
 *Tests:* unit — dispatch keeps caret at its logical position; e2e — click mid-line, wait >400 ms, caret is
 still on the same line/column (assert via `window.getSelection()`).
 
+**Done.** Machine→editor writes are prefix/suffix minimal diffs with selection restore
+and a skip when the change is empty; `scrollIntoView` only fires when the mapped
+selection leaves the viewport. Tests: `codeview/diff.test.ts` (`minimalChange`),
+`codeview/CodeEditor.caret.test.tsx` "caret preservation on machine writes", e2e
+`p0-regressions.spec.ts` (caret stays on its line across a canvas edit). Commit `f9a0895`.
+
 ### F-04 Stop canonicalising the buffer under the caret
 *Problem:* `applied()` replaces the user's text with the canonical print (`sync.ts:138-145`), adding `{ }`
 blocks mid-typing and re-flowing the doc while the user types (review §2 D3).
@@ -61,17 +82,33 @@ blocks mid-typing and re-flowing the doc while the user types (review §2 D3).
 *Tests:* unit — type one line, fire idle timer, buffer equals what the user typed; file content canonical;
 e2e — pause 600 ms mid-rename in code view, canvas does not re-layout (transform attributes unchanged).
 
+**Done.** The idle apply keeps the user's buffer verbatim; canonical text is what gets
+*written to the file*, and Format/Save canonicalise the buffer explicitly. Tests:
+`codeview/CodeEditor.caret.test.tsx` "no canonicalisation under the caret", e2e
+`p0-regressions.spec.ts` (pause mid-edit, transforms unchanged). Commit `f9a0895`.
+
 ### F-05 Printer: no empty attribute blocks
 *Problem:* every object prints `{ }` even with no attributes (`printer.ts:133-144`), so any canvas write
 touches every line and echo diffs are maximal.
 *Change:* emit the block only when it has content; grammar already allows omission (`FILE-FORMAT.md:344`).
 *Tests:* printer golden + corpus regeneration (`npm run corpus:accept`) + `format(format(x)) == format(x)`.
 
+**Done.** The printer emits an attribute block only when it has content, so a canvas
+write no longer touches every line. Tests: `format/printer.test.ts` "omits the
+attribute block when an object has no attributes" + "idempotence + IR-stability fuzz
+(50 seeds)", corpus + TS⇄Go parity fixtures regenerated. Commit `f9a0895`.
+
 ### F-06 `group` / `note` objects must survive a load
 *Problem:* palette offers them, loader filters them out (`workspace.ts:139`) — draw a boundary, it disappears.
 *Change:* render `group` (boundary rect, resizable, contains-children drag) and `note`; stop filtering;
 auto-size groups to their contained objects; `note` uses `attach` when anchors land (F-20).
 *Tests:* unit — `docToState` keeps both kinds; e2e — drop a Group, reload, still there with same size.
+
+**Done.** `group` and `note` survive `docToState`, render (boundary rect / note card)
+and round-trip; the loader no longer filters them. Tests:
+`workspace/workspace.test.ts` "keeps group and note objects", `engine/render/scenegraph.test.ts`
+cases, e2e `p1-size.spec.ts`/`p0-regressions.spec.ts`. Commits `f9a0895`,
+`9d8fc3f`.
 
 ### F-07 Persist what the properties panel shows
 *Problem:* object `dashed`, link `dashed`, link `bidir`, and any style/waypoints set in code are dropped by
@@ -81,11 +118,23 @@ and the file stay in sync, and add the missing fields to `DiagramLink`/`DiagramO
 *Tests:* unit round-trip for each field; e2e — toggle "Dashed border", reload, checkbox still checked and
 the border still dashed.
 
+**Done.** `dashed`, `bidir`, style overrides and custom properties round-trip through
+`stateToDoc` + merge, so the panel control and the file stay in sync (and clear again
+when the canvas unsets them). Tests: `engine/model/merge.test.ts` "folds canvas dashed
+into the style block and clears it again", `ui/PropertiesPanel.test.tsx`, e2e
+`p1-properties.spec.ts`. Commits `9d8fc3f`, `b3a761b`.
+
 ### F-08 Canvas-origin link semantics must not mutate
 *Problem:* `bidir: false` and `type ?? 'uses'` are injected on every canvas write (`workspace.ts:77-83`), so
 `a <-> b` becomes `a -uses-> b`.
 *Change:* remove the defaults from the projection; carry type/head/tail/line/dashed from the doc.
 *Tests:* unit — load `<->`, drag a node, link stays `<->` with the original type; e2e assertion updated.
+
+**Done.** The projection no longer injects `type ?? 'uses'` or `bidir: false`; untyped
+arrows stay untyped and `<->` stays bidirectional, with type/head/tail/line carried
+from the document. Tests: `engine/model/merge.test.ts` "does not invent a link type
+for an untyped arrow" + "keeps a bidirectional link bidirectional", e2e
+`p1-properties.spec.ts` / `p3-links.spec.ts`. Commit `9d8fc3f`.
 
 ### F-30 Machine writes must not masquerade as user typing (found in F-12 verification)
 *Problem:* every machine→editor projection was fed back through `textChanged`, so the
@@ -97,6 +146,13 @@ update-listener; focus is re-asserted when the editor was the focused element.
 *Tests:* `codeview/CodeEditor.caret.test.tsx` "machine writes are not user edits"
 (a canvas render reaches the buffer while the sync state stays `clean`).
 
+**Done.** Programmatic dispatches are flagged (`projecting`) and skipped in the
+editor's update listener, and focus is re-asserted when the editor was focused, so a
+canvas write can no longer arm an idle parse or disable CodeMirror's keymap. Tests:
+`codeview/CodeEditor.caret.test.tsx` "machine writes are not user edits" (a canvas
+render reaches the buffer while the sync chip stays clean). Commits `01a0417`,
+`79e1cc4`.
+
 ### F-31 Offline spec raced its own service worker (found in F-12 gate run)
 *Problem:* `e2e/m7-offline.spec.ts` runs two tests against the same origin; with
 `fullyParallel` they install/claim the SW concurrently and `caches.keys()[0]` could be
@@ -104,6 +160,10 @@ an empty cache created by the sibling test — an intermittent red gate.
 *Change:* the file is `serial` and the app cache is selected by name (not index), with
 the cache name in the assertion message. No retries, no weakened assertion.
 *Tests:* the spec itself, run twice in a full-suite pass.
+
+**Done.** `e2e/m7-offline.spec.ts` is `serial` and selects the app cache by name (not
+by index) with the name in the assertion message — no retries, no weakened assertion.
+Verified by running the full e2e suite repeatedly. Commit `01a0417`.
 
 ### F-32 Adopting the stored layout overwrote the first click (found in F-10 verification)
 *Problem:* `useUiLayout` adopted the persisted layout in an effect, i.e. *after* the
@@ -116,6 +176,12 @@ rail's button, so shortcuts keep firing.
 *Tests:* `ui/uiLayout.test.ts` (pure adopt maths), e2e `p1-shell.spec.ts`
 (collapse → reload → expand, keyboard shortcut round-trip).
 
+**Done.** `useUiLayout` adopts the persisted layout during render (conditional
+setState), so the first paint already shows it; collapse/expand moves focus to the
+rail button so shortcuts keep firing. Tests: `ui/uiLayout.test.ts` (pure adopt maths),
+e2e `p1-shell.spec.ts` (collapse → reload → expand, keyboard round trip). Commit
+`79e1cc4`.
+
 ### F-33 Panel shortcuts died once focus was inside a panel (found in F-23 gate run)
 *Problem:* `Ctrl/Cmd+Alt+P` was gated by the "is this a text field" guard, and
 collapsing the properties panel hands focus to an input inside it (a colour swatch).
@@ -125,6 +191,11 @@ The user pressed the documented shortcut twice and nothing happened.
 pointer toggles.
 *Tests:* e2e `p1-shell.spec.ts` (three-way shortcut round trip).
 
+**Done.** The text-entry guard now applies only to shortcut combinations that can be
+typed, so `Ctrl/Cmd+Alt+P` fires from anywhere; pointer toggles still hand focus to the
+rail. Tests: e2e `p1-shell.spec.ts` (three-way shortcut round trip, including a second
+press that starts with focus inside a panel). Commit `62a373c`.
+
 ### F-34 A broken statement was attributed to the wrong object (found in F-23 verification)
 *Problem:* the parser reports `expected arrow, got 'datastore'` at **column 1 of the
 following line**, and a failed parse returns no objects, so the "which object is
@@ -132,6 +203,12 @@ broken" mapping either pointed at an innocent object or at nothing.
 *Change:* a col-1 diagnostic is attributed to the previous statement, and
 `objectAtLine` falls back to reading `kind id` off the raw line when the parse fails.
 *Tests:* `format/spans.test.ts` (recovery fallback), e2e `p3-diagnostics.spec.ts`.
+
+**Done.** A col-1 diagnostic is attributed to the previous statement and
+`objectAtLine` falls back to reading `kind id` off the raw line when the parse fails,
+so a broken attribute rings the object it belongs to. Tests:
+`format/spans.test.ts` (raw-line recovery), e2e `p3-diagnostics.spec.ts` (ring on the
+broken statement only). Commit `62a373c`.
 
 ### F-09 Repo hygiene: no generated content
 *Problem:* `dist/release/**` (12 files, 46 MB of dry-run binaries + built pages) and
@@ -144,6 +221,12 @@ empty after e2e; document the optional history purge in `agents.md`.
 *Tests:* `npm run check` + `npm run e2e` then `git status --porcelain` empty; `git ls-files dist` empty.
 
 ---
+
+**Done.** `dist/` and run screenshots are untracked and ignored, e2e writes to
+`test-results/` with curated goldens only under `UPDATE_GOLDENS=1`, and
+`scripts/check-repo-clean.sh` (wired into the m7 gate) fails on tracked generated
+content or a dirty worktree. Verified: `git ls-files dist` is empty and
+`bash scripts/verify.sh m7` leaves `git status --porcelain` empty. Commit `9d8fc3f`.
 
 ### F-28 Startup snapshot must not be read as a canvas edit — **critical** (found in F-01 verification)
 *Problem:* the canvas emits a snapshot (empty) from its constructor and again before
@@ -161,6 +244,13 @@ empty after e2e; document the optional history purge in `agents.md`.
   "a no-op canvas change does not cancel a newer pending render", e2e
 `p0-regressions.spec.ts` (reload keeps the document).
 
+**Done.** The canvas reports hydration (`isHydrated()`), and the code-sync bridge
+ignores snapshots taken before the first load, so an empty startup pose can never be
+merged over the file; a no-op render request no longer cancels a newer pending render.
+Tests: `codeview/sync.test.ts` "a no-op canvas change does not cancel a newer pending
+render", `workspace/workspace.test.ts` startup cases, e2e `p0-regressions.spec.ts`
+(seed → reload → code pane still lists the objects). Commit `f9a0895`.
+
 ### F-29 Content must survive a reload inside the autosave window — **critical** (found in F-01 verification)
 *Problem:* `Autosaver` debounces 800 ms (FR-S1) and `beforeunload` cannot await an
   IndexedDB write, so a reload/close shortly after an edit lost it — the restored
@@ -169,6 +259,12 @@ empty after e2e; document the optional history purge in `agents.md`.
   (`Autosaver.flush()`); UI churn (tab order, focus) keeps the debounce.
 *Tests:* `workspace.test.ts` "content durability (F-29)" (store holds the new text
   with no explicit flush), e2e reload assertions in `p0-regressions.spec.ts`.
+
+**Done.** Document content writes (`saveCanvas`, `saveText`) flush the autosaver
+immediately so a reload inside the 800 ms window keeps the edit; UI churn (tab order,
+settings) keeps the debounce. Tests: `workspace/workspace.test.ts` "content durability
+(F-29)" (store holds the new text with no explicit flush), e2e reload assertions in
+`p0-regressions.spec.ts`. Commit `9d8fc3f`.
 
 ## Phase P1 — Requested UX (all depend on P0)
 
@@ -289,6 +385,14 @@ click/`Space`/`→` advance, `←` back, `P` pause, `R` restart, `Esc` exits and
 step counter, progress dots, speaker notes, reduced-motion path.
 *Tests:* e2e — start flow, click canvas to advance, counter increments, Esc restores viewport + chrome;
 screenshot of presenting mode; `prefers-reduced-motion` path.
+
+**Done.** `ui/present.ts` (state + key model), `ui/usePresentation.ts` (enter/auto-exit),
+`ui/PresentDock.tsx` (docked transport, step counter, progress dots, notes) and
+`usePresentKeys` (Space/→/←/P/R/Esc); the shell hides editor chrome via
+`.presenting` while presenting and `exit()` restores the pre-play viewport and chrome.
+Reduced motion is honoured through the camera/animator deps. Tests: `ui/present.test.ts`,
+e2e `p2-present.spec.ts` (click + keyboard advance, Esc restores viewport/chrome,
+reduced-motion path, screenshots).
 
 ### F-17 Illustration registry
 `BeatPlayer` implementations: `travel-token` (existing), `pulse` (existing), `sequential-glow` (par lanes),
@@ -468,6 +572,16 @@ Update `SPEC.md` (either implemented or moved to a post-1.0 section: FR-C5/C6/C7
 `agents.md` (new gates: corpus regeneration steps, e2e golden policy).
 *Tests:* `scripts/check-docs.sh` (links + `.pcd` fences) + a manual diff of FR list vs code grep.
 
+**Done.** `SPEC.md` gained §12.1 "v1.0 status": FR-C5/C6/C7/C8/C9/C10/C12 and
+FR-I1…I3 recorded as implemented, with curved/straight routing, mini-map, cross-file
+inlining and per-step illustrations moved to the post-v1 list. `USER-GUIDE.md`
+documents the grouped palette, inline rename, eight-handle resize/`size`, waypoints,
+hover card, saved/dirty pill, error state, templates, history affordance, present mode
+and the flow closing card. The header's "M3 workspace" copy is gone (replaced by the
+status pill, F-25). `agents.md` lists the docs/corpus/hygiene gates and the stale-dist
+pitfall; `CHANGELOG.md` carries a line per task. Test: `scripts/check-docs.sh`
+(links + every ```pcd fence parses) is part of the m7 gate. Commit `e62a3ce`.
+
 ### F-27 Performance guard for the new sync path
 Benchmark 500 objects with a single rename; assert ≤ the M7 budget in `engine/perf/nfr.test.ts`; confirm no
 regression from minimal-diff sync and merge-based saves.
@@ -506,3 +620,31 @@ positions; F-12 wants the same merge path; P2 has no format risk and can ship in
 4. Visual evidence captured for F-12, F-13, F-15, F-16, F-17, F-22 (light + dark screenshots) and stored
    per F-09's policy.
 5. `REVIEW-enhancements.md` §2 defects marked FIXED with the commit shas; SPEC/USER-GUIDE/CHANGELOG updated.
+
+---
+
+## Programme closure (measured, not asserted)
+
+Every task row above is closed. The programme gate was run end to end:
+
+| Gate | Result |
+|------|--------|
+| `npm run check` (tsc + eslint, complexity/size gates) | clean |
+| `npx vitest run` | **865 tests / 77 files passing** |
+| `npm test` (coverage thresholds) | pass — `web/src/engine/**` and `web/src/workspace/**` gated at 80 % lines/functions/statements, 60 % branches |
+| `npx playwright test` | **67 specs passing** (run after `npm run build`; the preview server serves the existing `dist`) |
+| `go test ./...`, `go vet`, `staticcheck`, `gocyclo -over 15` | green (m7 stages) |
+| `bash scripts/verify.sh m7` | **ALL STAGES GREEN** |
+| `bash scripts/check-repo-clean.sh` + `git status --porcelain` | clean; `git ls-files dist` empty |
+| `bash scripts/check-docs.sh` | OK — links resolve, every ```pcd fence parses |
+| `docs/REVIEW-enhancements.md` §2.1 | D1–D12 marked FIXED with the closing commit sha |
+| `docs/SPEC.md` §12.1 | implemented vs post-v1 requirements recorded |
+| `docs/CHANGELOG.md` | one entry per task ID (P0 → P4) |
+
+Issues discovered *during* the programme were fixed in-programme and registered as
+F-28…F-36 (F-28 startup pose written as a canvas edit, F-29 durability inside the
+autosave window, F-30 projections masquerading as typing, F-31 offline spec racing
+its service worker, F-32 layout adoption overwriting the first click, F-33 panel
+shortcut dying inside a text field, F-34 diagnostics attributed to the wrong object,
+F-35 gallery overlay swallowing editor clicks, F-36 unparsable templates). Each has
+its own Done note and regression test above.
