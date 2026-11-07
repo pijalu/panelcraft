@@ -19,6 +19,10 @@ import { useUiLayout } from './useUiLayout';
 import { layoutStyle } from './uiLayout';
 import { PanelRail, Splitter, focusRail } from './PanelChrome';
 import { InlineRename, type RenameTarget } from './InlineRename';
+import { PresentLayer } from './PresentDock';
+import { isPresenting } from './present';
+import { usePresentKeys } from './usePresentKeys';
+import type { IllustrationId } from '../engine/anim/illustrations';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
 import { useCodeSync } from './useCodeSync';
 import { useDivergedClose } from './useDivergedClose';
@@ -55,6 +59,8 @@ function SidePane(props: {
   onText(text: string): void;
   onPlay(flowKey: string): void;
   onCollapse?: () => void;
+  illustration?: IllustrationId | 'auto';
+  onIllustration?(id: IllustrationId | 'auto'): void;
 }) {
   return (
     <aside class="sidebar">
@@ -100,6 +106,8 @@ function SidePane(props: {
           version={props.version}
           onChangeText={props.onText}
           onPlay={props.onPlay}
+          illustration={props.illustration}
+          onIllustration={props.onIllustration}
         />
       )}
     </aside>
@@ -112,6 +120,7 @@ function CanvasSplit(props: {
   code: CodeSyncHandle;
   player: FlowPlayerApi;
   codeCollapsed: boolean;
+  onPresent: () => void;
   onToggleCode: () => void;
   onResizeCode: (dx: number) => void;
   onEndResizeCode: () => void;
@@ -120,7 +129,7 @@ function CanvasSplit(props: {
     <div class="canvas-split">
       <main class="canvas-wrap">
         <svg ref={props.canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
-        <PlayBar player={props.player} />
+        <PlayBar player={props.player} onPresent={props.onPresent} />
       </main>
       {props.codeCollapsed ? (
         <PanelRail id="code" label="code" onExpand={props.onToggleCode}>
@@ -198,6 +207,8 @@ function SidebarSlot(props: {
   activePath: string | null;
   onText: (text: string) => void;
   onPlay: (flowKey: string) => void;
+  illustration: IllustrationId | 'auto';
+  onIllustration: (id: IllustrationId | 'auto') => void;
 }) {
   return slot(
     props.ui.layout.panels.sidebar === 'collapsed',
@@ -213,6 +224,8 @@ function SidebarSlot(props: {
       onText={props.onText}
       onPlay={props.onPlay}
       onCollapse={() => props.ui.togglePanel('sidebar')}
+      illustration={props.illustration}
+      onIllustration={props.onIllustration}
     />,
   );
 }
@@ -252,8 +265,12 @@ function AppBody(p: {
   onView: (n: string | undefined) => void;
   sideTab: 'files' | 'flows';
   onSideTab: (t: 'files' | 'flows') => void;
+  /** F-16: enter presentation mode (PlayBar's present button). */
+  onPresent: () => void;
   sel: ReturnType<typeof selections>;
   diverged: ReturnType<typeof useDivergedClose>;
+  illustration: IllustrationId | 'auto';
+  onIllustration: (id: IllustrationId | 'auto') => void;
 }) {
   const { ws, canvas, code, ui, player, activePath, viewName } = p;
   const ctrl = canvas.ctrlRef.current;
@@ -270,6 +287,8 @@ function AppBody(p: {
           onPlay={(flowKey) => {
             if (activePath !== null) player.start(activePath, flowKey);
           }}
+          illustration={p.illustration}
+          onIllustration={p.onIllustration}
         />
         <Splitter
           id="sidebar"
@@ -304,6 +323,7 @@ function AppBody(p: {
             code={code}
             player={player}
             codeCollapsed={ui.layout.panels.code === 'collapsed'}
+            onPresent={p.onPresent}
             onToggleCode={() => ui.togglePanel('code')}
             onResizeCode={(dx) => ui.setPanelWidth('code', ui.layout.widths.code + dx)}
             onEndResizeCode={ui.flushLayout}
@@ -346,6 +366,8 @@ export function App() {
   const commitDocRef = useRef<((doc: import('../engine/model/types').Doc) => void) | null>(null);
   // F-15: which object is being renamed in place (null = no overlay)
   const [renaming, setRenaming] = useState<string | null>(null);
+  // F-16: presentation is explicit (the inline playbar keeps the chrome)
+  const [present, setPresent] = useState(false);
   const canvas = useCanvasController(
     ws.manager,
     ws.ready,
@@ -380,10 +402,17 @@ export function App() {
     viewRef: viewNameRef,
   });
   commitDocRef.current = code.commitDoc;
-  const player = useFlowStage({ manager, canvas, activePath });
+  const [illustration, setIllustration] = useState<IllustrationId | 'auto'>('auto');
+  const player = useFlowStage({ manager, canvas, activePath, illustration });
   const ui = useUiLayout(manager, ws.ready, ws.version);
   const sel = selections(canvas.snap);
   const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
+  const presenting = present && isPresenting(player.state.status);
+  usePresentKeys(player, presenting);
+  // leaving playback always leaves presentation (Esc, exit button, flow end)
+  useEffect(() => {
+    if (!isPresenting(player.state.status)) setPresent(false);
+  }, [player.state.status]);
   const diverged = useDivergedClose({
     manager: ws.manager,
     activePath,
@@ -399,7 +428,8 @@ export function App() {
 
   return (
     <div
-      class="app-shell"
+      class={`app-shell${presenting ? ' presenting' : ''}`}
+      data-presenting={presenting ? 'true' : 'false'}
       data-testid="app-shell"
       data-panels={Object.entries(ui.layout.panels).map(([k, v]) => `${k}:${v}`).join(',')}
       style={layoutStyle(ui.layout)}
@@ -422,9 +452,13 @@ export function App() {
         onView={setViewName}
         sideTab={sideTab}
         onSideTab={setSideTab}
+        onPresent={() => setPresent(true)}
         sel={sel}
         diverged={diverged}
+        illustration={illustration}
+        onIllustration={setIllustration}
       />
+      {presenting && <PresentLayer player={player} />}
       {renameTarget && (
         <InlineRename
           target={renameTarget}

@@ -8,6 +8,8 @@ import type { FlowPlayerApi } from './useFlowPlayer';
 
 export interface PlayBarProps {
   player: FlowPlayerApi;
+  /** F-16: enter the fullscreen presentation shell. */
+  onPresent?: () => void;
 }
 
 function transportLabel(p: FlowPlayerApi): string {
@@ -19,13 +21,23 @@ function transportLabel(p: FlowPlayerApi): string {
 }
 
 /** Transport bar overlaying the canvas while a flow plays. */
-export function PlayBar({ player: p }: PlayBarProps) {
+export function PlayBar({ player: p, onPresent }: PlayBarProps) {
   const st = p.state;
   if (st.status === 'idle') return null;
   const alt = st.awaitingChoice;
 
   return (
     <div class="playbar" data-testid="playbar" data-status={st.status}>
+      {onPresent && (
+        <button
+          type="button"
+          data-testid="pb-present"
+          title="Present (fullscreen, no editor chrome)"
+          onClick={onPresent}
+        >
+          ⛶
+        </button>
+      )}
       <button
         type="button"
         data-testid="pb-restart"

@@ -279,6 +279,17 @@ screenshot of presenting mode; `prefers-reduced-motion` path.
 planner untouched.
 *Tests:* unit per player (keyframe/DOM end-state), e2e video-frame assertion on one player + screenshots.
 
+**Done.** `engine/anim/illustrations.ts` is the registry: six styles
+(`travel-token`, `pulse`, `sequential-glow`, `packet-burst`, `compare-split`,
+`trail-fade`) with a per-beat-kind default and a resolver that degrades gracefully
+when a beat has nothing to travel. `FlowAnimator.setIllustration` draws them (token +
+dash, dash only, staggered glow — which keeps FR-F4 concurrent lane travel — a six-dot
+burst, and a divider between alternatives); the flow header offers `auto` or an
+explicit style and the planner is untouched. Tests:
+`engine/anim/illustrations.test.ts` (registry, fallbacks, DOM end-state per style,
+stop() cleanup), e2e `p2-illustrations.spec.ts` (auto token vs explicit trail-fade,
+light + dark screenshots).
+
 ### F-18 Flow editing parity
 Drag-reorder steps (exists as `moveStep`, wire the UI), duplicate step, per-step delay editing, dirty
 indicators, sticky flow header with "play from step".

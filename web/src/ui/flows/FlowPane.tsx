@@ -6,6 +6,7 @@
 // App forwards to code.machine.textChanged so the sync machine stays the
 // single writer (D-M4-6). Takes narrow ports (textOf), no manager import.
 import { useRef, useState } from 'preact/hooks';
+import { ILLUSTRATIONS, ILLUSTRATION_IDS, type IllustrationId } from '../../engine/anim/illustrations';
 import { parsePDL } from '../../engine/format/parser';
 import type { Branch, Doc, Flow, FlowStep } from '../../engine/model/types';
 import {
@@ -32,6 +33,9 @@ export interface FlowPaneProps {
   onChangeText(text: string): void;
   /** Start playback of a flow in the active file. */
   onPlay(flowKey: string): void;
+  /** F-17: illustration style for playback ('auto' follows the beat kind). */
+  illustration?: IllustrationId | 'auto';
+  onIllustration?(id: IllustrationId | 'auto'): void;
 }
 
 interface Sel {
@@ -231,6 +235,8 @@ function FlowList(props: {
   selFlow: string;
   onPick(flowKey: string): void;
   onPlay(flowKey: string): void;
+  illustration?: IllustrationId | 'auto';
+  onIllustration?(id: IllustrationId | 'auto'): void;
 }) {
   return (
     <ul class="flow-list" data-testid="flow-list">
@@ -244,6 +250,25 @@ function FlowList(props: {
             <button type="button" title="Play" data-testid={`flow-play-${key}`} onClick={() => props.onPlay(key)}>
               ▶
             </button>
+            {props.onIllustration && props.selFlow === key && (
+              <select
+                class="flow-illustration"
+                data-testid="flow-illustration"
+                aria-label="Illustration style"
+                title="How this flow is illustrated"
+                value={props.illustration ?? 'auto'}
+                onChange={(e) =>
+                  props.onIllustration?.((e.target as HTMLSelectElement).value as IllustrationId | 'auto')
+                }
+              >
+                <option value="auto">auto</option>
+                {ILLUSTRATION_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {ILLUSTRATIONS[id].label}
+                  </option>
+                ))}
+              </select>
+            )}
           </li>
         );
       })}
@@ -390,7 +415,14 @@ export function FlowPane(props: FlowPaneProps) {
 
   return (
     <div class="flow-pane" data-testid="flow-pane">
-      <FlowList flows={doc.flows} selFlow={selFlow} onPick={pick} onPlay={props.onPlay} />
+      <FlowList
+        flows={doc.flows}
+        selFlow={selFlow}
+        onPick={pick}
+        onPlay={props.onPlay}
+        illustration={props.illustration}
+        onIllustration={props.onIllustration}
+      />
       <button type="button" data-testid="flow-add" onClick={addFlowRow}>+ flow</button>
       {flow !== null && (
         <FlowDetail

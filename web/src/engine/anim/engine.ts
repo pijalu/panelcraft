@@ -51,6 +51,8 @@ const mkEl = (tag: string, cls: string): SVGGElement => {
   return e;
 };
 
+import { resolveIllustration, type IllustrationId } from './illustrations';
+
 export class FlowAnimator {
   private readonly svg: SVGSVGElement;
   private readonly player: AnimPlayer;
@@ -59,6 +61,8 @@ export class FlowAnimator {
   private readonly reduced: boolean;
   private dimmed: Element[] = [];
   private emphasized: Element[] = [];
+  /** F-17: flow-level illustration choice (null = auto per beat kind). */
+  private illustration: IllustrationId | null = null;
 
   constructor(svg: SVGSVGElement, deps: AnimatorDeps) {
     this.svg = svg;
@@ -66,6 +70,11 @@ export class FlowAnimator {
     this.geometry = deps.geometry ?? domGeometry;
     this.motion = deps.motion ?? MOTION;
     this.reduced = deps.reducedMotion ?? false;
+  }
+
+  /** F-17: pick the illustration style for this flow (null = auto). */
+  setIllustration(id: IllustrationId | null): void {
+    this.illustration = id;
   }
 
   /** Prep the anim layer (world child). Called lazily; idempotent. Queried
@@ -114,8 +123,80 @@ export class FlowAnimator {
       }
       return;
     }
-    this.rings(this.allActors(beat), ctx);
-    for (const link of this.allLinks(beat)) this.travel(link);
+    const illu = resolveIllustration(this.illustration, beat.kind, this.allLinks(beat).length);
+    if (illu === 'sequential-glow') this.rings(this.allActors(beat), ctx, 90);
+    else this.rings(this.allActors(beat), ctx);
+    this.applyIllustration(illu, beat, ctx);
+  }
+
+  /** F-17: draw the chosen illustration for this beat. */
+  private applyIllustration(illu: IllustrationId, beat: Beat, ctx: BeatCtx): void {
+    switch (illu) {
+      case 'travel-token':
+        for (const link of this.allLinks(beat)) this.travel(link, true);
+        return;
+      case 'trail-fade':
+        for (const link of this.allLinks(beat)) this.travel(link, false);
+        return;
+      case 'sequential-glow':
+        // the staggered glow is additive: the lane links still travel (FR-F4)
+        for (const link of this.allLinks(beat)) this.travel(link, true);
+        return;
+      case 'packet-burst': {
+        const first = this.allActors(beat)[0];
+        if (first !== undefined) this.burst(first, ctx);
+        return;
+      }
+      case 'compare-split': {
+        const actors = this.allActors(beat);
+        if (actors.length >= 2) this.split(actors[0]!, actors[1]!, ctx);
+        return;
+      }
+      default:
+        return; // pulse / sequential-glow: the rings already carry the beat
+    }
+  }
+
+  /** F-17 packet-burst: six dots leave the actor's box and fade out. */
+  private burst(id: string, ctx: BeatCtx): void {
+    const r = ctx.rectOf(id);
+    if (r === null) return;
+    const layer = this.ensureLayer();
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 * i) / 6;
+      const dot = mkEl('circle', 'pc-burst');
+      dot.setAttribute('r', '3');
+      layer.appendChild(dot);
+      this.player.animate(
+        dot,
+        [
+          { transform: `translate(${cx}px, ${cy}px)`, opacity: 1 },
+          {
+            transform: `translate(${cx + Math.cos(angle) * 34}px, ${cy + Math.sin(angle) * 34}px)`,
+            opacity: 0,
+          },
+        ],
+        { durationMs: this.motion.ringMs, easing: 'ease-out' },
+      );
+    }
+  }
+
+  /** F-17 compare-split: a divider between the two alternatives. */
+  private split(a: string, b: string, ctx: BeatCtx): void {
+    const ra = ctx.rectOf(a);
+    const rb = ctx.rectOf(b);
+    if (ra === null || rb === null) return;
+    const x = (ra.x + ra.w / 2 + rb.x + rb.w / 2) / 2;
+    const top = Math.min(ra.y, rb.y) - 16;
+    const bottom = Math.max(ra.y + ra.h, rb.y + rb.h) + 16;
+    const line = mkEl('line', 'pc-split');
+    line.setAttribute('x1', String(x));
+    line.setAttribute('y1', String(top));
+    line.setAttribute('x2', String(x));
+    line.setAttribute('y2', String(bottom));
+    this.ensureLayer().appendChild(line);
   }
 
   /** Cancel nothing (CSS transitions finish naturally) but restore the scene. */
@@ -148,11 +229,11 @@ export class FlowAnimator {
     layer.appendChild(g);
   }
 
-  private rings(actors: string[], ctx: BeatCtx): void {
+  private rings(actors: string[], ctx: BeatCtx, staggerMs = 0): void {
     const layer = this.ensureLayer();
-    for (const id of actors) {
+    actors.forEach((id, i) => {
       const r = ctx.rectOf(id);
-      if (r === null) continue;
+      if (r === null) return;
       const ring = mkEl('rect', 'pc-ring');
       ring.setAttribute('x', String(r.x - 6));
       ring.setAttribute('y', String(r.y - 6));
@@ -167,13 +248,13 @@ export class FlowAnimator {
           { opacity: 0.45, transform: 'scale(1.06)' },
           { opacity: 1, transform: 'scale(1)' },
         ],
-        { durationMs: this.motion.ringMs, easing: 'ease-in-out' },
+        { durationMs: this.motion.ringMs, easing: 'ease-in-out', delayMs: staggerMs * i },
       );
-    }
+    });
   }
 
   /** Token circle + trailing dash glide along the resolved link path. */
-  private travel(link: BeatLink): void {
+  private travel(link: BeatLink, withToken = true): void {
     const layer = this.ensureLayer();
     const pathEl = this.svg.querySelector(`.pc-link[data-id="${link.linkId}"] .pc-route`);
     if (pathEl === null) return;
@@ -192,6 +273,7 @@ export class FlowAnimator {
       ],
       { durationMs: this.motion.tokenMs, easing: 'linear' },
     );
+    if (!withToken) return; // trail-fade: the dash is the whole illustration
     // token: sampled keyframes along the path geometry
     const token = mkEl('circle', 'pc-token');
     token.setAttribute('r', String(TOKEN_R));

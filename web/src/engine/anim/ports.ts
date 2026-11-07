@@ -23,6 +23,8 @@ export interface AnimOpts {
   durationMs: number;
   /** CSS easing; 'linear' for progress-like motion (STYLE-GUIDE Motion). */
   easing?: string;
+  /** Start offset (F-17 sequential-glow staggers parallel actors). */
+  delayMs?: number;
 }
 
 export interface AnimHandle {
@@ -41,7 +43,7 @@ export const waapiPlayer: AnimPlayer = {
       el as Element & {
         animate?: (
           kf: Keyframe[],
-          o: { duration: number; easing: string; fill: 'none' },
+          o: { duration: number; easing: string; fill: 'none'; delay?: number },
         ) => { cancel(): void };
       }
     ).animate;
@@ -49,7 +51,12 @@ export const waapiPlayer: AnimPlayer = {
     const anim = a.call(
       el,
       keyframes,
-      { duration: opts.durationMs, easing: opts.easing ?? 'linear', fill: 'none' },
+      {
+        duration: opts.durationMs,
+        easing: opts.easing ?? 'linear',
+        fill: 'none',
+        delay: opts.delayMs ?? 0,
+      },
     );
     return anim === undefined ? { cancel: () => {} } : { cancel: () => anim.cancel() };
   },

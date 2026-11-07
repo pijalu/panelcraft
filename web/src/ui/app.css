@@ -97,6 +97,133 @@ body {
   overflow-y: auto;
 }
 
+/* F-17: illustration artefacts in the anim layer */
+.pc-burst {
+  fill: var(--pc-accent);
+}
+
+.pc-split {
+  stroke: var(--pc-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.flow-illustration {
+  min-height: 28px;
+  font-size: var(--pc-text-xs);
+  max-width: 120px;
+}
+
+/* F-16: present mode — editor chrome disappears, the diagram owns the viewport */
+.app-shell.presenting .app-header,
+.app-shell.presenting .sidebar,
+.app-shell.presenting .palette,
+.app-shell.presenting .code-pane,
+.app-shell.presenting .props-col,
+.app-shell.presenting .panel-rail,
+.app-shell.presenting .panel-splitter,
+.app-shell.presenting .viewbar {
+  display: none;
+}
+
+.app-shell.presenting .app-body {
+  padding-bottom: 96px;
+}
+
+.present-advance {
+  position: fixed;
+  inset: 0 0 96px 0;
+  z-index: 20;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.present-advance:focus-visible {
+  outline: 2px solid var(--pc-accent);
+  outline-offset: -4px;
+}
+
+.present-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--pc-surface);
+  border-top: 1px solid var(--pc-border);
+}
+
+.present-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.present-row button,
+.present-choices button {
+  min-width: 32px;
+  min-height: 32px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.present-row button:hover,
+.present-choices button:hover {
+  border-color: var(--pc-accent);
+  color: var(--pc-accent);
+}
+
+.present-counter {
+  font-variant-numeric: tabular-nums;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-sm);
+  margin-left: auto;
+}
+
+.present-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.present-dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--pc-border);
+  background: transparent;
+  cursor: pointer;
+}
+
+.present-dot.current {
+  background: var(--pc-accent);
+  border-color: var(--pc-accent);
+}
+
+.present-notes {
+  margin: 0;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-fg);
+  min-height: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .present-dot,
+  .present-row button {
+    transition: none;
+  }
+}
+
 /* F-15: in-place rename overlay (fixed, so it tracks pan/zoom in screen space) */
 .inline-rename {
   position: fixed;
@@ -1109,7 +1236,134 @@ marker .pc-arrow[fill='none'] {
   background: var(--pc-surface);
 }
 
-.code-pane-head /* F-15: in-place rename overlay (fixed, so it tracks pan/zoom in screen space) */
+.code-pane-head /* F-17: illustration artefacts in the anim layer */
+.pc-burst {
+  fill: var(--pc-accent);
+}
+
+.pc-split {
+  stroke: var(--pc-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.flow-illustration {
+  min-height: 28px;
+  font-size: var(--pc-text-xs);
+  max-width: 120px;
+}
+
+/* F-16: present mode — editor chrome disappears, the diagram owns the viewport */
+.app-shell.presenting .app-header,
+.app-shell.presenting .sidebar,
+.app-shell.presenting .palette,
+.app-shell.presenting .code-pane,
+.app-shell.presenting .props-col,
+.app-shell.presenting .panel-rail,
+.app-shell.presenting .panel-splitter,
+.app-shell.presenting .viewbar {
+  display: none;
+}
+
+.app-shell.presenting .app-body {
+  padding-bottom: 96px;
+}
+
+.present-advance {
+  position: fixed;
+  inset: 0 0 96px 0;
+  z-index: 20;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.present-advance:focus-visible {
+  outline: 2px solid var(--pc-accent);
+  outline-offset: -4px;
+}
+
+.present-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--pc-surface);
+  border-top: 1px solid var(--pc-border);
+}
+
+.present-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.present-row button,
+.present-choices button {
+  min-width: 32px;
+  min-height: 32px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.present-row button:hover,
+.present-choices button:hover {
+  border-color: var(--pc-accent);
+  color: var(--pc-accent);
+}
+
+.present-counter {
+  font-variant-numeric: tabular-nums;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-sm);
+  margin-left: auto;
+}
+
+.present-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.present-dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--pc-border);
+  background: transparent;
+  cursor: pointer;
+}
+
+.present-dot.current {
+  background: var(--pc-accent);
+  border-color: var(--pc-accent);
+}
+
+.present-notes {
+  margin: 0;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-fg);
+  min-height: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .present-dot,
+  .present-row button {
+    transition: none;
+  }
+}
+
+/* F-15: in-place rename overlay (fixed, so it tracks pan/zoom in screen space) */
 .inline-rename {
   position: fixed;
   z-index: 40;

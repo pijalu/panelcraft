@@ -12,11 +12,14 @@ import type { Rect, Size } from '../engine/render/viewport';
 import { useFlowPlayer, type FlowPlayerApi } from './flows/useFlowPlayer';
 import type { WorkspaceManager } from '../workspace/workspace';
 import type { CanvasHandle } from './useWorkspace';
+import type { IllustrationId } from '../engine/anim/illustrations';
 
 export interface FlowStageDeps {
   manager: WorkspaceManager;
   canvas: CanvasHandle;
   activePath: string | null;
+  /** F-17: illustration style for playback ('auto' = per beat kind). */
+  illustration?: IllustrationId | 'auto';
 }
 
 /** DOM rect of a scene element in SCREEN coordinates (null when invisible). */
@@ -47,9 +50,22 @@ export function useFlowStage(deps: FlowStageDeps): FlowPlayerApi {
       view: (): Size => ({ w: svg.clientWidth, h: svg.clientHeight }),
       player: waapiPlayer,
       clock: systemClock,
+      // F-16: reduced-motion users get instant camera moves and no beat animation
+      reducedMotion:
+        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+          ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          : false,
     });
     setStage({ animator: new FlowAnimator(svg, { player: waapiPlayer }), camera });
   }, [stage, canvas.svgRef, canvas.ctrlRef]);
+
+  // F-17: apply the flow's illustration choice to the animator
+  useEffect(() => {
+    if (stage === null) return;
+    stage.animator.setIllustration(
+      deps.illustration === undefined || deps.illustration === 'auto' ? null : deps.illustration,
+    );
+  }, [stage, deps.illustration]);
 
   const noopBeat = useMemo(() => ({ play: () => {}, stop: () => {} }), []);
   const noopCam = useMemo(() => ({ focus: () => {}, save: () => {}, restoreSaved: () => {} }), []);
