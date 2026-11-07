@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "goals": [
+    {
+      "id": "qg-1794034657105101000-4ccd3617a184",
+      "name": "quiet.lark",
+      "objective": "Deliver milestone M1 — Format engine — per docs/IMPLEMENTATION-PLAN.md §3, WPs M1-WP1..M1-WP10: freeze IR schema (TS+Go), PDL lexer/parser + canonical printer (TS), IR ops + validation P100–P204 (TS), mermaid flowchart + C4 import converters, Go port (internal/pdl + internal/ir) with mirrored tables, golden corpus ≥15 seeds + parity infra, CLI validate/convert wired, grammar freeze with errata loop.",
+      "completionCriterion": "Corpus parity green TS⇄Go on all testdata/corpus files (IR diff empty), ≥15 seeds incl. docs/architecture/*.pcd validated, coverage ≥80% engine/format+model, grammar frozen (errata recorded in FILE-FORMAT.md), and `bash scripts/verify.sh m1` exits 0 with evidence in docs/milestones/M1.md.",
+      "verifyCommand": "bash scripts/verify.sh m1",
+      "freshContext": true,
+      "handover": "CONTEXT: specs on disk; chat unnecessary. ENTRY READS ONLY: agents.md; docs/IMPLEMENTATION-PLAN.md §3 (WP list); docs/FILE-FORMAT.md FULL (it is the contract you implement); tail of docs/milestones/M0.md (state+evidence); grep SPEC §6/§7/§8.2/§14 as needed. PROTOCOL: (a) decisions+evidence → docs/milestones/M1.md continuously; (b) FIRST task: extend scripts/verify.sh with stage m1 (corpus parity + coverage gates) so done is machine-checkable; (c) parser+printer+IR ops in WP-sized PRs, table-driven tests, fuzz seeded; (d) Go port mirrors TS via shared JSON fixtures — parity is a gate, not a hope; (e) grammar ambiguities → FILE-FORMAT.md errata + corpus case in same PR. EXIT CONTRACT: verify.sh m1 exit 0; corpus ≥15 seeds with .ir.json goldens regenerated via corpus:accept (never hand-edited); `panelcraft validate docs/architecture` exit 0 (fix seed grammar if errata needed — that is dogfooding working); docs/milestones/M1.md complete. Next goal (M2) starts cold: needs only its handover + PLAN §4 + M1.md tail.",
+      "createdAt": "2026-11-07T07:57:37.1051+01:00",
+      "updatedAt": "2026-11-07T07:57:37.1051+01:00"
+    },
+    {
+      "id": "qg-1794034657105307000-2d0486d4caa4",
+      "name": "azure.puma",
+      "objective": "Deliver milestone M2 — Canvas MVP — per docs/IMPLEMENTATION-PLAN.md §4, WPs M2-WP1..M2-WP10: viewport+input, scene-graph SVG renderer (layers, diff-patch, stable ids), hit-testing/selection, drag/resize/snap, C4 shape set on theme tokens, link UX with orthogonal router v1, properties panel, undo/redo stack, palette, S1 e2e + vision round 1 + perf baseline.",
+      "completionCriterion": "S1 e2e scenario passes (create diagram via palette drop + link + properties, screenshots light/dark), vision review round 1 recorded in docs/milestones/M2.md with defects closed, perf baseline vs N1 logged, coverage ≥80% engine/render + workspace/undo, and `bash scripts/verify.sh m2` exits 0.",
+      "verifyCommand": "bash scripts/verify.sh m2",
+      "freshContext": true,
+      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §4 (WP list); tail docs/milestones/M1.md (IR schema + grammar freeze notes — you consume IR, never re-parse); grep SPEC §4.2 (FR-C1–C12), §5 N1, STYLE-GUIDE for visuals. PROTOCOL: (a) evidence → docs/milestones/M2.md continuously; (b) FIRST task: extend scripts/verify.sh stage m2 (e2e S1 + visual baseline + coverage gates); (c) pure-TS engine modules (render/undo) get unit tests before UI wiring; (d) viewport math + hit-testing are unit-test cores, DOM wiring thin; (e) orthogonal router timeboxed — fallback curved-only with decision note in M2.md; (f) screenshots per STYLE-GUIDE checklist for vision round. EXIT CONTRACT: verify.sh m2 exit 0; S1 green; vision round 1 findings logged + fixed; perf numbers recorded. Next goal (M3) cold-starts from its handover + PLAN §5 + M2.md tail.",
+      "createdAt": "2026-11-07T07:57:37.105306+01:00",
+      "updatedAt": "2026-11-07T07:57:37.105306+01:00"
+    },
+    {
+      "id": "qg-1794034657105431000-99ae583b9954",
+      "name": "crimson.koi",
+      "objective": "Deliver milestone M3 — Workspace \u0026 storage — per docs/IMPLEMENTATION-PLAN.md §5, WPs M3-WP1..M3-WP5: virtual FS + tree UI + tabs (API freeze), IndexedDB store with autosave + forward-only migrations + Storage port (in-memory fallback), owned ZIP container over CompressionStream + lazy fflate fallback, per-file import/export .pcd/.mmd/.svg/.png, S4 e2e incl. quota + ephemeral paths.",
+      "completionCriterion": "S4 e2e passes (workspace ZIP export → storage clear → import → identical; quota-error path mocked), FR-W1–W5 and FR-S1–S4 covered by tests, coverage ≥80% workspace/*, and `bash scripts/verify.sh m3` exits 0 with evidence in docs/milestones/M3.md.",
+      "verifyCommand": "bash scripts/verify.sh m3",
+      "freshContext": true,
+      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §5; tail docs/milestones/M2.md; grep SPEC §4.1 (FR-W*), §4.8 (FR-S*), ADR-0003 (storage decisions). PROTOCOL: (a) evidence → docs/milestones/M3.md continuously; (b) FIRST task: extend scripts/verify.sh stage m3; (c) FS API freeze at M3-WP1 end — record exact signatures in M3.md (M4 consumes them); (d) ZIP container code over CompressionStream owned+tested, fflate fallback behind feature detect (lazy); (e) storage tests via fake-indexeddb incl. migration + corrupt-db paths. EXIT CONTRACT: verify.sh m3 exit 0; S4 green incl. no-network assertion still true after storage layer; M3.md complete. Next goal (M4) cold-starts from its handover + PLAN §6 + M3.md tail.",
+      "createdAt": "2026-11-07T07:57:37.105431+01:00",
+      "updatedAt": "2026-11-07T07:57:37.105431+01:00"
+    },
+    {
+      "id": "qg-1794034657105651000-7716b7d5337c",
+      "name": "emerald.wolf",
+      "objective": "Deliver milestone M4 — Code view \u0026 mermaid export — per docs/IMPLEMENTATION-PLAN.md §6, WPs M4-WP1..M4-WP6: CodeMirror 6 component + PDL mode, two-way sync state machine (test-first), diagnostics line:col mapping + problems panel, format-on-save + diverged-buffer prompt, mermaid exporter with declared feature drop + golden outputs, S2 e2e.",
+      "completionCriterion": "S2 e2e passes (mermaid paste → canvas renders → canvas edit → code view updates), two-way sync state machine fully transition-tested, mermaid exporter goldens committed per corpus file, FR-K1–K5 + FR-M4/M5 covered, and `bash scripts/verify.sh m4` exits 0 with evidence in docs/milestones/M4.md.",
+      "verifyCommand": "bash scripts/verify.sh m4",
+      "freshContext": true,
+      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §6; tail docs/milestones/M3.md (FS API signatures); grep SPEC §4.3 (FR-K*), §4.4 (FR-M4/M5), FILE-FORMAT §9 (export contract). PROTOCOL: (a) evidence → docs/milestones/M4.md continuously; (b) FIRST task: extend scripts/verify.sh stage m4; (c) sync state machine is the bug-prone core — TEST-FIRST mandate: exhaustive transition table before UI wiring (agents.md stuck-protocol applies hard here); (d) exporter emits FILE-FORMAT §9 exact shape — golden tests per corpus file, re-import property test (lossless-to-declared-subset); (e) CodeMirror integration stays thin over engine/format diagnostics. EXIT CONTRACT: verify.sh m4 exit 0; S2 green; exporter goldens committed; M4.md complete. Next goal (M5) cold-starts from its handover + PLAN §7 + M4.md tail.",
+      "createdAt": "2026-11-07T07:57:37.105651+01:00",
+      "updatedAt": "2026-11-07T07:57:37.105651+01:00"
+    },
+    {
+      "id": "qg-1794034657105859000-4b36a777e9e1",
+      "name": "honest.dog",
+      "objective": "Deliver milestone M5 — Flows \u0026 animation — per docs/IMPLEMENTATION-PLAN.md §7, WPs M5-WP1..M5-WP8: step machine (refs, playback plan builder), anim engine (WAAPI, token travel, dim sets, reduced-motion) with Clock/AnimPlayer ports, camera controller, flow editor UI (inspectors per step type), play mode UI + ARIA narration hook, inline SVG icon set (GPL-checked sources), theme polish, S3 e2e + vision round 2.",
+      "completionCriterion": "S3 e2e passes (6-step flow incl. alt branch chooser + par concurrency assertions + camera + dim end-states), all 8 step types unit-covered incl. cross-file goto, reduced-motion path asserted, FR-F1–F6 covered, vision review round 2 closed in docs/milestones/M5.md, and `bash scripts/verify.sh m5` exits 0.",
+      "verifyCommand": "bash scripts/verify.sh m5",
+      "freshContext": true,
+      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §7; tail docs/milestones/M4.md; grep SPEC §4.5 (FR-F*, step table), STYLE-GUIDE motion tokens. PROTOCOL: (a) evidence → docs/milestones/M5.md continuously; (b) FIRST task: extend scripts/verify.sh stage m5; (c) flows+anim are pure TS with Clock/AnimPlayer ports — deterministic fake-clock tests, no real timers in CI; (d) playback plan builder separated from executor (unit-test the plan, snapshot end-states); (e) icon set: inline SVG only, license check noted in M5.md per ADR-0005 — no icon fonts/CDN (agents.md rule 8); (f) timings come from theme config, never hard-coded. EXIT CONTRACT: verify.sh m5 exit 0; S3 green; reduced-motion asserted; vision round 2 logged+closed; M5.md complete. Next goal (M6) cold-starts from its handover + PLAN §8 + M5.md tail.",
+      "createdAt": "2026-11-07T07:57:37.105859+01:00",
+      "updatedAt": "2026-11-07T07:57:37.105859+01:00"
+    },
+    {
+      "id": "qg-1794034657106060000-9fa49aa21a3c",
+      "name": "honest.ursa",
+      "objective": "Deliver milestone M6 — Views, tags, layout, search, snapshots — per docs/IMPLEMENTATION-PLAN.md §8, WPs M6-WP1..M6-WP8: tags + filter fade, named views (hide tags/ids, saved positions, pins), dagre auto-layout behind LayoutEngine port with deterministic ordering + apply-to-file, dependencies view, quick search (Ctrl+P), snapshots in IDB, optional seq export (M6-WP7, droppable per slip protocol), e2e additions + vision round 3.",
+      "completionCriterion": "FR-V1–V4 + FR-W6/W7 covered by tests and e2e additions green (tag filter fade, view switch, deterministic layout smoke, search jump), vision review round 3 closed in docs/milestones/M6.md, and `bash scripts/verify.sh m6` exits 0. M6-WP7 (seq export) is optional: if cut, backlog entry exists in SPEC §12 per slip protocol.",
+      "verifyCommand": "bash scripts/verify.sh m6",
+      "freshContext": true,
+      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §8 + §10 slip protocol; tail docs/milestones/M5.md; grep SPEC §4.6 (FR-V*), §4.1 (FR-W6/W7). PROTOCOL: (a) evidence → docs/milestones/M6.md continuously; (b) FIRST task: extend scripts/verify.sh stage m6; (c) auto-layout must be deterministic — stable sort by id pre/post dagre, pinned nodes excluded, determinism unit test is the gate; (d) \"apply layout to file\" writes positions only on explicit commit; (e) schedule slip → cut order: M6-WP7 first (backlog entry REQUIRED in same PR), then scope-reduce M6-WP4/WP5 — never silently. EXIT CONTRACT: verify.sh m6 exit 0; vision round 3 logged+closed; any scope cuts recorded in SPEC §12 + M6.md. Next goal (M7) cold-starts from its handover + PLAN §9 + M6.md tail.",
+      "createdAt": "2026-11-07T07:57:37.10606+01:00",
+      "updatedAt": "2026-11-07T07:57:37.10606+01:00"
+    },
+    {
+      "id": "qg-1794034657106238000-0bbccc765e78",
+      "name": "gleaming.quail",
+      "objective": "Deliver milestone M7 — Hardening \u0026 release v1.0 — per docs/IMPLEMENTATION-PLAN.md §9, WPs M7-WP1..M7-WP7: a11y pass (keyboard-only, ARIA narration wired, contrast both themes), perf vs N1–N3 budgets (virtualize/cull only if missed), service worker offline shell, security audit (SVG sanitizer fuzz, CLI traversal), docs complete (README/ARCHITECTURE/user guide/CLI ref/CHANGELOG), release engineering (binary matrix + checksums + pages live + boot-smoke per OS), v1.0 corpus freeze + final vision round + retro.",
+      "completionCriterion": "All SPEC §5 NFRs measured with evidence (N1 perf numbers vs budget, N5 axe e2e green + manual checklist, N7 asset scan + no-network suite, N11 offline build), S1–S7 all green in one run, release dry run produces binaries (linux/darwin/windows × amd64/arm64 + checksums) and pages artifact, v1.0 ready: final vision round closed, docs complete (README/ARCHITECTURE/user guide/CLI ref/CHANGELOG), retro + backlog groom in docs/milestones/M7.md, and `bash scripts/verify.sh m7` exits 0.",
+      "verifyCommand": "bash scripts/verify.sh m7",
+      "freshContext": true,
+      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §9 (M7 WPs) + §10 rules + §11 risks; tail docs/milestones/M6.md; grep SPEC §5 (all NFRs), §4.9/§4.10 (CLI/hosting), ADR-0004 (deps), ADR-0005 (license). PROTOCOL: (a) evidence → docs/milestones/M7.md continuously; (b) FIRST task: extend scripts/verify.sh stage m7 (NFR assertions + release dry run); (c) perf: measure before optimizing — layer virtualization/culling ONLY if N1 budget missed, record before/after; (d) security: SVG sanitizer fuzz tests + CLI path-traversal tests are gates; (e) scope-cut order per PLAN §10.5 — offline SW (M7-WP3) first candidate for v1.1 with backlog entry; (f) release dry run to a test tag before real v1.0.0. EXIT CONTRACT: verify.sh m7 exit 0; all scenarios green; NFR table in M7.md filled with command outputs; final vision round closed; retro written; v1.0 tag ready. Project complete — no next goal; report final status.",
+      "createdAt": "2026-11-07T07:57:37.106238+01:00",
+      "updatedAt": "2026-11-07T07:57:37.106238+01:00"
+    }
+  ]
+}

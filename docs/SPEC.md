@@ -1,0 +1,462 @@
+# PanelCraft — Product & Technical Specification
+
+**Repository:** https://github.com/pijalu/panelcraft
+**Version:** 1.0-draft · **Status:** Approved for implementation (M0)
+**Related docs:** [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) · [FILE-FORMAT.md](FILE-FORMAT.md) · [architecture/](architecture/) (PDL workspace, see §14) · [../agents.md](../agents.md) · ADRs in [adr/](adr/)
+
+---
+
+## 1. Summary
+
+PanelCraft is a client-only web application for creating, editing, animating and sharing
+software architecture diagrams, inspired by IcePanel (inspiration only — no affiliation,
+no links in documentation):
+
+* **WYSIWYG canvas editor** — drop components, draw typed connections, edit properties inline.
+* **Code view** — the diagram source is always visible, editable and the single source of
+  truth; canvas ⇄ code stay synchronized (mermaid-flavored text format with extensions).
+* **Mermaid interop** — imports mermaid `flowchart` and C4 diagrams via converter;
+  exports to mermaid with declared feature drop. The native grammar is its own —
+  *inspired by* mermaid, not bound to its syntax.
+* **Flows & animation** — IcePanel-style step-by-step flow playback (8 step types) over
+  static diagrams.
+* **Workspace** — multiple files, directory tree, per-file import/export, full ZIP
+  export/import.
+* **Zero server storage** — everything lives in the browser; nothing is sent anywhere.
+* **Shipable two ways** — fully static on GitHub Pages, *and* as a single Go binary
+  (Windows/Linux/macOS) that serves the app plus a headless CLI (`validate` / `convert`
+  / `render`).
+
+### Out of scope (explicitly)
+
+Real-time collaboration, authentication, server-side persistence, AI assistance, mobile
+native apps. Full mermaid feature coverage (only the subset in [FILE-FORMAT.md](FILE-FORMAT.md)).
+
+---
+
+## 2. Decisions locked with product owner
+
+| # | Decision | Choice |
+|---|----------|--------|
+| D1 | Model topology | **Hybrid**: files are standalone diagrams; objects may reference other files via `imports` (link-style reuse) |
+| D2 | Rendering | **Custom SVG engine**; mermaid.js is *never* the editor renderer — mermaid is import/export text format only |
+| D3 | Go binary role | Static app server **+ headless CLI** (`validate`, `convert`, `render` via headless Chrome) |
+| D4 | Frontend stack | **Preact** for UI chrome + framework-agnostic TypeScript SVG engine |
+| D5 | Flows | **All 8 IcePanel step types in v1** (see §7) |
+| D6 | Quality gates | Go: `staticcheck` + `gocyclo`; JS: `eslint` (incl. complexity rules) + `vitest`, **≥80% coverage on core packages**; E2E: **Playwright + vision review in dev loop** |
+| D7 | Native file format | Own `.pcd` grammar, mermaid-**inspired**; **no mermaid-validity requirement**. Mermaid handled by import converter and lossy exporter only |
+| D8 | License | **GPL-3.0-only** (SPDX `GPL-3.0-only`), LICENSE file at repo root |
+
+Rationale for each: ADR 0001–0005.
+
+---
+
+## 3. Users & key scenarios
+
+**Persona A — Architect (author).** Maintains a workspace of diagrams describing a
+system landscape. Creates diagrams visually, refines them in code view, animates flows
+to explain request journeys.
+
+**Persona B — Reviewer (reader).** Opens a shared `.pcd` file or ZIP, walks flows in
+play mode, exports PNG/SVG for docs.
+
+**Top scenarios (must work end-to-end):**
+
+1. *S1 Create*: new file → drag person/system/container onto canvas → link them → set
+   properties → diagram renders live; code view shows updated source.
+2. *S2 Code round-trip*: paste a mermaid `C4Container` snippet into code view → canvas
+   renders it → edit node in canvas → code view updates; file remains valid mermaid
+   (PanelCraft extensions live in comment block).
+3. *S3 Flow playback*: define 6-step flow (incl. one `alt`, one `par`) → press Play →
+   camera focus + animated edges step-by-step; non-active elements dim.
+4. *S4 Workspace IO*: build directory tree `landscape/`, `systems/billing/` → export ZIP →
+   clear browser data → import ZIP → identical workspace.
+5. *S5 Mermaid import*: open `architecture.mmd` (flowchart + subgraphs) → converted to
+   `.pcd`, auto-laid-out, fully editable.
+6. *S6 CLI*: `panelcraft validate ./diagrams` lints all files (CI gate);
+   `panelcraft render checkout.pcd --out checkout.png` produces a PNG via headless Chrome.
+7. *S7 Static hosting*: open the GitHub Pages URL → full functionality offline-capable,
+   no backend calls (verified by network monitor in E2E).
+
+---
+
+## 4. Functional requirements
+
+### 4.1 Workspace & files (FR-W)
+
+* **FR-W1** Virtual file tree with folders and `.pcd` files; create, rename, delete,
+  move (drag & drop), duplicate.
+* **FR-W2** Multi-tab editing; unsaved-changes indicator; autosave (see FR-S1).
+* **FR-W3** Per-file import: `.pcd`, `.mmd`/`.mermaid` (mermaid text), `.txt` (treated as mermaid).
+* **FR-W4** Per-file export: `.pcd`, `.mmd` (mermaid subset export), `.svg`, `.png`
+  (current view), `.seq.mmd` (flows exported as mermaid `sequenceDiagram`, optional M6).
+* **FR-W5** Workspace ZIP export (`workspace.zip`, plain folder layout + optional
+  `panelcraft.workspace.json` manifest) and ZIP import; round-trip must be lossless.
+* **FR-W6** Global quick search (`Ctrl/Cmd+P`): files, objects, flows (M6).
+* **FR-W7** Snapshots: manual named snapshots of the whole workspace, restore point
+  (M6, local only).
+
+### 4.2 Canvas editor (FR-C)
+
+* **FR-C1** Pan (space-drag / wheel-drag / trackpad), zoom (wheel/pinch, 10%–400%),
+  fit-to-selection, fit-to-diagram, zoom controls, mini-map (M6).
+* **FR-C2** Grid + snap-to-grid (toggleable); alignment guides when dragging.
+* **FR-C3** Stencil palette (C4 types): Person, Software System, External System,
+  Container, Component, Data Store, Queue/Topic, Group/Boundary, Note.
+  Drag-drop or click-to-place.
+* **FR-C4** Objects: select, multi-select (rubber band, shift-click), drag, resize
+  (groups/boundaries), rotate *not* supported (C4 shapes are axis-aligned).
+* **FR-C5** Inline rename (double-click), description tooltip, icon per object
+  (built-in icon set, M5).
+* **FR-C6** Properties panel: name, description, technology, tags (multi),
+  custom key-value properties, style overrides (fill, border, text color, icon).
+* **FR-C7** Connections: drag from port/edge halo to target; typed links
+  (`uses`, `includes`, `requests`, `returns`, `publishes`, `subscribes`, `reads`,
+  `writes`, `data`, custom); label; direction (uni/bi); arrowhead styles; dashed/solid.
+* **FR-C8** Edge routing: orthogonal (default), curved (bezier), straight; drag
+  waypoints; per-edge style override.
+* **FR-C9** Undo/redo (command stack, coalesced typing/drag operations, ≥100 steps),
+  full keyboard shortcuts (§10).
+* **FR-C10** Context menus: canvas, object, edge (duplicate, delete, bring-to-front,
+  add to group, create flow step from link…).
+* **FR-C11** Dependencies view of selected object: highlight incoming/outgoing + list
+  panel (M6).
+* **FR-C12** Copy/paste/duplicate objects within and across files (internal clipboard;
+  cross-file paste resolves missing imports by inlining).
+
+### 4.3 Code view (FR-K)
+
+* **FR-K1** Split layout: canvas + code side-by-side (horizontal or vertical), or
+  single-pane toggle. CodeMirror-based editor (see ADR-0004) with PanelCraft syntax
+  highlighting.
+* **FR-K2** Live two-way sync, debounced (canvas → code ≤150 ms; code → canvas on
+  idle/pause or explicit apply if parse errors).
+* **FR-K3** Diagnostics: parse/validation errors shown inline (line:col) + problem
+  panel; error state never loses user text.
+* **FR-K4** Format-on-save (canonical pretty-printer, idempotent).
+* **FR-K5** The saved file is the **source of truth**; canvas state is a projection.
+  Closing a file with diverged editor buffer prompts to apply/discard.
+
+### 4.4 Mermaid interop (FR-M) — details in FILE-FORMAT.md
+
+* **FR-M1** Import converter, mermaid `flowchart`/`graph` (incl. subgraphs, edge labels,
+  shapes) → PDL, with shape→semantic-type mapping (documented table) and auto-layout.
+* **FR-M2** Import converter, mermaid C4 (`C4Context`, `C4Container`, `C4Component`,
+  `C4Dynamic` incl. `System*`, `Container*`, `Rel*`, `Deployment*` subset) → PDL
+  objects/links; `Show*`/layout directives ignored.
+* **FR-M3** Import converter, mermaid `sequenceDiagram` → optional conversion to a Flow
+  over participant boxes (M6).
+* **FR-M4** Export to mermaid (`flowchart`): nodes, typed edges, labels, subgroups;
+  **feature drop is declared and documented** — flows/animations, manual positions
+  (replaced by auto-layout), styles (approximated by mermaid classes), properties,
+  imports are not representable. Export is one-way; PDL remains the only source of truth.
+* **FR-M5** Import diagnostics: unsupported mermaid constructs reported with line:col;
+  conversion never silently drops content. Export fidelity matrix documented (FR-M4).
+* **FR-M6** No mermaid-validity requirement on `.pcd` files; mermaid compatibility is
+  converter-only, in both directions.
+
+### 4.5 Flows & animation (FR-F)
+
+IcePanel-style visual storytelling over the static diagram.
+
+* **FR-F1** Multiple named flows per diagram; flow editor: ordered step list, drag to
+  reorder, per-step title + description.
+* **FR-F2** Step types (all in v1):
+  | Type | Meaning | Visual behavior |
+  |---|---|---|
+  | `intro` | Set the scene | Show all steps overview; no dimming |
+  | `msg` | Message A→B over existing link (direction may be flipped for the step) | Animated moving token along edge, step number badge, focus both ends |
+  | `process` | Single object does something | Pulse/emphasis on object + badge |
+  | `alt` | OR branches | Branch selector UI; plays chosen path; others dimmed |
+  | `par` | AND parallel | Steps animate concurrently on split lanes |
+  | `goto` | Jump to another flow (same or other file), optional return point | Navigate; breadcrumb to return |
+  | `info` | Free text not tied to elements | Info toast/card |
+  | `conclusion` | Close story | Show summary; un-dim |
+* **FR-F3** Play mode: play/pause/step-forward/step-back/restart, per-step auto delay
+  (default 2.5 s, configurable per step), exit restores pre-play view state.
+* **FR-F4** Animation style: edge token (circle) traveling with trailing dash animation,
+  object emphasis ring, non-participants dimmed to 25% opacity, smooth camera
+  (pan/zoom to step actors, 300 ms ease). All timing constants in theme config.
+* **FR-F5** Reduced-motion: respect `prefers-reduced-motion` → crossfade instead of
+  movement.
+* **FR-F6** Flow validation: steps reference existing objects/links; dangling refs are
+  errors (code view + validate CLI).
+
+### 4.6 Views, tags, layout (FR-V)
+
+* **FR-V1** Tags on objects/links; tag filter bar → fade non-matching (perspectives).
+* **FR-V2** Named views per diagram: element visibility set, tag filters, saved
+  positions, layout mode (`auto:LR|TB` or `saved`). Diagram has ≥1 view; default view
+  implicit.
+* **FR-V3** Auto-layout: layered (direction LR/TB) via dagre behind a `LayoutEngine`
+  port; deterministic for identical input (stable ordering by id).
+* **FR-V4** Manual positions stored in file; mixing auto + pinned nodes supported.
+
+### 4.7 Imports & reuse (FR-I) — hybrid model (D1)
+
+* **FR-I1** `imports:` section maps aliases → relative file paths; imported file's
+  *objects* are referenceable (ghost rendering: dashed border, "imported" badge).
+* **FR-I2** Imported objects are read-only in the importing file; click-through opens
+  source file (workspace-relative).
+* **FR-I3** Cycle detection: import graph must be acyclic (error otherwise).
+* **FR-I4** Missing import file → explicit problem marker, diagram still renders
+  non-imported content.
+
+### 4.8 Storage (FR-S)
+
+* **FR-S1** Persistence: IndexedDB autosave, debounced 800 ms; last-open workspace
+  restored on load. Storage model = **browser-local only**; "nothing server-side" is a
+  hard constraint (E2E asserts zero network calls after initial load).
+* **FR-S2** Ephemeral mode ("private tab" toggle): in-memory only, no IDB writes;
+  export reminder banner every 10 min.
+* **FR-S3** Quota handling: surface quota errors; graceful degradation to ephemeral
+  mode with warning; storage usage indicator in settings.
+* **FR-S4** Reset/clear-all-data with typed confirmation.
+* **FR-S5** Schema versioning of stored workspace (migrations forward-only).
+
+### 4.9 CLI (Go binary) (FR-X)
+
+Single static binary, no runtime deps, all assets embedded (`go:embed`).
+
+* `panelcraft serve [--addr :8080] [--open] [dir]` — serves the SPA at `/`, workspace
+  files under `[dir]` read-only at `/files/*` (optional convenience for demo assets).
+  SPA fallback to `index.html`. No write endpoints, ever.
+* `panelcraft validate <file|dir>... [--json]` — parse + semantic validation
+  (dangling refs, import cycles, flow refs, duplicate ids). Exit 0 clean; exit 1
+  findings; exit 2 usage/IO error. CI-friendly.
+* `panelcraft convert <in.mmd> [-o out.pcd]` — mermaid → PanelCraft canonical form.
+* `panelcraft render <file.pcd> --out out.png|svg [--width 1920] [--theme dark|light]
+  [--view NAME] [--chrome /path/to/chrome]` — headless render via Chrome DevTools
+  Protocol (chromedp, pure Go). Serve embedded app, drive it, screenshot/serialize SVG.
+  Fails with actionable error if no Chrome found.
+* `panelcraft version`.
+
+### 4.10 Hosting (FR-H)
+
+* **FR-H1** GitHub Pages deployment of the built SPA on `main` (Actions). App runs
+  100% static; base-path configurable at build time (`/panelcraft/`).
+* **FR-H2** GitHub Releases attach binaries: `panelcraft_{linux,darwin,windows}_{amd64,arm64}`
+  (+ checksums). Windows = `.zip`, others `.tar.gz`.
+
+---
+
+## 5. Non-functional requirements
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| N1 | Render/interaction perf | 60 fps pan/zoom & drag ≤300 objects; ≤2 000 objects usable (layer virtualization) |
+| N2 | Open time | 100-object file → interactive < 300 ms (mid-range laptop) |
+| N3 | Parser perf | 10k-line file parses < 1 s |
+| N4 | Binary size | < 30 MB compressed |
+| N5 | Accessibility | WCAG 2.1 AA for UI chrome; canvas: full keyboard object nav, ARIA live narration in play mode; `prefers-reduced-motion` honored |
+| N6 | Security | Strict CSP (no inline script eval in app), exported SVG sanitized (no scripts/foreignObject from untrusted labels), CLI: path traversal guarded, no telemetry |
+| N7 | Self-containment & privacy | **Zero external resources at runtime**: no CDN, no third-party origins, no webfonts (system font stack), icons = inline SVG (no icon fonts/CDN); zero network calls at runtime — proven by E2E network block + CI asset scan |
+| N8 | Offline | App shell + last workspace available offline (service worker, M7); bundle fully self-contained |
+| N9 | Browser support | Evergreen Chrome/Edge/Firefox/Safari (last 2 versions); `CompressionStream` required (Safari ≥16.4), fallback dependency fflate if feature absent (ADR-0004) |
+| N10 | i18n | English v1; all strings centralized for later l10n |
+| N11 | Offline build & reproducibility | Build runs **without network** after one-time dependency fetch (`npm ci` + `go mod download`, lockfile/go.sum committed); CI may run fully offline via caches; produced artifacts are self-contained — web bundle inlines all assets, Go binary embeds `web/dist` via `go:embed` |
+
+### Visual style targets (validated by vision review, §9)
+
+* Dark-first theme, high contrast, C4-ish shape language (soft rectangles, person
+  glyph), consistent 4 px spacing grid, subtle shadows, 150–300 ms transitions.
+* Style guide + golden screenshots per milestone (docs/STYLE-GUIDE.md in M0).
+
+---
+
+## 6. File format (summary — full spec in FILE-FORMAT.md)
+
+* Native format **PDL (PanelCraft Diagram Language)**, extension `.pcd`, UTF-8,
+  **own grammar inspired by mermaid** — deliberately *not* required to be valid mermaid
+  (D7). One coherent syntax for structure *and* semantics: typed nodes, typed links,
+  plus first-class `flow`, `view`, `import`, `style`, `tag` directives — no comment-block
+  workarounds.
+* Mermaid enters/leaves the tool exclusively through converters:
+  * import: mermaid → PDL (lossless for supported subset, diagnostics otherwise);
+  * export: PDL → mermaid (lossy, declared feature drop).
+* Guarantees:
+  * PDL ⇄ internal IR ⇄ PDL is lossless (canonical round-trip, golden-tested).
+  * Parser accepts unknown-but-parseable constructs as data (forward compatibility),
+    reports them as warnings; semantic validation is a separate pass.
+* Internal **IR = language-neutral JSON schema** — shared contract between the TS
+  implementation and the Go CLI (parser parity tests, §8).
+
+---
+
+## 7. Domain model (IR overview)
+
+```
+Workspace { schemaVersion, files[], settings }
+File      { path, meta, imports[], objects[], links[], groups[], flows[], views[] }
+Object    { id, kind(person|system|system_ext|container|component|datastore|queue|group|note),
+            name, description, technology, tags[], properties{}, style{}, importedFrom? }
+Link      { id, from, to, type, label, direction(uni|bi), style{}, waypoints[] }
+Flow      { id, title, description?, steps[] }
+Step      { id, type(intro|msg|process|alt|par|goto|info|conclusion), title?, description?,
+            payload (per type: from/to/linkRef | on | branches[](label,steps[]) | branches[](steps[]) |
+                     target{file?,flow,return} | text) }
+View      { id, name, layout(auto:LR|auto:TB|saved), positions{}, hiddenTags?, elements? }
+```
+
+Rules: ids are stable strings (`[a-z][a-z0-9_]*`, unique per file); link endpoints must
+resolve to objects or imported aliases; flows reference link ids for `msg` steps
+(mermaid-imported edges get auto ids `L1..Ln` recorded in `links:` so flows survive
+round-trips).
+
+---
+
+## 8. Quality strategy (gates, per D6)
+
+### 8.1 Static analysis & complexity
+
+* **Go**: `go vet`, `staticcheck` (default checks, zero findings), `gocyclo` —
+  **target ≤10, hard fail >15** per function; `gocognit` ≤30. Enforced in CI on
+  `./...`.
+* **TypeScript**: `eslint` — `complexity ≤12`, `max-lines-per-function ≤120`,
+  `max-depth ≤4`, `@typescript-eslint` strict; `tsc --noEmit` clean. Same thresholds
+  in CI. Deliberate exceptions require `// rationale:` comment + ADR note.
+
+### 8.2 Unit tests (vitest / go test) — coverage plan
+
+Core packages (**≥80% lines+branches, enforced by vitest thresholds**):
+
+| Package (TS) | Must cover |
+|---|---|
+| `engine/format` | PDL parser/printer: golden corpus round-trips (see below), error positions, mermaid import mapping incl. malformed input |
+| `engine/model` | IR ops: add/remove/update object/link/flow, import resolution, cycle detection, validation rules |
+| `engine/layout` | dagre adapter: determinism, pin handling |
+| `engine/render` | scene-graph → SVG snapshot assertions (jsdom), element hit lists |
+| `engine/flows` | step machine: all 8 types, alt/par branching, goto resolution, timing plan |
+| `engine/anim` | animation plan builder (durations/keyframes), reduced-motion path |
+| `workspace/store` | virtual FS ops, ZIP pack/unpack (round-trip), IDB wrapper (via `fake-indexeddb`), migrations |
+| `workspace/undo` | command stack, coalescing |
+| `ui/*` | component tests (@testing-library/preact): panels, palette, dialogs (**≥60%, reported, not gated**) |
+
+Go: table-driven tests for `validate`/`convert`/IR codec; `httptest` for server;
+corpus parity tests below.
+
+**Golden corpus**: `testdata/corpus/` — ≥30 curated files (mermaid samples, C4
+samples, flows incl. alt/par/goto, edge cases: unicode, long labels, deep nesting,
+malformed variants). Each file has expected `.ir.json` + canonical `.pcd`. Shared by
+TS and Go tests → **parser parity is a CI gate** (IR diff must be empty).
+
+### 8.3 E2E (Playwright)
+
+* Scenarios map 1:1 to §3 scenarios S1–S7 plus: undo/redo, tag filtering, theme
+  switch, zip round-trip, quota-error path (mocked), keyboard-only editing pass.
+* **No-network assertion** (S7): route-block all external requests; app must function.
+* Screenshots at every scenario end (light+dark) → committed baselines for visual diff
+  (pixelmatch, 0.1 threshold) and as input for vision review.
+
+### 8.4 Vision validation loop (development-time)
+
+Each milestone: run E2E suite → collect screenshots → agent reviews them against
+docs/STYLE-GUIDE.md checklist (alignment, contrast, spacing, animation end-states) →
+file UI defects with screenshot refs → fix → re-shoot. Vision review is a **definition-
+of-done item per milestone**, recorded in the milestone log. (Playwright visual diff is
+the CI regression net; vision review catches *quality* issues diffing can't.)
+
+### 8.5 CI (GitHub Actions)
+
+* `ci.yml`: lint+staticcheck+gocyclo → unit tests (Go matrix + Node) → coverage gate
+  → corpus parity → build web → **asset-origin scan** (§8.6) → e2e (Playwright,
+  chromium, network-blocked) → visual diff.
+* `release.yml`: tag → cross-compile binaries (matrix GOOS/GOARCH, CGO off) →
+  checksums → GitHub Release.
+* `pages.yml`: deploy built SPA to GitHub Pages on main.
+
+### 8.6 Self-containment gate (N7/N11)
+
+* CI script `scripts/check-selfcontained.sh`: scans `web/dist/**` for external-origin
+  resource loads — `<script src>`, `<link href>`, `url()` in CSS, `import()` targets —
+  any origin ≠ self ⇒ **build fails** (source `https://` inside string literals/labels
+  is fine; resource loads are not).
+* No CDN, no webfont links, no externally-hosted icons anywhere in source or dist.
+* E2E suite runs with **all external requests blocked** (S7): app must be fully
+  functional — the runtime proof of N7.
+* Go: binary embeds `web/dist`; `go build` consumes only module cache (no network
+  after `go mod download`).
+
+---
+
+## 9. Milestones
+
+| M | Scope | Done means |
+|---|-------|-----------|
+| M0 | Scaffolding: repo, CI, vite+preact+ts setup, agents.md, STYLE-GUIDE, architecture workspace in PDL (§14), empty app served by Go bin | CI green end-to-end; S7 skeleton passes |
+| M1 | Format engine: IR schema, PDL parser/printer, mermaid import, golden corpus, Go parser parity, `validate`/`convert` CLI | Corpus green both sides; FR-M1/M2 import tests |
+| M2 | Canvas MVP: render engine, pan/zoom, select/drag, palette drop, linking, properties panel, undo | S1 passes E2E + vision review |
+| M3 | Workspace: file tree, tabs, IDB storage, zip, per-file IO | S4 passes; FR-W* |
+| M4 | Code view sync + mermaid export + format-on-save + diagnostics | S2 passes; FR-K*, FR-M4 |
+| M5 | Flows + animation + icons + themes | S3 passes; FR-F* |
+| M6 | Tags/views, auto-layout, dependencies view, search, snapshots, seq export | FR-V*, FR-W6/W7 |
+| M7 | A11y pass, perf pass (N1–N3), service worker, docs complete, release engineering, GH Pages live | All NFRs measured; v1.0 released |
+
+---
+
+## 10. Keyboard shortcuts (v1 baseline)
+
+`Ctrl/Cmd+S` save+format · `Ctrl/Cmd+Z / Shift+Z` undo/redo · `Ctrl/Cmd+E` play/edit
+toggle · `Ctrl/Cmd+P` quick search · `Ctrl/Cmd+K` command palette (M6) · `Tab/Shift+Tab`
+cycle objects · arrows nudge (grid step; `Shift` = 1 px) · `Enter` properties ·
+`Ctrl/Cmd+D` duplicate · `Del` delete · `1..9` palette quick-add · `L` then click
+target = link mode · `F` fit · `+/-/0` zoom in/out/reset.
+
+---
+
+## 11. Risks & mitigations
+
+| Risk | Mitigation |
+|---|---|
+| TS/Go parser drift | Single IR JSON contract + shared golden corpus, parity CI gate (§8.2) |
+| SVG perf on large diagrams | Layer virtualization, offscreen culling, perf test in E2E (N1) budget; document limits |
+| ZIP without deps breaks on older Safari | Feature-detect `CompressionStream`; fflate fallback (ADR-0004) |
+| Mermaid subset mismatch (user pastes unsupported syntax) | Import converter diagnostics with line numbers + documented fidelity matrix (FR-M4/M5); never silent data loss |
+| Headless render env differences | chromedp pinned; CI runs `render` smoke test on linux; documented `--chrome` flag |
+| Scope creep (IcePanel parity temptation) | Milestone table is the contract; new ideas → backlog, not current milestone |
+| IndexedDB data loss (user clears browser) | Autosave + export reminders + zip (S4); quota/ephemeral handling FR-S2/S3 |
+
+---
+
+## 12. Open items (post-v1 backlog)
+
+Comments/annotations on objects · export to draw.io/PlantUML · plugin API for custom
+stencils · additional diagram notations (sequence-native, deployment advanced) ·
+optional file-system access API for real folders.
+
+---
+
+## 13. License
+
+* **GPL-3.0-only** (SPDX: `GPL-3.0-only`). `LICENSE` (full text) at repo root; each
+  source file carries the standard GPL header; SPDX headers in every source file.
+* Binary distribution (GitHub Releases) satisfies GPL-3.0 corresponding-source by
+  linking the public repository + commit reference in release notes.
+* Third-party dependencies must be GPL-compatible (MIT / Apache-2.0 / BSD). New
+  dependencies require a license check recorded in the ADR proposing them.
+* Documentation and sample diagrams in-repo: same license, CC-BY-SA-4.0 acceptable
+  alternative for docs/ only — decision recorded in ADR-0005.
+
+---
+
+## 14. Documentation policy — "architecture docs are written in PanelCraft"
+
+Self-hosting rule (product owner decision): **all architecture documentation of
+PanelCraft is authored in PanelCraft's own format (PDL, `.pcd`)** — dogfooding the
+format end-to-end.
+
+* Prose documents (this SPEC, FILE-FORMAT, ADRs, guides) = Markdown; prose stays
+  human-readable text.
+* **Every architecture diagram** — module graph, deployment/topology, data-flow,
+  milestone dependencies — lives as a `.pcd` file under `docs/architecture/` (a PDL
+  workspace), never as ASCII/Mermaid art in Markdown.
+* Benefits enforced by construction:
+  * the docs double as **golden-corpus seeds** for the M1 parser (they must parse);
+  * doc drift is caught by `panelcraft validate docs/architecture` in CI (from M1 on);
+  * the rendered docs *are* the product's visual output — style regressions surface in
+    our own documentation first.
+* Until parsers exist (pre-M1), `.pcd` docs are plain text under the grammar of
+  FILE-FORMAT.md and are marked **unvalidated** in docs/architecture/README.md; M1's
+  done-criteria include corpus-green for every doc file.
+* When prose must reference a diagram: link the `.pcd` file and describe intent in
+  words (a picture never carries normative content alone).

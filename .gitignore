@@ -1,0 +1,26 @@
+# Node
+node_modules/
+web/dist/
+coverage/
+*.tsbuildinfo
+
+# Go
+/bin/
+panelcraft
+panelcraft.test
+
+# Test / coverage artifacts
+*.out
+
+# Playwright
+test-results/
+playwright-report/
+e2e/__screenshots__/**/*-diff.png
+e2e/__screenshots__/**/*-failed.png
+
+# OS
+.DS_Store
+
+# env
+.env
+.env.*
