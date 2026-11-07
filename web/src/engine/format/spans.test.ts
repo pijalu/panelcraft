@@ -48,4 +48,10 @@ describe('objectAtLine (F-22)', () => {
     expect(objectAtLine(TEXT, 1)).toBeNull(); // magic line
     expect(objectAtLine(TEXT, 11)).toBeNull(); // link block
   });
+
+  it('recovers the declaration of a broken statement', () => {
+    const text = 'pcd 1.0\n\nsystem api "A" bogusattr\ndatastore store "S"\n';
+    expect(objectAtLine(text, 3)).toBe('api'); // raw fallback
+    expect(objectAtLine(text, 9)).toBeNull();
+  });
 });

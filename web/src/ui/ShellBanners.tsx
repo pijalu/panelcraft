@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Shell status banners (F-20/F-23): import problems and the "diagram out of
+// date" notice that appears while the code buffer has parse errors.
+import type { ComponentChildren } from 'preact';
+import type { CanvasController } from './CanvasController';
+import type { SyncSnapshot } from './codeview/sync';
+import type { WorkspaceManager } from '../workspace/workspace';
+import { useCanvasDiagnostics } from './useCanvasDiagnostics';
+import { useImportGhosts } from './useImportGhosts';
+import { ImportBanner } from './ShellSlots';
+
+export interface ShellBannersProps {
+  snapshot: SyncSnapshot;
+  ctrlRef: { current: CanvasController | null };
+  manager: WorkspaceManager;
+  ready: boolean;
+  activePath: string | null;
+  version: number;
+}
+
+export function ShellBanners(props: ShellBannersProps): ComponentChildren {
+  const diag = useCanvasDiagnostics(
+    props.snapshot.codeText,
+    props.snapshot.diagnostics,
+    props.snapshot.state,
+    props.ctrlRef,
+    props.version,
+  );
+  const importErrors = useImportGhosts(
+    props.manager,
+    props.ready,
+    props.activePath,
+    props.version,
+    props.ctrlRef,
+  );
+  return (
+    <>
+      <ImportBanner errors={importErrors} />
+      <span class="sr-only" data-testid="diag-count">
+        {diag.count}
+      </span>
+      {diag.stale && (
+        <p class="canvas-stale" data-testid="canvas-stale" role="status">
+          Diagram out of date — fix {diag.count} problem{diag.count === 1 ? '' : 's'} in the code
+          view.
+        </p>
+      )}
+    </>
+  );
+}

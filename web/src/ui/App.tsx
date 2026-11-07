@@ -20,8 +20,7 @@ import { layoutStyle } from './uiLayout';
 import { PanelRail, Splitter, focusRail } from './PanelChrome';
 import { InlineRename, type RenameTarget } from './InlineRename';
 import { CanvasMenu } from './CanvasMenu';
-import { useImportGhosts } from './useImportGhosts';
-import { ImportBanner } from './ShellSlots';
+import { ShellBanners } from './ShellBanners';
 import { useCanvasRevealPort } from './useCanvasReveal';
 import { PresentLayer } from './PresentDock';
 import { usePresentation } from './usePresentation';
@@ -306,16 +305,16 @@ function AppBody(p: {
   // F-19: canvas context menu (position in viewport coordinates)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const ctrl = canvas.ctrlRef.current;
-  const importErrors = useImportGhosts(
-    ws.manager,
-    ws.ready,
-    activePath,
-    ws.version,
-    canvas.ctrlRef,
-  );
   return (
       <div class="app-body">
-        <ImportBanner errors={importErrors} />
+        <ShellBanners
+          snapshot={code.snapshot}
+          ctrlRef={canvas.ctrlRef}
+          manager={ws.manager}
+          ready={ws.ready}
+          activePath={activePath}
+          version={ws.version}
+        />
         <SidebarSlot
           ui={ui}
           sideTab={p.sideTab}

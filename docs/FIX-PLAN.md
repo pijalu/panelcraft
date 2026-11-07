@@ -116,6 +116,23 @@ rail's button, so shortcuts keep firing.
 *Tests:* `ui/uiLayout.test.ts` (pure adopt maths), e2e `p1-shell.spec.ts`
 (collapse → reload → expand, keyboard shortcut round-trip).
 
+### F-33 Panel shortcuts died once focus was inside a panel (found in F-23 gate run)
+*Problem:* `Ctrl/Cmd+Alt+P` was gated by the "is this a text field" guard, and
+collapsing the properties panel hands focus to an input inside it (a colour swatch).
+The user pressed the documented shortcut twice and nothing happened.
+*Change:* the guard now only applies to shortcut combinations that can be typed, so
+`Ctrl/Cmd+Alt+P` fires from anywhere; the focus move to the rail still happens for
+pointer toggles.
+*Tests:* e2e `p1-shell.spec.ts` (three-way shortcut round trip).
+
+### F-34 A broken statement was attributed to the wrong object (found in F-23 verification)
+*Problem:* the parser reports `expected arrow, got 'datastore'` at **column 1 of the
+following line**, and a failed parse returns no objects, so the "which object is
+broken" mapping either pointed at an innocent object or at nothing.
+*Change:* a col-1 diagnostic is attributed to the previous statement, and
+`objectAtLine` falls back to reading `kind id` off the raw line when the parse fails.
+*Tests:* `format/spans.test.ts` (recovery fallback), e2e `p3-diagnostics.spec.ts`.
+
 ### F-09 Repo hygiene: no generated content
 *Problem:* `dist/release/**` (12 files, 46 MB of dry-run binaries + built pages) and
 `e2e/__screenshots__/**` are tracked, and the specs write into the tracked directory — every e2e run leaves
@@ -384,6 +401,15 @@ selection, screenshot).
 Error ring on offending objects, "N problems" header chip, last-good render with an "out of date" canvas
 banner instead of a frozen silent canvas.
 *Tests:* component + e2e typing an error mid-rename.
+
+**Done.** `ui/useCanvasDiagnostics.ts` maps parser diagnostics to objects
+(`Ctrl.setErrors` rings them via `pc-error`; the render loop re-applies the rings after
+every rebuild) and `ShellBanners` renders the stale banner + an `N problems` count.
+The mapping needed two fixes: a statement broken mid-attribute is reported at
+column 1 of the *following* line, so a col-1 diagnostic is attributed to the previous
+statement (`ringTargets`); and `objectAtLine` falls back to reading `kind id` off the
+raw line because a failed parse returns no objects. Tests: `format/spans.test.ts`,
+e2e `p3-diagnostics.spec.ts` (ring on the broken statement only, banner, recovery).
 
 ### F-24 Unified undo
 One journal: canvas commands, code edits, flow/view edits with focus-aware `Ctrl/Cmd+Z` routing and a

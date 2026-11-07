@@ -47,14 +47,36 @@ export function spanOf(text: string, id: string): LineSpan | null {
   return null;
 }
 
-/** Id of the top-level object whose statement contains `line` (null when none). */
+/**
+ * Id of the object declared on `line` (null when none).
+ *
+ * Falls back to reading the declaration off the raw line, because a broken
+ * statement is exactly the case where the parser has no object to point at.
+ */
 export function objectAtLine(text: string, line: number): string | null {
   const { doc } = parsePDL(text);
-  if (doc === null) return null;
   const lines = text.split('\n');
-  for (const obj of doc.objects) {
-    const span = { from: obj.pos.line, to: blockEnd(lines, obj.pos.line) };
-    if (line >= span.from && line <= span.to) return obj.id;
+  if (doc !== null) {
+    for (const obj of doc.objects) {
+      const span = { from: obj.pos.line, to: blockEnd(lines, obj.pos.line) };
+      if (line >= span.from && line <= span.to) return obj.id;
+    }
   }
-  return null;
+  // Recovery: `kind id ...` — the first two words of the offending line.
+  const words = (lines[line - 1] ?? '').trim().replace(/[{};]/g, ' ').trim().split(/\s+/);
+  const id = words[1];
+  if (words.length < 2 || id === undefined || !OBJECT_KINDS.has(words[0] ?? '')) return null;
+  return /^[A-Za-z_][\w-]*$/.test(id) ? id : null;
 }
+
+const OBJECT_KINDS = new Set([
+  'person',
+  'system',
+  'system_ext',
+  'container',
+  'component',
+  'datastore',
+  'queue',
+  'group',
+  'note',
+]);

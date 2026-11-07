@@ -126,8 +126,12 @@ export function useUiLayout(manager: WorkspaceManager, ready: boolean, version: 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const mod = e.metaKey || e.ctrlKey;
-      if (!mod || inTextEntry(e.target)) return;
+      if (!mod) return;
       const key = e.key.toLowerCase();
+      // Cmd/Ctrl+Alt+P cannot be typed, so it fires even from a text field —
+      // otherwise the shortcut dies the moment focus lands inside a panel.
+      const panelShortcut = e.altKey && key === 'p';
+      if (!panelShortcut && inTextEntry(e.target)) return;
       if (!e.altKey && key === 'b') {
         e.preventDefault();
         togglePanel('sidebar');
@@ -138,7 +142,7 @@ export function useUiLayout(manager: WorkspaceManager, ready: boolean, version: 
         togglePanel('code');
         return;
       }
-      if (e.altKey && key === 'p') {
+      if (panelShortcut) {
         e.preventDefault();
         togglePanel('props');
       }

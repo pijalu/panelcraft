@@ -2363,3 +2363,37 @@ marker .pc-arrow[fill='none'] {
 .pc-code-highlight {
   background: color-mix(in srgb, var(--pc-accent) 16%, transparent);
 }
+
+/* F-23 diagnostics on canvas: ring the offending object, banner the stale render */
+.pc-obj.pc-error .pc-shape {
+  stroke: var(--pc-warn);
+  stroke-width: 2;
+}
+
+.pc-obj.pc-error .pc-glyph {
+  stroke: var(--pc-warn);
+}
+
+.canvas-stale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 12px;
+  background: color-mix(in srgb, var(--pc-warn) 14%, var(--pc-surface));
+  border-bottom: 1px solid var(--pc-warn);
+  color: var(--pc-fg);
+  font-size: var(--pc-text-xs);
+}
+
+.canvas-stale button {
+  min-height: 28px;
+  margin-left: auto;
+  border: 1px solid var(--pc-warn);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  font: inherit;
+  font-size: var(--pc-text-xs);
+  cursor: pointer;
+}

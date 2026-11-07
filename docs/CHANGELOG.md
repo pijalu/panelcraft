@@ -4,6 +4,15 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-02-14 — P3: canvas diagnostics (F-23)
+
+- **F-23 canvas diagnostics**: objects whose statement is invalid get an error ring while the
+  canvas keeps the last good render, and a `Diagram out of date — fix N problems` banner replaces
+  the silent freeze. Mapping a diagnostic to an object handles the parser's col-1 reporting and
+  failed parses (`ringTargets` + raw-line fallback in `objectAtLine`).
+- **F-33**: `Ctrl/Cmd+Alt+P` (properties) now fires even when focus sits inside a panel.
+- **F-34**: a broken statement is attributed to the statement it belongs to, not the next line.
+
 ## [1.0.0] — 2025-11-07
 
 First stable release. Milestones M0–M7 complete (see

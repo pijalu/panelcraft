@@ -278,6 +278,8 @@ export class CanvasController {
   private ghosts: Array<DiagramObject & { path: string }> = [];
   /** F-22: roving focus (keyboard navigation across scene objects). */
   private focusId: string | null = null;
+  /** F-23: objects whose statement currently has a parse error. */
+  private errorIds = new Set<string>();
   private detach: Array<() => void> = [];
 
   constructor(svg: SVGSVGElement, opts: ControllerOptions = {}) {
@@ -666,6 +668,17 @@ export class CanvasController {
     this.render();
   }
 
+  /**
+   * F-23: ring the objects whose statement is currently invalid. The canvas keeps
+   * showing the last good document; the ring tells the user where the error is.
+   */
+  setErrors(ids: Iterable<string>): void {
+    this.errorIds = new Set(ids);
+    for (const o of this.state.objects) {
+      this.renderer.elementFor(o.id)?.classList.toggle('pc-error', this.errorIds.has(o.id));
+    }
+  }
+
   /** True once a file (or an explicit empty state) has been loaded. */
   isHydrated(): boolean {
     return this.hydrated;
@@ -903,6 +916,10 @@ export class CanvasController {
       links: this.sceneLinks(),
     };
     this.renderer.render(scene);
+    // F-23: error rings survive re-renders (structural rebuilds reset classes)
+    for (const o of this.state.objects) {
+      this.renderer.elementFor(o.id)?.classList.toggle('pc-error', this.errorIds.has(o.id));
+    }
     this.renderer.setSelection([...this.selObjects], [...this.selLinks]);
     if (this.mode.t === 'idle') this.paintIdleOverlay();
     this.emit();
