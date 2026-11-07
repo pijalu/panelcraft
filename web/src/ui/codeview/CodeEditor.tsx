@@ -17,14 +17,20 @@ import { mermaidToPdl } from './mermaidPaste';
 import { pdlStreamLanguage } from './pdlMode';
 import { pcTheme, pcHighlightExtension } from './cmTheme';
 import { minimalChange, trailingWhitespaceOnly } from './diff';
+import { objectAtLine, spanOf } from '../../engine/format/spans';
+import { highlightExtension, setHighlight } from './highlight';
 
 export interface CodeEditorProps {
   /** The App-owned sync machine (single source of sync truth). */
   machine: SyncMachine;
+  /** F-22: the editor installs a `reveal(id)` here (canvas → code highlight). */
+  revealRef?: { current: ((id: string) => void) | null };
+  /** F-22: caret moved onto an object's statement (code → canvas select). */
+  onCaretObject?: (id: string | null) => void;
 }
 
 /** Editor pane + problems panel for the active file. */
-export function CodeEditor({ machine }: CodeEditorProps) {
+export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const view = useRef<EditorView | null>(null);
   /** True while the editor applies a machine write — those are not user edits
@@ -105,11 +111,39 @@ export function CodeEditor({ machine }: CodeEditorProps) {
         lintGutter(),
         linter(lintSource),
         EditorView.updateListener.of((u) => onDocChanged(u.state.doc.toString())),
+        highlightExtension,
       ],
     });
     const v = new EditorView({ state, parent: host.current! });
     view.current = v;
+    // F-22 canvas → code: select the entity's statement lines
+    if (revealRef) {
+      revealRef.current = (id: string) => {
+        const text = v.state.doc.toString();
+        const span = spanOf(text, id);
+        if (span === null) return;
+        const from = posToOffset(text, span.from, 1);
+        const to = Math.max(from, posToOffset(text, span.to + 1, 1) - 1);
+        v.dispatch({
+          effects: [
+            setHighlight.of({ from, to }),
+            EditorView.scrollIntoView(from, { y: 'center' }),
+          ],
+        });
+      };
+    }
+    // F-22 code → canvas: the object under the caret (only while focused)
+    if (onCaretObject) {
+      const report = (): void => {
+        if (!v.hasFocus) return;
+        const line = v.state.doc.lineAt(v.state.selection.main.head).number;
+        onCaretObject(objectAtLine(v.state.doc.toString(), line));
+      };
+      v.dom.addEventListener('keyup', report);
+      v.dom.addEventListener('mouseup', report);
+    }
     return () => {
+      if (revealRef) revealRef.current = null;
       v.destroy();
       view.current = null;
     };

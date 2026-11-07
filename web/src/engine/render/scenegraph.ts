@@ -221,6 +221,10 @@ export class SceneRenderer {
     g.classList.toggle('pc-dashed', obj.dashed === true);
     g.classList.toggle('pc-ghost', obj.ghost === true);
     g.setAttribute('data-id', obj.id);
+    // F-22: scene nodes are reachable by assistive tech and keyboard navigation
+    g.setAttribute('role', 'button');
+    g.setAttribute('tabindex', '-1');
+    g.setAttribute('aria-label', `${obj.kind.replace(/_/g, ' ')} ${obj.name ?? obj.id}`);
     this.applyStyleOverrides(g, obj);
     for (const spec of shapeGlyphs(obj)) this.applySpec(g, spec);
     return g;

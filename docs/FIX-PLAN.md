@@ -368,6 +368,18 @@ ARIA roles/labels on scene nodes, `aria-live` narration already present; click o
 lines and vice versa.
 *Tests:* e2e keyboard-only pass (axe + focus order), screenshot of code highlight.
 
+**Done.** Scene nodes carry `role="button"`, `tabindex="-1"` and an
+`"<kind> <name>"` label; `Tab`/`Shift+Tab` walk the objects in order and the arrow
+keys pick the nearest object in that direction (controller roving focus, `Enter`
+selects, `F2` renames). The canvas↔code map is two-way: a single-object selection
+highlights the entity's statement lines in the code view with a decoration
+(`codeview/highlight.ts` — no caret stealing, no focus loss), and putting the caret on
+a statement selects that object. Statement spans come from `format/spans.ts`
+(brace-aware block scanning). Tests: `format/spans.test.ts`,
+`CanvasController.test.ts` (roles/labels, Tab roving, arrow navigation, F2),
+e2e `p3-a11y-map.spec.ts` (keyboard pass, canvas→code highlight, code→canvas
+selection, screenshot).
+
 ### F-23 Diagnostics on canvas + error-state UX
 Error ring on offending objects, "N problems" header chip, last-good render with an "out of date" canvas
 banner instead of a frozen silent canvas.

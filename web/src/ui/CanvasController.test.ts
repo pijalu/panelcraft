@@ -454,6 +454,57 @@ describe('waypoint dragging (F-19)', () => {
   });
 });
 
+describe('keyboard object navigation (F-22)', () => {
+  beforeEach(() => {
+    ctrl.loadState({
+      objects: [
+        { id: 'o1', kind: 'system', x: 0, y: 0, w: 100, h: 60, name: 'A' },
+        { id: 'o2', kind: 'system', x: 400, y: 0, w: 100, h: 60, name: 'B' },
+        { id: 'o3', kind: 'system', x: 0, y: 300, w: 100, h: 60, name: 'C' },
+      ],
+      links: [],
+    });
+  });
+
+  it('scene nodes are reachable: role, tabindex and an accessible label', () => {
+    const el = svg.querySelector('g.pc-obj[data-id="o1"]')!;
+    expect(el.getAttribute('role')).toBe('button');
+    expect(el.getAttribute('tabindex')).toBe('-1');
+    expect(el.getAttribute('aria-label')).toBe('system A');
+  });
+
+  it('Tab roves focus through the objects and selects them', () => {
+    window.dispatchEvent(key('keydown', { key: 'Tab' }));
+    expect(ctrl.snapshot.selection.objects).toEqual(['o1']);
+    window.dispatchEvent(key('keydown', { key: 'Tab' }));
+    expect(ctrl.snapshot.selection.objects).toEqual(['o2']);
+    window.dispatchEvent(key('keydown', { key: 'Tab', shiftKey: true }));
+    expect(ctrl.snapshot.selection.objects).toEqual(['o1']);
+  });
+
+  it('arrow keys pick the nearest object in that direction', () => {
+    ctrl.focusObject('o1');
+    window.dispatchEvent(key('keydown', { key: 'ArrowRight' }));
+    expect(ctrl.snapshot.selection.objects).toEqual(['o2']);
+    ctrl.focusObject('o1');
+    window.dispatchEvent(key('keydown', { key: 'ArrowDown' }));
+    expect(ctrl.snapshot.selection.objects).toEqual(['o3']);
+  });
+
+  it('F2 renames the focused object (routed through the rename request)', () => {
+    const requested: string[] = [];
+    const c2 = new CanvasController(svg, { onRenameRequest: (id) => requested.push(id) });
+    c2.loadState({
+      objects: [{ id: 'o9', kind: 'system', x: 0, y: 0, w: 100, h: 60, name: 'Z' }],
+      links: [],
+    });
+    c2.setSelection(['o9']);
+    window.dispatchEvent(key('keydown', { key: 'F2' }));
+    expect(requested).toEqual(['o9']);
+    c2.destroy();
+  });
+});
+
 describe('state notifications', () => {
   it('onState fires on mutations', () => {
     const spy = vi.fn();

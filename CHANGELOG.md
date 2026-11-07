@@ -111,6 +111,11 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   `linkStyle` → link style, a `C4Context` exporter, and a generated
   `docs/MERMAID-MATRIX.md` asserted against the converters' declared drop catalogues.
 
+- **F-22** Canvas accessibility and the canvas↔code map: scene nodes are focusable
+  (`role`/`aria-label`), `Tab`/arrows walk the objects with roving focus (`Enter`
+  select, `F2` rename), a selection highlights the matching statement in the code view
+  (decoration, no caret stealing) and a caret on a statement selects its object.
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

@@ -2358,3 +2358,8 @@ marker .pc-arrow[fill='none'] {
   color: var(--pc-warn);
   font-size: var(--pc-text-xs);
 }
+
+/* F-22 canvas ↔ code map: highlighted statement lines */
+.pc-code-highlight {
+  background: color-mix(in srgb, var(--pc-accent) 16%, transparent);
+}

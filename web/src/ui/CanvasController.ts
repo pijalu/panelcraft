@@ -222,6 +222,21 @@ function haloTarget(e: Event): { id: string; side: HaloSide } | null {
 }
 
 /** F-19: the waypoint handle under the pointer, if any. */
+/** Arrow key → navigation direction (modifier keys opt out). */
+function arrowDirection(
+  key: string,
+  mod: boolean,
+): 'left' | 'right' | 'up' | 'down' | null {
+  if (mod) return null;
+  const dirs: Record<string, 'left' | 'right' | 'up' | 'down'> = {
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+  };
+  return dirs[key] ?? null;
+}
+
 function waypointTarget(e: Event): { linkId: string; index: number } | null {
   const el = (e.target as Element | null)?.closest('.pc-waypoint');
   const linkId = el?.getAttribute('data-link');
@@ -261,6 +276,8 @@ export class CanvasController {
   private readonly onGhostOpen?: (path: string) => void;
   /** F-20: read-only imported objects (never part of `state`). */
   private ghosts: Array<DiagramObject & { path: string }> = [];
+  /** F-22: roving focus (keyboard navigation across scene objects). */
+  private focusId: string | null = null;
   private detach: Array<() => void> = [];
 
   constructor(svg: SVGSVGElement, opts: ControllerOptions = {}) {
@@ -972,6 +989,7 @@ export class CanvasController {
       this.quickAdd(Number(e.key));
       return;
     }
+    if (this.handleNavKeys(e)) return;
     if (this.handleRenameKey(e)) return;
     if (this.handleArrowKey(e)) return;
     if (this.handleActionKey(e)) return;
@@ -1008,6 +1026,73 @@ export class CanvasController {
     if (k === 'z' && !e.shiftKey) this.undo.undo();
     else this.undo.redo();
     this.applyState(this.state);
+    return true;
+  }
+
+  /**
+   * F-22: focus one object (keyboard navigation). Focus moves the DOM focus to
+   * the scene node so screen readers announce it, and selects it.
+   */
+  focusObject(id: string): void {
+    const el = this.renderer.elementFor(id);
+    if (el === undefined) return;
+    this.focusId = id;
+    this.setSelection([id]); // renders the selection ring
+    (el as unknown as HTMLElement).focus?.();
+  }
+
+  /** Next object in `dir` from the focused/selected node (wraps around). */
+  focusStep(dir: 1 | -1): void {
+    const list = this.state.objects;
+    if (list.length === 0) return;
+    const currentId = this.focusId ?? [...this.selObjects][0] ?? null;
+    const at = list.findIndex((o) => o.id === currentId);
+    const next = list[(at + dir + list.length) % list.length] ?? list[0]!;
+    this.focusObject(next.id);
+  }
+
+  /** Nearest object in a direction (arrow-key navigation), or a step fallback. */
+  focusDirection(dir: 'left' | 'right' | 'up' | 'down'): void {
+    const currentId = this.focusId ?? [...this.selObjects][0] ?? null;
+    const from = this.state.objects.find((o) => o.id === currentId);
+    const candidates = this.state.objects.filter((o) => o.id !== currentId);
+    if (from === undefined || candidates.length === 0) {
+      this.focusStep(1);
+      return;
+    }
+    const cx = from.x + from.w / 2;
+    const cy = from.y + from.h / 2;
+    const score = (o: DiagramObject): number => {
+      const dx = o.x + o.w / 2 - cx;
+      const dy = o.y + o.h / 2 - cy;
+      const along = dir === 'left' ? -dx : dir === 'right' ? dx : dir === 'up' ? -dy : dy;
+      if (along <= 0) return Number.POSITIVE_INFINITY; // wrong half-plane
+      const across = dir === 'left' || dir === 'right' ? Math.abs(dy) : Math.abs(dx);
+      return along + across * 2; // prefer straight ahead, allow stumbles
+    };
+    const best = candidates.reduce((a, b) => (score(a) <= score(b) ? a : b));
+    if (!Number.isFinite(score(best))) this.focusStep(dir === 'left' || dir === 'up' ? -1 : 1);
+    else this.focusObject(best.id);
+  }
+
+  /** F-22 roving navigation: Tab/Shift+Tab, arrows, Enter — true when consumed. */
+  private handleNavKeys(e: KeyboardEvent): boolean {
+    const inside = this.svg.contains(document.activeElement);
+    if (e.key === 'Tab' && this.state.objects.length > 0) {
+      e.preventDefault();
+      this.focusStep(e.shiftKey ? -1 : 1);
+      return true;
+    }
+    if (e.key === 'Enter' && this.focusId !== null) {
+      e.preventDefault();
+      this.selectObjects([this.focusId]);
+      return true;
+    }
+    if (!inside) return false;
+    const dir = arrowDirection(e.key, e.metaKey || e.ctrlKey || e.altKey);
+    if (dir === null) return false;
+    e.preventDefault();
+    this.focusDirection(dir);
     return true;
   }
 

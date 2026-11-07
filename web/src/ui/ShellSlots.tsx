@@ -10,6 +10,7 @@ import { DepsPanel } from './deps/DepsPanel';
 import { PALETTE_ORDER, type CanvasController, type DiagramLink, type DiagramObject } from './CanvasController';
 import type { Kind } from '../engine/model/types';
 import type { UiLayoutHandle } from './useUiLayout';
+import type { ImportError } from '../engine/model/imports';
 
 /** Collapsed-rail or panel, chosen from the layout. */
 export function slot(
@@ -23,6 +24,17 @@ export function slot(
     <PanelRail id={id} label={label} onExpand={onExpand} />
   ) : (
     content
+  );
+}
+
+/** F-20: import problems (missing file, cycle, escape) surfaced in the shell. */
+export function ImportBanner(props: { errors: ImportError[] }): ComponentChildren {
+  if (props.errors.length === 0) return null;
+  return (
+    <p class="import-banner" data-testid="import-errors" role="status">
+      {props.errors.length} import problem{props.errors.length === 1 ? '' : 's'}:{' '}
+      {props.errors.map((e) => e.message).join(' · ')}
+    </p>
   );
 }
 

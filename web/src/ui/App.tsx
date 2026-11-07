@@ -21,9 +21,10 @@ import { PanelRail, Splitter, focusRail } from './PanelChrome';
 import { InlineRename, type RenameTarget } from './InlineRename';
 import { CanvasMenu } from './CanvasMenu';
 import { useImportGhosts } from './useImportGhosts';
+import { ImportBanner } from './ShellSlots';
+import { useCanvasRevealPort } from './useCanvasReveal';
 import { PresentLayer } from './PresentDock';
-import { isPresenting } from './present';
-import { usePresentKeys } from './usePresentKeys';
+import { usePresentation } from './usePresentation';
 import type { IllustrationId } from '../engine/anim/illustrations';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
 import { useCodeSync } from './useCodeSync';
@@ -131,6 +132,8 @@ function CanvasSplit(props: {
   onToggleCode: () => void;
   onResizeCode: (dx: number) => void;
   onEndResizeCode: () => void;
+  revealRef: { current: ((id: string) => void) | null };
+  onCaretObject: (id: string | null) => void;
 }) {
   return (
     <div class="canvas-split">
@@ -162,6 +165,8 @@ function CanvasSplit(props: {
             snapshot={props.code.snapshot}
             onFormat={props.code.formatNow}
             onCollapse={props.onToggleCode}
+            revealRef={props.revealRef}
+            onCaretObject={props.onCaretObject}
           />
         </>
       )}
@@ -295,6 +300,7 @@ function AppBody(p: {
   illustration: IllustrationId | 'auto';
   onIllustration: (id: IllustrationId | 'auto') => void;
   dirty: boolean;
+  revealRef: { current: ((id: string) => void) | null };
 }) {
   const { ws, canvas, code, ui, player, activePath, viewName } = p;
   // F-19: canvas context menu (position in viewport coordinates)
@@ -309,12 +315,7 @@ function AppBody(p: {
   );
   return (
       <div class="app-body">
-        {importErrors.length > 0 && (
-          <p class="import-banner" data-testid="import-errors" role="status">
-            {importErrors.length} import problem{importErrors.length === 1 ? '' : 's'}:{' '}
-            {importErrors.map((e) => e.message).join(' · ')}
-          </p>
-        )}
+        <ImportBanner errors={importErrors} />
         <SidebarSlot
           ui={ui}
           sideTab={p.sideTab}
@@ -363,6 +364,7 @@ function AppBody(p: {
             e.preventDefault();
             setMenu({ x: e.clientX, y: e.clientY });
           }}
+          revealRef={p.revealRef}
         />
         <Splitter
           id="props"
@@ -413,6 +415,7 @@ function CenterColumn(props: {
   onView: (n: string | undefined) => void;
   onPresent: () => void;
   onCanvasContextMenu: (e: MouseEvent) => void;
+  revealRef: { current: ((id: string) => void) | null };
 }) {
   const { canvas, code, player, ui } = props;
   return (
@@ -434,6 +437,10 @@ function CenterColumn(props: {
         codeCollapsed={ui.layout.panels.code === 'collapsed'}
         onPresent={props.onPresent}
         onCanvasContextMenu={props.onCanvasContextMenu}
+        revealRef={props.revealRef}
+        onCaretObject={(id) => {
+          if (id !== null) canvas.ctrlRef.current?.setSelection([id]);
+        }}
         onToggleCode={() => ui.togglePanel('code')}
         onResizeCode={(dx) => ui.setPanelWidth('code', ui.layout.widths.code + dx)}
         onEndResizeCode={ui.flushLayout}
@@ -444,16 +451,11 @@ function CenterColumn(props: {
 
 export function App() {
   const ws = useWorkspace();
-  // Ref mirror of the active view name (declared before the canvas so the
-  // geometry-commit hook can target the right view — F-14).
+  // Ref mirror of the active view (F-14) and the code-sync commit port (F-14).
   const viewNameRef = useRef<string | undefined>(undefined);
-  // Filled once the code-sync hook exists (geometry commits must render the
-  // code view too, not just write the file).
   const commitDocRef = useRef<((doc: import('../engine/model/types').Doc) => void) | null>(null);
   // F-15: which object is being renamed in place (null = no overlay)
   const [renaming, setRenaming] = useState<string | null>(null);
-  // F-16: presentation is explicit (the inline playbar keeps the chrome)
-  const [present, setPresent] = useState(false);
   const canvas = useCanvasController(
     ws.manager,
     ws.ready,
@@ -493,14 +495,11 @@ export function App() {
   const [illustration, setIllustration] = useState<IllustrationId | 'auto'>('auto');
   const player = useFlowStage({ manager, canvas, activePath, illustration });
   const ui = useUiLayout(manager, ws.ready, ws.version);
+  const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
   const sel = selections(canvas.snap);
   const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
-  const presenting = present && isPresenting(player.state.status);
-  usePresentKeys(player, presenting);
-  // leaving playback always leaves presentation (Esc, exit button, flow end)
-  useEffect(() => {
-    if (!isPresenting(player.state.status)) setPresent(false);
-  }, [player.state.status]);
+  const pres = usePresentation(player);
+
   const diverged = useDivergedClose({
     manager: ws.manager,
     activePath,
@@ -516,8 +515,8 @@ export function App() {
 
   return (
     <div
-      class={`app-shell${presenting ? ' presenting' : ''}`}
-      data-presenting={presenting ? 'true' : 'false'}
+      class={`app-shell${pres.presenting ? ' presenting' : ''}`}
+      data-presenting={pres.presenting ? 'true' : 'false'}
       data-testid="app-shell"
       data-panels={Object.entries(ui.layout.panels).map(([k, v]) => `${k}:${v}`).join(',')}
       style={layoutStyle(ui.layout)}
@@ -540,14 +539,15 @@ export function App() {
         onView={setViewName}
         sideTab={sideTab}
         onSideTab={setSideTab}
-        onPresent={() => setPresent(true)}
+        onPresent={pres.start}
         sel={sel}
         diverged={diverged}
         illustration={illustration}
         onIllustration={setIllustration}
         dirty={code.snapshot.divergedFromSaved}
+        revealRef={revealRef}
       />
-      {presenting && <PresentLayer player={player} />}
+      {pres.presenting && <PresentLayer player={player} />}
       {renameTarget && (
         <InlineRename
           target={renameTarget}

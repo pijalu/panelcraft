@@ -13,10 +13,13 @@ export interface CodePaneProps {
   onFormat: () => void;
   /** F-10: collapse into the sync-state rail. */
   onCollapse?: () => void;
+  /** F-22: canvas ↔ code mapping hooks. */
+  revealRef?: { current: ((id: string) => void) | null };
+  onCaretObject?: (id: string | null) => void;
 }
 
 /** Split-pane code view for the active file. */
-export function CodePane({ machine, snapshot, onFormat, onCollapse }: CodePaneProps) {
+export function CodePane({ machine, snapshot, onFormat, onCollapse, revealRef, onCaretObject }: CodePaneProps) {
   return (
     <section class="code-pane" data-testid="code-pane" aria-label="Code view">
       <header class="code-pane-head">
@@ -40,7 +43,7 @@ export function CodePane({ machine, snapshot, onFormat, onCollapse }: CodePanePr
           Format
         </button>
       </header>
-      <CodeEditor machine={machine} />
+      <CodeEditor machine={machine} revealRef={revealRef} onCaretObject={onCaretObject} />
     </section>
   );
 }
