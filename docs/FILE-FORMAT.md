@@ -402,7 +402,7 @@ flow "Happy path" as happy {
   }
   par "fan-out" {
     { api -> events as L3 : "order created" }
-    { process mailx "send receipt" }        # ← unknown id `mailx` → P101 (kept for corpus test)
+    { process mailx "send receipt" }        # unknown id `mailx` → P101 (kept for corpus test)
   }
   info "PCI scope ends at PSP"
   conclusion "Order stored"
@@ -420,3 +420,80 @@ style api { fill #2d6cdf }
 > The deliberately broken line (`process mailx`) documents that **semantic** validation
 > reports P101 with position while the rest of the file still parses (error isolation);
 > lexical/syntax errors abort the parse for that file only.
+
+---
+
+## 15. Errata and frozen-grammar rulings (M1 normative)
+
+Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar is
+**frozen at pcd/1** as amended here; changes beyond this list require a version bump.
+
+**Lexical**
+- E-01 Colors vs comments: `#` followed by exactly 3 or 6 hex digits and a
+  delimiter lexes as COLOR; any other `#` starts a comment (§1 now normative).
+- E-02 `//` line comments are accepted alongside `# …` (same comment token;
+  drivers: SPDX headers on source files and the architecture seeds).
+- E-03 Identifiers: `[a-zA-Z][a-zA-Z0-9_-]*`, max 64 chars (§1 said
+  lowercase-only; §4's auto link ids are `L<n>`, so uppercase first letters are
+  legal). Overlong runs are E102.
+- E-04 A trailing same-line comment attaches to the FOLLOWING statement (the
+  lexer has no token-boundary lookahead); comments inside blocks accumulate and
+  attach to the next parsed statement, never dropped (§6).
+
+**Grammar**
+- E-05 Msg-step modifiers `: "label"`, `as Ref`, `flip` are order-free (§14's
+  `as L3 : "label"` is legal; §6's label-first ordering was narrower than
+  intended). The EBNF above is the normative superset.
+- E-06 `goto` requires a target (§6's optional Target was a typo); a quoted
+  target must be `"path#flowId"`. `return end` is the default and is not stored.
+- E-07 Reversed arrows normalize: `a <- b` stores `from=b, to=a` (plus type);
+  the canonical printer always emits `->`. `<->` keeps endpoints, sets
+  `bidir: true` (§4).
+- E-08 Duplicate meta directives: first wins, warning W100 (§2).
+- E-09 Tagged-id lists (`tag`, `contains`) are line-scoped: members must sit on
+  the same line as the keyword (§3).
+- E-10 Link/flow/view ids are data: the canonical printer emits `as <id>`
+  whenever an id was recorded, including unreferenced link ids — lossless
+  round-trip wins over §4's minimal-noise sketch (§1.2).
+- E-11 Empty collections (`tags`, `contains`, `waypoints`) vanish in canonical
+  IR JSON and print — absent, not `[]` (§11).
+- E-12 Fields the parser recorded are emitted even when empty strings
+  (`title ""`, `person a ""`, `a -> b : ""`); Go's IR models presence with
+  `*string` for exactly those fields (implementation note, D-M1-22).
+- E-13 Objects always print in block form (`person a "A" {`+newline+`}`), even
+  attribute-less; an empty `{}` style block parses to "no style" and is omitted
+  (§3, §11).
+- E-14 Nesting limit: 32 levels, deeper = E112 (§6).
+- E-15 Syntax errors (E100–E113) abort the whole file (doc = null + diagnostics);
+  semantic findings never abort (§10, §14 sample).
+
+**Validation**
+- E-16 P104 covers both msg-step forms: without `as`, an undirected link pair
+  must exist in either direction; with `as`, the referenced link id must exist.
+  P106 applies to any object used as `attach` target. P201 counts links and flow
+  references only (attached notes still warn — accepted). P202 "visual" steps =
+  msg/process/alt/par/goto. Severity split (§10) gates the CLI exit code:
+  **exit 1 only for error-severity findings**; warnings/info never fail
+  (`panelcraft validate docs/architecture` stays exit 0 with P201 warnings).
+- E-17 Unknown block attribute: kept as raw data, warning **P205** (§12 said
+  "P2xx"; the assigned code is P205).
+- E-18 Import rules: P102 cycle (error), P103 workspace-escaping path (error),
+  P200 missing file (warning, still renderable) — traversal is injected via an
+  ImportSource so pure validation stays IO-free (§5, §10).
+
+**Canonical IR JSON**
+- E-19 Key order is fixed (TS builder order = Go struct field order); empty
+  arrays omitted; `true`-only booleans (`bidir`, `flip`, `dashed`); 2-space
+  indent + trailing newline; no HTML escaping in `<`, `>`, `&` (§11).
+
+**Import converters (§8)**
+- E-20 Converters are best-effort and never silent: presentation directives →
+  M100 (info), unknown/unsupported lines → M200 (warning); full mapping table in
+  docs/milestones/M1.md D-M1-21. Mermaid `---` prints as `->` (plain) —
+  undirectedness is not representable in the IR (accepted approximation).
+
+**Tooling**
+- E-21 `panelcraft validate` exit codes: 0 = no error-severity findings, 1 =
+  ≥1 error finding or parse abort, 2 = usage error. PATH: files or directories
+  (a directory globs `*.pcd`, non-recursive, sorted). `validate --json` emits
+  `{files,errors,warnings,infos}`.
