@@ -6,8 +6,8 @@ coverage/
 
 # Go
 /bin/
-panelcraft
-panelcraft.test
+/panelcraft
+/panelcraft.test
 
 # Test / coverage artifacts
 *.out

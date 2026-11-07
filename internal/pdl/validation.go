@@ -382,6 +382,13 @@ func byPosition(a, b Diagnostic) bool {
 	return strings.Compare(a.Code, b.Code) < 0
 }
 
+// SortByPosition orders diagnostics by line, col, code (§10 output
+// discipline); shared with the CLI so merged parse+validate findings keep one
+// canonical order.
+func SortByPosition(diags []Diagnostic) {
+	sort.Slice(diags, func(i, j int) bool { return byPosition(diags[i], diags[j]) })
+}
+
 // Validate runs the semantic pass over a parsed doc (§10). Deterministic:
 // findings sorted by line, col, code. Import rules P102/P103/P200 require
 // Options.Imports.
@@ -398,6 +405,6 @@ func Validate(doc *ir.Doc, opts Options) []Diagnostic {
 	out = checkFlowsEmpty(doc, out)
 	out = checkStyles(doc, s, out)
 	out = checkOverlaps(doc, out)
-	sort.Slice(out, func(i, j int) bool { return byPosition(out[i], out[j]) })
+	SortByPosition(out)
 	return out
 }
