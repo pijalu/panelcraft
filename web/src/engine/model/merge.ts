@@ -32,6 +32,10 @@ export interface CanvasObjectLike {
   icon?: string;
   /** Explicit `size <w> <h>` geometry in document units (F-13). */
   size?: { w: number; h: number };
+  /** Custom key-value properties (F-11). */
+  properties?: { key: string; value: string }[];
+  /** Style overrides written into the object's `style` block (F-11). */
+  style?: { fill?: string; stroke?: string; text?: string; icon?: string };
 }
 
 /** Structural subset of the UI's canvas link. */
@@ -71,7 +75,7 @@ const styleIsEmpty = (s: StyleBlock | undefined): boolean =>
  */
 function withStyleKey(
   style: StyleBlock | undefined,
-  key: 'dashed' | 'head' | 'tail' | 'line' | 'width',
+  key: 'dashed' | 'head' | 'tail' | 'line' | 'width' | 'fill' | 'stroke' | 'text' | 'icon',
   value: string | number | boolean | undefined,
 ): StyleBlock | undefined {
   const next: StyleBlock = { ...(style ?? {}) };
@@ -97,10 +101,25 @@ function mergeObject(existing: Obj | undefined, c: CanvasObjectLike): Obj {
   setField(o, 'tags', c.tags && c.tags.length > 0 ? [...c.tags] : undefined);
   // explicit geometry (F-13): written only when the canvas knows it
   setField(o, 'size', c.size === undefined ? undefined : { w: c.size.w, h: c.size.h });
-  // dashed lives in the style block on disk (D6)
-  const style = withStyleKey(o.style, 'dashed', c.dashed === true ? true : undefined);
+  // custom properties (F-11): an empty list drops the attribute entirely
+  setField(
+    o,
+    'properties',
+    c.properties && c.properties.length > 0
+      ? c.properties.map((p) => ({ key: p.key, value: p.value }))
+      : undefined,
+  );
+  // style overrides live in the same block as `dashed`; keep both in sync
+  let style = o.style;
+  for (const key of ['fill', 'stroke', 'text', 'icon'] as const) {
+    style = withStyleKey(style, key, c.style?.[key]);
+  }
   if (style === undefined) delete o.style;
   else o.style = style;
+  // dashed lives in the style block on disk (D6)
+  const dashedStyle = withStyleKey(o.style, 'dashed', c.dashed === true ? true : undefined);
+  if (dashedStyle === undefined) delete o.style;
+  else o.style = dashedStyle;
   return o;
 }
 

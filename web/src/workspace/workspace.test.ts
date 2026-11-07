@@ -270,6 +270,40 @@ style api {
     expect(ws.text('a.pcd')).not.toContain('size');
   });
 
+  it('round-trips custom properties and style overrides (F-11)', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\n\nsystem api "API"\n');
+    const st = ws.canvasState('a.pcd');
+    const next = {
+      objects: st.objects.map((o) => ({
+        ...o,
+        properties: [{ key: 'owner', value: 'core' }],
+        style: { fill: '#112233', text: '#ffffff' },
+      })),
+      links: st.links,
+    };
+    ws.saveCanvas('a.pcd', next);
+    const text = ws.text('a.pcd');
+    expect(text).toContain('property owner "core"');
+    expect(text).toContain('fill #112233');
+    expect(text).toContain('text #ffffff');
+
+    const back = ws.canvasState('a.pcd');
+    expect(back.objects[0]?.properties).toEqual([{ key: 'owner', value: 'core' }]);
+    expect(back.objects[0]?.style).toMatchObject({ fill: '#112233', text: '#ffffff' });
+  });
+
+  it('clearing an override removes it from the file (F-11)', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\n\nsystem api "API" {\n  style {\n    fill #112233\n  }\n}\n');
+    const st = ws.canvasState('a.pcd');
+    ws.saveCanvas('a.pcd', {
+      objects: st.objects.map((o) => ({ ...o, style: {} })),
+      links: st.links,
+    });
+    expect(ws.text('a.pcd')).not.toContain('fill #112233');
+  });
+
   it('falls back to the projection when the file does not parse', () => {
     const ws = new WorkspaceManager({ skipWelcome: true });
     ws.createFileAt('a.pcd', 'pcd 1.0\nsystem');

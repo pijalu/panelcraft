@@ -74,6 +74,12 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 - **F-32** The stored layout is adopted during render, so the first click after load is
   never overwritten; focus follows a collapsing panel to its rail button.
 
+- **F-11** Properties panel sections: Identity / Metadata / Style / Advanced, collapsible
+  with a persisted state; new controls for custom key-value `property` entries, style
+  overrides (fill/stroke/text/icon, painted through CSS custom properties on the object
+  group) and a link `Bidirectional` toggle; the Advanced section shows id, size and the
+  `Fit to name` command.
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

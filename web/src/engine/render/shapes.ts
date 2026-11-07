@@ -26,6 +26,8 @@ export interface SceneObject {
   icon?: string;
   /** Pre-wrapped label lines (F-13 fit-to-name; max 2), computed by the caller. */
   labelLines?: string[];
+  /** Style overrides from the property panel (F-11). */
+  style?: { fill?: string; stroke?: string; text?: string };
 }
 
 export const SHAPE_RADIUS = 8;

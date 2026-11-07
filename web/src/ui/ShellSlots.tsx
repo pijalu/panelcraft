@@ -60,6 +60,9 @@ export interface PropsSlotProps {
   viewName: string | undefined;
   activeId: string | null;
   ctrl: CanvasController | null;
+  /** F-11 section expand state + toggler (persisted with the layout). */
+  sections: Record<string, boolean>;
+  onToggleSection: (section: string) => void;
 }
 
 /** Properties + dependencies column (or its rail). */
@@ -78,6 +81,8 @@ export function PropsSlot(props: PropsSlotProps) {
         onChangeLink={props.onChangeLink}
         onFit={props.onFit}
         onCollapse={() => props.ui.togglePanel('props')}
+        sections={props.sections}
+        onToggleSection={props.onToggleSection}
       />
       <DepsPanel
         text={props.depsText}

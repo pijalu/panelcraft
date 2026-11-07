@@ -71,7 +71,12 @@ interface LinkEntry {
 }
 
 export function structuralKey(o: SceneObject): string {
-  return [o.kind, o.w, o.h, o.name ?? '', o.dashed ? 1 : 0, o.labelLines?.join('\u0001') ?? ''].join('|');
+  const style = o.style;
+  const styleKey = style ? `${style.fill ?? ''}/${style.stroke ?? ''}/${style.text ?? ''}` : '';
+  return [
+    o.kind, o.w, o.h, o.name ?? '', o.dashed ? 1 : 0,
+    o.labelLines?.join('\u0001') ?? '', styleKey,
+  ].join('|');
 }
 
 function structuralKeyLink(l: SceneLink): string {
@@ -215,8 +220,30 @@ export class SceneRenderer {
     // with the drawing.
     g.classList.toggle('pc-dashed', obj.dashed === true);
     g.setAttribute('data-id', obj.id);
+    this.applyStyleOverrides(g, obj);
     for (const spec of shapeGlyphs(obj)) this.applySpec(g, spec);
     return g;
+  }
+
+  /**
+   * F-11 style overrides: fill/stroke/text are exposed as CSS custom properties
+   * on the object group, so the theme tokens stay the default and a per-object
+   * override simply wins (no inline attributes to fight the stylesheet).
+   */
+  private applyStyleOverrides(g: SVGGElement, obj: SceneObject): void {
+    const style = obj.style;
+    if (!style) {
+      g.style.removeProperty('--pc-shape-fill');
+      g.style.removeProperty('--pc-shape-stroke');
+      g.style.removeProperty('--pc-label-fill');
+      return;
+    }
+    if (style.fill) g.style.setProperty('--pc-shape-fill', style.fill);
+    else g.style.removeProperty('--pc-shape-fill');
+    if (style.stroke) g.style.setProperty('--pc-shape-stroke', style.stroke);
+    else g.style.removeProperty('--pc-shape-stroke');
+    if (style.text) g.style.setProperty('--pc-label-fill', style.text);
+    else g.style.removeProperty('--pc-label-fill');
   }
 
   private positionObject(g: SVGGElement, obj: SceneObject): void {
@@ -288,6 +315,7 @@ export class SceneRenderer {
     g.textContent = '';
     g.setAttribute('class', `pc-obj pc-kind-${obj.kind}`);
     g.classList.toggle('pc-dashed', obj.dashed === true);
+    this.applyStyleOverrides(g, obj);
     for (const spec of shapeGlyphs(obj)) this.applySpec(g, spec);
     this.positionObject(g, obj);
     this.objEntries.set(obj.id, { el: g, obj });

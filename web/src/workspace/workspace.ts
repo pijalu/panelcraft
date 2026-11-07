@@ -44,6 +44,10 @@ export interface CanvasObject {
   icon?: string;
   /** Explicit size from the file (`size <w> <h>`, F-13); absent = default. */
   size?: { w: number; h: number };
+  /** Custom key-value properties (F-11). */
+  properties?: { key: string; value: string }[];
+  /** Style overrides from the `style` block (F-11). */
+  style?: { fill?: string; stroke?: string; text?: string; icon?: string };
 }
 
 export interface CanvasLink {
@@ -69,6 +73,18 @@ export interface CanvasState {
 }
 
 /* ---- canvas ⇄ PDL ------------------------------------------------------- */
+
+/** Style block of a canvas object (dashed + F-11 overrides), or undefined. */
+function objectStyle(o: CanvasObject): StyleBlock | undefined {
+  const style: StyleBlock = {
+    dashed: o.dashed === true ? true : undefined,
+    fill: o.style?.fill,
+    stroke: o.style?.stroke,
+    text: o.style?.text,
+    icon: o.style?.icon,
+  };
+  return Object.values(style).every((v) => v === undefined) ? undefined : style;
+}
 
 /** Style block of a canvas link (F-12 keys + dashed), or undefined when empty. */
 function linkStyle(l: CanvasLink): StyleBlock | undefined {
@@ -101,7 +117,10 @@ export function stateToDoc(state: CanvasState): Doc {
     tags: o.tags?.length ? [...o.tags] : undefined,
     icon: o.icon,
     size: o.size === undefined ? undefined : { w: o.size.w, h: o.size.h },
-    style: o.dashed === true ? { dashed: true } : undefined,
+    properties: o.properties && o.properties.length > 0
+      ? o.properties.map((p) => ({ key: p.key, value: p.value }))
+      : undefined,
+    style: objectStyle(o),
     pos: { line: 0, col: 0 },
   }));
   const links: Link[] = state.links.map((l) => ({
@@ -179,6 +198,13 @@ function docObjectFields(o: Obj): Omit<CanvasObject, 'x' | 'y' | 'w' | 'h'> {
     tags: o.tags,
     icon: o.icon,
     dashed: o.style?.dashed === true ? true : undefined,
+    properties: o.properties?.map((p) => ({ key: p.key, value: p.value })),
+    style: {
+      fill: o.style?.fill,
+      stroke: o.style?.stroke,
+      text: o.style?.text,
+      icon: o.style?.icon,
+    },
   };
 }
 

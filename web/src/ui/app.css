@@ -97,6 +97,85 @@ body {
   overflow-y: auto;
 }
 
+/* F-11: properties sections (Identity / Metadata / Style / Advanced) */
+.prop-section {
+  border-top: 1px solid var(--pc-border);
+}
+
+.prop-section-head {
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px;
+  background: transparent;
+  border: none;
+  color: var(--pc-fg);
+  font: inherit;
+  font-size: var(--pc-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.prop-section-head:hover {
+  color: var(--pc-accent);
+}
+
+.prop-section-body {
+  padding: 0 2px 6px;
+}
+
+.prop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prop-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.prop-row input {
+  min-width: 0;
+  flex: 1;
+}
+
+.prop-row-del {
+  min-width: 32px;
+  min-height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  color: var(--pc-muted);
+  cursor: pointer;
+}
+
+.prop-row-del:hover {
+  border-color: var(--pc-border);
+  color: var(--pc-warn);
+}
+
+.prop-action {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  font: inherit;
+  font-size: var(--pc-text-xs);
+  cursor: pointer;
+}
+
+.prop-action:hover {
+  border-color: var(--pc-accent);
+  color: var(--pc-accent);
+}
+
 /* F-10: collapsible shell chrome — panel headers, rails, splitters */
 .panel-head {
   display: flex;
@@ -407,8 +486,8 @@ body {
 
 /* object glyphs — fills/strokes exclusively via tokens (STYLE-GUIDE) */
 .pc-shape {
-  fill: var(--pc-surface);
-  stroke: var(--pc-border);
+  fill: var(--pc-shape-fill, var(--pc-surface));
+  stroke: var(--pc-shape-stroke, var(--pc-border));
   stroke-width: 1;
 }
 
@@ -428,7 +507,7 @@ body {
 }
 
 .pc-label {
-  fill: var(--pc-fg);
+  fill: var(--pc-label-fill, var(--pc-fg));
   font-size: var(--pc-text-sm);
   text-anchor: middle;
   dominant-baseline: central;
@@ -1005,7 +1084,86 @@ marker .pc-arrow[fill='none'] {
   background: var(--pc-surface);
 }
 
-.code-pane-head /* F-10: collapsible shell chrome — panel headers, rails, splitters */
+.code-pane-head /* F-11: properties sections (Identity / Metadata / Style / Advanced) */
+.prop-section {
+  border-top: 1px solid var(--pc-border);
+}
+
+.prop-section-head {
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px;
+  background: transparent;
+  border: none;
+  color: var(--pc-fg);
+  font: inherit;
+  font-size: var(--pc-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.prop-section-head:hover {
+  color: var(--pc-accent);
+}
+
+.prop-section-body {
+  padding: 0 2px 6px;
+}
+
+.prop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prop-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.prop-row input {
+  min-width: 0;
+  flex: 1;
+}
+
+.prop-row-del {
+  min-width: 32px;
+  min-height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  color: var(--pc-muted);
+  cursor: pointer;
+}
+
+.prop-row-del:hover {
+  border-color: var(--pc-border);
+  color: var(--pc-warn);
+}
+
+.prop-action {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  font: inherit;
+  font-size: var(--pc-text-xs);
+  cursor: pointer;
+}
+
+.prop-action:hover {
+  border-color: var(--pc-accent);
+  color: var(--pc-accent);
+}
+
+/* F-10: collapsible shell chrome — panel headers, rails, splitters */
 .panel-head {
   display: flex;
   align-items: center;

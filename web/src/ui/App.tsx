@@ -304,6 +304,8 @@ function AppBody(p: {
             viewName={viewName}
             activeId={p.sel.obj?.id ?? null}
             ctrl={canvas.ctrlRef.current}
+            sections={ui.layout.sections}
+            onToggleSection={ui.toggleSection}
           />
         </div>
       </div>

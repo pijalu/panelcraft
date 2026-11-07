@@ -179,6 +179,18 @@ the missing controls from the spec: custom key-value properties, style overrides
 link direction/head/line (F-12), size (F-13).
 *Tests:* component — section collapse + every control round-trips through the doc.
 
+**Done.** The panel is split into `Identity / Metadata / Style / Advanced` sections
+whose expanded state lives in the persisted layout (`uiLayout.sections`, F-10), with a
+new custom key-value editor (add/edit/remove → `property` lines), style override
+controls (fill/stroke/text/icon → the object `style` block), a link `Bidirectional`
+toggle (F-07/F-08 surfaced) and the size/id read-out plus `Fit`. Object style overrides
+reach the renderer as CSS custom properties on the object group
+(`--pc-shape-fill/-stroke`, `--pc-label-fill`) so theme tokens remain the default.
+Tests: `ui/PropertiesPanel.test.tsx` (sections, every control patch, link bidir/head),
+`workspace.test.ts` (properties/style round-trip + clearing an override),
+e2e `p1-properties.spec.ts` (section state survives reload, custom property + fill
+reach the file, reload repaints the override).
+
 ### F-12 Arrow type model — *item 10*
 Link visual model `{head, tail, line, width}` + per-type colour hint; renderer gains one marker per head
 shape; format carries `head/tail/line` inside the existing link `style` block; UI segmented control and

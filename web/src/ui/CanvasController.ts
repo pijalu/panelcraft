@@ -55,6 +55,10 @@ export interface DiagramObject {
   size?: { w: number; h: number };
   /** Pre-wrapped label (F-13); transient canvas state, never persisted. */
   lines?: string[];
+  /** Custom key-value properties (F-11). */
+  properties?: { key: string; value: string }[];
+  /** Style overrides written into the object's style block (F-11). */
+  style?: { fill?: string; stroke?: string; text?: string; icon?: string };
   name?: string;
   description?: string;
   technology?: string;
@@ -407,7 +411,12 @@ export class CanvasController {
   /** Patch editable fields of an object (properties panel, FR-C6). */
   updateObject(
     id: string,
-    patch: Partial<Pick<DiagramObject, 'name' | 'description' | 'technology' | 'tags' | 'dashed'>>,
+    patch: Partial<
+      Pick<
+        DiagramObject,
+        'name' | 'description' | 'technology' | 'tags' | 'dashed' | 'properties' | 'style'
+      >
+    >,
   ): void {
     const before = this.state.objects;
     const after = before.map((o) => (o.id === id ? this.patched(o, patch) : o));
@@ -709,6 +718,7 @@ export class CanvasController {
         dashed: o.dashed,
         icon: o.icon,
         labelLines: o.lines,
+        style: o.style,
       })),
       links: this.sceneLinks(),
     };

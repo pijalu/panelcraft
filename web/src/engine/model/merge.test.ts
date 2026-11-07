@@ -89,6 +89,14 @@ const stateFrom = (doc: Doc, patch: Partial<CanvasStateLike> = {}): CanvasStateL
     tags: o.tags,
     icon: o.icon,
     dashed: o.style?.dashed === true ? true : undefined,
+    properties: o.properties?.map((p) => ({ key: p.key, value: p.value })),
+    // the canvas state is authoritative for the style overrides it models
+    style: {
+      fill: o.style?.fill,
+      stroke: o.style?.stroke,
+      text: o.style?.text,
+      icon: o.style?.icon,
+    },
   })),
   links: doc.links.map((l, i) => ({
     id: l.id ?? `anon${i}`,
@@ -215,7 +223,7 @@ describe('applyCanvasState (F-01)', () => {
   it('keeps other style keys while toggling dashed', () => {
     const doc = docOf('pcd 1.0\n\nsystem a "A" {\n  style {\n    fill #123456\n  }\n}\n');
     const after = applyCanvasState(doc, {
-      objects: [{ id: 'a', kind: 'system', name: 'A', dashed: true }],
+      objects: [{ id: 'a', kind: 'system', name: 'A', dashed: true, style: { fill: '#123456' } }],
       links: [],
     });
     const style = after.objects[0]?.style;
