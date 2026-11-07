@@ -228,3 +228,82 @@ export function fromC4(src: string): MermaidResult {
   };
   return { doc, diagnostics: ctx.diags };
 }
+
+/** Every string the C4 export can drop (asserted by the mermaid matrix, F-21). */
+export const C4_DROP_CATALOGUE = [
+  'groups (no C4 boundary element)',
+  'notes (no C4 annotation element)',
+  'flows',
+  'views (positions/layout)',
+  'imports (flattened)',
+  'link style beyond a label',
+] as const;
+
+export interface C4ExportResult {
+  text: string;
+  dropped: string[];
+}
+
+const C4_ELEMENT: Record<string, string> = {
+  person: 'Person',
+  system: 'System',
+  system_ext: 'System_Ext',
+  container: 'System',
+  component: 'System',
+  datastore: 'SystemDb',
+  queue: 'SystemQueue',
+};
+
+const c4Id = (id: string): string => id.replace(/[^A-Za-z0-9_]/g, '_');
+const c4Label = (text: string): string => `"${text.replace(/"/g, '&quot;')}"`;
+
+/**
+ * PDL → mermaid `C4Context` (F-21). Declared lossy: groups/notes/flows/views and
+ * link styling have no C4 counterpart and are reported in `dropped`.
+ */
+export function docToC4(doc: Doc): C4ExportResult {
+  const lines: string[] = ['C4Context'];
+  const dropped: string[] = [];
+  const drop = (reason: (typeof C4_DROP_CATALOGUE)[number]): void => {
+    if (!dropped.includes(reason)) dropped.push(reason);
+  };
+  if (doc.title !== undefined) lines.push(`  title ${c4Label(doc.title)}`);
+  for (const o of doc.objects) c4Object(o, lines, drop);
+  for (const l of doc.links) c4Link(l, lines, drop);
+  if (doc.flows.length > 0) drop('flows');
+  if (doc.views.length > 0) drop('views (positions/layout)');
+  if (doc.imports.length > 0) drop('imports (flattened)');
+  return { text: `${lines.join('\n')}\n`, dropped };
+}
+
+/** One C4 element line, or a declared drop for kinds C4 cannot express. */
+function c4Object(
+  o: Doc['objects'][number],
+  lines: string[],
+  drop: (reason: (typeof C4_DROP_CATALOGUE)[number]) => void,
+): void {
+  if (o.kind === 'group') {
+    drop('groups (no C4 boundary element)');
+    return;
+  }
+  if (o.kind === 'note') {
+    drop('notes (no C4 annotation element)');
+    return;
+  }
+  const el = C4_ELEMENT[o.kind] ?? 'System';
+  lines.push(`  ${el}(${c4Id(o.id)}, ${c4Label(o.name ?? o.id)})`);
+}
+
+/** One `Rel(...)` line; link styling has no C4 counterpart. */
+function c4Link(
+  l: Doc['links'][number],
+  lines: string[],
+  drop: (reason: (typeof C4_DROP_CATALOGUE)[number]) => void,
+): void {
+  const label = l.label ?? l.type ?? '';
+  lines.push(`  Rel(${c4Id(l.from)}, ${c4Id(l.to)}, ${c4Label(label)})`);
+  const styled = l.style;
+  if (styled && (styled.head || styled.tail || styled.line || styled.width || styled.dashed)) {
+    drop('link style beyond a label');
+  }
+}

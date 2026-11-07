@@ -62,13 +62,14 @@ const emitTags = (doc: Doc, lines: string[]): void => {
     for (const tag of o.tags ?? []) {
       if (!seen.has(tag)) {
         seen.add(tag);
-        lines.push(`  classDef ${sanitizeId(tag)} fill:#ffeeaa,stroke:#333;`);
+        // keep the tag verbatim: sanitising made the re-import rename the class
+        lines.push(`  classDef ${tag} fill:#ffeeaa,stroke:#333;`);
       }
     }
   }
   for (const o of doc.objects) {
     if ((o.tags?.length ?? 0) > 0) {
-      lines.push(`  class ${sanitizeId(o.id)} ${(o.tags ?? []).map(sanitizeId).join(',')};`);
+      lines.push(`  class ${sanitizeId(o.id)} ${(o.tags ?? []).join(',')};`);
     }
   }
 };
@@ -184,6 +185,33 @@ const groupDrops = (doc: Doc): string[] => {
   }
   return d;
 };
+
+/**
+ * Every string `dropped[]` can contain (F-21). The generated
+ * `docs/MERMAID-MATRIX.md` is asserted against this list, so a new drop cannot
+ * be introduced without documenting it.
+ */
+export const EXPORT_DROP_CATALOGUE = [
+  'title',
+  'theme',
+  'level',
+  'direction (auto-layout)',
+  'flows',
+  'views (positions/layout)',
+  'descriptions/technology',
+  'properties',
+  'unknown attributes',
+  'icons',
+  'note anchors (detach)',
+  'style beyond fill (stroke/text/shape)',
+  'waypoints',
+  'system vs container kind distinction (both export as rect)',
+  'nested groups (group inside group)',
+  'links with group endpoints',
+] as const;
+
+/** Dynamic drop prefix for unresolved imports (path is appended). */
+export const UNRESOLVED_IMPORT_PREFIX = 'import ';
 
 const collectDrops = (doc: Doc, unresolved: string[]): string[] => [
   ...metaDrops(doc),

@@ -120,17 +120,38 @@ describe('flowchart — subgraphs', () => {
 });
 
 describe('flowchart — unsupported constructs (FR-M5: never silent)', () => {
-  it('classDef/class/style/click warn and are skipped', () => {
+  it('classDef/class are mapped onto the object (FR-M3)', () => {
     const { doc, diagnostics } = fromMermaid([
       'flowchart TD',
-      'classDef foo fill:#f9f',
+      'classDef foo fill:#f9f,stroke:#333',
+      'a[OK]',
       'class a foo',
+    ].join('\n'));
+    // colours are declared drops (M100); the class name round-trips as a tag
+    expect(codesOf(diagnostics)).toEqual(['M100']);
+    expect(doc.objects[0]?.style).toBeUndefined();
+    expect(doc.objects[0]?.tags).toEqual(['foo']);
+  });
+
+  it('style/click still warn and are skipped', () => {
+    const { doc, diagnostics } = fromMermaid([
+      'flowchart TD',
       'style a fill:#f9f',
       'click a call callback()',
       'a[OK]',
     ].join('\n'));
-    expect(codesOf(diagnostics)).toEqual(['M200', 'M200', 'M200', 'M200']);
+    expect(codesOf(diagnostics)).toEqual(['M200', 'M200']);
     expect(doc.objects).toHaveLength(1);
+  });
+
+  it('linkStyle maps onto the import-ordered link', () => {
+    const { doc, diagnostics } = fromMermaid([
+      'flowchart TD',
+      'a[A] --> b[B]',
+      'linkStyle 0 stroke:#f00,stroke-dasharray: 4',
+    ].join('\n'));
+    expect(codesOf(diagnostics)).toEqual([]);
+    expect(doc.links[0]?.style).toMatchObject({ stroke: '#f00', dashed: true });
   });
   it('%% comments are ignored silently (they are comments)', () => {
     const r = fromMermaid('flowchart TD\n%% a comment\na --> b\n');

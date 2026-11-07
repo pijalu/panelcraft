@@ -5,7 +5,7 @@
 // never silent (FR-M5). Converter codes: M100 info (ignored directive),
 // M200 warning (unsupported/unknown line).
 import { diag, type Diagnostic } from './diagnostics';
-import { IR_VERSION, type Doc, type Link, type Obj } from '../model/types';
+import { IR_VERSION, type Doc, type Flow, type FlowStep, type Link, type Obj, type StyleBlock } from '../model/types';
 
 export const M = { ignored: 'M100', unsupported: 'M200' } as const;
 
@@ -23,6 +23,10 @@ export interface ConvertCtx {
   groupIds: Set<string>;
   /** open group stack; '' marks a skipped nested boundary. */
   groupStack: { id: string }[];
+  /** classDef styles by class name (FR-M3 mapping) */
+  classDefs: Map<string, StyleBlock>;
+  /** import order of links (linkStyle indexes into it) */
+  linkOrder: Link[];
 }
 
 export const newCtx = (): ConvertCtx => ({
@@ -31,6 +35,8 @@ export const newCtx = (): ConvertCtx => ({
   diags: [],
   groupIds: new Set(),
   groupStack: [],
+  classDefs: new Map(),
+  linkOrder: [],
 });
 
 const cleanText = (t: string): string =>
@@ -159,13 +165,25 @@ const readEndpoints = (ctx: ConvertCtx, s: string, i: number, line: number): { i
   }
 };
 
-const addLink = (ctx: ConvertCtx, from: string, to: string, label: string | undefined, arrow: Arrow, line: number): void => {
-  ctx.links.push({
-    from, to, id: undefined,
+const addLink = (
+  ctx: ConvertCtx,
+  from: string,
+  to: string,
+  label: string | undefined,
+  arrow: Arrow,
+  line: number,
+): void => {
+  const link: Link = {
+    from,
+    to,
+    id: undefined,
     type: arrow.kind === 'dotted' ? 'dotted' : arrow.kind === 'thick' ? 'thick' : undefined,
-    label: label || undefined, bidir: undefined,
+    label: label || undefined,
+    bidir: undefined,
     pos: { line, col: 1 },
-  });
+  };
+  ctx.links.push(link);
+  ctx.linkOrder.push(link); // linkStyle indexes this order (FR-M3)
 };
 
 /** Parse an edge statement; true = line consumed. False = not an edge line
@@ -236,11 +254,69 @@ const parseBareNodes = (ctx: ConvertCtx, line: string, lineNo: number): boolean 
   return count > 0 && j >= line.length;
 };
 
-const UNSUPPORTED_RE = /^(classDef|class|style|click|linkStyle|direction|accumulate|interpolate)\b/;
+const UNSUPPORTED_RE = /^(style|click|direction|accumulate|interpolate)\b/;
+const CLASS_DEF_RE = /^classDef\s+([A-Za-z_][\w-]*)\s+(.+?)\s*;?$/;
+const CLASS_APPLY_RE = /^class\s+([\w,\s-]+?)\s+([A-Za-z_][\w-]*(?:\s*,\s*[A-Za-z_][\w-]*)*)\s*;?$/;
+const LINK_STYLE_RE = /^linkStyle\s+(\d+)\s+(.+?)\s*;?$/;
+
+/** Parse a mermaid style attribute list (`fill:#f00,stroke:#333`). */
+const parseStyleAttrs = (raw: string): StyleBlock => {
+  const style: StyleBlock = {};
+  for (const part of raw.split(',')) {
+    const [key, value] = part.split(':').map((t) => t.trim());
+    if (key === undefined || value === undefined) {
+      if (value === undefined && key === 'stroke-dasharray') style.dashed = true;
+      continue;
+    }
+    if (key === 'fill') style.fill = value;
+    else if (key === 'stroke') style.stroke = value;
+    else if (key === 'color') style.text = value;
+    else if (key === 'stroke-dasharray') style.dashed = true;
+  }
+  return style;
+};
+
+/** `classDef` (define) and `class` (apply) — FR-M3 style mapping. */
+const classLine = (ctx: ConvertCtx, line: string, lineNo: number): boolean => {
+  const def = CLASS_DEF_RE.exec(line);
+  if (def !== null) {
+    ctx.classDefs.set(def[1]!, parseStyleAttrs(def[2]!));
+    // colours have no PDL equivalent here — declared, never silent
+    ctx.diags.push(
+      diag(M.ignored, `classDef colours are not imported: ${def[1]}`, lineNo, 1, 'info'),
+    );
+    return true;
+  }
+  const apply = CLASS_APPLY_RE.exec(line);
+  if (apply === null) return false;
+  const classes = apply[2]!.split(',').map((t) => t.trim());
+  for (const id of apply[1]!.split(',').map((t) => t.trim())) {
+    const obj = ctx.objects.find((o) => o.id === id);
+    if (obj === undefined) continue;
+    // class names become tags (that is what the exporter encodes)
+    obj.tags = [...new Set([...(obj.tags ?? []), ...classes])];
+  }
+  return true;
+};
+
+/** `linkStyle <index> stroke:#f00` — indexes the import-ordered link list. */
+const linkStyleLine = (ctx: ConvertCtx, line: string, lineNo: number): boolean => {
+  const m = LINK_STYLE_RE.exec(line);
+  if (m === null) return false;
+  const link = ctx.linkOrder[Number(m[1])];
+  if (link === undefined) {
+    ctx.diags.push(diag(M.unsupported, `linkStyle index ${m[1]} has no link`, lineNo, 1, 'warning'));
+    return true;
+  }
+  link.style = { ...(link.style ?? {}), ...parseStyleAttrs(m[2]!) };
+  return true;
+};
 const SUBGRAPH_START_RE = /^subgraph\b/;
 
 /** true + handled when the line is a flowchart keyword directive. */
 const flowKeyword = (ctx: ConvertCtx, line: string, lineNo: number): boolean => {
+  if (classLine(ctx, line, lineNo)) return true;
+  if (linkStyleLine(ctx, line, lineNo)) return true;
   if (UNSUPPORTED_RE.test(line)) {
     ctx.diags.push(diag(M.unsupported, `unsupported mermaid construct skipped: ${line.split(/\s+/)[0] ?? ''}`, lineNo, 1, 'warning'));
     return true;
@@ -292,8 +368,97 @@ const applyDir = (
   return dir ?? current;
 };
 
+const SEQ_HEADER = /^sequenceDiagram\b/;
+const SEQ_PARTICIPANT = /^(participant|actor)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+as\s+(.+))?$/;
+const SEQ_MSG = /^([A-Za-z_][A-Za-z0-9_]*)\s*(-->>|->>|-->|->)\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/;
+
+/**
+ * `sequenceDiagram` → objects + one flow (FR-M3). Participants become person
+ * objects (actor) or systems; each message becomes a `msg` step, and the
+ * response arrows (`-->>`) keep their label. Blocks (loop/alt/note) are
+ * unsupported and warn — never silent (FR-M5).
+ */
+export function fromSequence(src: string): MermaidResult {
+  const ctx = newCtx();
+  const steps: FlowStep[] = [];
+  const lines = src.split('\n');
+  for (let n = 0; n < lines.length; n += 1) {
+    const line = lines[n]!.trim();
+    const lineNo = n + 1;
+    if (line === '' || line.startsWith('%%') || SEQ_HEADER.test(line)) continue;
+    if (seqParticipant(ctx, line, lineNo)) continue;
+    if (seqMessage(ctx, steps, line, lineNo)) continue;
+    ctx.diags.push(
+      diag(
+        M.unsupported,
+        `unsupported sequence construct skipped: ${line.split(/\s+/)[0] ?? ''}`,
+        lineNo,
+        1,
+        'warning',
+      ),
+    );
+  }
+  const flows: Flow[] =
+    steps.length === 0 ? [] : [{ title: 'Sequence', steps, pos: { line: 1, col: 1 } }];
+  const doc: Doc = {
+    irVersion: IR_VERSION,
+    formatVersion: '1.0',
+    level: 'container',
+    imports: [],
+    objects: ctx.objects,
+    links: ctx.links,
+    flows,
+    views: [],
+    styles: [],
+  };
+  return { doc, diagnostics: ctx.diags };
+}
+
+/** `participant|actor A as "Alice"` → an object (true when consumed). */
+function seqParticipant(ctx: ConvertCtx, line: string, lineNo: number): boolean {
+  const part = SEQ_PARTICIPANT.exec(line);
+  if (part === null) return false;
+  const id = part[2]!;
+  if (!ctx.objects.some((o) => o.id === id)) {
+    ctx.objects.push({
+      kind: part[1] === 'actor' ? 'person' : 'system',
+      id,
+      name: part[3] ?? id,
+      pos: { line: lineNo, col: 1 },
+    });
+  }
+  return true;
+}
+
+/** `A->>B: label` → a msg step + the corresponding link (true when consumed). */
+function seqMessage(ctx: ConvertCtx, steps: FlowStep[], line: string, lineNo: number): boolean {
+  const msg = SEQ_MSG.exec(line);
+  if (msg === null) return false;
+  const [, from, arrow, to, label] = msg;
+  const text = label!.trim();
+  steps.push({
+    type: 'msg',
+    from: from!,
+    to: to!,
+    ...(text === '' ? {} : { label: text }),
+    pos: { line: lineNo, col: 1 },
+  });
+  ctx.links.push({
+    from: from!,
+    to: to!,
+    id: undefined,
+    label: text || undefined,
+    style: arrow!.startsWith('--') ? { dashed: true } : undefined,
+    pos: { line: lineNo, col: 1 },
+  });
+  return true;
+}
+
 /** Convert mermaid `flowchart`/`graph` text to a PDL Doc (level container). */
 export function fromMermaid(src: string): MermaidResult {
+  if (src.split('\n').some((l) => SEQ_HEADER.test(l.trim()))) {
+    return fromSequence(src); // FR-M3
+  }
   const ctx = newCtx();
   let direction: Doc['direction'] = undefined;
   let inFrontmatter = false;

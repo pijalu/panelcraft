@@ -106,6 +106,11 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   click-through to their source file, links to them survive canvas writes, and
   missing/cycle/escape problems surface in a banner.
 
+- **F-21** Mermaid interop completed: `sequenceDiagram` import (participants → objects,
+  messages → a flow), `classDef`/`class` → tags (colours declared as a drop),
+  `linkStyle` → link style, a `C4Context` exporter, and a generated
+  `docs/MERMAID-MATRIX.md` asserted against the converters' declared drop catalogues.
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

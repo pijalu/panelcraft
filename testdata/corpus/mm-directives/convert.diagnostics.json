@@ -7,11 +7,11 @@
     "severity": "warning"
   },
   {
-    "code": "M200",
-    "message": "unsupported mermaid construct skipped: classDef",
+    "code": "M100",
+    "message": "classDef colours are not imported: red",
     "line": 6,
     "col": 1,
-    "severity": "warning"
+    "severity": "info"
   },
   {
     "code": "M200",

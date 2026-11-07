@@ -351,6 +351,17 @@ banner, light screenshot).
 `docs/MERMAID-MATRIX.md` that is asserted against the exporter's `dropped[]` list.
 *Tests:* corpus fixtures both directions + a doc/code parity test.
 
+**Done.** `sequenceDiagram` imports to objects + a flow of `msg` steps (response arrows
+stay dashed, unsupported blocks warn M200); `classDef`/`class` map to tags with colours
+declared as an M100 info drop (applying them broke the export→import round trip);
+`linkStyle <n>` maps onto the import-ordered link (stroke/dash); `docToC4` exports a
+`C4Context` with its own declared drop catalogue. `docs/MERMAID-MATRIX.md` is
+generated from the converters' catalogues and a test regenerates/compares it
+(`MERMAID_MATRIX=1`), so a new capability or drop cannot land undocumented. Corpus and
+parity fixtures regenerated. Tests: `sequenceImport.test.ts`,
+`mermaidMatrix.test.ts` (doc parity + "maximal document only reports catalogue
+entries" + C4 mapping), updated `mermaid.test.ts`.
+
 ### F-22 Canvas accessibility + canvas↔code map
 Roving-focus object navigation (`Tab` into canvas, `←→↑↓` between objects, `Enter` select, `F2` rename),
 ARIA roles/labels on scene nodes, `aria-live` narration already present; click object → highlight its code
