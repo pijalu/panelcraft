@@ -402,3 +402,48 @@ goa/protocol: 2026/11/07 07:34:28 max_tokens=131072 (no explicit value and no pr
 2026/11/07 08:09:26.730042 [StatusMsg] Show("Calling bash...") oldText="Answering..." spinning=true
 2026/11/07 08:09:30.517301 [StatusMsg] Show("Calling goal...") oldText="Calling bash..." spinning=true
 2026/11/07 08:09:30.716357 [StatusMsg] Show("Tool calling") oldText="Calling goal..." spinning=true
+2026/11/07 08:09:30.802311 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:09:34.199803 [StatusMsg] Show("Calling goal...") oldText="Sending request..." spinning=true
+2026/11/07 08:09:34.225692 [StatusMsg] Show("Calling bash...") oldText="Calling goal..." spinning=true
+2026/11/07 08:09:34.688224 [StatusMsg] Show("Tool calling") oldText="Calling bash..." spinning=true
+2026/11/07 08:09:35.530529 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:09:37.913961 [StatusMsg] Show("Thinking...") oldText="Sending request..." spinning=true
+2026/11/07 08:10:03.386699 [StatusMsg] Show("Answering...") oldText="Thinking..." spinning=true
+2026/11/07 08:10:03.719219 [StatusMsg] Show("Calling bash...") oldText="Answering..." spinning=true
+2026/11/07 08:10:04.319335 [StatusMsg] Show("Tool calling") oldText="Calling bash..." spinning=true
+2026/11/07 08:10:07.201206 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:10:12.087737 [StatusMsg] Show("Calling bash...") oldText="Sending request..." spinning=true
+2026/11/07 08:10:13.214271 [StatusMsg] Show("Tool calling") oldText="Calling bash..." spinning=true
+2026/11/07 08:10:31.894620 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:10:43.328272 [StatusMsg] Show("Answering...") oldText="Sending request..." spinning=true
+2026/11/07 08:10:43.665465 [StatusMsg] Show("Calling write...") oldText="Answering..." spinning=true
+2026/11/07 08:10:51.638689 [StatusMsg] Show("Tool calling") oldText="Calling write..." spinning=true
+2026/11/07 08:10:51.647932 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:10:58.273431 [StatusMsg] Show("Calling write...") oldText="Sending request..." spinning=true
+2026/11/07 08:11:04.767766 [StatusMsg] Show("Tool calling") oldText="Calling write..." spinning=true
+2026/11/07 08:11:04.769492 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:11:06.464602 [StatusMsg] Show("Thinking...") oldText="Sending request..." spinning=true
+2026/11/07 08:11:07.298436 [StatusMsg] Show("Answering...") oldText="Thinking..." spinning=true
+2026/11/07 08:11:07.804607 [StatusMsg] Show("Calling edit...") oldText="Answering..." spinning=true
+2026/11/07 08:11:09.599357 [StatusMsg] Show("Tool calling") oldText="Calling edit..." spinning=true
+2026/11/07 08:11:09.603201 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:11:12.400927 [StatusMsg] Show("Calling bash...") oldText="Sending request..." spinning=true
+2026/11/07 08:11:13.503686 [StatusMsg] Show("Tool calling") oldText="Calling bash..." spinning=true
+2026/11/07 08:11:13.634050 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:11:16.098574 [StatusMsg] Show("Calling bash...") oldText="Sending request..." spinning=true
+2026/11/07 08:11:16.765301 [StatusMsg] Show("Tool calling") oldText="Calling bash..." spinning=true
+2026/11/07 08:11:19.681096 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:11:22.231229 [StatusMsg] Show("Answering...") oldText="Sending request..." spinning=true
+2026/11/07 08:11:22.496346 [StatusMsg] Show("Calling bash...") oldText="Answering..." spinning=true
+2026/11/07 08:11:23.021484 [StatusMsg] Show("Tool calling") oldText="Calling bash..." spinning=true
+2026/11/07 08:11:26.226853 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:11:28.702080 [StatusMsg] Show("Answering...") oldText="Sending request..." spinning=true
+2026/11/07 08:11:28.942117 [StatusMsg] Show("Calling read...") oldText="Answering..." spinning=true
+2026/11/07 08:11:29.408920 [StatusMsg] Show("Tool calling (2/2)") oldText="Calling read..." spinning=true
+2026/11/07 08:11:29.409094 [StatusMsg] Show("Tool calling") oldText="Tool calling (2/2)" spinning=true
+2026/11/07 08:11:29.409432 [StatusMsg] Show("Sending request...") oldText="Tool calling" spinning=true
+2026/11/07 08:11:31.865096 [StatusMsg] Show("Thinking...") oldText="Sending request..." spinning=true
+2026/11/07 08:11:34.669837 [StatusMsg] Show("Answering...") oldText="Thinking..." spinning=true
+2026/11/07 08:11:35.372380 [StatusMsg] Show("Calling bash...") oldText="Answering..." spinning=true
+2026/11/07 08:11:38.810608 [StatusMsg] Show("Calling goal...") oldText="Calling bash..." spinning=true
+2026/11/07 08:11:39.001379 [StatusMsg] Show("Tool calling") oldText="Calling goal..." spinning=true
