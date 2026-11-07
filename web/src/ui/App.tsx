@@ -15,9 +15,12 @@ import { ClearDataDialog } from './ClearDataDialog';
 import { DivergedDialog } from './DivergedDialog';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { CodePane } from './CodePane';
+import { FlowPane } from './flows/FlowPane';
+import { PlayBar } from './flows/PlayBar';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useCodeSync } from './useCodeSync';
 import { useDivergedClose } from './useDivergedClose';
+import { useFlowStage } from './useFlowStage';
 import type { WorkspaceManager } from '../workspace/workspace';
 
 /** Single-selection for the properties panel (obj xor link). */
@@ -42,6 +45,52 @@ function errorToShow(manager: WorkspaceManager, dismissed: string | null, ready:
   return manager.openError;
 }
 
+/** Sidebar: Files | Flows tabs — flow editor lives here to keep the row
+ * layout unchanged at 1280×720 (no width cost). */
+function SidePane(props: {
+  tab: 'files' | 'flows';
+  onTab: (t: 'files' | 'flows') => void;
+  manager: WorkspaceManager;
+  version: number;
+  activePath: string | null;
+  onText(text: string): void;
+  onPlay(flowKey: string): void;
+}) {
+  return (
+    <aside class="sidebar">
+      <div class="sidebar-tabs">
+        <button
+          type="button"
+          data-testid="side-tab-files"
+          class={props.tab === 'files' ? 'active' : ''}
+          onClick={() => props.onTab('files')}
+        >
+          Files
+        </button>
+        <button
+          type="button"
+          data-testid="side-tab-flows"
+          class={props.tab === 'flows' ? 'active' : ''}
+          onClick={() => props.onTab('flows')}
+        >
+          Flows
+        </button>
+      </div>
+      {props.tab === 'files' ? (
+        <FileTree manager={props.manager} version={props.version} onOpen={(p) => props.manager.openFile(p)} />
+      ) : (
+        <FlowPane
+          textOf={(p) => props.manager.text(p)}
+          activePath={props.activePath}
+          version={props.version}
+          onChangeText={props.onText}
+          onPlay={props.onPlay}
+        />
+      )}
+    </aside>
+  );
+}
+
 export function App() {
   const ws = useWorkspace();
   const canvas = useCanvasController(ws.manager, ws.ready, ws.version);
@@ -54,10 +103,12 @@ export function App() {
     ctrlRef: canvas.ctrlRef,
     snap: canvas.snap,
   });
+  const { manager } = ws;
   const [clearOpen, setClearOpen] = useState(false);
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
-  const { manager } = ws;
+  const [sideTab, setSideTab] = useState<'files' | 'flows'>('files');
+  const player = useFlowStage({ manager, canvas, activePath });
   const ctrl = canvas.ctrlRef.current;
   const sel = selections(canvas.snap);
   const diverged = useDivergedClose({
@@ -100,9 +151,17 @@ export function App() {
         onDismissReminder={ws.clearReminder}
       />
       <div class="app-body">
-        <aside class="sidebar">
-          <FileTree manager={manager} version={ws.version} onOpen={(p) => manager.openFile(p)} />
-        </aside>
+        <SidePane
+          tab={sideTab}
+          onTab={setSideTab}
+          manager={manager}
+          version={ws.version}
+          activePath={activePath}
+          onText={(text) => code.machine.textChanged(text)}
+          onPlay={(flowKey) => {
+            if (activePath !== null) player.start(activePath, flowKey);
+          }}
+        />
         <Palette
           kinds={PALETTE_ORDER}
           onPlace={(k) => ctrl?.addObject(k)}
@@ -122,6 +181,7 @@ export function App() {
           <div class="canvas-split">
             <main class="canvas-wrap">
               <svg ref={canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
+              <PlayBar player={player} />
             </main>
             <CodePane machine={code.machine} snapshot={code.snapshot} onFormat={code.formatNow} />
           </div>

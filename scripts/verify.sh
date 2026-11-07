@@ -79,6 +79,14 @@ exporter_goldens() { run npx vitest run web/src/engine/format/mermaidExport.test
 # e2e now includes S2 (mermaid paste → canvas → edit → code updates; M4-WP6).
 e2e_m4() { run npm run e2e -- --project=chromium; }
 
+# ---- m5 stages (flows & animation; reuses m1 corpus gates) -------------------
+# flows_anim: focused run of the playback suite — step machine + plan builder
+# (M5-WP1) and anim engine with Clock/AnimPlayer ports (M5-WP2/3) — all
+# deterministic (fake clock, injected player; no real timers in CI).
+flows_anim() { run npx vitest run web/src/engine/flows/ web/src/engine/anim/; }
+# e2e now includes S3 (play mode over a 6-step flow; M5-WP8).
+e2e_m5() { run npm run e2e -- --project=chromium; }
+
 case "$MILESTONE" in
   m0)
     STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test selfcontained e2e_smoke)
@@ -95,8 +103,11 @@ case "$MILESTONE" in
   m4)
     STAGES=(web_check web_test perf_smoke workspace_unit sync_machine exporter_goldens web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m4)
     ;;
+  m5)
+    STAGES=(web_check web_test perf_smoke workspace_unit sync_machine exporter_goldens flows_anim web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m5)
+    ;;
   *)
-    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4)" >&2
+    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4, m5)" >&2
     exit 2
     ;;
 esac

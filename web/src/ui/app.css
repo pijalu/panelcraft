@@ -895,3 +895,285 @@ body {
   .pc-tok-num { color: #fbbf24; }
   .pc-tok-meta { color: #c4b5fd; }
 }
+
+/* ===== M5 flows & animation ===== */
+
+/* Motion tokens (STYLE-GUIDE): mirrored by engine/anim/timings.ts MOTION —
+   keep both in sync; the engine reads MOTION, CSS reads these vars. */
+:root {
+  --pc-dur-fast: 150ms;
+  --pc-dur-med: 200ms;
+  --pc-dur-slow: 300ms;
+  --pc-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Sidebar Files|Flows tabs */
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--pc-border);
+}
+
+.sidebar-tabs button {
+  flex: 1;
+  padding: 6px 0;
+  font-size: var(--pc-text-sm);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--pc-muted);
+  cursor: pointer;
+}
+
+.sidebar-tabs button.active {
+  color: var(--pc-fg);
+  border-bottom-color: var(--pc-accent);
+}
+
+/* Flow editor pane */
+.flow-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  font-size: var(--pc-text-sm);
+}
+
+.flow-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.flow-list li {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--pc-radius-sm);
+}
+
+.flow-list li.active {
+  background: var(--pc-surface);
+}
+
+.flow-list li button {
+  background: none;
+  border: none;
+  color: var(--pc-fg);
+  padding: 3px 4px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.flow-list li button:first-of-type {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-list li button:last-of-type {
+  color: var(--pc-accent);
+}
+
+.flow-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  max-height: 260px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+}
+
+.flow-step button {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--pc-fg);
+  padding: 3px 8px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-step.active button {
+  background: var(--pc-surface);
+  outline: 1px solid var(--pc-accent);
+}
+
+.flow-step-kind {
+  display: inline-block;
+  min-width: 58px;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+}
+
+.flow-stepbar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.flow-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--pc-border);
+  padding-top: 6px;
+}
+
+.flow-insp-head {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.flow-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.flow-field-label {
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+  min-width: 58px;
+}
+
+.flow-field input[type='text'],
+.flow-field input:not([type]) {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Play bar overlay (canvas-wrap is the positioning context) */
+.canvas-wrap {
+  position: relative;
+}
+
+.playbar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.playbar button {
+  background: none;
+  border: none;
+  color: var(--pc-fg);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: var(--pc-text-md);
+}
+
+.playbar button:hover {
+  color: var(--pc-accent);
+}
+
+.playbar-progress {
+  font-variant-numeric: tabular-nums;
+  color: var(--pc-muted);
+}
+
+.playbar-crumbs {
+  color: var(--pc-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playbar-choice {
+  display: flex;
+  gap: 4px;
+}
+
+.playbar-choice button {
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  font-size: var(--pc-text-sm);
+}
+
+.playbar-narration {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--pc-fg);
+}
+
+/* Step-emphasis + dim end-states (FR-F2/F3). Dim/un-dim both transition so
+   beats crossfade; opacity value mirrors MOTION.dimOpacity (0.25). */
+.pc-obj,
+.pc-link {
+  transition: opacity var(--pc-dur-med) var(--pc-ease);
+}
+
+.pc-dim {
+  opacity: 0.25;
+}
+
+/* Reduced-motion emphasis: static accent halo instead of ring pulse. */
+.pc-emph {
+  filter: drop-shadow(0 0 4px var(--pc-accent));
+}
+
+/* Reduced motion: jumps instead of glides (engine checks matchMedia too);
+   kill every transition/animation to ≤1 frame (STYLE-GUIDE). */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
+}
+
+/* Animation overlay elements (created by FlowAnimator; WAAPI drives them). */
+.pc-anim-layer {
+  pointer-events: none;
+}
+
+.pc-ring {
+  fill: none;
+  stroke: var(--pc-accent);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.pc-token {
+  fill: var(--pc-accent);
+}
+
+.pc-trail {
+  fill: none;
+  stroke: var(--pc-accent);
+  opacity: 0.55;
+}
+
+/* Inline object icons (M5-WP7) — muted so labels stay dominant. */
+.pc-glyph-icon {
+  fill: var(--pc-muted);
+}
+
+.pc-badge-dot {
+  fill: var(--pc-accent);
+}
+
+.pc-badge-num {
+  fill: var(--pc-bg);
+  font-size: var(--pc-text-xs);
+  text-anchor: middle;
+  dominant-baseline: central;
+  user-select: none;
+}

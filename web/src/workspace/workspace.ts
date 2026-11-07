@@ -37,6 +37,7 @@ export interface CanvasObject {
   technology?: string;
   tags?: string[];
   dashed?: boolean;
+  icon?: string;
 }
 
 export interface CanvasLink {
@@ -69,6 +70,7 @@ export function stateToDoc(state: CanvasState): Doc {
     description: o.description,
     technology: o.technology,
     tags: o.tags?.length ? [...o.tags] : undefined,
+    icon: o.icon,
     pos: { line: 0, col: 0 },
   }));
   const links: Link[] = state.links.map((l) => ({
@@ -128,6 +130,7 @@ export function docToState(doc: Doc): CanvasState {
         description: o.description,
         technology: o.technology,
         tags: o.tags,
+        icon: o.icon,
       };
     });
   const ids = new Set(objects.map((o) => o.id));

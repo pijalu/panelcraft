@@ -4,6 +4,7 @@
 // custom properties (STYLE-GUIDE tokens); glyph specs carry class names only.
 
 import type { Kind } from '../model/types';
+import { ICON_BOX, iconGlyphs } from './icons';
 
 export interface ElSpec {
   tag: 'rect' | 'path' | 'circle' | 'text' | 'line';
@@ -21,6 +22,8 @@ export interface SceneObject {
   name?: string;
   /** style-override passthrough (IR style block, FR-C6) */
   dashed?: boolean;
+  /** inline icon name (M5-WP7, engine/render/icons.ts) */
+  icon?: string;
 }
 
 export const SHAPE_RADIUS = 8;
@@ -149,6 +152,19 @@ function noteGlyph(obj: SceneObject): ElSpec[] {
  * the kind class — theming (dashed border for external) lives in CSS.
  */
 export function shapeGlyphs(obj: SceneObject): ElSpec[] {
+  const glyphs = withIcon(obj, baseGlyphs(obj));
+  return glyphs;
+}
+
+/** Anchor the inline icon at the shape's top-right inset (M5-WP7). */
+function withIcon(obj: SceneObject, glyphs: ElSpec[]): ElSpec[] {
+  if (obj.icon === undefined) return glyphs;
+  const x = obj.w - ICON_BOX - 6;
+  const specs = iconGlyphs(obj.icon, x, 6) as unknown as ElSpec[];
+  return glyphs.concat(specs);
+}
+
+function baseGlyphs(obj: SceneObject): ElSpec[] {
   switch (obj.kind) {
     case 'person':
       return personGlyph(obj);

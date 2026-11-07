@@ -47,6 +47,7 @@ export interface DiagramObject {
   technology?: string;
   tags?: string[];
   dashed?: boolean;
+  icon?: string;
 }
 
 export interface DiagramLink {
@@ -378,6 +379,13 @@ export class CanvasController {
     this.emit();
   }
 
+  /** Move the camera WITHOUT emitting a snapshot — flow playback only, so
+   * the code-sync bridge never sees a camera-driven scene change. */
+  applyCamera(t: Transform): void {
+    this.t = t;
+    this.renderer.setWorldTransform(t);
+  }
+
   private recomputeRoutes(): void {
     this.routes.clear();
     for (const link of this.state.links) {
@@ -409,6 +417,7 @@ export class CanvasController {
         h: o.h,
         name: o.name,
         dashed: o.dashed,
+        icon: o.icon,
       })),
       links: this.sceneLinks(),
     };

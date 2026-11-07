@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// M5-WP5 — Preact binding for the FlowRunner playback executor. The runner
+// owns playback state; this hook mirrors it into component state and keeps
+// the injected ports fresh across renders.
+import { useRef, useState } from 'preact/hooks';
+import {
+  FRESH,
+  FlowRunner,
+  type BeatPlayer,
+  type CameraCam,
+  type ControllerIO,
+  type FlowPlayerState,
+  type FlowRects,
+} from './flowController';
+import type { Clock } from '../../engine/anim/ports';
+import type { Transform } from '../../engine/render/viewport';
+
+export interface FlowPlayerDeps {
+  /** File text lookup (workspace adapter); null when the file is absent. */
+  textOf(path: string): string | null;
+  /** Navigate to a file (goto cross-file). */
+  openFile(path: string): void;
+  animator: BeatPlayer;
+  camera: CameraCam;
+  clock: Clock;
+  /** Pre-play viewport (saved for exit-restore, glide start point). */
+  currentViewport(): Transform;
+}
+
+export interface FlowPlayerApi {
+  state: FlowPlayerState;
+  start(file: string, flowKey: string): void;
+  exit(): void;
+  pause(): void;
+  resume(): void;
+  restart(): void;
+  stepTo(index1: number): void;
+  choose(branchIndex: number): void;
+  setRectProvider(r: FlowRects): void;
+}
+
+export function useFlowPlayer(deps: FlowPlayerDeps): FlowPlayerApi {
+  const [state, setState] = useState<FlowPlayerState>(FRESH);
+  const setStateRef = useRef(setState);
+  setStateRef.current = setState;
+
+  const runnerRef = useRef<FlowRunner | null>(null);
+  if (runnerRef.current === null) {
+    const io: ControllerIO = {
+      ...deps,
+      publish: (patch) => setStateRef.current((s) => ({ ...s, ...patch })),
+    };
+    runnerRef.current = new FlowRunner(io);
+  }
+  const runner = runnerRef.current;
+  // Keep ports fresh each render (App supplies memoized instances anyway).
+  runner.io.animator = deps.animator;
+  runner.io.camera = deps.camera;
+  runner.io.clock = deps.clock;
+  runner.io.textOf = deps.textOf;
+  runner.io.openFile = deps.openFile;
+  runner.io.currentViewport = deps.currentViewport;
+
+  // Rebuilt each render so `state` is always fresh; runner methods are
+  // stable-bound (single runner for the component lifetime).
+  return {
+    state,
+    start: (file, flowKey) => runner.start(file, flowKey),
+    exit: () => runner.exit(),
+    pause: () => runner.pause(),
+    resume: () => runner.resume(),
+    restart: () => runner.restart(),
+    stepTo: (index1) => runner.stepTo(index1),
+    choose: (branchIndex) => runner.choose(branchIndex),
+    setRectProvider: (r) => runner.setRectProvider(r),
+  };
+}

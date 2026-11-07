@@ -99,6 +99,7 @@ export function useCanvasController(
   const nameFieldRef = useRef<HTMLInputElement | null>(null);
   const lastLoadedRef = useRef<string | null>(null);
   const loadingRef = useRef<string | null>(null);
+  const lastCanvasTextRef = useRef<string | null>(null); // last projection persisted via onCtrlState
   const firstRunRef = useRef(true); // adoption only guards the initial load
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const resync = (): void => {
@@ -130,6 +131,7 @@ export function useCanvasController(
     }
     firstRunRef.current = false;
     lastLoadedRef.current = path;
+    lastCanvasTextRef.current = null; // new file: re-baseline the projection dedupe
     if (path === null) {
       loadingRef.current = '\u0000';
       ctrl.loadState(EMPTY_STATE);
@@ -149,9 +151,15 @@ export function useCanvasController(
   const onCtrlState = (s: Snapshot): void => {
     setSnap(s);
     const path = manager.activePath;
-    if (path !== null && loadingRef.current !== path) {
-      manager.saveCanvas(path, { objects: s.objects, links: s.links });
-    }
+    if (path === null || loadingRef.current === path) return;
+    /* Persist only real canvas-content changes: render/selection/camera
+       churn re-emits the same objects/links, and writing the projection
+       then would clobber the file's full text (flows/views/styles the
+       projection cannot model — D-M4-6). Dedupe by serialized projection. */
+    const text = stateToPcd({ objects: s.objects, links: s.links });
+    if (text === lastCanvasTextRef.current) return;
+    lastCanvasTextRef.current = text;
+    manager.saveCanvas(path, { objects: s.objects, links: s.links });
   };
 
   /* controller creation (once) */
