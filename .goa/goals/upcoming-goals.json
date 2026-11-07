@@ -2,17 +2,6 @@
   "version": 1,
   "goals": [
     {
-      "id": "qg-1794034657105431000-99ae583b9954",
-      "name": "crimson.koi",
-      "objective": "Deliver milestone M3 — Workspace \u0026 storage — per docs/IMPLEMENTATION-PLAN.md §5, WPs M3-WP1..M3-WP5: virtual FS + tree UI + tabs (API freeze), IndexedDB store with autosave + forward-only migrations + Storage port (in-memory fallback), owned ZIP container over CompressionStream + lazy fflate fallback, per-file import/export .pcd/.mmd/.svg/.png, S4 e2e incl. quota + ephemeral paths.",
-      "completionCriterion": "S4 e2e passes (workspace ZIP export → storage clear → import → identical; quota-error path mocked), FR-W1–W5 and FR-S1–S4 covered by tests, coverage ≥80% workspace/*, and `bash scripts/verify.sh m3` exits 0 with evidence in docs/milestones/M3.md.",
-      "verifyCommand": "bash scripts/verify.sh m3",
-      "freshContext": true,
-      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §5; tail docs/milestones/M2.md; grep SPEC §4.1 (FR-W*), §4.8 (FR-S*), ADR-0003 (storage decisions). PROTOCOL: (a) evidence → docs/milestones/M3.md continuously; (b) FIRST task: extend scripts/verify.sh stage m3; (c) FS API freeze at M3-WP1 end — record exact signatures in M3.md (M4 consumes them); (d) ZIP container code over CompressionStream owned+tested, fflate fallback behind feature detect (lazy); (e) storage tests via fake-indexeddb incl. migration + corrupt-db paths. EXIT CONTRACT: verify.sh m3 exit 0; S4 green incl. no-network assertion still true after storage layer; M3.md complete. Next goal (M4) cold-starts from its handover + PLAN §6 + M3.md tail.",
-      "createdAt": "2026-11-07T07:57:37.105431+01:00",
-      "updatedAt": "2026-11-07T07:57:37.105431+01:00"
-    },
-    {
       "id": "qg-1794034657105651000-7716b7d5337c",
       "name": "emerald.wolf",
       "objective": "Deliver milestone M4 — Code view \u0026 mermaid export — per docs/IMPLEMENTATION-PLAN.md §6, WPs M4-WP1..M4-WP6: CodeMirror 6 component + PDL mode, two-way sync state machine (test-first), diagnostics line:col mapping + problems panel, format-on-save + diverged-buffer prompt, mermaid exporter with declared feature drop + golden outputs, S2 e2e.",

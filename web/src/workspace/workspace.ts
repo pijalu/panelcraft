@@ -1,0 +1,426 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// M3: workspace manager — ties the virtual FS, tabs, storage (autosave),
+// ZIP container and per-file IO into one observable façade for the UI.
+// Canvas ⇄ file mapping: the canvas state serializes to canonical PDL text
+// (geometry is a canvas concern; the format stays position-free — M6 auto-layout
+// owns re-layout, see M3.md "canvas ⇄ file" note).
+import {
+  basename, createFile, deleteNode, duplicateNode, filesUnder, getNode, newRoot,
+  parentPath, readFile, renameNode, moveNode, writeFile, FsError, type FsNode,
+} from './fs';
+import { initialTabs, openTab, closeTab, setDirty, type TabsState } from './tabs';
+import { Autosaver } from './store/autosave';
+import { MemoryStorage } from './store/memory';
+import {
+  SCHEMA_VERSION, StoreError, newStoredWorkspace,
+  type StoragePort, type StoredWorkspace,
+} from './store/port';
+import { createDefaultStorage } from './store/idb';
+import { packZip, unpackZip } from './zip/zip';
+import { entriesToTree, treeToEntries, snapshotTree } from './zip/workspaceZip';
+import { exportPcd, exportMmd, importText } from './io';
+import { parsePDL } from '../engine/format/parser';
+import { printDoc } from '../engine/format/printer';
+import { DEFAULT_SHAPE } from '../ui/CanvasController';
+import { IR_VERSION, FORMAT_VERSION, type Doc, type Kind, type Link, type Obj } from '../engine/model/types';
+
+/** Canvas-side state (structurally compatible with ui CanvasController). */
+export interface CanvasObject {
+  id: string;
+  kind: Kind;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  name?: string;
+  description?: string;
+  technology?: string;
+  tags?: string[];
+  dashed?: boolean;
+}
+
+export interface CanvasLink {
+  id: string;
+  from: string;
+  to: string;
+  type: string;
+  label?: string;
+  dashed?: boolean;
+}
+
+export interface CanvasState {
+  objects: CanvasObject[];
+  links: CanvasLink[];
+}
+
+/* ---- canvas ⇄ PDL ------------------------------------------------------- */
+
+export function stateToPcd(state: CanvasState): string {
+  const objects: Obj[] = state.objects.map((o) => ({
+    kind: o.kind,
+    id: o.id,
+    name: o.name,
+    description: o.description,
+    technology: o.technology,
+    tags: o.tags?.length ? [...o.tags] : undefined,
+    pos: { line: 0, col: 0 },
+  }));
+  const links: Link[] = state.links.map((l) => ({
+    id: l.id,
+    from: l.from,
+    to: l.to,
+    type: l.type || undefined,
+    label: l.label,
+    bidir: false,
+    pos: { line: 0, col: 0 },
+  }));
+  const doc: Doc = {
+    irVersion: IR_VERSION,
+    formatVersion: FORMAT_VERSION,
+    objects,
+    links,
+    imports: [],
+    flows: [],
+    views: [],
+    styles: [],
+  };
+  return printDoc(doc);
+}
+
+/** Deterministic grid layout for files without geometry (position-free format). */
+function gridPos(index: number): { x: number; y: number } {
+  const COLS = 5;
+  const col = index % COLS;
+  const row = Math.floor(index / COLS);
+  return { x: 40 + col * 190, y: 40 + row * 140 };
+}
+
+export function pcdToState(text: string): CanvasState {
+  const result = parsePDL(text);
+  if (!result.doc) return { objects: [], links: [] };
+  const doc = result.doc;
+  const objects: CanvasObject[] = doc.objects
+    .filter((o) => o.kind !== 'group' && o.kind !== 'note')
+    .map((o, i) => {
+      const size = DEFAULT_SHAPE[o.kind];
+      const p = gridPos(i);
+      return {
+        id: o.id,
+        kind: o.kind,
+        x: p.x,
+        y: p.y,
+        w: size?.w ?? 160,
+        h: size?.h ?? 60,
+        name: o.name,
+        description: o.description,
+        technology: o.technology,
+        tags: o.tags,
+      };
+    });
+  const ids = new Set(objects.map((o) => o.id));
+  const links: CanvasLink[] = doc.links
+    .filter((l) => ids.has(l.from) && ids.has(l.to))
+    .map((l) => ({ id: l.id ?? `${l.from}->${l.to}`, from: l.from, to: l.to, type: l.type ?? 'uses', label: l.label }));
+  return { objects, links };
+}
+
+/* ---- manager ------------------------------------------------------------ */
+
+export interface WorkspaceDeps {
+  storage?: StoragePort;
+  /** Enable to skip the bootstrap welcome file (tests). */
+  skipWelcome?: boolean;
+}
+
+export class WorkspaceManager {
+  root: FsNode = newRoot();
+  name = 'workspace';
+  tabs: TabsState = initialTabs;
+  /** FR-S2 private mode. */
+  ephemeral = false;
+  /** FR-S3 set when a quota error degraded the session. */
+  quotaDegraded = false;
+  /** Set when the stored record could not be opened (corrupt/newer). */
+  openError: string | null = null;
+
+  private storage: StoragePort;
+  private readonly autosaver: Autosaver;
+  private readonly listeners = new Set<() => void>();
+  private readonly skipWelcome: boolean;
+
+  constructor(deps: WorkspaceDeps = {}) {
+    this.storage = deps.storage ?? new MemoryStorage();
+    this.skipWelcome = deps.skipWelcome ?? false;
+    this.autosaver = new Autosaver({
+      save: (ws) => this.storage.save(ws),
+      onQuota: () => void this.degradeToEphemeral('storage quota exceeded'),
+    });
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private emit(): void {
+    for (const l of [...this.listeners]) l();
+  }
+
+  get activePath(): string | null {
+    const t = this.tabs.tabs[this.tabs.active];
+    return t?.path ?? null;
+  }
+
+  async init(): Promise<void> {
+    try {
+      const rec = await this.storage.load();
+      if (rec) {
+        this.root = rec.tree;
+        this.name = rec.name;
+        this.tabs = this.restoreTabs(rec);
+        this.emit();
+        return;
+      }
+    } catch (err) {
+      this.openError = err instanceof StoreError ? `${err.code}: ${err.message}` : String(err);
+    }
+    if (!this.skipWelcome) this.bootstrapWelcome();
+    this.emit();
+  }
+
+  private restoreTabs(rec: StoredWorkspace): TabsState {
+    let tabs = initialTabs;
+    for (const p of rec.openTabs) {
+      const node = getNode(this.root, p);
+      if (node?.kind === 'file') tabs = openTab(tabs, p);
+    }
+    if (rec.activePath) {
+      const idx = tabs.tabs.findIndex((t) => t.path === rec.activePath);
+      if (idx !== -1) tabs = { tabs: tabs.tabs, active: idx };
+    }
+    return tabs;
+  }
+
+  private bootstrapWelcome(): void {
+    createFile(this.root, 'untitled.pcd', '');
+    this.tabs = openTab(this.tabs, 'untitled.pcd');
+  }
+
+  record(): StoredWorkspace {
+    const rec = newStoredWorkspace(this.name);
+    rec.savedAt = Date.now();
+    rec.tree = this.root;
+    rec.openTabs = this.tabs.tabs.map((t) => t.path);
+    rec.activePath = this.activePath;
+    return rec;
+  }
+
+  scheduleSave(): void {
+    this.autosaver.schedule(this.record());
+  }
+
+  async flush(): Promise<void> {
+    this.autosaver.schedule(this.record()); // latest state always wins
+    await this.autosaver.flush();
+  }
+
+  /* ---- files + tabs ---- */
+
+  text(path: string): string {
+    return readFile(this.root, path);
+  }
+
+  openFile(path: string): void {
+    this.tabs = openTab(this.tabs, path);
+    this.emit();
+  }
+
+  closeTabAt(index: number): void {
+    this.tabs = closeTab(this.tabs, index);
+    this.emit();
+    this.scheduleSave();
+  }
+
+  createFileAt(path: string, content = ''): void {
+    createFile(this.root, path, content);
+    this.tabs = openTab(this.tabs, path);
+    this.emit();
+    this.scheduleSave();
+  }
+
+  createFolderAt(path: string): void {
+    createFile(this.root, `${path}/.keep`, '');
+    deleteNode(this.root, `${path}/.keep`);
+    this.emit();
+    this.scheduleSave();
+  }
+
+  renamePath(path: string, newName: string): void {
+    const parent = parentPath(path);
+    renameNode(this.root, path, newName);
+    const next = parent === '' ? newName : `${parent}/${newName}`;
+    this.tabs = retargetTabs(this.tabs, path, next);
+    this.emit();
+    this.scheduleSave();
+  }
+
+  movePath(from: string, toDir: string): void {
+    const target = `${toDir === '' ? '' : `${toDir}/`}${basename(from)}`;
+    moveNode(this.root, from, toDir);
+    this.tabs = retargetTabs(this.tabs, from, target);
+    this.emit();
+    this.scheduleSave();
+  }
+
+  duplicatePath(path: string): string {
+    const copy = duplicateNode(this.root, path);
+    this.emit();
+    this.scheduleSave();
+    return copy;
+  }
+
+  removePath(path: string): void {
+    deleteNode(this.root, path);
+    this.tabs = closeTabsUnder(this.tabs, path);
+    this.emit();
+    this.scheduleSave();
+  }
+
+  /* ---- canvas sync ---- */
+
+  /** Canvas → workspace file; no-op when the serialized text is unchanged. */
+  saveCanvas(path: string, state: CanvasState): void {
+    const text = stateToPcd(state);
+    const node = getNode(this.root, path);
+    if (node?.kind === 'file' && node.content === text) return;
+    writeFile(this.root, path, text);
+    this.tabs = setDirty(this.tabs, path, true);
+    this.emit();
+    this.scheduleSave();
+  }
+
+  /** File → canvas state (grid layout; empty text → empty state). */
+  canvasState(path: string): CanvasState {
+    const text = readFile(this.root, path);
+    return text.trim() === '' ? { objects: [], links: [] } : pcdToState(text);
+  }
+
+  /** Called after the canvas applied a file (open/switch): not dirty anymore. */
+  markClean(path: string): void {
+    this.tabs = setDirty(this.tabs, path, false);
+    this.emit();
+  }
+
+  /* ---- import/export (FR-W3/W4/W5) ---- */
+
+  async exportZip(): Promise<Blob> {
+    const entries = treeToEntries(this.root, { name: this.name, savedAt: Date.now() });
+    const bytes = await packZip(entries);
+    return new Blob([bytes as BlobPart], { type: 'application/zip' });
+  }
+
+  /** Replace the whole workspace from a ZIP archive. Returns the manifest name. */
+  async importZip(bytes: Uint8Array): Promise<string> {
+    const entries = await unpackZip(bytes);
+    const { root, manifest } = entriesToTree(entries);
+    this.root = root;
+    this.name = manifest?.name ?? 'imported';
+    this.tabs = initialTabs;
+    this.emit();
+    this.scheduleSave();
+    return this.name;
+  }
+
+  /** Import files (FR-W3): mermaid sources convert to .pcd. Returns paths. */
+  importFiles(files: Array<{ name: string; text: string }>): string[] {
+    const paths: string[] = [];
+    for (const f of files) {
+      const converted = importText(f.name, f.text);
+      writeFile(this.root, converted.path, converted.content);
+      paths.push(converted.path);
+    }
+    if (paths.length > 0) {
+      const last = paths[paths.length - 1];
+      if (last) this.tabs = openTab(this.tabs, last);
+    }
+    this.emit();
+    this.scheduleSave();
+    return paths;
+  }
+
+  /** Per-file export as text (.pcd/.mmd); svg/png need the live canvas. */
+  exportText(path: string, format: '.pcd' | '.mmd'): string {
+    if (format === '.pcd') return exportPcd(this.root, path);
+    return exportMmd(this.root, path).text;
+  }
+
+  files(): Array<{ path: string; node: FsNode }> {
+    return filesUnder(this.root);
+  }
+
+  snapshotTree(): Array<{ path: string; content: string }> {
+    return snapshotTree(this.root);
+  }
+
+  /* ---- storage lifecycle (FR-S2/S3/S4) ---- */
+
+  /** FR-S4: wipe stored data + reset the session. */
+  async clearAll(): Promise<void> {
+    await this.storage.clear();
+    this.root = newRoot();
+    this.tabs = initialTabs;
+    this.name = 'workspace';
+    this.openError = null;
+    if (!this.ephemeral && !this.skipWelcome) this.bootstrapWelcome();
+    this.emit();
+  }
+
+  /** FR-S2: switch between browser storage and in-memory mode. */
+  async setEphemeral(on: boolean): Promise<void> {
+    if (on === this.ephemeral) return;
+    this.ephemeral = on;
+    if (on) {
+      this.autosaver.cancel();
+      const memory = new MemoryStorage();
+      await memory.save(this.record()); // carry the current workspace in-session
+      this.storage = memory;
+    } else {
+      await this.autosaver.flush(); // commit to the real store before leaving
+      this.storage = await createDefaultStorage();
+    }
+    this.emit();
+  }
+
+  /** FR-S3: quota failure ⇒ ephemeral for this session + degraded flag. */
+  async degradeToEphemeral(reason: string): Promise<void> {
+    if (this.ephemeral) return;
+    this.quotaDegraded = true;
+    this.openError = reason;
+    await this.setEphemeral(true);
+    this.emit();
+  }
+}
+
+/** Rewrite tab paths after rename/move (also updates descendants). */
+function retargetTabs(tabs: TabsState, from: string, to: string): TabsState {
+  const prefix = `${from}/`;
+  const remap = (p: string): string =>
+    p === from ? to : p.startsWith(prefix) ? `${to}/${p.slice(prefix.length)}` : p;
+  const nextTabs = tabs.tabs.map((t) => ({ ...t, path: remap(t.path) }));
+  const activePath = tabs.tabs[tabs.active]?.path;
+  const idx = activePath === undefined ? -1 : nextTabs.findIndex((t) => t.path === remap(activePath));
+  return { tabs: nextTabs, active: idx === -1 ? tabs.active : idx };
+}
+
+/** Close all tabs whose path is the removed node or inside it. */
+function closeTabsUnder(tabs: TabsState, path: string): TabsState {
+  const prefix = `${path}/`;
+  let next = tabs;
+  for (let i = tabs.tabs.length - 1; i >= 0; i--) {
+    const p = tabs.tabs[i]?.path;
+    if (p && (p === path || p.startsWith(prefix))) next = closeTab(next, i);
+  }
+  return next;
+}
+
+export { SCHEMA_VERSION, StoreError, FsError };

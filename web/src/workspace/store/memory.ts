@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // M3-WP2: in-memory StoragePort — ephemeral mode (FR-S2) and the fallback for
 // browsers where IndexedDB is unavailable (private-mode Safari; ADR-0003).
-import { newStoredWorkspace, type StoragePort, type StoredWorkspace } from './port';
+import { decodeStored, newStoredWorkspace, type StoragePort, type StoredWorkspace } from './port';
 
 export class MemoryStorage implements StoragePort {
   private record: StoredWorkspace | null = null;
 
   async load(): Promise<StoredWorkspace | null> {
-    return this.record ? structuredClone(this.record) : null;
+    // Same validation path as IndexedDB: corrupt records throw StoreError.
+    return this.record === null ? null : decodeStored(structuredClone(this.record));
   }
 
   async save(ws: StoredWorkspace): Promise<void> {
