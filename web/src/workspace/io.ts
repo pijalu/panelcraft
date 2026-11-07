@@ -101,12 +101,50 @@ export function exportSvg(svg: SVGSVGElement): string {
   return sanitizeSvg(text);
 }
 
-const UNSAFE_TAG = /<\s*(script|foreignObject)\b[\s\S]*?<\/\s*\1\s*>/gi;
-const UNSAFE_ATTR = /\s(on[a-z]+|srcdoc|href\s*=\s*["']?\s*javascript:)[^ >]*/gi;
+const UNSAFE_TAG = /<\s*(script|foreignObject|iframe)\b[\s\S]*?<\/\s*\1\s*>/gi;
+const UNSAFE_ATTR = /\s(on[a-z]+|srcdoc|(?:[a-z]+:)?href\s*=\s*["']?\s*javascript:)[^ >/]*/gi;
+const ACTIVE_TAG = /^(script|foreignobject|iframe)$/;
 
-/** Remove scripts/foreignObject and script-URL/event attributes from SVG text. */
+/**
+ * Remove scripts/foreignObject/iframes and script-URL/event attributes from
+ * SVG text (SPEC N6). DOM-based: parse → prune → re-serialize, so output is
+ * always well-formed and hostile text inside escaped attribute values can
+ * never corrupt quoting (a pure-regex strip could eat the closing quote and
+ * turn inert text back into markup — found by the M7 fuzz suite). The regex
+ * pass remains only as a last resort for non-well-formed input, where the
+ * document could not ship anyway.
+ */
 export function sanitizeSvg(svgText: string): string {
-  return svgText.replace(UNSAFE_TAG, '').replace(UNSAFE_ATTR, '');
+  const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+  const root = doc.documentElement;
+  const broken =
+    !root ||
+    root.tagName.toLowerCase() !== 'svg' ||
+    root.getElementsByTagName('parsererror').length > 0;
+  if (broken) {
+    return svgText.replace(UNSAFE_TAG, '').replace(UNSAFE_ATTR, '');
+  }
+  pruneActive(root);
+  return new XMLSerializer().serializeToString(root);
+}
+
+/** Walk the tree: drop active elements, strip event/script-URL attributes. */
+function pruneActive(el: Element): void {
+  for (const child of Array.from(el.children)) {
+    if (ACTIVE_TAG.test(child.tagName.toLowerCase())) {
+      child.remove();
+      continue;
+    }
+    for (const attr of Array.from(child.attributes)) {
+      const name = attr.name.toLowerCase();
+      const value = attr.value.toLowerCase().replace(/\s+/g, '');
+      const dangerous =
+        name.startsWith('on') ||
+        ((name === 'href' || name.endsWith(':href') || name === 'srcdoc') && value.includes('javascript:'));
+      if (dangerous) child.removeAttribute(attr.name);
+    }
+    pruneActive(child);
+  }
 }
 
 export interface PngExport {
