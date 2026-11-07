@@ -18,13 +18,6 @@ export interface FsNode {
   children?: FsNode[];
 }
 
-export interface Workspace {
-  /** Display name — never part of node paths. */
-  name: string;
-  /** kind: 'folder'; name always ''. */
-  root: FsNode;
-}
-
 export type FsErrorCode =
   | 'invalid-path'
   | 'invalid-name'
@@ -53,8 +46,9 @@ const MAX_NAME = 255;
 // eslint-disable-next-line no-control-regex -- deliberate: reject control chars in names
 const CONTROL_CHARS = /[\0-\x1f]/;
 
-export function newWorkspace(name = 'workspace'): Workspace {
-  return { name, root: { kind: 'folder', name: '', children: [] } };
+/** Fresh workspace tree root (display name lives in app state / storage). */
+export function newRoot(): FsNode {
+  return { kind: 'folder', name: '', children: [] };
 }
 
 function validateName(name: string, ctx: string): void {
@@ -102,8 +96,8 @@ export function basename(path: string): string {
 }
 
 /** Resolve a path to its node, or null when absent. */
-export function getNode(ws: Workspace, path: string): FsNode | null {
-  let node = ws.root;
+export function getNode(root: FsNode, path: string): FsNode | null {
+  let node = root;
   for (const seg of splitPath(path)) {
     if (node.kind !== 'folder') return null;
     const next = node.children?.find((c) => c.name === seg);
@@ -114,8 +108,8 @@ export function getNode(ws: Workspace, path: string): FsNode | null {
 }
 
 /** Read a file's content; throws not-found / is-folder. */
-export function readFile(ws: Workspace, path: string): string {
-  const node = getNode(ws, path);
+export function readFile(root: FsNode, path: string): string {
+  const node = getNode(root, path);
   if (!node) throw new FsError('not-found', path);
   if (node.kind !== 'file') throw new FsError('is-folder', path, `not a file: ${path}`);
   return node.content ?? '';
@@ -135,8 +129,8 @@ function childrenOf(folder: FsNode): FsNode[] {
 }
 
 /** mkdir -p: ensure the folder chain for `path` exists; returns deepest folder. */
-function mkdirp(ws: Workspace, path: string): FsNode {
-  let node = ws.root;
+function mkdirp(root: FsNode, path: string): FsNode {
+  let node = root;
   let walked = '';
   for (const seg of splitPath(path)) {
     if (node.kind !== 'folder') {
@@ -154,15 +148,15 @@ function mkdirp(ws: Workspace, path: string): FsNode {
   return node;
 }
 
-function requireFolder(ws: Workspace, path: string): FsNode {
-  const node = getNode(ws, path);
+function requireFolder(root: FsNode, path: string): FsNode {
+  const node = getNode(root, path);
   if (!node) throw new FsError('not-found', path);
   if (node.kind !== 'folder') throw new FsError('is-file', path, `not a folder: ${path}`);
   return node;
 }
 
 /** Create a file (missing parent folders are auto-created). Throws exists. */
-export function createFile(ws: Workspace, path: string, content = ''): FsNode {
+export function createFile(root: FsNode, path: string, content = ''): FsNode {
   const segs = splitPath(path);
   const name = segs.pop();
   if (!name) throw new FsError('invalid-path', path, 'cannot create the root');
@@ -170,7 +164,7 @@ export function createFile(ws: Workspace, path: string, content = ''): FsNode {
   if (parentSegs === '' && name === MANIFEST_NAME) {
     throw new FsError('reserved-name', path, `${MANIFEST_NAME} is reserved for workspace ZIPs`);
   }
-  const dir = mkdirp(ws, parentSegs);
+  const dir = mkdirp(root, parentSegs);
   if (childrenOf(dir).some((c) => c.name === name)) throw new FsError('exists', path);
   const file: FsNode = { kind: 'file', name, content };
   childrenOf(dir).push(file);
@@ -179,8 +173,8 @@ export function createFile(ws: Workspace, path: string, content = ''): FsNode {
 }
 
 /** Create-or-overwrite (autosave / import path). */
-export function writeFile(ws: Workspace, path: string, content: string): FsNode {
-  const existing = getNode(ws, path);
+export function writeFile(root: FsNode, path: string, content: string): FsNode {
+  const existing = getNode(root, path);
   if (existing && existing.kind === 'folder') {
     throw new FsError('is-folder', path, `cannot write a file over a folder: ${path}`);
   }
@@ -188,12 +182,12 @@ export function writeFile(ws: Workspace, path: string, content: string): FsNode 
     existing.content = content;
     return existing;
   }
-  return createFile(ws, path, content);
+  return createFile(root, path, content);
 }
 
-function removeFromParent(ws: Workspace, path: string): void {
+function removeFromParent(root: FsNode, path: string): void {
   const segs = splitPath(path);
-  const parent = requireFolder(ws, segs.slice(0, -1).join('/'));
+  const parent = requireFolder(root, segs.slice(0, -1).join('/'));
   const list = childrenOf(parent);
   const idx = list.findIndex((c) => c.name === segs[segs.length - 1]);
   if (idx === -1) throw new FsError('not-found', path);
@@ -201,20 +195,20 @@ function removeFromParent(ws: Workspace, path: string): void {
 }
 
 /** Delete a node; the root cannot be deleted. */
-export function deleteNode(ws: Workspace, path: string): void {
+export function deleteNode(root: FsNode, path: string): void {
   if (splitPath(path).length === 0) throw new FsError('invalid-path', path, 'cannot delete the root');
-  removeFromParent(ws, path);
+  removeFromParent(root, path);
 }
 
 /** Rename in place. Throws invalid-name / reserved-name / exists / not-found. */
-export function renameNode(ws: Workspace, path: string, newName: string): void {
+export function renameNode(root: FsNode, path: string, newName: string): void {
   validateName(newName, path);
   const segs = splitPath(path);
   if (segs.length === 0) throw new FsError('invalid-path', path, 'cannot rename the root');
   if (segs.length === 1 && newName === MANIFEST_NAME) {
     throw new FsError('reserved-name', path, `${MANIFEST_NAME} is reserved for workspace ZIPs`);
   }
-  const parent = requireFolder(ws, segs.slice(0, -1).join('/'));
+  const parent = requireFolder(root, segs.slice(0, -1).join('/'));
   const node = childrenOf(parent).find((c) => c.name === segs[segs.length - 1]);
   if (!node) throw new FsError('not-found', path);
   const clash = childrenOf(parent).some((c) => c !== node && c.name === newName);
@@ -224,22 +218,22 @@ export function renameNode(ws: Workspace, path: string, newName: string): void {
 }
 
 /** Move `from` into folder `toDir` (keeps its basename). */
-export function moveNode(ws: Workspace, from: string, toDir: string): void {
+export function moveNode(root: FsNode, from: string, toDir: string): void {
   const fromSegs = splitPath(from);
   if (fromSegs.length === 0) throw new FsError('invalid-path', from, 'cannot move the root');
   const dirSegs = splitPath(toDir);
   if (dirSegs.length >= fromSegs.length && fromSegs.every((s, i) => s === dirSegs[i])) {
     throw new FsError('into-self', from, `cannot move ${from} into its own subtree ${toDir}`);
   }
-  const node = getNode(ws, from);
+  const node = getNode(root, from);
   if (!node) throw new FsError('not-found', from);
-  const dest = requireFolder(ws, toDir); // '' resolves to root
+  const dest = requireFolder(root, toDir); // '' resolves to root
   const name = fromSegs.pop();
   if (!name) throw new FsError('invalid-path', from, 'cannot move the root');
   if (childrenOf(dest).some((c) => c !== node && c.name === name)) {
     throw new FsError('exists', joinPath(toDir, name));
   }
-  removeFromParent(ws, from);
+  removeFromParent(root, from);
   childrenOf(dest).push(node);
   sortChildren(dest);
 }
@@ -251,12 +245,12 @@ function cloneNode(n: FsNode): FsNode {
 }
 
 /** Deep-copy a node next to the original as "name copy", "name copy 2", … */
-export function duplicateNode(ws: Workspace, path: string): string {
+export function duplicateNode(root: FsNode, path: string): string {
   const segs = splitPath(path);
   if (segs.length === 0) throw new FsError('invalid-path', path, 'cannot duplicate the root');
-  const node = getNode(ws, path);
+  const node = getNode(root, path);
   if (!node) throw new FsError('not-found', path);
-  const parent = requireFolder(ws, segs.slice(0, -1).join('/'));
+  const parent = requireFolder(root, segs.slice(0, -1).join('/'));
   const copy = cloneNode(node);
   const [stem, ext] = splitExt(node.name);
   const taken = new Set(childrenOf(parent).map((c) => c.name));
@@ -280,8 +274,8 @@ function splitExt(name: string): [string, string] {
 }
 
 /** Sorted snapshot of a folder's children (folders first). */
-export function listDir(ws: Workspace, path: string): FsNode[] {
-  return [...childrenOf(requireFolder(ws, path))].sort((a, b) => {
+export function listDir(root: FsNode, path: string): FsNode[] {
+  return [...childrenOf(requireFolder(root, path))].sort((a, b) => {
     if (a.kind !== b.kind) return a.kind === 'folder' ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
@@ -289,21 +283,21 @@ export function listDir(ws: Workspace, path: string): FsNode[] {
 
 /** Pre-order walk: every node with its workspace path (sorted, folders first). */
 export function walkNodes(
-  ws: Workspace,
+  root: FsNode,
   path = '',
-  node: FsNode = ws.root,
+  node: FsNode = root,
   out: Array<{ path: string; node: FsNode }> = [],
 ): Array<{ path: string; node: FsNode }> {
   if (path !== '') out.push({ path, node });
   if (node.kind === 'folder') {
-    for (const child of listDir(ws, path)) {
-      walkNodes(ws, joinPath(path, child.name), child, out);
+    for (const child of listDir(root, path)) {
+      walkNodes(root, joinPath(path, child.name), child, out);
     }
   }
   return out;
 }
 
 /** All file nodes under `path` (inclusive), preorder. */
-export function filesUnder(ws: Workspace, path = ''): Array<{ path: string; node: FsNode }> {
-  return walkNodes(ws, path).filter(({ node }) => node.kind === 'file');
+export function filesUnder(root: FsNode, path = ''): Array<{ path: string; node: FsNode }> {
+  return walkNodes(root, path).filter(({ node }) => node.kind === 'file');
 }

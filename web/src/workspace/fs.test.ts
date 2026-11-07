@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from 'vitest';
 import {
-  newWorkspace, splitPath, joinPath, parentPath, basename, getNode,
+  newRoot, splitPath, joinPath, parentPath, basename, getNode,
   readFile, createFile, writeFile, deleteNode, renameNode, moveNode,
   duplicateNode, listDir, walkNodes, filesUnder, FsError, MANIFEST_NAME,
-  type Workspace,
+  type FsNode,
 } from './fs';
 
-function ws(...paths: string[]): Workspace {
-  const w = newWorkspace('test');
+function ws(...paths: string[]): FsNode {
+  const w = newRoot();
   paths.forEach((p, i) => createFile(w, p, `content-${i}`));
   return w;
 }
@@ -152,7 +152,7 @@ describe('rename / move / duplicate / delete', () => {
 
 describe('listDir / walkNodes / filesUnder', () => {
   it('lists folders first, then files, both alphabetically', () => {
-    const w = newWorkspace();
+    const w = newRoot();
     createFile(w, 'zeta.pcd');
     createFile(w, 'dir/b.pcd');
     createFile(w, 'alpha.pcd');
@@ -164,7 +164,7 @@ describe('listDir / walkNodes / filesUnder', () => {
   });
 
   it('walks the tree in pre-order including empty folders', () => {
-    const w = newWorkspace();
+    const w = newRoot();
     createFile(w, 'b/inner.pcd');
     createFile(w, 'a.pcd');
     createFile(w, 'empty/.keep'); // ensure empty folder survives: create + delete file
