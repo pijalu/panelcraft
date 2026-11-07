@@ -32,15 +32,34 @@ beforeEach(() => {
   r = new SceneRenderer(svg);
 });
 
+const poly = [{ x: 120, y: 30 }, { x: 200, y: 30 }];
+
 describe('renderer scaffolding', () => {
-  it('creates defs + three layers in order: links, objects, overlay', () => {
+  it('creates defs + world wrapper + three layers in order', () => {
     const classes = [...svg.children].map((c) => c.getAttribute('class'));
-    expect(classes).toEqual([
-      null, // defs
+    expect(classes).toEqual([null, 'pc-world']); // defs, world
+    const world = svg.querySelector('.pc-world') as SVGGElement;
+    const worldChildren = [...world.children].map((c) => c.getAttribute('class'));
+    expect(worldChildren).toEqual([
+      'pc-grid', // hidden by default
       'pc-layer pc-layer-links',
       'pc-layer pc-layer-objects',
       'pc-layer pc-layer-overlay',
     ]);
+  });
+
+  it('world transform applies viewport (translate+scale)', () => {
+    const world = svg.querySelector('.pc-world') as SVGGElement;
+    r.setWorldTransform({ x: 12, y: -4, k: 1.5 });
+    expect(world.getAttribute('transform')).toBe('translate(12 -4) scale(1.5)');
+  });
+
+  it('grid toggles visibility (FR-C2)', () => {
+    const grid = svg.querySelector('.pc-grid') as SVGRectElement;
+    expect(grid.getAttribute('display')).toBe('none');
+    r.setGrid(true);
+    expect(grid.getAttribute('display')).toBe('');
+    expect(svg.querySelector('#pc-grid-pattern')).not.toBeNull();
   });
 
   it('creates the shared arrowhead marker def', () => {
@@ -176,13 +195,15 @@ describe('links', () => {
 });
 
 describe('selection (FR-C4 visual)', () => {
-  it('setSelection toggles pc-selected only on listed ids', () => {
-    r.render(scene([obj('a'), obj('b')]));
-    r.setSelection(['a']);
+  it('setSelection toggles pc-selected only on listed ids (links too)', () => {
+    r.render(scene([obj('a'), obj('b')], [{ id: 'l1', points: poly }]));
+    r.setSelection(['a'], ['l1']);
     expect(r.elementFor('a')?.classList.contains('pc-selected')).toBe(true);
     expect(r.elementFor('b')?.classList.contains('pc-selected')).toBe(false);
-    r.setSelection([]);
+    expect(svg.querySelector('g.pc-link')?.classList.contains('pc-link-selected')).toBe(true);
+    r.setSelection([], []);
     expect(r.elementFor('a')?.classList.contains('pc-selected')).toBe(false);
+    expect(svg.querySelector('g.pc-link')?.classList.contains('pc-link-selected')).toBe(false);
   });
 
   it('selection survives structural rebuilds', () => {

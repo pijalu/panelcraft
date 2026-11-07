@@ -13,6 +13,7 @@
 
 import { shapeGlyphs, type ElSpec, type SceneObject } from './shapes';
 import { labelPoint, type Polyline } from './router';
+import { GRID_SIZE } from './snap';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -64,17 +65,25 @@ export class SceneRenderer {
   private objectsLayer: SVGGElement;
   private linksLayer: SVGGElement;
   private overlayLayer: SVGGElement;
+  /** World wrapper — carries the viewport transform (canvas ⇄ screen). */
+  private worldEl: SVGGElement;
+  private gridRect: SVGRectElement;
   private objEntries = new Map<string, ObjEntry>();
   private linkEntries = new Map<string, LinkEntry>();
   /** Object id order as of last render — detects z-order changes. */
   private lastOrder = '';
   /** Selection survives rebuilds: reapplied after each patch. */
   private selectedIds = new Set<string>();
+  private selectedLinkIds = new Set<string>();
 
   constructor(svg: SVGSVGElement) {
     this.svg = svg;
     this.svg.textContent = '';
     this.svg.appendChild(this.makeDefs());
+    this.worldEl = this.el('g') as SVGGElement;
+    this.worldEl.setAttribute('class', 'pc-world');
+    this.svg.appendChild(this.worldEl);
+    this.gridRect = this.makeGrid();
     this.linksLayer = this.makeLayer('pc-layer-links');
     this.objectsLayer = this.makeLayer('pc-layer-objects');
     this.overlayLayer = this.makeLayer('pc-layer-overlay');
@@ -85,10 +94,46 @@ export class SceneRenderer {
     return this.overlayLayer;
   }
 
+  /** Apply the viewport transform to the world wrapper (WP1 wiring). */
+  setWorldTransform(t: { x: number; y: number; k: number }): void {
+    this.worldEl.setAttribute('transform', `translate(${t.x} ${t.y}) scale(${t.k})`);
+  }
+
+  /** Grid toggle (FR-C2). The grid lives in world space, so it pans/zooms. */
+  setGrid(on: boolean): void {
+    this.gridRect.setAttribute('display', on ? '' : 'none');
+  }
+
+  private makeGrid(): SVGRectElement {
+    const defs = this.svg.querySelector('defs') as SVGDefsElement;
+    const pattern = this.el('pattern') as SVGPatternElement;
+    pattern.setAttribute('id', 'pc-grid-pattern');
+    pattern.setAttribute('width', String(GRID_SIZE));
+    pattern.setAttribute('height', String(GRID_SIZE));
+    pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+    const dot = this.el('circle') as SVGCircleElement;
+    dot.setAttribute('cx', '0.5');
+    dot.setAttribute('cy', '0.5');
+    dot.setAttribute('r', '0.5');
+    dot.setAttribute('class', 'pc-grid-dot');
+    pattern.appendChild(dot);
+    defs.appendChild(pattern);
+    const rect = this.el('rect') as SVGRectElement;
+    rect.setAttribute('class', 'pc-grid');
+    rect.setAttribute('x', '-100000');
+    rect.setAttribute('y', '-100000');
+    rect.setAttribute('width', '200000');
+    rect.setAttribute('height', '200000');
+    rect.setAttribute('fill', 'url(#pc-grid-pattern)');
+    rect.setAttribute('display', 'none');
+    this.worldEl.appendChild(rect);
+    return rect;
+  }
+
   private makeLayer(name: string): SVGGElement {
     const g = this.el('g') as SVGGElement;
     g.setAttribute('class', `pc-layer ${name}`);
-    this.svg.appendChild(g);
+    this.worldEl.appendChild(g);
     return g;
   }
 
@@ -267,15 +312,19 @@ export class SceneRenderer {
     }
   }
 
-  /** Toggle the selection class by object id (FR-C4 selection visual). */
-  setSelection(ids: string[]): void {
+  /** Toggle selection classes by object/link id (FR-C4 visual). */
+  setSelection(ids: string[], linkIds: string[] = []): void {
     this.selectedIds = new Set(ids);
+    this.selectedLinkIds = new Set(linkIds);
     this.applySelection();
   }
 
   private applySelection(): void {
     for (const [id, entry] of this.objEntries) {
       entry.el.classList.toggle('pc-selected', this.selectedIds.has(id));
+    }
+    for (const [id, entry] of this.linkEntries) {
+      entry.el.classList.toggle('pc-link-selected', this.selectedLinkIds.has(id));
     }
   }
 
