@@ -49,7 +49,7 @@ interface LinkEntry {
 }
 
 export function structuralKey(o: SceneObject): string {
-  return [o.kind, o.w, o.h, o.name ?? '', o.dashed ? 1 : 0].join('|');
+  return [o.kind, o.w, o.h, o.name ?? '', o.dashed ? 1 : 0, o.labelLines?.join('\u0001') ?? ''].join('|');
 }
 
 function structuralKeyLink(l: SceneLink): string {

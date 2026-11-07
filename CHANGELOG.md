@@ -42,6 +42,12 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   newer pending render, and document content is persisted immediately instead of
   riding the 800 ms autosave debounce (a reload inside that window lost the edit).
 
+- **F-13** (IR v2) Objects carry optional `size <w> <h>` geometry: a known attribute
+  in the parser/printer/serializer (TS + Go, corpus and parity fixtures regenerated),
+  resize with eight anchors on every kind (min 48×32, grid snap, one undo per drag),
+  fit-to-name through an injectable text-measurement port (two-line wrapping,
+  grow-only on create/rename/load) and an explicit `Fit` command.
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

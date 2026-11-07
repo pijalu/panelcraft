@@ -231,6 +231,7 @@ export function App() {
             nameFieldRef={canvas.nameFieldRef}
             onChangeObject={(id, patch) => ctrl?.updateObject(id, patch)}
             onChangeLink={(id, patch) => ctrl?.updateLink(id, patch)}
+            onFit={() => ctrl?.fitSelection()}
           />
           <DepsPanel
             text={activePath !== null ? manager.text(activePath) : null}

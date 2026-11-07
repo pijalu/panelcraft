@@ -154,6 +154,18 @@ create/rename with 2-line wrapping; 8-handle resize for all kinds (min 48×32, s
 *Tests:* unit — text measurement stub, auto-grow, wrap, clamp; e2e — resize a container, reload, same size;
 screenshot before/after of a long name (proves no overflow).
 
+**Done.** `size` is a known object attribute (IR v2, FILE-FORMAT §3 + EBNF, TS + Go
+parser/printer/serializer, corpus + parity fixtures regenerated). Measurement is a
+port (`engine/render/measure.ts`: canvas implementation in the browser, deterministic
+stub in tests) with two-line wrapping; `engine/render/resize.ts` implements all eight
+anchors (min 48×32, grid snap, one undo per drag) and every kind shows them. Fit runs
+on create, on rename (grow-only) and on load for objects without explicit size; the
+`Fit` command (properties panel) records explicit geometry. Tests:
+`engine/render/measure.test.ts`, `engine/render/resize.test.ts`,
+`engine/format/size.test.ts`, `workspace.test.ts` (size round-trip), e2e
+`p1-size.spec.ts` (resize → reload, eight handles on person/note, long-name fit with
+real `getBBox` overflow assertions, light+dark screenshots).
+
 ### F-14 Geometry persistence + explicit re-layout — *item 9*
 Drag/resize end commits positions to the active view (implicit `"Default"` with `layout saved` when absent),
 debounced 250 ms, undoable; opening/switching never re-positions; only `Auto-layout` (confirmed + undo) and

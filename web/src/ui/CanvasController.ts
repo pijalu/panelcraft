@@ -20,7 +20,9 @@ import {
   type Rect,
   type Transform,
 } from '../engine/render/viewport';
-import { snapToGrid, computeGuides, GRID_SIZE } from '../engine/render/snap';
+import { snapToGrid, computeGuides } from '../engine/render/snap';
+import { resizedRect } from '../engine/render/resize';
+import { autoSize, canvasMeasurer, type TextMeasurer } from '../engine/render/measure';
 import type { Guide } from '../engine/render/snap';
 import { pick } from '../engine/render/hit-test';
 import {
@@ -31,6 +33,7 @@ import {
   drawHalos,
   drawResizeHandle,
   type HaloSide,
+  type ResizeHandle,
 } from '../engine/render/overlay';
 import { ValueChange, UndoStack, type CoalescableCommand } from '../workspace/undo';
 import type { Kind } from '../engine/model/types';
@@ -42,6 +45,10 @@ export interface DiagramObject {
   y: number;
   w: number;
   h: number;
+  /** Explicit size written to the file (`size <w> <h>`, F-13); absent = default. */
+  size?: { w: number; h: number };
+  /** Pre-wrapped label (F-13); transient canvas state, never persisted. */
+  lines?: string[];
   name?: string;
   description?: string;
   technology?: string;
@@ -91,7 +98,8 @@ export const PALETTE_ORDER: Kind[] = [
   'note',
 ];
 
-const RESIZE_KINDS: ReadonlySet<Kind> = new Set(['group']);
+/** F-13: every kind resizes (min 48×32, grid-snapped, one undo per drag). */
+export const MIN_SIZE = { w: 48, h: 32 };
 const DRAG_THRESHOLD = 2;
 
 type Mode =
@@ -100,7 +108,7 @@ type Mode =
   | { t: 'drag'; startCanvas: Point; before: PositionRec[]; moved: boolean }
   | { t: 'band'; startCanvas: Point; additive: boolean }
   | { t: 'link'; fromId: string; fromSide: Side }
-  | { t: 'resize'; id: string; startCanvas: Point; before: Rect };
+  | { t: 'resize'; id: string; handle: ResizeHandle; startCanvas: Point; before: Rect };
 
 interface PositionRec {
   id: string;
@@ -119,6 +127,8 @@ export interface ControllerOptions {
   undo?: UndoStack;
   onState?: (s: Snapshot) => void;
   onRenameRequest?: (id: string) => void;
+  /** Text measurement port (F-13); defaults to an offscreen canvas in a DOM. */
+  measure?: TextMeasurer;
 }
 
 export function labelFor(kind: Kind): string {
@@ -174,8 +184,11 @@ function haloTarget(e: Event): { id: string; side: HaloSide } | null {
   return id && side ? { id, side } : null;
 }
 
-function resizeTarget(e: Event): string | null {
-  return (e.target as Element | null)?.closest('.pc-resize-handle')?.getAttribute('data-id') ?? null;
+function resizeTarget(e: Event): { id: string; handle: ResizeHandle } | null {
+  const el = (e.target as Element | null)?.closest('.pc-resize-handle');
+  const id = el?.getAttribute('data-id');
+  const handle = el?.getAttribute('data-handle') as ResizeHandle | null;
+  return id && handle ? { id, handle } : null;
 }
 
 export class CanvasController {
@@ -196,6 +209,7 @@ export class CanvasController {
   private hydrated = false;
   private readonly onState?: (s: Snapshot) => void;
   private readonly onRenameRequest?: (id: string) => void;
+  private readonly measure: TextMeasurer;
   private detach: Array<() => void> = [];
 
   constructor(svg: SVGSVGElement, opts: ControllerOptions = {}) {
@@ -203,6 +217,7 @@ export class CanvasController {
     this.undo = opts.undo ?? new UndoStack();
     this.onState = opts.onState;
     this.onRenameRequest = opts.onRenameRequest;
+    this.measure = opts.measure ?? canvasMeasurer();
     this.renderer = new SceneRenderer(svg);
     this.attach();
     this.render();
@@ -249,13 +264,82 @@ export class CanvasController {
     // F-02: probe for a free id — never reuse an id loaded from the file
     const id = uniqueId(this.takenObjectIds(), 'o', ++this.seq);
     this.seq = Math.max(this.seq, seqOf(id, 'o'));
-    const obj: DiagramObject = { id, kind, x, y, w: size.w, h: size.h, name: `${labelFor(kind)} ${seqOf(id, 'o')}` };
+    const name = `${labelFor(kind)} ${seqOf(id, 'o')}`;
+    // F-13 fit-to-name on create: the default box is a fallback, the label wins
+    const fit = autoSize({ text: name, kind }, this.measure);
+    const obj: DiagramObject = {
+      id, kind, x, y, w: Math.max(size.w, fit.w), h: Math.max(size.h, fit.h), name, lines: fit.lines,
+    };
     const before = this.state.objects;
     this.state = { ...this.state, objects: [...before, obj] };
     this.selectObjects([id]);
     this.undo.push(this.addRemoveCommand(obj, before));
     this.render();
     return id;
+  }
+
+  /** Fit an object to its label unless it carries explicit geometry (F-13). */
+  private fitted(o: DiagramObject): DiagramObject {
+    if (o.size !== undefined) return o;
+    const text = o.name && o.name.length > 0 ? o.name : o.id;
+    const fit = autoSize({ text, kind: o.kind }, this.measure);
+    // grow-only: a short label keeps the kind's default box, a long one gets
+    // the room it needs (never shrink below what the shape language defines)
+    return {
+      ...o,
+      w: Math.max(o.w, fit.w),
+      h: Math.max(o.h, fit.h),
+      lines: fit.lines,
+    };
+  }
+
+  /** Apply a properties patch; a rename re-fits the box unless it is explicit. */
+  private patched(o: DiagramObject, patch: Partial<DiagramObject>): DiagramObject {
+    const next = { ...o, ...patch };
+    if (patch.name !== undefined) {
+      const fit = autoSize({ text: patch.name.length > 0 ? patch.name : o.id, kind: o.kind }, this.measure);
+      next.lines = fit.lines;
+      if (o.size === undefined) {
+        // grow-only on rename too: a shorter name must not shrink the box the
+        // user is looking at (shrinking is the explicit `Fit` command's job)
+        next.w = Math.max(o.w, fit.w);
+        next.h = Math.max(o.h, fit.h);
+      }
+    }
+    return next;
+  }
+
+  /**
+   * F-13 `Fit` command: size the selected objects to their labels and record
+   * the result as explicit geometry (which then disables further auto-fit).
+   */
+  fitSelection(): void {
+    const targets = this.state.objects.filter((o) => this.selObjects.has(o.id));
+    if (targets.length === 0) return;
+    const before = this.state.objects;
+    const after = before.map((o) => {
+      if (!this.selObjects.has(o.id)) return o;
+      const fit = autoSize({ text: o.name && o.name.length > 0 ? o.name : o.id, kind: o.kind }, this.measure);
+      return { ...o, w: fit.w, h: fit.h, size: { w: fit.w, h: fit.h }, lines: fit.lines };
+    });
+    if (listEq(before, after)) return;
+    this.state = { ...this.state, objects: after };
+    this.undo.push(
+      new ValueChange<DiagramObject[]>(
+        (objects) => {
+          this.state = { ...this.state, objects };
+          this.recomputeRoutes();
+          this.render();
+        },
+        before,
+        after,
+        `fit:${targets.map((t) => t.id).join(',')}`,
+        'fit to name',
+        listEq,
+      ),
+    );
+    this.recomputeRoutes();
+    this.render();
   }
 
   private takenObjectIds(): Set<string> {
@@ -278,7 +362,7 @@ export class CanvasController {
     patch: Partial<Pick<DiagramObject, 'name' | 'description' | 'technology' | 'tags' | 'dashed'>>,
   ): void {
     const before = this.state.objects;
-    const after = before.map((o) => (o.id === id ? { ...o, ...patch } : o));
+    const after = before.map((o) => (o.id === id ? this.patched(o, patch) : o));
     if (listEq(before, after)) return;
     this.state = { ...this.state, objects: after };
     this.undo.push(
@@ -369,7 +453,10 @@ export class CanvasController {
   }
 
   loadState(state: DiagramState): void {
-    this.state = state;
+    // F-13: fit-to-name is a canvas-side computation, so it also runs on load —
+    // objects without explicit `size` are sized to their label instead of the
+    // kind default (which would overflow a long name).
+    this.state = { ...state, objects: state.objects.map((o) => this.fitted(o)) };
     this.hydrated = true;
     // F-02: re-baseline the id sequence from the loaded ids, otherwise the
     // first added object reuses an id that already exists in the file and one
@@ -523,6 +610,7 @@ export class CanvasController {
         name: o.name,
         dashed: o.dashed,
         icon: o.icon,
+        labelLines: o.lines,
       })),
       links: this.sceneLinks(),
     };
@@ -541,7 +629,7 @@ export class CanvasController {
     const obj = this.selectedObject();
     if (obj) {
       drawHalos(this.renderer.overlay, obj, obj.id);
-      if (RESIZE_KINDS.has(obj.kind)) drawResizeHandle(this.renderer.overlay, obj, obj.id);
+      drawResizeHandle(this.renderer.overlay, obj, obj.id);
     }
   }
 
@@ -681,10 +769,18 @@ export class CanvasController {
       this.mode = { t: 'link', fromId: halo.id, fromSide: halo.side };
       return true;
     }
-    const handleId = resizeTarget(e);
-    if (handleId) {
-      const obj = this.state.objects.find((o) => o.id === handleId);
-      if (obj) this.mode = { t: 'resize', id: obj.id, startCanvas: this.toCanvas(e), before: rectOf(obj) };
+    const target = resizeTarget(e);
+    if (target) {
+      const obj = this.state.objects.find((o) => o.id === target.id);
+      if (obj) {
+        this.mode = {
+          t: 'resize',
+          id: obj.id,
+          handle: target.handle,
+          startCanvas: this.toCanvas(e),
+          before: rectOf(obj),
+        };
+      }
       return true;
     }
     return false;
@@ -816,20 +912,13 @@ export class CanvasController {
   private resizeMove(e: PointerEvent): void {
     const m = this.mode;
     if (m.t !== 'resize') return;
-    const p = this.toCanvas(e);
-    // top-left anchored; far edge snaps to grid (FR-C4, groups only)
-    const x2 = Math.max(m.before.x + GRID_SIZE, snapToGrid(p.x));
-    const y2 = Math.max(m.before.y + GRID_SIZE, snapToGrid(p.y));
-    const snapped: Rect = {
-      x: m.before.x,
-      y: m.before.y,
-      w: x2 - m.before.x,
-      h: y2 - m.before.y,
-    };
+    const snapped = resizedRect(m.before, m.handle, this.toCanvas(e));
     this.state = {
       ...this.state,
       objects: this.state.objects.map((o) =>
-        o.id === m.id ? { ...o, x: snapped.x, y: snapped.y, w: snapped.w, h: snapped.h } : o,
+        o.id === m.id
+          ? { ...o, x: snapped.x, y: snapped.y, w: snapped.w, h: snapped.h, size: { w: snapped.w, h: snapped.h } }
+          : o,
       ),
     };
     this.recomputeRoutes();
@@ -926,8 +1015,12 @@ export class CanvasController {
   private commitResize(): void {
     const m = this.mode;
     if (m.t !== 'resize') return;
+    // one undo entry per drag: the before-rect is restored without a size flag
+    // unless the object already had an explicit size
     const before = this.state.objects.map((o) =>
-      o.id === m.id ? { ...o, x: m.before.x, y: m.before.y, w: m.before.w, h: m.before.h } : o,
+      o.id === m.id
+        ? { ...o, x: m.before.x, y: m.before.y, w: m.before.w, h: m.before.h }
+        : o,
     );
     const after = this.state.objects;
     if (listEq(before, after)) return;

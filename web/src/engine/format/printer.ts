@@ -132,7 +132,16 @@ const objectAttrLines = (o: Obj, p: Printer): void => {
   if (o.contains?.length) p.add(`${INDENT}contains ${o.contains.join(' ')}`);
   if (o.attach !== undefined) p.add(`${INDENT}attach ${o.attach}`);
   if (o.icon !== undefined) p.add(`${INDENT}icon ${o.icon}`);
+  // F-13: explicit geometry, printed only when the document carries it
+  if (o.size !== undefined) p.add(`${INDENT}size ${jsNum(o.size.w)} ${jsNum(o.size.h)}`);
 };
+
+/** Print a coordinate/size number the way the Go printer does (int when exact). */
+export function jsNum(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  if (Number.isInteger(n)) return String(n);
+  return String(Number(n.toFixed(4)));
+}
 
 const printObject = (o: Obj, p: Printer): void => {
   p.comment(o.comments, 0);

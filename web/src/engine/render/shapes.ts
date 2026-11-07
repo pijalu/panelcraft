@@ -24,6 +24,8 @@ export interface SceneObject {
   dashed?: boolean;
   /** inline icon name (M5-WP7, engine/render/icons.ts) */
   icon?: string;
+  /** Pre-wrapped label lines (F-13 fit-to-name; max 2), computed by the caller. */
+  labelLines?: string[];
 }
 
 export const SHAPE_RADIUS = 8;
@@ -31,11 +33,19 @@ export const SHAPE_RADIUS = 8;
 export const HEAD_R = 6;
 export const NOTE_FOLD = 12;
 
-const TEXT_MID = (obj: SceneObject): ElSpec => ({
-  tag: 'text',
-  attrs: { x: obj.w / 2, y: obj.h / 2, class: 'pc-label' },
-  text: obj.name ?? obj.id,
-});
+/** Centred label; a wrapped name renders as two stacked lines (F-13). */
+const TEXT_MID = (obj: SceneObject): ElSpec[] => {
+  const lines = obj.labelLines && obj.labelLines.length > 1
+    ? obj.labelLines
+    : [obj.name ?? obj.id];
+  const lineHeight = 16;
+  const firstY = obj.h / 2 - ((lines.length - 1) * lineHeight) / 2;
+  return lines.map((line, i) => ({
+    tag: 'text' as const,
+    attrs: { x: obj.w / 2, y: firstY + i * lineHeight, class: 'pc-label' },
+    text: line,
+  }));
+};
 
 /** Rectangular body with rounded corners (system/container/component/queue base). */
 function bodyRect(obj: SceneObject, rx = SHAPE_RADIUS): ElSpec {
@@ -67,7 +77,7 @@ function personGlyph(obj: SceneObject): ElSpec[] {
         fill: 'none',
       },
     },
-    TEXT_MID(obj),
+    ...TEXT_MID(obj),
   ];
 }
 
@@ -97,7 +107,7 @@ function cylinderGlyph(obj: SceneObject): ElSpec[] {
         fill: 'none',
       },
     },
-    TEXT_MID(obj),
+    ...TEXT_MID(obj),
   ];
 }
 
@@ -119,7 +129,7 @@ function queueGlyph(obj: SceneObject): ElSpec[] {
       tag: 'line',
       attrs: { x1: obj.w - band, y1, x2: obj.w - band, y2, class: 'pc-glyph' },
     },
-    TEXT_MID(obj),
+    ...TEXT_MID(obj),
   ];
 }
 
@@ -143,7 +153,7 @@ function noteGlyph(obj: SceneObject): ElSpec[] {
         fill: 'none',
       },
     },
-    TEXT_MID(obj),
+    ...TEXT_MID(obj),
   ];
 }
 
@@ -196,6 +206,6 @@ function baseGlyphs(obj: SceneObject): ElSpec[] {
       ];
     default:
       // system / system_ext / container / component: rounded rect
-      return [bodyRect(obj), TEXT_MID(obj)];
+      return [bodyRect(obj), ...TEXT_MID(obj)];
   }
 }

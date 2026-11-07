@@ -325,6 +325,14 @@ func (p *parser) objectAttr(o *ir.Obj, seen map[string]bool, t0, t Token) bool {
 	case "icon":
 		p.once(seen, t, "icon")
 		o.Icon = p.ident()
+	case "size":
+		p.once(seen, t, "size")
+		w := p.num(p.expect(TokNumber, ""))
+		h := p.num(p.expect(TokNumber, ""))
+		if w <= 0 || h <= 0 {
+			p.fail(t, ErrUnexpected, "size must be positive")
+		}
+		o.Size = &ir.ObjSize{W: w, H: h}
 	case "style":
 		p.once(seen, t, "style")
 		o.Style = p.parseStyleBlock(t0, "object")

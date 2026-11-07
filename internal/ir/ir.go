@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 1
+const IRVersion = 2
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -52,6 +52,12 @@ type ImportStmt struct {
 	Pos      Pos      `json:"pos"`
 }
 
+// ObjSize is explicit canvas geometry (`size <w> <h>`, F-13).
+type ObjSize struct {
+	W float64 `json:"w"`
+	H float64 `json:"h"`
+}
+
 // Obj is an object statement (§3).
 type Obj struct {
 	Kind        string      `json:"kind"`
@@ -64,6 +70,7 @@ type Obj struct {
 	Contains    []string    `json:"contains,omitempty"`
 	Attach      string      `json:"attach,omitempty"`
 	Icon        string      `json:"icon,omitempty"`
+	Size        *ObjSize    `json:"size,omitempty"`
 	Style       *StyleBlock `json:"style,omitempty"`
 	Attributes  []RawAttr   `json:"attributes,omitempty"`
 	Comments    []string    `json:"comments,omitempty"`

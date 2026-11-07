@@ -30,6 +30,8 @@ export interface CanvasObjectLike {
   tags?: string[];
   dashed?: boolean;
   icon?: string;
+  /** Explicit `size <w> <h>` geometry in document units (F-13). */
+  size?: { w: number; h: number };
 }
 
 /** Structural subset of the UI's canvas link. */
@@ -88,6 +90,8 @@ function mergeObject(existing: Obj | undefined, c: CanvasObjectLike): Obj {
   setField(o, 'technology', c.technology);
   setField(o, 'icon', c.icon);
   setField(o, 'tags', c.tags && c.tags.length > 0 ? [...c.tags] : undefined);
+  // explicit geometry (F-13): written only when the canvas knows it
+  setField(o, 'size', c.size === undefined ? undefined : { w: c.size.w, h: c.size.h });
   // dashed lives in the style block on disk (D6)
   const style = withStyleKey(o.style, 'dashed', c.dashed === true ? true : undefined);
   if (style === undefined) delete o.style;

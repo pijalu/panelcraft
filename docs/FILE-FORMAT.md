@@ -75,7 +75,14 @@ contains id1 id2 …          ← group only: membership (membership is *only* s
                               i.e. an object never names its group)
 attach id                   ← note only: anchored object id
 icon name                   ← built-in icon id (M5)
+size <w> <h>                ← explicit canvas geometry in document units (IR v2, F-13)
 ```
+
+* `size` is presentation geometry, not semantics: it is optional, positive, and
+  absent means "the kind's default shape". The canvas writes it only for objects
+  the user actually resized (or whose name was fitted); auto-layout never writes
+  it. Values are plain numbers (`size 200 96`); the printer renders them with the
+  same number formatting as `position`/`waypoint`.
 
 * `group` renders as boundary rectangle around `contains` members (C4 boundary).
 * `note` renders as sticky annotation; `attach` is optional (free-floating otherwise).
@@ -344,7 +351,8 @@ import      = "import" ident "as" path ;
 object      = kind ident , [ string ] , [ "{" , { attr } , "}" ] ;
 attr        = ("description" , string) | ("technology" , string) | ("tag" , ident { ident })
             | ("property" , ident , string) | ("contains" , ident { ident })
-            | ("attach" , ident) | ("icon" , ident) ;
+            | ("attach" , ident) | ("icon" , ident)
+            | ("size" , number , number) ;
 link        = ident , arrow , ident , [ ":" , string ] , [ "as" , ident ] , [ linkblock ] ;
 arrow       = [ "<" ] , "-" , [ ident , "-" ] , [ ">" ] ;   (* <-, ->, <->, -type-> *)
 flow        = "flow" , [ string ] , [ "as" , ident ] , "{" , { step } , "}" ;

@@ -39,6 +39,8 @@ export interface CanvasObject {
   tags?: string[];
   dashed?: boolean;
   icon?: string;
+  /** Explicit size from the file (`size <w> <h>`, F-13); absent = default. */
+  size?: { w: number; h: number };
 }
 
 export interface CanvasLink {
@@ -77,6 +79,7 @@ export function stateToDoc(state: CanvasState): Doc {
     technology: o.technology,
     tags: o.tags?.length ? [...o.tags] : undefined,
     icon: o.icon,
+    size: o.size === undefined ? undefined : { w: o.size.w, h: o.size.h },
     style: o.dashed === true ? { dashed: true } : undefined,
     pos: { line: 0, col: 0 },
   }));
@@ -142,27 +145,42 @@ function viewPositions(doc: Doc, viewName?: string): Map<string, { x: number; y:
  * implicit-default session state). Objects without a stored position keep
  * their grid slot.
  */
+/** Canvas fields of a document object, minus geometry (F-13 keeps size separate). */
+function docObjectFields(o: Obj): Omit<CanvasObject, 'x' | 'y' | 'w' | 'h'> {
+  return {
+    id: o.id,
+    kind: o.kind,
+    name: o.name,
+    description: o.description,
+    technology: o.technology,
+    tags: o.tags,
+    icon: o.icon,
+    dashed: o.style?.dashed === true ? true : undefined,
+  };
+}
+
+/** Width/height + explicit size of a document object (F-13). */
+function docObjectSize(o: Obj): Pick<CanvasObject, 'w' | 'h' | 'size'> {
+  const fallback = DEFAULT_SHAPE[o.kind];
+  return {
+    // an explicit `size` wins over the per-kind default
+    w: o.size?.w ?? fallback?.w ?? 160,
+    h: o.size?.h ?? fallback?.h ?? 60,
+    size: o.size === undefined ? undefined : { w: o.size.w, h: o.size.h },
+  };
+}
+
 export function docToState(doc: Doc, viewName?: string): CanvasState {
   const positions = viewPositions(doc, viewName);
   // F-06: every kind the palette offers must survive a load (group/note used
   // to be filtered out here, so a drawn boundary vanished on the next apply).
   const objects: CanvasObject[] = doc.objects.map((o, i) => {
-    const size = DEFAULT_SHAPE[o.kind];
-    const grid = gridPos(i);
-    const p = positions.get(o.id) ?? grid;
+    const p = positions.get(o.id) ?? gridPos(i);
     return {
-      id: o.id,
-      kind: o.kind,
+      ...docObjectFields(o),
       x: p.x,
       y: p.y,
-      w: size?.w ?? 160,
-      h: size?.h ?? 60,
-      name: o.name,
-      description: o.description,
-      technology: o.technology,
-      tags: o.tags,
-      icon: o.icon,
-      dashed: o.style?.dashed === true ? true : undefined,
+      ...docObjectSize(o),
     };
   });
   const ids = new Set(objects.map((o) => o.id));

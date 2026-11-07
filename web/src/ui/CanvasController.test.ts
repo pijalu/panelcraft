@@ -301,8 +301,9 @@ describe('properties + grid + resize', () => {
     const c = center('o1');
     svg.dispatchEvent(ptr('pointerdown', c.x, c.y));
     window.dispatchEvent(ptr('pointerup', c.x, c.y));
-    const handle = svg.querySelector('.pc-resize-handle');
-    if (!handle) throw new Error('no resize handle for group');
+    // F-13: eight anchors — the corner drag uses the south-east one
+    const handle = svg.querySelector('.pc-resize-handle[data-handle="se"]');
+    if (!handle) throw new Error('no se resize handle for group');
     // handle at (420,340); move +13,+5 → x2 snap(433)=432, y2 snap(345)=344
     dragFromEl(handle, { x: 433, y: 345 });
     const o = obj('o1');

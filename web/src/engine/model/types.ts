@@ -3,7 +3,7 @@
 // Normative shape: docs/FILE-FORMAT.md §7 + docs/milestones/M1.md decisions.
 // Versioning rule: `irVersion` (int) bumps on any schema change; forward-only.
 
-export const IR_VERSION = 1;
+export const IR_VERSION = 2;
 export const FORMAT_VERSION = '1.0';
 
 /** 1-based source position attached to every statement (FILE-FORMAT §10). */
@@ -59,6 +59,12 @@ export interface StyleBlock {
   raw?: RawAttr[];
 }
 
+/** Explicit canvas geometry in document units (F-13, `size <w> <h>`). */
+export interface Size {
+  w: number;
+  h: number;
+}
+
 export interface Obj {
   kind: Kind;
   id: string;
@@ -70,6 +76,8 @@ export interface Obj {
   contains?: string[];
   attach?: string;
   icon?: string;
+  /** Explicit size; absent = the kind's default shape (F-13). */
+  size?: Size;
   style?: StyleBlock;
   attributes?: RawAttr[];
   comments?: Comments;

@@ -205,6 +205,10 @@ func objectAttrLines(o ir.Obj, p *printer) {
 	if o.Icon != "" {
 		p.add(indent + "icon " + o.Icon)
 	}
+	// F-13: explicit geometry, printed only when the document carries it.
+	if o.Size != nil {
+		p.add(indent + "size " + jsNum(o.Size.W) + " " + jsNum(o.Size.H))
+	}
 }
 
 func printObject(o ir.Obj, p *printer) {

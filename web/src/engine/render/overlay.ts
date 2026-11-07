@@ -79,13 +79,49 @@ export function drawHalos(overlay: SVGGElement, r: Rect, id: string): void {
   }
 }
 
-/** Resize handle (groups/boundaries only, FR-C4): bottom-right corner. */
+/** The eight resize anchors (F-13: every kind resizes, not just groups). */
+export const RESIZE_HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
+export type ResizeHandle = (typeof RESIZE_HANDLES)[number];
+
+/**
+ * Anchors sit just OUTSIDE the rect: the link halos are on the edges, so an
+ * on-border handle would swallow the halo click (S1 regression). 8 px keeps
+ * both targets ≥3 px apart while staying visually attached to the shape.
+ */
+export const HANDLE_OFFSET = 8;
+
+/** Anchor point of one handle in canvas space (offset outside the rect). */
+export function handlePoint(r: Rect, handle: ResizeHandle): Point {
+  const left = r.x - HANDLE_OFFSET;
+  const right = r.x + r.w + HANDLE_OFFSET;
+  const top = r.y - HANDLE_OFFSET;
+  const bottom = r.y + r.h + HANDLE_OFFSET;
+  const midX = r.x + r.w / 2;
+  const midY = r.y + r.h / 2;
+  switch (handle) {
+    case 'nw': return { x: left, y: top };
+    case 'n': return { x: midX, y: top };
+    case 'ne': return { x: right, y: top };
+    case 'e': return { x: right, y: midY };
+    case 'se': return { x: right, y: bottom };
+    case 's': return { x: midX, y: bottom };
+    case 'sw': return { x: left, y: bottom };
+    case 'w': return { x: left, y: midY };
+  }
+}
+
+/** Draw the eight resize handles of `r` (one undo per drag; controller-owned). */
 export function drawResizeHandle(overlay: SVGGElement, r: Rect, id: string): void {
-  const circle = el('circle') as SVGCircleElement;
-  circle.setAttribute('class', 'pc-resize-handle');
-  circle.setAttribute('data-id', id);
-  circle.setAttribute('cx', String(r.x + r.w));
-  circle.setAttribute('cy', String(r.y + r.h));
-  circle.setAttribute('r', '5');
-  overlay.appendChild(circle);
+  for (const handle of RESIZE_HANDLES) {
+    const p = handlePoint(r, handle);
+    const rect = el('rect') as SVGRectElement;
+    rect.setAttribute('class', 'pc-resize-handle');
+    rect.setAttribute('data-id', id);
+    rect.setAttribute('data-handle', handle);
+    rect.setAttribute('x', String(p.x - 4));
+    rect.setAttribute('y', String(p.y - 4));
+    rect.setAttribute('width', '8');
+    rect.setAttribute('height', '8');
+    overlay.appendChild(rect);
+  }
 }

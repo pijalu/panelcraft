@@ -261,6 +261,14 @@ class Parser {
       case 'icon':
         this.once(seen, t, 'icon');
         return (o) => { o.icon = this.ident(); };
+      case 'size':
+        this.once(seen, t, 'size');
+        return (o) => {
+          const w = this.num(this.expect('number'));
+          const h = this.num(this.expect('number'));
+          if (w <= 0 || h <= 0) this.fail(t, E.unexpected, 'size must be positive');
+          o.size = { w, h };
+        };
       case 'style':
         this.once(seen, t, 'style');
         return (o) => { o.style = this.parseStyleBlock(t0, 'object'); };

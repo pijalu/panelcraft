@@ -252,6 +252,24 @@ style api {
     expect(ws.text('a.pcd')).toContain('note n1 "memo"');
   });
 
+  it('round-trips an explicit size (F-13)', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\n\nsystem api "API" {\n  size 200 96\n}\n');
+    const st = ws.canvasState('a.pcd');
+    expect(st.objects[0]).toMatchObject({ id: 'api', w: 200, h: 96, size: { w: 200, h: 96 } });
+    ws.saveCanvas('a.pcd', st);
+    expect(ws.text('a.pcd')).toContain('size 200 96');
+  });
+
+  it('does not invent a size for objects that never had one (F-13)', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\n\nsystem api "API"\n');
+    const st = ws.canvasState('a.pcd');
+    expect(st.objects[0]?.size).toBeUndefined();
+    ws.saveCanvas('a.pcd', st);
+    expect(ws.text('a.pcd')).not.toContain('size');
+  });
+
   it('falls back to the projection when the file does not parse', () => {
     const ws = new WorkspaceManager({ skipWelcome: true });
     ws.createFileAt('a.pcd', 'pcd 1.0\nsystem');

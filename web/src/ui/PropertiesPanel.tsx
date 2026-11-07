@@ -11,6 +11,8 @@ interface PropertiesPanelProps {
   nameFieldRef?: Ref<HTMLInputElement>;
   onChangeObject: CanvasController['updateObject'];
   onChangeLink: CanvasController['updateLink'];
+  /** F-13 `Fit` command: size the selection to its labels. */
+  onFit?: () => void;
 }
 
 const LINK_TYPES = [
@@ -25,7 +27,14 @@ const LINK_TYPES = [
   'data',
 ];
 
-export function PropertiesPanel({ obj, link, nameFieldRef, onChangeObject, onChangeLink }: PropertiesPanelProps) {
+export function PropertiesPanel({
+  obj,
+  link,
+  nameFieldRef,
+  onChangeObject,
+  onChangeLink,
+  onFit,
+}: PropertiesPanelProps) {
   if (obj) {
     return (
       <aside class="properties" data-testid="properties">
@@ -75,6 +84,9 @@ export function PropertiesPanel({ obj, link, nameFieldRef, onChangeObject, onCha
             }
           />
         </label>
+        <button type="button" class="prop-action" data-testid="prop-fit" onClick={() => onFit?.()}>
+          Fit to name
+        </button>
         <label class="field field-checkbox">
           <input
             type="checkbox"
