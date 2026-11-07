@@ -5,6 +5,7 @@
 // them to screen). One owner at a time: clearOverlay() between mode switches.
 
 import type { Point, Rect } from './viewport';
+import type { Polyline } from './router';
 import type { Guide } from './snap';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -77,6 +78,20 @@ export function drawHalos(overlay: SVGGElement, r: Rect, id: string): void {
     circle.setAttribute('r', '5');
     overlay.appendChild(circle);
   }
+}
+
+/** F-19: draggable handles for a link's explicit waypoints. */
+export function drawWaypointHandles(overlay: SVGGElement, points: Polyline, linkId: string): void {
+  points.forEach((p, i) => {
+    const circle = el('circle') as SVGCircleElement;
+    circle.setAttribute('class', 'pc-waypoint');
+    circle.setAttribute('data-link', linkId);
+    circle.setAttribute('data-wp-index', String(i));
+    circle.setAttribute('cx', String(p.x));
+    circle.setAttribute('cy', String(p.y));
+    circle.setAttribute('r', '5');
+    overlay.appendChild(circle);
+  });
 }
 
 /** The eight resize anchors (F-13: every kind resizes, not just groups). */

@@ -357,6 +357,103 @@ describe('link visual model (F-12)', () => {
   });
 });
 
+describe('clipboard + alignment (F-19)', () => {
+  const seed = (): void => {
+    ctrl.loadState({
+      objects: [
+        { id: 'o1', kind: 'system', x: 100, y: 100, w: 160, h: 60, name: 'A' },
+        { id: 'o2', kind: 'system', x: 400, y: 200, w: 160, h: 60, name: 'B' },
+      ],
+      links: [{ id: 'L1', from: 'o1', to: 'o2' }],
+    });
+  };
+
+  it('copy + paste remaps ids and keeps the internal link', () => {
+    seed();
+    ctrl.setSelection(['o1', 'o2'], ['L1']);
+    expect(ctrl.copySelected()).toBe(true);
+    const pasted = ctrl.pasteCopied();
+    expect(pasted).toHaveLength(2);
+    const ids = ctrl.snapshot.objects.map((o) => o.id);
+    expect(new Set(ids).size).toBe(ids.length); // four unique ids
+    const links = ctrl.snapshot.links;
+    expect(links).toHaveLength(2);
+    const copy = links.find((l) => !['L1'].includes(l.id))!;
+    expect(pasted).toContain(copy.from);
+    expect(pasted).toContain(copy.to);
+    ctrl.undo.undo();
+    expect(ctrl.snapshot.objects).toHaveLength(2);
+  });
+
+  it('duplicate never reuses an id, even repeated', () => {
+    seed();
+    ctrl.setSelection(['o1']);
+    ctrl.duplicateSelected();
+    ctrl.duplicateSelected();
+    const ids = ctrl.snapshot.objects.map((o) => o.id);
+    expect(ids).toHaveLength(4);
+    expect(new Set(ids).size).toBe(4);
+  });
+
+  it('align left is one undoable command', () => {
+    seed();
+    ctrl.setSelection(['o1', 'o2']);
+    ctrl.alignSelected('left');
+    expect(ctrl.snapshot.objects.map((o) => o.x)).toEqual([100, 100]);
+    ctrl.undo.undo();
+    expect(ctrl.snapshot.objects.map((o) => o.x).sort()).toEqual([100, 400]);
+  });
+
+  it('equal size gives both objects the largest box', () => {
+    ctrl.loadState({
+      objects: [
+        { id: 'o1', kind: 'system', x: 0, y: 0, w: 100, h: 60 },
+        { id: 'o2', kind: 'system', x: 200, y: 0, w: 200, h: 40 },
+      ],
+      links: [],
+    });
+    ctrl.setSelection(['o1', 'o2']);
+    ctrl.equalSizeSelected();
+    expect(ctrl.snapshot.objects.map((o) => [o.w, o.h])).toEqual([[200, 60], [200, 60]]);
+  });
+});
+
+describe('waypoint dragging (F-19)', () => {
+  beforeEach(() => {
+    ctrl.loadState({
+      objects: [
+        { id: 'o1', kind: 'system', x: 0, y: 0, w: 160, h: 60, name: 'A' },
+        { id: 'o2', kind: 'system', x: 400, y: 200, w: 160, h: 60, name: 'B' },
+      ],
+      links: [{ id: 'L1', from: 'o1', to: 'o2', waypoints: [[200, 120]] }],
+    });
+  });
+
+  it('exposes drag handles for the selected link and moves the waypoint', () => {
+    ctrl.setSelection([], ['L1']);
+    const handle = svg.querySelector('.pc-waypoint');
+    expect(handle).not.toBeNull();
+    expect(handle!.getAttribute('data-wp-index')).toBe('0');
+
+    dragFromEl(handle as Element, { x: 260, y: 160 });
+    const wp = ctrl.snapshot.links[0]?.waypoints?.[0];
+    expect(wp).toBeDefined();
+    expect(wp![0]).not.toBe(200); // moved
+    // snapped to the 8 px grid
+    expect(wp![0] % 8).toBe(0);
+    expect(wp![1] % 8).toBe(0);
+  });
+
+  it('the waypoint drag is one undoable command', () => {
+    ctrl.setSelection([], ['L1']);
+    const handle = svg.querySelector('.pc-waypoint') as Element;
+    dragFromEl(handle, { x: 260, y: 160 });
+    expect(ctrl.snapshot.links[0]?.waypoints?.[0]).not.toEqual([200, 120]);
+    ctrl.undo.undo();
+    expect(ctrl.snapshot.links[0]?.waypoints?.[0]).toEqual([200, 120]);
+  });
+});
+
 describe('state notifications', () => {
   it('onState fires on mutations', () => {
     const spy = vi.fn();

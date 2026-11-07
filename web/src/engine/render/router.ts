@@ -18,6 +18,12 @@ export interface RouteInput {
   /** Shapes to avoid (excludes endpoints). */
   obstacles?: Rect[];
   clearance?: number;
+  /**
+   * Explicit user waypoints (F-19). When present the route passes through them
+   * with orthogonal elbows and obstacle avoidance is skipped — the user has
+   * stated the intended path.
+   */
+  waypoints?: [number, number][];
 }
 
 /** Anchor point: center of a rect side. */
@@ -47,6 +53,33 @@ export function pickSides(a: Rect, b: Rect): [Side, Side] {
   return dy >= 0 ? ['bottom', 'top'] : ['top', 'bottom'];
 }
 
+/**
+ * Route through explicit waypoints: port → each waypoint → port, joined by
+ * orthogonal elbows (alternating horizontal-first / vertical-first so a zig-zag
+ * stays readable). Obstacles are deliberately ignored (F-19).
+ */
+function routeThroughWaypoints(input: RouteInput): Polyline {
+  const { from, to } = input;
+  const [sideA, sideB] = pickSides(from, to);
+  const anchors: Point[] = [
+    portPoint(from, sideA),
+    ...(input.waypoints ?? []).map(([x, y]) => ({ x, y })),
+    portPoint(to, sideB),
+  ];
+  const out: Polyline = [anchors[0]!];
+  for (let i = 1; i < anchors.length; i++) {
+    const p = out[out.length - 1]!;
+    const q = anchors[i]!;
+    if (Math.abs(p.x - q.x) < 0.5 || Math.abs(p.y - q.y) < 0.5) {
+      out.push(q);
+      continue;
+    }
+    const elbow: Point = i % 2 === 1 ? { x: q.x, y: p.y } : { x: p.x, y: q.y };
+    out.push(elbow, q);
+  }
+  return out;
+}
+
 function midChannel(a: Point, b: Point, horizontal: boolean): number {
   return horizontal ? (a.x + b.x) / 2 : (a.y + b.y) / 2;
 }
@@ -71,6 +104,14 @@ function nearestEdge(channel: number, lo: number, hi: number): number {
  * (+ clearance). One detour per link — deterministic and stable (WP6 v1).
  */
 export function routeOrtho(input: RouteInput): Polyline {
+  if (input.waypoints !== undefined && input.waypoints.length > 0) {
+    return routeThroughWaypoints(input); // F-19: user-stated path wins
+  }
+  return routeAuto(input);
+}
+
+/** Automatic orthogonal route with obstacle detours. */
+function routeAuto(input: RouteInput): Polyline {
   const { from, to } = input;
   const obstacles = input.obstacles ?? [];
   const clearance = input.clearance ?? ROUTER_CLEARANCE;

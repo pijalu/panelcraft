@@ -19,6 +19,7 @@ import { useUiLayout } from './useUiLayout';
 import { layoutStyle } from './uiLayout';
 import { PanelRail, Splitter, focusRail } from './PanelChrome';
 import { InlineRename, type RenameTarget } from './InlineRename';
+import { CanvasMenu } from './CanvasMenu';
 import { PresentLayer } from './PresentDock';
 import { isPresenting } from './present';
 import { usePresentKeys } from './usePresentKeys';
@@ -125,13 +126,14 @@ function CanvasSplit(props: {
   player: FlowPlayerApi;
   codeCollapsed: boolean;
   onPresent: () => void;
+  onCanvasContextMenu: (e: MouseEvent) => void;
   onToggleCode: () => void;
   onResizeCode: (dx: number) => void;
   onEndResizeCode: () => void;
 }) {
   return (
     <div class="canvas-split">
-      <main class="canvas-wrap">
+      <main class="canvas-wrap" onContextMenu={props.onCanvasContextMenu}>
         <svg ref={props.canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
         <PlayBar player={props.player} onPresent={props.onPresent} />
       </main>
@@ -238,6 +240,18 @@ function SidebarSlot(props: {
   );
 }
 
+/** F-18: start a flow at a step (no-op without an active file). */
+function playFrom(
+  player: FlowPlayerApi,
+  activePath: string | null,
+  flowKey: string,
+  index: number,
+): void {
+  if (activePath === null) return;
+  player.start(activePath, flowKey);
+  player.stepTo(index);
+}
+
 /** Screen-space box of the object being renamed (F-15 tracks pan/zoom). */
 function renameBox(
   snap: Snapshot | null,
@@ -282,11 +296,8 @@ function AppBody(p: {
   dirty: boolean;
 }) {
   const { ws, canvas, code, ui, player, activePath, viewName } = p;
-  const onPlayFrom = (flowKey: string, index: number): void => {
-    if (activePath === null) return;
-    player.start(activePath, flowKey);
-    player.stepTo(index);
-  };
+  // F-19: canvas context menu (position in viewport coordinates)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const ctrl = canvas.ctrlRef.current;
   return (
       <div class="app-body">
@@ -303,7 +314,7 @@ function AppBody(p: {
           }}
           illustration={p.illustration}
           onIllustration={p.onIllustration}
-          onPlayFrom={onPlayFrom}
+          onPlayFrom={(flowKey, index) => playFrom(player, activePath, flowKey, index)}
           dirty={p.dirty}
         />
         <Splitter
@@ -340,6 +351,10 @@ function AppBody(p: {
             player={player}
             codeCollapsed={ui.layout.panels.code === 'collapsed'}
             onPresent={p.onPresent}
+            onCanvasContextMenu={(e) => {
+              e.preventDefault();
+              setMenu({ x: e.clientX, y: e.clientY });
+            }}
             onToggleCode={() => ui.togglePanel('code')}
             onResizeCode={(dx) => ui.setPanelWidth('code', ui.layout.widths.code + dx)}
             onEndResizeCode={ui.flushLayout}
@@ -368,6 +383,15 @@ function AppBody(p: {
             onToggleSection={ui.toggleSection}
           />
         </div>
+        {menu && canvas.ctrlRef.current && (
+          <CanvasMenu
+            ctrl={canvas.ctrlRef.current}
+            x={menu.x}
+            y={menu.y}
+            selectionCount={canvas.snap?.selection.objects.length ?? 0}
+            onClose={() => setMenu(null)}
+          />
+        )}
       </div>
   );
 }

@@ -28,6 +28,16 @@ import {
 } from '../engine/render/viewport';
 import { snapToGrid, computeGuides } from '../engine/render/snap';
 import { resizedRect } from '../engine/render/resize';
+import {
+  alignObjects,
+  copySelection,
+  distributeObjects,
+  equalSizeObjects,
+  pasteClipboard,
+  type AlignMode,
+  type Clipboard,
+  type DistributeAxis,
+} from './canvasCommands';
 import { autoSize, canvasMeasurer, type TextMeasurer } from '../engine/render/measure';
 import type { Guide } from '../engine/render/snap';
 import { pick } from '../engine/render/hit-test';
@@ -38,6 +48,7 @@ import {
   drawGhostLink,
   drawHalos,
   drawResizeHandle,
+  drawWaypointHandles,
   type HaloSide,
   type ResizeHandle,
 } from '../engine/render/overlay';
@@ -77,6 +88,8 @@ export interface DiagramLink {
   dashed?: boolean;
   /** `<->` double-headed link (F-07). */
   bidir?: boolean;
+  /** Explicit routing waypoints (F-19). */
+  waypoints?: [number, number][];
   /** Arrow visual model (F-12). */
   head?: string;
   tail?: string;
@@ -123,7 +136,8 @@ type Mode =
   | { t: 'drag'; startCanvas: Point; before: PositionRec[]; moved: boolean }
   | { t: 'band'; startCanvas: Point; additive: boolean }
   | { t: 'link'; fromId: string; fromSide: Side }
-  | { t: 'resize'; id: string; handle: ResizeHandle; startCanvas: Point; before: Rect };
+  | { t: 'resize'; id: string; handle: ResizeHandle; startCanvas: Point; before: Rect }
+  | { t: 'waypoint'; linkId: string; index: number; before: [number, number][] };
 
 interface PositionRec {
   id: string;
@@ -203,6 +217,16 @@ function haloTarget(e: Event): { id: string; side: HaloSide } | null {
   const id = el.getAttribute('data-id');
   const side = el.getAttribute('data-side') as HaloSide | null;
   return id && side ? { id, side } : null;
+}
+
+/** F-19: the waypoint handle under the pointer, if any. */
+function waypointTarget(e: Event): { linkId: string; index: number } | null {
+  const el = (e.target as Element | null)?.closest('.pc-waypoint');
+  const linkId = el?.getAttribute('data-link');
+  const index = el?.getAttribute('data-wp-index');
+  return linkId && index !== null && index !== undefined
+    ? { linkId, index: Number(index) }
+    : null;
 }
 
 function resizeTarget(e: Event): { id: string; handle: ResizeHandle } | null {
@@ -336,6 +360,102 @@ export class CanvasController {
    * F-13 `Fit` command: size the selected objects to their labels and record
    * the result as explicit geometry (which then disables further auto-fit).
    */
+  // ---- F-19: clipboard, alignment, distribution ------------------------------
+
+  private clipboard: Clipboard | null = null;
+
+  /** Copy the selection (objects + links fully inside it) — true when copied. */
+  copySelected(): boolean {
+    if (this.selObjects.size === 0) return false;
+    this.clipboard = copySelection(this.state, this.selObjects, this.selLinks);
+    return this.clipboard.objects.length > 0;
+  }
+
+  /** True when there is something to paste (for menu enablement). */
+  canPaste(): boolean {
+    return this.clipboard !== null && this.clipboard.objects.length > 0;
+  }
+
+  /** Paste the clipboard with fresh ids; selects and returns the new ids. */
+  pasteCopied(offset = { x: 24, y: 24 }): string[] {
+    if (this.clipboard === null) return [];
+    const before = this.state;
+    const res = pasteClipboard(this.state, this.clipboard, offset);
+    if (res.objects.length === 0) return [];
+    this.state = res.state;
+    this.selectObjects(res.objects);
+    this.undo.push({
+      label: 'paste',
+      undo: () => this.applyState(before),
+      redo: () => this.applyState(res.state),
+      coalesce: () => null,
+    });
+    this.recomputeRoutes();
+    this.render();
+    return res.objects;
+  }
+
+  /** Copy + paste in one step (duplicate the selection in place). */
+  duplicateSelected(): string[] {
+    if (!this.copySelected()) return [];
+    return this.pasteCopied();
+  }
+
+  /** Align the selection inside its own bounding box. */
+  alignSelected(mode: AlignMode): void {
+    this.mutateObjects((objects) => {
+      const targets = objects.filter((o) => this.selObjects.has(o.id));
+      if (targets.length < 2) return objects;
+      const moved = new Map(alignObjects(targets, mode).map((o) => [o.id, o]));
+      return objects.map((o) => moved.get(o.id) ?? o);
+    }, `align ${mode}`);
+  }
+
+  /** Distribute the selection evenly (needs ≥3 objects). */
+  distributeSelected(axis: DistributeAxis): void {
+    this.mutateObjects((objects) => {
+      const targets = objects.filter((o) => this.selObjects.has(o.id));
+      if (targets.length < 3) return objects;
+      const moved = new Map(distributeObjects(targets, axis).map((o) => [o.id, o]));
+      return objects.map((o) => moved.get(o.id) ?? o);
+    }, `distribute ${axis}`);
+  }
+
+  /** Give the selection one size (the largest). */
+  equalSizeSelected(): void {
+    this.mutateObjects((objects) => {
+      const targets = objects.filter((o) => this.selObjects.has(o.id));
+      if (targets.length < 2) return objects;
+      const sized = new Map(equalSizeObjects(targets).map((o) => [o.id, o]));
+      return objects.map((o) => sized.get(o.id) ?? o);
+    }, 'equal size');
+  }
+
+  /** Apply an object-list transform as one undoable command (no-op when equal). */
+  private mutateObjects(fn: (objects: DiagramObject[]) => DiagramObject[], label: string): void {
+    const before = this.state.objects;
+    const after = fn(before);
+    if (listEq(before, after)) return;
+    this.state = { ...this.state, objects: after };
+    this.undo.push(
+      new ValueChange<DiagramObject[]>(
+        (objects) => {
+          this.state = { ...this.state, objects };
+          this.recomputeRoutes();
+          this.render();
+        },
+        before,
+        after,
+        `cmd:${label}`,
+        label,
+        listEq,
+      ),
+    );
+    this.recomputeRoutes();
+    this.render();
+    this.geometryChanged();
+  }
+
   /** F-12 `Shift+A`: cycle the selected links' arrow head shape. */
   cycleArrowHead(): void {
     const ids = [...this.selLinks];
@@ -738,6 +858,12 @@ export class CanvasController {
     if (obj) {
       drawHalos(this.renderer.overlay, obj, obj.id);
       drawResizeHandle(this.renderer.overlay, obj, obj.id);
+      return;
+    }
+    // F-19: a selected link exposes its explicit waypoints as drag handles
+    const link = this.selectedLink();
+    if (link?.waypoints && link.waypoints.length > 0) {
+      drawWaypointHandles(this.renderer.overlay, link.waypoints.map(([x, y]) => ({ x, y })), link.id);
     }
   }
 
@@ -783,9 +909,17 @@ export class CanvasController {
     if (hit?.type === 'object') this.onRenameRequest?.(hit.id);
   }
 
+  /** True when the key event belongs to a text field (never hijack typing). */
+  private inTextEntry(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (el === null) return false;
+    if (el.isContentEditable) return true;
+    return /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
+  }
+
   private onKeyDown(e: KeyboardEvent): void {
-    const target = e.target as HTMLElement | null;
-    if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+    if (this.inTextEntry(e.target)) return;
+    if (this.handleClipboardKeys(e)) return;
     if (e.key === ' ') {
       this.spaceDown = true;
       return;
@@ -798,6 +932,27 @@ export class CanvasController {
     if (this.handleRenameKey(e)) return;
     if (this.handleArrowKey(e)) return;
     if (this.handleActionKey(e)) return;
+  }
+
+  /** F-19 mod+C / mod+V / mod+D — true when consumed. */
+  private handleClipboardKeys(e: KeyboardEvent): boolean {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return false;
+    const key = e.key.toLowerCase();
+    if (key === 'c' && this.copySelected()) {
+      e.preventDefault();
+      return true;
+    }
+    if (key === 'v' && this.canPaste()) {
+      e.preventDefault();
+      this.pasteCopied();
+      return true;
+    }
+    if (key === 'd' && this.selObjects.size > 0) {
+      e.preventDefault();
+      this.duplicateSelected();
+      return true;
+    }
+    return false;
   }
 
   /** mod+z / mod+shift+z / mod+y — true when consumed. */
@@ -897,6 +1052,20 @@ export class CanvasController {
       this.mode = { t: 'link', fromId: halo.id, fromSide: halo.side };
       return true;
     }
+    // F-19: dragging a waypoint handle re-routes the selected link
+    const wp = waypointTarget(e);
+    if (wp) {
+      const link = this.state.links.find((l) => l.id === wp.linkId);
+      if (link) {
+        this.mode = {
+          t: 'waypoint',
+          linkId: wp.linkId,
+          index: wp.index,
+          before: (link.waypoints ?? []).map((w) => [w[0], w[1]] as [number, number]),
+        };
+      }
+      return true;
+    }
     const target = resizeTarget(e);
     if (target) {
       const obj = this.state.objects.find((o) => o.id === target.id);
@@ -961,6 +1130,9 @@ export class CanvasController {
         break;
       case 'resize':
         this.resizeMove(e);
+        break;
+      case 'waypoint':
+        this.waypointMove(e);
         break;
       default:
         break;
@@ -1069,6 +1241,9 @@ export class CanvasController {
       case 'resize':
         this.commitResize();
         break;
+      case 'waypoint':
+        this.commitWaypoint();
+        break;
       default:
         break;
     }
@@ -1077,6 +1252,45 @@ export class CanvasController {
       this.renderer.elementFor(o.id)?.classList.remove('pc-link-target');
     }
     this.render();
+  }
+
+  /** F-19: drag one waypoint; the route re-elbows through the new position. */
+  private waypointMove(e: PointerEvent): void {
+    const m = this.mode;
+    if (m.t !== 'waypoint') return;
+    const p = this.toCanvas(e);
+    const next: [number, number] = [snapToGrid(p.x), snapToGrid(p.y)];
+    this.state = {
+      ...this.state,
+      links: this.state.links.map((l) => {
+        if (l.id !== m.linkId) return l;
+        const wps = (l.waypoints ?? []).map((w, i) => (i === m.index ? next : w));
+        return { ...l, waypoints: wps as [number, number][] };
+      }),
+    };
+    this.recomputeRoutes();
+    this.render();
+  }
+
+  private commitWaypoint(): void {
+    const m = this.mode;
+    if (m.t !== 'waypoint') return;
+    const after = this.state.links.find((l) => l.id === m.linkId)?.waypoints ?? [];
+    if (JSON.stringify(after) === JSON.stringify(m.before)) return;
+    const set = (wps: [number, number][]): void => {
+      this.state = {
+        ...this.state,
+        links: this.state.links.map((l) => (l.id === m.linkId ? { ...l, waypoints: wps } : l)),
+      };
+      this.recomputeRoutes();
+      this.render();
+    };
+    this.undo.push({
+      label: 'move waypoint',
+      undo: () => set(m.before),
+      redo: () => set(after as [number, number][]),
+      coalesce: () => null,
+    });
   }
 
   private commitDrag(): void {

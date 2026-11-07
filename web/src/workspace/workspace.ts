@@ -60,6 +60,8 @@ export interface CanvasLink {
   dashed?: boolean;
   /** `<->` double-headed link (F-07). */
   bidir?: boolean;
+  /** Explicit routing waypoints (F-19). */
+  waypoints?: [number, number][];
   /** Arrow visual model (F-12). */
   head?: string;
   tail?: string;
@@ -134,6 +136,11 @@ export function stateToDoc(state: CanvasState): Doc {
     // F-12: the arrow model lives inside the link style block on disk, so the
     // projection must print it there too (it is also the change fingerprint)
     style: linkStyle(l),
+    // F-19: waypoints are document data — they must change the fingerprint,
+    // or a waypoint drag would never reach the code view
+    waypoints: l.waypoints && l.waypoints.length > 0
+      ? l.waypoints.map((w) => [w[0], w[1]] as [number, number])
+      : undefined,
     pos: { line: 0, col: 0 },
   }));
   return {
@@ -248,6 +255,7 @@ export function docToState(doc: Doc, viewName?: string): CanvasState {
       tail: l.style?.tail,
       line: l.style?.line,
       width: l.style?.width,
+      waypoints: l.waypoints?.map((w) => [w[0], w[1]] as [number, number]),
     }));
   return { objects, links };
 }

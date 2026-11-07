@@ -93,6 +93,13 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   parity fixtures, applied by the planner); the step header is sticky with an `unsaved`
   chip and every step offers "play from this step".
 
+- **F-19** Canvas command layer: clipboard copy/paste with fresh-id remapping,
+  duplicate, align (six anchors), distribute (x/y) and equal-size — each one undoable
+  and reachable from `mod+C/V/D` or a right-click context menu that only offers what
+  the selection allows. Link waypoints are now document data the canvas can edit:
+  routing passes through them orthogonally and a selected link exposes draggable
+  handles that write straight back to the file.
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

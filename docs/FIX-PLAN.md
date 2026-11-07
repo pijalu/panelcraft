@@ -314,6 +314,20 @@ Copy/paste/duplicate with cross-file id remap (needs F-02); canvas/object/edge c
 dragging with orthogonal re-route; align/distribute/equal-size on multi-selection.
 *Tests:* unit for the command layer; e2e for each entry point.
 
+**Done.** `ui/canvasCommands.ts` is the pure command layer: clipboard copy/paste with
+fresh-id remapping (links remapped, dangling links dropped), align (6 edges/centres),
+distribute (x/y) and equal-size; every command is one undoable entry
+(`CanvasController` exposes them plus `mod+C/V/D`, which stay out of the code editor).
+A right-click context menu (`ui/ContextMenu.tsx` + `CanvasMenu`) offers exactly the
+commands the current selection allows. Waypoints are document data: the router passes
+through them with orthogonal elbows (`routeOrtho` waypoint path, obstacles skipped by
+design), a selected link shows draggable handles, the drag re-routes live and writes
+back through the merge — and waypoints are part of the canvas fingerprint so the code
+view follows. Tests: `ui/canvasCommands.test.ts`, `engine/render/waypoints.test.ts`,
+`CanvasController.test.ts` (clipboard uniqueness/undo, align/equal-size, waypoint drag
++ undo), `workspace.test.ts` (waypoint round-trip), e2e `p3-commands.spec.ts` and
+`p3-waypoints.spec.ts`.
+
 ### F-20 Imports rendered as ghosts
 Resolve `imports`, render ghost objects (dashed, badge), click-through to source file, cycle + missing-file
 errors surfaced in the UI, read-only enforcement.

@@ -49,6 +49,8 @@ export interface CanvasLinkLike {
   dashed?: boolean;
   /** `<->` double-headed link (F-07). */
   bidir?: boolean;
+  /** Explicit routing waypoints (F-19). */
+  waypoints?: [number, number][];
   /** Arrow visual model (F-12). */
   head?: string;
   tail?: string;
@@ -132,6 +134,13 @@ function mergeLink(existing: Link | undefined, c: CanvasLinkLike): Link {
   setField(l, 'type', c.type === undefined || c.type === '' ? undefined : c.type);
   setField(l, 'label', c.label);
   setField(l, 'bidir', c.bidir === true ? true : undefined);
+  setField(
+    l,
+    'waypoints',
+    c.waypoints && c.waypoints.length > 0
+      ? c.waypoints.map((w) => [w[0], w[1]] as [number, number])
+      : undefined,
+  );
   let style = withStyleKey(l.style, 'dashed', c.dashed === true ? true : undefined);
   style = withStyleKey(style, 'head', c.head);
   style = withStyleKey(style, 'tail', c.tail);

@@ -304,6 +304,26 @@ style api {
     expect(ws.text('a.pcd')).not.toContain('fill #112233');
   });
 
+});
+
+describe('link waypoints (F-19)', () => {
+  it('round-trips link waypoints', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\n\nsystem a "A"\nsystem b "B"\n\na -> b as L1 {\n  waypoint (100, 40)\n}\n');
+    const st = ws.canvasState('a.pcd');
+    expect(st.links[0]?.waypoints).toEqual([[100, 40]]);
+    // a canvas edit keeps them
+    ws.saveCanvas('a.pcd', st);
+    expect(ws.text('a.pcd')).toContain('waypoint (100, 40)');
+    // and a moved waypoint is written back
+    ws.saveCanvas('a.pcd', {
+      objects: st.objects,
+      links: st.links.map((l) => ({ ...l, waypoints: [[200, 80]] as [number, number][] })),
+    });
+    expect(ws.text('a.pcd')).toContain('waypoint (200, 80)');
+    expect(ws.text('a.pcd')).not.toContain('waypoint (100, 40)');
+  });
+
   it('falls back to the projection when the file does not parse', () => {
     const ws = new WorkspaceManager({ skipWelcome: true });
     ws.createFileAt('a.pcd', 'pcd 1.0\nsystem');

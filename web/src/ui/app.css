@@ -2277,3 +2277,59 @@ marker .pc-arrow[fill='none'] {
 .flow-step[draggable='true'] {
   cursor: grab;
 }
+
+/* F-19 context menu */
+.context-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 210px;
+  max-height: 70vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--pc-bg);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+.context-item {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--pc-radius-sm);
+  background: transparent;
+  color: var(--pc-fg);
+  font: inherit;
+  font-size: var(--pc-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-item:hover:not([disabled]) {
+  background: var(--pc-surface);
+}
+
+.context-item[disabled] {
+  color: var(--pc-muted);
+  cursor: default;
+  opacity: 0.65;
+}
+
+.context-item:focus-visible {
+  outline: 2px solid var(--pc-accent);
+  outline-offset: -2px;
+}
+
+/* F-19 waypoint handles (drag to re-route an explicit path) */
+.pc-waypoint {
+  fill: var(--pc-bg);
+  stroke: var(--pc-accent);
+  stroke-width: 1.5;
+  cursor: move;
+}
+
+.pc-waypoint:hover {
+  fill: var(--pc-accent);
+}

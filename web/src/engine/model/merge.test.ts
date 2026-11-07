@@ -102,6 +102,8 @@ const stateFrom = (doc: Doc, patch: Partial<CanvasStateLike> = {}): CanvasStateL
     id: l.id ?? `anon${i}`,
     from: l.from,
     to: l.to,
+    // the canvas state is authoritative for the link's routing waypoints too
+    waypoints: l.waypoints?.map((w) => [w[0], w[1]] as [number, number]),
     type: l.type,
     label: l.label,
     dashed: l.style?.dashed === true ? true : undefined,
