@@ -12,6 +12,7 @@
     "test": "vitest run --coverage",
     "e2e": "playwright test",
     "corpus:accept": "node scripts/corpus-accept.mjs",
+    "corpus:check": "vitest run web/src/engine/format/corpus.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

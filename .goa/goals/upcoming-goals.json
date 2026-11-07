@@ -2,17 +2,6 @@
   "version": 1,
   "goals": [
     {
-      "id": "qg-1794034657105101000-4ccd3617a184",
-      "name": "quiet.lark",
-      "objective": "Deliver milestone M1 — Format engine — per docs/IMPLEMENTATION-PLAN.md §3, WPs M1-WP1..M1-WP10: freeze IR schema (TS+Go), PDL lexer/parser + canonical printer (TS), IR ops + validation P100–P204 (TS), mermaid flowchart + C4 import converters, Go port (internal/pdl + internal/ir) with mirrored tables, golden corpus ≥15 seeds + parity infra, CLI validate/convert wired, grammar freeze with errata loop.",
-      "completionCriterion": "Corpus parity green TS⇄Go on all testdata/corpus files (IR diff empty), ≥15 seeds incl. docs/architecture/*.pcd validated, coverage ≥80% engine/format+model, grammar frozen (errata recorded in FILE-FORMAT.md), and `bash scripts/verify.sh m1` exits 0 with evidence in docs/milestones/M1.md.",
-      "verifyCommand": "bash scripts/verify.sh m1",
-      "freshContext": true,
-      "handover": "CONTEXT: specs on disk; chat unnecessary. ENTRY READS ONLY: agents.md; docs/IMPLEMENTATION-PLAN.md §3 (WP list); docs/FILE-FORMAT.md FULL (it is the contract you implement); tail of docs/milestones/M0.md (state+evidence); grep SPEC §6/§7/§8.2/§14 as needed. PROTOCOL: (a) decisions+evidence → docs/milestones/M1.md continuously; (b) FIRST task: extend scripts/verify.sh with stage m1 (corpus parity + coverage gates) so done is machine-checkable; (c) parser+printer+IR ops in WP-sized PRs, table-driven tests, fuzz seeded; (d) Go port mirrors TS via shared JSON fixtures — parity is a gate, not a hope; (e) grammar ambiguities → FILE-FORMAT.md errata + corpus case in same PR. EXIT CONTRACT: verify.sh m1 exit 0; corpus ≥15 seeds with .ir.json goldens regenerated via corpus:accept (never hand-edited); `panelcraft validate docs/architecture` exit 0 (fix seed grammar if errata needed — that is dogfooding working); docs/milestones/M1.md complete. Next goal (M2) starts cold: needs only its handover + PLAN §4 + M1.md tail.",
-      "createdAt": "2026-11-07T07:57:37.1051+01:00",
-      "updatedAt": "2026-11-07T07:57:37.1051+01:00"
-    },
-    {
       "id": "qg-1794034657105307000-2d0486d4caa4",
       "name": "azure.puma",
       "objective": "Deliver milestone M2 — Canvas MVP — per docs/IMPLEMENTATION-PLAN.md §4, WPs M2-WP1..M2-WP10: viewport+input, scene-graph SVG renderer (layers, diff-patch, stable ids), hit-testing/selection, drag/resize/snap, C4 shape set on theme tokens, link UX with orthogonal router v1, properties panel, undo/redo stack, palette, S1 e2e + vision round 1 + perf baseline.",

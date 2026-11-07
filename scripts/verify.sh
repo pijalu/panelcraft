@@ -42,12 +42,27 @@ go_test()     { run go test ./...; }
 selfcontained() { run bash scripts/check-selfcontained.sh web/dist; }
 e2e_smoke()   { run npm run e2e -- --project=chromium; }
 
+# ---- m1 stages (M1-WP8 parity gates + WP9 docs validation) ------------------
+# corpus_ir: TS⇄Go serializer byte-parity on the shared IR fixture.
+corpus_ir()   { run go test ./internal/ir/...; }
+# corpus_ts: TS parse/convert output matches committed goldens (all corpus files).
+corpus_ts()   { run npm run corpus:check; }
+# corpus_go: Go parse/convert output matches the same goldens ⇒ TS⇄Go parity.
+corpus_go()   { run go test ./internal/corpus/...; }
+# validate_docs: dogfooding gate — PanelCraft's own architecture validates (WP9).
+validate_docs() {
+  run go run ./cmd/panelcraft validate docs/architecture
+}
+
 case "$MILESTONE" in
   m0)
     STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test selfcontained e2e_smoke)
     ;;
+  m1)
+    STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_smoke)
+    ;;
   *)
-    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0)" >&2
+    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1)" >&2
     exit 2
     ;;
 esac
