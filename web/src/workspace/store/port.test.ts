@@ -15,6 +15,37 @@ const validV1 = () => {
   return rec;
 };
 
+describe('schema v2 migration (F-10 settings)', () => {
+  it('adds an empty settings object to a v1 record', () => {
+    const v1 = {
+      schemaVersion: 1,
+      irVersion: 1,
+      savedAt: 1,
+      name: 'w',
+      tree: { kind: 'folder', name: 'root', children: [] },
+      openTabs: [],
+      activePath: null,
+    };
+    const rec = decodeStored(v1);
+    expect(rec.schemaVersion).toBe(2);
+    expect(rec.settings).toEqual({});
+  });
+
+  it('keeps stored settings through decode', () => {
+    const v2 = {
+      schemaVersion: 2,
+      irVersion: 2,
+      savedAt: 1,
+      name: 'w',
+      tree: { kind: 'folder', name: 'root', children: [] },
+      openTabs: [],
+      activePath: null,
+      settings: { layout: { panels: { sidebar: 'collapsed' } } },
+    };
+    expect(decodeStored(v2).settings.layout).toEqual({ panels: { sidebar: 'collapsed' } });
+  });
+});
+
 describe('decodeStored (schema v1)', () => {
   it('passes a valid record through and normalizes fields', () => {
     const out = decodeStored(validV1());
@@ -30,7 +61,9 @@ describe('decodeStored (schema v1)', () => {
       tree: { kind: 'folder', name: '', children: [] },
     };
     const out = decodeStored(v0);
-    expect(out.schemaVersion).toBe(1);
+    // forward-only chain v0 → v1 (tabs) → v2 (settings)
+    expect(out.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(out.settings).toEqual({});
     expect(out.openTabs).toEqual([]);
     expect(out.activePath).toBeNull();
     expect(out.name).toBe('old');

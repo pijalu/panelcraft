@@ -4,16 +4,19 @@
 // machine (codeview/sync.ts) and its App-side wiring (useCodeSync.ts).
 import type { SyncMachine, SyncSnapshot } from './codeview/sync';
 import { CodeEditor } from './codeview/CodeEditor';
+import { CollapseButton } from './PanelChrome';
 
 export interface CodePaneProps {
   machine: SyncMachine;
   snapshot: SyncSnapshot;
   /** Format button / Shift-Alt-F hook (FR-K4). */
   onFormat: () => void;
+  /** F-10: collapse into the sync-state rail. */
+  onCollapse?: () => void;
 }
 
 /** Split-pane code view for the active file. */
-export function CodePane({ machine, snapshot, onFormat }: CodePaneProps) {
+export function CodePane({ machine, snapshot, onFormat, onCollapse }: CodePaneProps) {
   return (
     <section class="code-pane" data-testid="code-pane" aria-label="Code view">
       <header class="code-pane-head">
@@ -26,6 +29,7 @@ export function CodePane({ machine, snapshot, onFormat }: CodePaneProps) {
         >
           {snapshot.state}
         </span>
+        {onCollapse && <CollapseButton id="code" label="code" onCollapse={onCollapse} />}
         <button
           type="button"
           class="code-pane-btn"

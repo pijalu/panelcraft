@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { IdbStorage, createDefaultStorage } from './idb';
 import { MemoryStorage } from './memory';
-import { StoreError, newStoredWorkspace, type StoredWorkspace } from './port';
+import { SCHEMA_VERSION, StoreError, newStoredWorkspace, type StoredWorkspace } from './port';
 import { createFile, readFile, getNode } from '../fs';
 
 function sampleRecord(name = 'demo'): StoredWorkspace {
@@ -92,7 +92,7 @@ describe('IdbStorage migrations + corruption (FR-S5)', () => {
       tree: { kind: 'folder', name: '', children: [{ kind: 'file', name: 'a.pcd', content: 'x' }] },
     });
     const out = await IdbStorage.open(factory).load();
-    expect(out?.schemaVersion).toBe(1);
+    expect(out?.schemaVersion).toBe(SCHEMA_VERSION); // current version (v0 → v1 → v2)
     expect(out?.openTabs).toEqual([]);
     expect(getNode(out!.tree, 'a.pcd')?.content).toBe('x');
   });

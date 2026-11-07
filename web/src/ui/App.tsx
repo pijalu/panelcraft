@@ -5,19 +5,20 @@
 // tabs and autosave; chrome re-renders via manager.subscribe(). Lifecycle and
 // sync wiring live in useWorkspace.ts; panels below are presentational.
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { PALETTE_ORDER, labelFor, CanvasController, type Snapshot } from './CanvasController';
-import { PropertiesPanel } from './PropertiesPanel';
-import { Palette } from './Palette';
+import { labelFor, CanvasController, type Snapshot } from './CanvasController';
 import { FileTree } from './FileTree';
 import { Tabs } from './Tabs';
 import { CodePane } from './CodePane';
 import { FlowPane } from './flows/FlowPane';
 import { PlayBar } from './flows/PlayBar';
 import { ViewBar } from './views/ViewBar';
-import { DepsPanel } from './deps/DepsPanel';
 import { AppHeader } from './AppHeader';
 import { AppDialogs } from './AppDialogs';
 import { useCanvasController, useWorkspace } from './useWorkspace';
+import { useUiLayout } from './useUiLayout';
+import { layoutStyle } from './uiLayout';
+import { PanelRail, Splitter, focusRail } from './PanelChrome';
+import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
 import { useCodeSync } from './useCodeSync';
 import { useDivergedClose } from './useDivergedClose';
 import { useFlowStage } from './useFlowStage';
@@ -52,6 +53,7 @@ function SidePane(props: {
   activePath: string | null;
   onText(text: string): void;
   onPlay(flowKey: string): void;
+  onCollapse?: () => void;
 }) {
   return (
     <aside class="sidebar">
@@ -72,6 +74,21 @@ function SidePane(props: {
         >
           Flows
         </button>
+        {props.onCollapse && (
+          <button
+            type="button"
+            class="panel-toggle"
+            data-testid="collapse-sidebar"
+            aria-label="Hide files panel"
+            aria-expanded={true}
+            onClick={() => {
+              props.onCollapse?.();
+              focusRail('sidebar');
+            }}
+          >
+            ‹
+          </button>
+        )}
       </div>
       {props.tab === 'files' ? (
         <FileTree manager={props.manager} version={props.version} onOpen={(p) => props.manager.openFile(p)} />
@@ -93,6 +110,10 @@ function CanvasSplit(props: {
   canvas: ReturnType<typeof useCanvasController>;
   code: CodeSyncHandle;
   player: FlowPlayerApi;
+  codeCollapsed: boolean;
+  onToggleCode: () => void;
+  onResizeCode: (dx: number) => void;
+  onEndResizeCode: () => void;
 }) {
   return (
     <div class="canvas-split">
@@ -100,7 +121,33 @@ function CanvasSplit(props: {
         <svg ref={props.canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
         <PlayBar player={props.player} />
       </main>
-      <CodePane machine={props.code.machine} snapshot={props.code.snapshot} onFormat={props.code.formatNow} />
+      {props.codeCollapsed ? (
+        <PanelRail id="code" label="code" onExpand={props.onToggleCode}>
+          {/* the sync state must stay visible even with the pane collapsed */}
+          <span
+            class="rail-chip"
+            data-testid="sync-state-rail"
+            data-sync-state={props.code.snapshot.state}
+          >
+            {props.code.snapshot.state.slice(0, 1)}
+          </span>
+        </PanelRail>
+      ) : (
+        <>
+          <Splitter
+            id="code"
+            label="Resize code panel"
+            onResize={(dx) => props.onResizeCode(-dx)}
+            onEnd={props.onEndResizeCode}
+          />
+          <CodePane
+            machine={props.code.machine}
+            snapshot={props.code.snapshot}
+            onFormat={props.code.formatNow}
+            onCollapse={props.onToggleCode}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -140,6 +187,129 @@ function CanvasTopRow(props: {
   );
 }
 
+/** Files/flows sidebar (or its rail) — F-10 collapsible shell. */
+function SidebarSlot(props: {
+  ui: ReturnType<typeof useUiLayout>;
+  sideTab: 'files' | 'flows';
+  onTab: (t: 'files' | 'flows') => void;
+  manager: WorkspaceManager;
+  version: number;
+  activePath: string | null;
+  onText: (text: string) => void;
+  onPlay: (flowKey: string) => void;
+}) {
+  return slot(
+    props.ui.layout.panels.sidebar === 'collapsed',
+    'sidebar',
+    'files',
+    () => props.ui.togglePanel('sidebar'),
+    <SidePane
+      tab={props.sideTab}
+      onTab={props.onTab}
+      manager={props.manager}
+      version={props.version}
+      activePath={props.activePath}
+      onText={props.onText}
+      onPlay={props.onPlay}
+      onCollapse={() => props.ui.togglePanel('sidebar')}
+    />,
+  );
+}
+
+/** Shell body: sidebar | palette | canvas (+code) | properties, each collapsible. */
+function AppBody(p: {
+  ws: ReturnType<typeof useWorkspace>;
+  canvas: ReturnType<typeof useCanvasController>;
+  code: CodeSyncHandle;
+  ui: ReturnType<typeof useUiLayout>;
+  player: FlowPlayerApi;
+  activePath: string | null;
+  viewName: string | undefined;
+  onView: (n: string | undefined) => void;
+  sideTab: 'files' | 'flows';
+  onSideTab: (t: 'files' | 'flows') => void;
+  sel: ReturnType<typeof selections>;
+  diverged: ReturnType<typeof useDivergedClose>;
+}) {
+  const { ws, canvas, code, ui, player, activePath, viewName } = p;
+  const ctrl = canvas.ctrlRef.current;
+  return (
+      <div class="app-body">
+        <SidebarSlot
+          ui={ui}
+          sideTab={p.sideTab}
+          onTab={p.onSideTab}
+          manager={ws.manager}
+          version={ws.version}
+          activePath={activePath}
+          onText={(text) => code.machine.textChanged(text)}
+          onPlay={(flowKey) => {
+            if (activePath !== null) player.start(activePath, flowKey);
+          }}
+        />
+        <Splitter
+          id="sidebar"
+          label="Resize files panel"
+          onResize={(dx) => ui.setPanelWidth('sidebar', ui.layout.widths.sidebar + dx)}
+          onEnd={ui.flushLayout}
+        />
+        <PaletteSlot
+          ui={ui}
+          onPlace={(k) => ctrl?.addObject(k)}
+          onDragDrop={canvas.onPaletteDrop}
+        />
+        <Splitter
+          id="palette"
+          label="Resize shapes panel"
+          onResize={(dx) => ui.setPanelWidth('palette', ui.layout.widths.palette + dx)}
+          onEnd={ui.flushLayout}
+        />
+        <main class="canvas-col">
+          <CanvasTopRow
+            manager={ws.manager}
+            diverged={p.diverged}
+            activePath={activePath}
+            viewName={viewName}
+            onView={p.onView}
+            onText={(t) => code.machine.textChanged(t)}
+            ctrl={canvas.ctrlRef.current}
+            selection={canvas.snap?.selection.objects ?? []}
+          />
+          <CanvasSplit
+            canvas={canvas}
+            code={code}
+            player={player}
+            codeCollapsed={ui.layout.panels.code === 'collapsed'}
+            onToggleCode={() => ui.togglePanel('code')}
+            onResizeCode={(dx) => ui.setPanelWidth('code', ui.layout.widths.code + dx)}
+            onEndResizeCode={ui.flushLayout}
+          />
+        </main>
+        <Splitter
+          id="props"
+          label="Resize properties panel"
+          onResize={(dx) => ui.setPanelWidth('props', ui.layout.widths.props - dx)}
+          onEnd={ui.flushLayout}
+        />
+        <div class="props-col">
+          <PropsSlot
+            ui={ui}
+            obj={p.sel.obj}
+            link={p.sel.link}
+            nameFieldRef={canvas.nameFieldRef}
+            onChangeObject={(id, patch) => ctrl?.updateObject(id, patch)}
+            onChangeLink={(id, patch) => ctrl?.updateLink(id, patch)}
+            onFit={() => ctrl?.fitSelection()}
+            depsText={activePath !== null ? ws.manager.text(activePath) : null}
+            viewName={viewName}
+            activeId={p.sel.obj?.id ?? null}
+            ctrl={canvas.ctrlRef.current}
+          />
+        </div>
+      </div>
+  );
+}
+
 export function App() {
   const ws = useWorkspace();
   // Ref mirror of the active view name (declared before the canvas so the
@@ -176,7 +346,7 @@ export function App() {
   });
   commitDocRef.current = code.commitDoc;
   const player = useFlowStage({ manager, canvas, activePath });
-  const ctrl = canvas.ctrlRef.current;
+  const ui = useUiLayout(manager, ws.ready, ws.version);
   const sel = selections(canvas.snap);
   const diverged = useDivergedClose({
     manager: ws.manager,
@@ -192,7 +362,12 @@ export function App() {
   };
 
   return (
-    <div class="app-shell" data-testid="app-shell">
+    <div
+      class="app-shell"
+      data-testid="app-shell"
+      data-panels={Object.entries(ui.layout.panels).map(([k, v]) => `${k}:${v}`).join(',')}
+      style={layoutStyle(ui.layout)}
+    >
       <AppHeader
         ws={ws}
         svgRef={canvas.svgRef}
@@ -200,54 +375,20 @@ export function App() {
         onClearRequest={() => setClearOpen(true)}
         onSnapshotsRequest={() => setSnapsOpen(true)}
       />
-      <div class="app-body">
-        <SidePane
-          tab={sideTab}
-          onTab={setSideTab}
-          manager={manager}
-          version={ws.version}
-          activePath={activePath}
-          onText={(text) => code.machine.textChanged(text)}
-          onPlay={(flowKey) => {
-            if (activePath !== null) player.start(activePath, flowKey);
-          }}
-        />
-        <Palette
-          kinds={PALETTE_ORDER}
-          onPlace={(k) => ctrl?.addObject(k)}
-          onDragDrop={canvas.onPaletteDrop}
-        />
-        <main class="canvas-col">
-          <CanvasTopRow
-            manager={manager}
-            diverged={diverged}
-            activePath={activePath}
-            viewName={viewName}
-            onView={setViewName}
-            onText={(t) => code.machine.textChanged(t)}
-            ctrl={canvas.ctrlRef.current}
-            selection={canvas.snap?.selection.objects ?? []}
-          />
-          <CanvasSplit canvas={canvas} code={code} player={player} />
-        </main>
-        <div class="props-col">
-          <PropertiesPanel
-            obj={sel.obj}
-            link={sel.link}
-            nameFieldRef={canvas.nameFieldRef}
-            onChangeObject={(id, patch) => ctrl?.updateObject(id, patch)}
-            onChangeLink={(id, patch) => ctrl?.updateLink(id, patch)}
-            onFit={() => ctrl?.fitSelection()}
-          />
-          <DepsPanel
-            text={activePath !== null ? manager.text(activePath) : null}
-            viewName={viewName}
-            activeId={sel.obj?.id ?? null}
-            ctrl={canvas.ctrlRef.current}
-            onPick={(id) => canvas.ctrlRef.current?.reveal(id)}
-          />
-        </div>
-      </div>
+      <AppBody
+        ws={ws}
+        canvas={canvas}
+        code={code}
+        ui={ui}
+        player={player}
+        activePath={activePath}
+        viewName={viewName}
+        onView={setViewName}
+        sideTab={sideTab}
+        onSideTab={setSideTab}
+        sel={sel}
+        diverged={diverged}
+      />
       <AppDialogs
         manager={manager}
         activePath={activePath}

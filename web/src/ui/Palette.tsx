@@ -4,15 +4,18 @@
 import { useRef } from 'preact/hooks';
 import type { Kind } from '../engine/model/types';
 import { labelFor } from './CanvasController';
+import { CollapseButton } from './PanelChrome';
 
 interface PaletteProps {
   kinds: Kind[];
   onPlace: (kind: Kind) => void;
   /** Pointer-based drop: (kind, end-event) — App converts to canvas coords. */
   onDragDrop: (kind: Kind, e: PointerEvent) => void;
+  /** F-10: collapse this panel into its rail. */
+  onCollapse?: () => void;
 }
 
-export function Palette({ kinds, onPlace, onDragDrop }: PaletteProps) {
+export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps) {
   const dragging = useRef<{ kind: Kind; ghost: HTMLDivElement } | null>(null);
 
   const startDrag = (kind: Kind, e: PointerEvent): void => {
@@ -42,7 +45,10 @@ export function Palette({ kinds, onPlace, onDragDrop }: PaletteProps) {
 
   return (
     <aside class="palette" data-testid="palette" aria-label="Shape palette">
-      <h2 class="panel-title">Shapes</h2>
+      <div class="panel-head">
+        <h2 class="panel-title">Shapes</h2>
+        {onCollapse && <CollapseButton id="palette" label="shapes" onCollapse={onCollapse} />}
+      </div>
       <ul class="palette-list">
         {kinds.map((kind, i) => (
           <li key={kind}>

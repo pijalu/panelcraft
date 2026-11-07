@@ -8,6 +8,13 @@
 import { beforeEach } from 'vitest';
 
 beforeEach(() => {
+  // F-10: the shell collapses the code pane below 1440 px (canvas-first). jsdom
+  // reports 1024, which would hide the editor from every component test — pin
+  // the design width so the chrome under test is the desktop layout.
+  if (typeof window !== 'undefined') {
+    Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
+  }
   const rangeCtor = (globalThis as unknown as { Range?: new () => Range }).Range;
   if (rangeCtor === undefined) return; // node environment — nothing to stub
   const proto = rangeCtor.prototype as unknown as Record<string, unknown>;

@@ -66,6 +66,14 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 - **F-31** The offline e2e spec no longer races its own service worker (serial file +
   cache selected by name), removing an intermittent red gate.
 
+- **F-10** Collapsible, resizable shell: every panel (files, shapes, code, properties)
+  collapses to a rail — the code rail keeps the sync-state chip — with persisted widths
+  (`StoredWorkspace.settings`, schema v2 + migration), drag splitters with clamps and
+  `Ctrl/Cmd+B` / `Ctrl/Cmd+J` / `Ctrl/Cmd+Alt+P` shortcuts. The code pane starts
+  collapsed below 1440 px, so the canvas gets its width back on small screens.
+- **F-32** The stored layout is adopted during render, so the first click after load is
+  never overwritten; focus follows a collapsing panel to its rail button.
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

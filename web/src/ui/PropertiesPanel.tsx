@@ -6,6 +6,7 @@
 import type { Ref } from 'preact';
 import type { CanvasController } from './CanvasController';
 import type { DiagramLink, DiagramObject } from './CanvasController';
+import { CollapseButton } from './PanelChrome';
 
 interface PropertiesPanelProps {
   obj: DiagramObject | null;
@@ -15,6 +16,8 @@ interface PropertiesPanelProps {
   onChangeLink: CanvasController['updateLink'];
   /** F-13 `Fit` command: size the selection to its labels. */
   onFit?: () => void;
+  /** F-10: collapse this panel into its rail. */
+  onCollapse?: () => void;
 }
 
 /** Arrow marker shapes offered by the link controls (F-12). */
@@ -50,11 +53,15 @@ function ObjectFields(props: {
   nameFieldRef?: Ref<HTMLInputElement>;
   onChange: ObjectChange;
   onFit?: () => void;
+  onCollapse?: () => void;
 }) {
-  const { obj, nameFieldRef, onChange, onFit } = props;
+  const { obj, nameFieldRef, onChange, onFit, onCollapse } = props;
   return (
     <aside class="properties" data-testid="properties">
-      <h2 class="panel-title">Properties</h2>
+      <div class="panel-head">
+        <h2 class="panel-title">Properties</h2>
+        {onCollapse && <CollapseButton id="props" label="properties" onCollapse={onCollapse} />}
+      </div>
       <Field label="Name">
         <input
           ref={nameFieldRef}
@@ -209,14 +216,26 @@ export function PropertiesPanel({
   onChangeObject,
   onChangeLink,
   onFit,
+  onCollapse,
 }: PropertiesPanelProps) {
   if (obj) {
-    return <ObjectFields obj={obj} nameFieldRef={nameFieldRef} onChange={onChangeObject} onFit={onFit} />;
+    return (
+      <ObjectFields
+        obj={obj}
+        nameFieldRef={nameFieldRef}
+        onChange={onChangeObject}
+        onFit={onFit}
+        onCollapse={onCollapse}
+      />
+    );
   }
   if (link) return <LinkFields link={link} onChange={onChangeLink} />;
   return (
     <aside class="properties" data-testid="properties">
-      <h2 class="panel-title">Properties</h2>
+      <div class="panel-head">
+        <h2 class="panel-title">Properties</h2>
+        {onCollapse && <CollapseButton id="props" label="properties" onCollapse={onCollapse} />}
+      </div>
       <p class="muted panel-empty">Select an object or link to edit its properties.</p>
     </aside>
   );

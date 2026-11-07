@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Shell panel slots (F-10): sidebar / palette / properties either render their
+// panel or the rail that replaces it when collapsed. Extracted from App so the
+// shell stays readable and every slot is independently testable.
+import type { ComponentChildren } from 'preact';
+import { PanelRail } from './PanelChrome';
+import { Palette } from './Palette';
+import { PropertiesPanel } from './PropertiesPanel';
+import { DepsPanel } from './deps/DepsPanel';
+import { PALETTE_ORDER, type CanvasController, type DiagramLink, type DiagramObject } from './CanvasController';
+import type { Kind } from '../engine/model/types';
+import type { UiLayoutHandle } from './useUiLayout';
+
+/** Collapsed-rail or panel, chosen from the layout. */
+export function slot(
+  collapsed: boolean,
+  id: 'sidebar' | 'palette' | 'props',
+  label: string,
+  onExpand: () => void,
+  content: ComponentChildren,
+): ComponentChildren {
+  return collapsed ? (
+    <PanelRail id={id} label={label} onExpand={onExpand} />
+  ) : (
+    content
+  );
+}
+
+export interface PaletteSlotProps {
+  ui: UiLayoutHandle;
+  onPlace: (kind: Kind) => void;
+  onDragDrop: (kind: Kind, e: PointerEvent) => void;
+}
+
+/** Shape palette (or its rail). */
+export function PaletteSlot({ ui, onPlace, onDragDrop }: PaletteSlotProps) {
+  return slot(
+    ui.layout.panels.palette === 'collapsed',
+    'palette',
+    'shapes',
+    () => ui.togglePanel('palette'),
+    <Palette
+      kinds={PALETTE_ORDER}
+      onPlace={onPlace}
+      onDragDrop={onDragDrop}
+      onCollapse={() => ui.togglePanel('palette')}
+    />,
+  );
+}
+
+export interface PropsSlotProps {
+  ui: UiLayoutHandle;
+  obj: DiagramObject | null;
+  link: DiagramLink | null;
+  nameFieldRef: { current: HTMLInputElement | null };
+  onChangeObject: CanvasController['updateObject'];
+  onChangeLink: CanvasController['updateLink'];
+  onFit: () => void;
+  depsText: string | null;
+  viewName: string | undefined;
+  activeId: string | null;
+  ctrl: CanvasController | null;
+}
+
+/** Properties + dependencies column (or its rail). */
+export function PropsSlot(props: PropsSlotProps) {
+  return slot(
+    props.ui.layout.panels.props === 'collapsed',
+    'props',
+    'properties',
+    () => props.ui.togglePanel('props'),
+    <>
+      <PropertiesPanel
+        obj={props.obj}
+        link={props.link}
+        nameFieldRef={props.nameFieldRef}
+        onChangeObject={props.onChangeObject}
+        onChangeLink={props.onChangeLink}
+        onFit={props.onFit}
+        onCollapse={() => props.ui.togglePanel('props')}
+      />
+      <DepsPanel
+        text={props.depsText}
+        viewName={props.viewName}
+        activeId={props.activeId}
+        ctrl={props.ctrl}
+        onPick={(id) => props.ctrl?.reveal(id)}
+      />
+    </>,
+  );
+}

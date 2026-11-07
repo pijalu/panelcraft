@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// F-10 shell layout model: defaults, toggles, width clamps, storage
+// normalisation and the CSS bridge. Pure functions — no DOM.
+
+import { describe, expect, it } from 'vitest';
+import {
+  DEFAULT_WIDTHS, NARROW_VIEWPORT, RAIL_WIDTH, chromeWidth, clampWidth, defaultLayout,
+  layoutStyle, normaliseLayout, setWidth, togglePanel, toggleSection, type UiLayout,
+} from './uiLayout';
+
+describe('defaultLayout (F-10)', () => {
+  it('opens every panel on a wide viewport', () => {
+    const l = defaultLayout(1600);
+    expect(Object.values(l.panels)).toEqual(['open', 'open', 'open', 'open']);
+    expect(l.widths).toEqual(DEFAULT_WIDTHS);
+  });
+
+  it('collapses the code pane below 1440 px (canvas-first)', () => {
+    expect(defaultLayout(NARROW_VIEWPORT - 1).panels.code).toBe('collapsed');
+    expect(defaultLayout(NARROW_VIEWPORT).panels.code).toBe('open');
+  });
+});
+
+describe('togglePanel', () => {
+  it('flips only the target panel', () => {
+    const l = togglePanel(defaultLayout(1600), 'sidebar');
+    expect(l.panels.sidebar).toBe('collapsed');
+    expect(l.panels.palette).toBe('open');
+    expect(l.panels.code).toBe('open');
+    expect(l.panels.props).toBe('open');
+  });
+
+  it('is its own inverse', () => {
+    const once = togglePanel(defaultLayout(1600), 'props');
+    expect(togglePanel(once, 'props').panels.props).toBe('open');
+  });
+});
+
+describe('setWidth / clampWidth', () => {
+  it('clamps to the panel limits', () => {
+    expect(clampWidth('sidebar', 10)).toBe(160);
+    expect(clampWidth('sidebar', 9999)).toBe(420);
+    expect(clampWidth('code', 500)).toBe(500);
+  });
+
+  it('falls back to the default for a non-finite width', () => {
+    expect(clampWidth('code', Number.NaN)).toBe(DEFAULT_WIDTHS.code);
+  });
+
+  it('writes the clamped width and leaves others alone', () => {
+    const l = setWidth(defaultLayout(1600), 'props', 1000);
+    expect(l.widths.props).toBe(420);
+    expect(l.widths.sidebar).toBe(DEFAULT_WIDTHS.sidebar);
+  });
+});
+
+describe('toggleSection (F-11 state)', () => {
+  it('flips a section and defaults unknown ones to open', () => {
+    const l = defaultLayout(1600);
+    expect(l.sections.advanced).toBe(false);
+    expect(toggleSection(l, 'identity').sections.identity).toBe(false);
+    expect(toggleSection(l, 'brand-new').sections['brand-new']).toBe(false);
+  });
+});
+
+describe('chromeWidth', () => {
+  it('sums open widths plus rails for collapsed panels', () => {
+    const open = defaultLayout(1600);
+    const total = DEFAULT_WIDTHS.sidebar + DEFAULT_WIDTHS.palette + DEFAULT_WIDTHS.code + DEFAULT_WIDTHS.props;
+    expect(chromeWidth(open)).toBe(total);
+    const collapsed = togglePanel(open, 'props');
+    expect(chromeWidth(collapsed)).toBe(total - DEFAULT_WIDTHS.props + RAIL_WIDTH);
+  });
+});
+
+describe('normaliseLayout', () => {
+  it('returns defaults for junk', () => {
+    expect(normaliseLayout(null, 1600)).toEqual(defaultLayout(1600));
+    expect(normaliseLayout('nope', 1600)).toEqual(defaultLayout(1600));
+    expect(normaliseLayout({}, 1600)).toEqual(defaultLayout(1600));
+  });
+
+  it('keeps valid values, drops invalid ones and clamps widths', () => {
+    const l = normaliseLayout(
+      {
+        panels: { sidebar: 'collapsed', palette: 'sideways', code: 'open' },
+        widths: { sidebar: 5, code: 480, props: 'wide' },
+        sections: { identity: false, metadata: 'yes' },
+      },
+      1600,
+    );
+    expect(l.panels.sidebar).toBe('collapsed');
+    expect(l.panels.palette).toBe('open'); // invalid mode → default
+    expect(l.widths.sidebar).toBe(160); // clamped
+    expect(l.widths.code).toBe(480);
+    expect(l.widths.props).toBe(DEFAULT_WIDTHS.props);
+    expect(l.sections.identity).toBe(false);
+    expect(l.sections.metadata).toBe(true); // non-boolean dropped
+  });
+
+  it('survives a round-trip through JSON', () => {
+    const l: UiLayout = togglePanel(setWidth(defaultLayout(1600), 'sidebar', 300), 'code');
+    expect(normaliseLayout(JSON.parse(JSON.stringify(l)), 1600)).toEqual(l);
+  });
+});
+
+describe('layoutStyle', () => {
+  it('maps widths to the shell CSS variables', () => {
+    const style = layoutStyle(setWidth(defaultLayout(1600), 'code', 400));
+    expect(style['--pc-code-w']).toBe('400px');
+    expect(style['--pc-sidebar-w']).toBe(`${DEFAULT_WIDTHS.sidebar}px`);
+  });
+});

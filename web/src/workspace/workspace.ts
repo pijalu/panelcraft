@@ -13,7 +13,7 @@ import { Autosaver } from './store/autosave';
 import { MemoryStorage } from './store/memory';
 import {
   SCHEMA_VERSION, StoreError, newStoredWorkspace,
-  type StoragePort, type StoredWorkspace,
+  type StoragePort, type StoredWorkspace, type WorkspaceSettings,
 } from './store/port';
 import { createDefaultStorage } from './store/idb';
 import { packZip, unpackZip } from './zip/zip';
@@ -250,6 +250,8 @@ export class WorkspaceManager {
   quotaDegraded = false;
   /** Set when the stored record could not be opened (corrupt/newer). */
   openError: string | null = null;
+  /** Persisted UI preferences (F-10/F-11); travels with the record, not the doc. */
+  settings: WorkspaceSettings = {};
 
   private storage: StoragePort;
   private readonly autosaver: Autosaver;
@@ -290,6 +292,7 @@ export class WorkspaceManager {
       if (rec) {
         this.root = rec.tree;
         this.name = rec.name;
+        this.settings = rec.settings ?? {};
         this.tabs = this.restoreTabs(rec);
         this.emit();
         return;
@@ -325,7 +328,19 @@ export class WorkspaceManager {
     rec.tree = this.root;
     rec.openTabs = this.tabs.tabs.map((t) => t.path);
     rec.activePath = this.activePath;
+    rec.settings = this.settings;
     return rec;
+  }
+
+  /**
+   * Merge one UI preference and persist it (F-10). Same durability rule as
+   * document content (F-29): the record is flushed immediately, so a reload
+   * right after a collapse/resize keeps the layout.
+   */
+  setSetting(key: keyof WorkspaceSettings, value: unknown): void {
+    this.settings = { ...this.settings, [key]: value };
+    this.emit();
+    this.saveContent();
   }
 
   scheduleSave(): void {
@@ -552,6 +567,7 @@ export class WorkspaceManager {
     this.tabs = initialTabs;
     this.name = 'workspace';
     this.openError = null;
+    this.settings = {};
     if (!this.ephemeral && !this.skipWelcome) this.bootstrapWelcome();
     this.emit();
   }

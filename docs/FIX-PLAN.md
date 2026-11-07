@@ -105,6 +105,17 @@ an empty cache created by the sibling test — an intermittent red gate.
 the cache name in the assertion message. No retries, no weakened assertion.
 *Tests:* the spec itself, run twice in a full-suite pass.
 
+### F-32 Adopting the stored layout overwrote the first click (found in F-10 verification)
+*Problem:* `useUiLayout` adopted the persisted layout in an effect, i.e. *after* the
+shell painted. A click landing in that window (the first thing a returning user does)
+was applied to the default layout and then silently reset; focus could also be left
+inside a panel that was being replaced, which disabled the shell shortcuts.
+*Change:* the layout is adopted during render (conditional setState) so the first
+painting already shows the stored layout; collapsing/expanding moves focus to the
+rail's button, so shortcuts keep firing.
+*Tests:* `ui/uiLayout.test.ts` (pure adopt maths), e2e `p1-shell.spec.ts`
+(collapse → reload → expand, keyboard shortcut round-trip).
+
 ### F-09 Repo hygiene: no generated content
 *Problem:* `dist/release/**` (12 files, 46 MB of dry-run binaries + built pages) and
 `e2e/__screenshots__/**` are tracked, and the specs write into the tracked directory — every e2e run leaves
@@ -151,6 +162,16 @@ sync-state chip; default `code: collapsed` under 1440 px. Persist in `StoredWork
 + migration in `store/port.ts` + `store/idb.ts`).
 *Tests:* component — toggles flip `aria-expanded`, layout state persists; e2e — collapse all, reload, canvas
 width ≥ 900 px at 1280; axe stays green.
+
+**Done.** `ui/uiLayout.ts` is the pure model (panels, widths with clamps, F-11 section
+state, defaults incl. code-collapsed < 1440 px); `ui/useUiLayout.ts` owns persistence
+(`StoredWorkspace.settings`, schema v2 + migration) and the shortcuts (`Ctrl/Cmd+B`,
+`Ctrl/Cmd+J`, `Ctrl/Cmd+Alt+P`); `ui/PanelChrome.tsx` provides the header chevron, the
+rail (the code rail keeps the sync chip) and the drag splitter; `ui/ShellSlots.tsx`
+keeps App small. Widths are CSS variables written from the layout, so the canvas gets
+its space back. Tests: `ui/uiLayout.test.ts`, `store/port.test.ts` + `store/idb.test.ts`
+(v1 → v2 migration), e2e `p1-shell.spec.ts` (collapse all → reload → canvas ≥ 900 px at
+1280 px, shortcuts, splitter clamp + persistence).
 
 ### F-11 Properties panel sections — *item 2*
 Split into collapsible sections (Identity / Metadata / Style / Advanced) with per-section persistence; add

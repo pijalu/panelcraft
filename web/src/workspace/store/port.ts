@@ -9,11 +9,19 @@ import { newRoot, type FsNode } from '../fs';
  * Storage schema version — independent of IR_VERSION (which tracks the PDL IR).
  * Bump + add a migration step when the record layout changes (forward-only).
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
-/** Stored workspace record (object store value). v1 layout. */
+/** Persisted UI preferences (F-10/F-11): layout, widths, section state. */
+export interface WorkspaceSettings {
+  /** Opaque to the store — validated by `ui/uiLayout.ts` on read. */
+  layout?: unknown;
+}
+
+/** Stored workspace record (object store value). v2 layout. */
 export interface StoredWorkspace {
   schemaVersion: number;
+  /** UI preferences; absent in v1 records (migration seeds `{}`). */
+  settings: WorkspaceSettings;
   /** IR version the tree was authored against (informational; see M3.md). */
   irVersion: number;
   savedAt: number;
@@ -59,6 +67,7 @@ export function newStoredWorkspace(name = 'workspace'): StoredWorkspace {
     tree: newRoot(),
     openTabs: [],
     activePath: null,
+    settings: {},
   };
 }
 
@@ -82,6 +91,8 @@ const isObj = (v: unknown): v is RawRecord => typeof v === 'object' && v !== nul
 export const MIGRATIONS: Record<number, (r: RawRecord) => RawRecord> = {
   // v0 (pre-M3 sketches had no tab state) → v1: default tab fields.
   0: (r) => ({ openTabs: [], activePath: null, ...r, schemaVersion: 1 }),
+  // v1 → v2 (F-10): UI settings live with the workspace record.
+  1: (r) => ({ settings: {}, ...r, schemaVersion: 2 }),
 };
 
 function assertUsableVersion(raw: RawRecord): number {
@@ -121,6 +132,7 @@ function toStored(rec: RawRecord): StoredWorkspace {
   if (rec.activePath !== null && typeof rec.activePath !== 'string') {
     throw new StoreError('corrupt', 'activePath must be a string or null');
   }
+  const settings = isObj(rec.settings) ? (rec.settings as WorkspaceSettings) : {};
   return {
     schemaVersion: SCHEMA_VERSION,
     irVersion: typeof rec.irVersion === 'number' ? rec.irVersion : IR_VERSION,
@@ -129,6 +141,7 @@ function toStored(rec: RawRecord): StoredWorkspace {
     tree,
     openTabs: rec.openTabs as string[],
     activePath: rec.activePath as string | null,
+    settings,
   };
 }
 

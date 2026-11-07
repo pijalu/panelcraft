@@ -15,7 +15,16 @@ function rec(id: string, name: string): SnapshotRecord {
     id,
     name,
     savedAt: 1700000000000,
-    ws: { schemaVersion: 1, irVersion: 1, savedAt: 1700000000000, name: 'w', tree: { kind: 'folder', name: 'root', children: [] }, openTabs: [], activePath: null },
+    ws: {
+      schemaVersion: 2,
+      irVersion: 2,
+      savedAt: 1700000000000,
+      name: 'w',
+      tree: { kind: 'folder', name: 'root', children: [] },
+      openTabs: [],
+      activePath: null,
+      settings: {},
+    },
   };
 }
 

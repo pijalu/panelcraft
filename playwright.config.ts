@@ -21,7 +21,13 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // F-10: the code pane defaults collapsed below 1440 px, so the suite
+        // runs at the design width; the narrow-viewport behaviour has its own
+        // test that sets 1280 explicitly (e2e/p1-shell.spec.ts).
+        viewport: { width: 1440, height: 900 },
+      },
     },
   ],
   webServer: {

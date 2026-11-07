@@ -51,6 +51,11 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /* F-10: panel widths are layout state (uiLayout.ts writes these vars) */
+  --pc-sidebar-w: 200px;
+  --pc-palette-w: 168px;
+  --pc-code-w: 360px;
+  --pc-props-w: 232px;
 }
 
 .app-header {
@@ -85,11 +90,94 @@ body {
 }
 
 .palette {
-  width: 168px;
+  width: var(--pc-palette-w, 168px);
   border-right: 1px solid var(--pc-border);
   background: var(--pc-surface);
   padding: 8px;
   overflow-y: auto;
+}
+
+/* F-10: collapsible shell chrome — panel headers, rails, splitters */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-toggle,
+.rail-toggle {
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  background: transparent;
+  color: var(--pc-muted);
+  font: inherit;
+  font-size: var(--pc-text-md);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.panel-toggle:hover,
+.rail-toggle:hover {
+  border-color: var(--pc-border);
+  color: var(--pc-fg);
+}
+
+.panel-toggle:focus-visible,
+.rail-toggle:focus-visible {
+  outline: 2px solid var(--pc-accent);
+  outline-offset: 1px;
+}
+
+.panel-rail {
+  width: 36px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  background: var(--pc-surface);
+  border-right: 1px solid var(--pc-border);
+}
+
+.props-col .panel-rail {
+  border-right: none;
+  border-left: 1px solid var(--pc-border);
+}
+
+.rail-chip {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--pc-border);
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+}
+
+.rail-chip[data-sync-state='error'] {
+  border-color: var(--pc-warn);
+  color: var(--pc-warn);
+}
+
+.panel-splitter {
+  flex: none;
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+}
+
+.panel-splitter:hover,
+.panel-splitter:focus-visible {
+  background: var(--pc-border);
 }
 
 .panel-title {
@@ -599,7 +687,7 @@ marker .pc-arrow[fill='none'] {
 
 /* file tree sidebar */
 .sidebar {
-  width: 200px;
+  width: var(--pc-sidebar-w, 200px);
   flex: none;
   border-right: 1px solid var(--pc-border);
   background: var(--pc-surface);
@@ -898,8 +986,9 @@ marker .pc-arrow[fill='none'] {
 }
 
 .code-pane {
-  width: clamp(320px, 34%, 520px);
-  min-width: 260px;
+  width: var(--pc-code-w, 360px);
+  min-width: 0;
+  flex: none;
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--pc-border);
@@ -916,7 +1005,90 @@ marker .pc-arrow[fill='none'] {
   background: var(--pc-surface);
 }
 
-.code-pane-head .panel-title {
+.code-pane-head /* F-10: collapsible shell chrome — panel headers, rails, splitters */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-toggle,
+.rail-toggle {
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  background: transparent;
+  color: var(--pc-muted);
+  font: inherit;
+  font-size: var(--pc-text-md);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.panel-toggle:hover,
+.rail-toggle:hover {
+  border-color: var(--pc-border);
+  color: var(--pc-fg);
+}
+
+.panel-toggle:focus-visible,
+.rail-toggle:focus-visible {
+  outline: 2px solid var(--pc-accent);
+  outline-offset: 1px;
+}
+
+.panel-rail {
+  width: 36px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  background: var(--pc-surface);
+  border-right: 1px solid var(--pc-border);
+}
+
+.props-col .panel-rail {
+  border-right: none;
+  border-left: 1px solid var(--pc-border);
+}
+
+.rail-chip {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--pc-border);
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+}
+
+.rail-chip[data-sync-state='error'] {
+  border-color: var(--pc-warn);
+  color: var(--pc-warn);
+}
+
+.panel-splitter {
+  flex: none;
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+}
+
+.panel-splitter:hover,
+.panel-splitter:focus-visible {
+  background: var(--pc-border);
+}
+
+.panel-title {
   margin: 0;
   flex: none;
 }
@@ -1326,7 +1498,7 @@ marker .pc-arrow[fill='none'] {
 
 /* M6-WP4: right column = properties + dependencies panel */
 .props-col {
-  width: 232px;
+  width: var(--pc-props-w, 232px);
   flex: none;
   border-left: 1px solid var(--pc-border);
   background: var(--pc-surface);
