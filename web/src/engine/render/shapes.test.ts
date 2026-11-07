@@ -30,14 +30,16 @@ describe('shape glyph set (M2-WP5, FR-C3 kinds)', () => {
     }
   });
 
-  it('person: head circle + shoulder arc + body rect + label', () => {
-    expect(tags('person')).toEqual(['circle', 'path', 'rect', 'text']);
+  it('person: body rect first, then head circle + shoulder arc + label', () => {
+    // document order = paint order: body rect must precede glyph details or
+    // they are painted over (vision review r1 defect D2)
+    expect(tags('person')).toEqual(['rect', 'circle', 'path', 'text']);
     const specs = shapeGlyphs(obj('person'));
-    const head = specs[0];
+    const head = specs[1];
     expect(head?.tag).toBe('circle');
     expect(head?.attrs.cx).toBe(60); // w/2
     expect(head?.attrs.r).toBe(6);
-    const arc = specs[1];
+    const arc = specs[2];
     expect(String(arc?.attrs.d)).toMatch(/^M 50 \d+(\.\d+)? a 10 10 0 0 1 20 0$/);
     expect(arc?.attrs.fill).toBe('none');
   });

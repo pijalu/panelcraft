@@ -205,6 +205,12 @@ body {
   margin: 0;
 }
 
+/* checkbox must not inherit the full-width text-input rule */
+.field-checkbox input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+}
+
 .field input,
 .field textarea,
 .field select {
@@ -289,17 +295,6 @@ body {
 
 .pc-grid-dot {
   fill: var(--pc-border);
-}
-
-.empty-state {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 16px;
-  text-align: center;
 }
 
 .muted {

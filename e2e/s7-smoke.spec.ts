@@ -18,7 +18,10 @@ test('S7: app functions with external requests blocked (N7 runtime proof)', asyn
   await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
   await expect(page.locator('.app-title')).toHaveText('PanelCraft');
-  await expect(page.locator('.empty-state')).toBeVisible();
+  // M2 shell: all three regions render and function without any network
+  await expect(page.getByTestId('palette')).toBeVisible();
+  await expect(page.getByTestId('canvas')).toBeVisible();
+  await expect(page.getByTestId('properties')).toBeVisible();
 
   // Self-containment: the app must not even attempt external origins.
   expect(blockedExternal).toEqual([]);

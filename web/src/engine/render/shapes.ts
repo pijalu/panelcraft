@@ -47,7 +47,10 @@ function personGlyph(obj: SceneObject): ElSpec[] {
   const headCy = Math.min(obj.h * 0.32, 18);
   const shoulderY = headCy + HEAD_R + 3;
   const cx = obj.w / 2;
+  // body first — SVG paints in document order, so glyph details must come
+  // after the fill rect or they are painted over (vision review r1 defect D2)
   return [
+    bodyRect(obj),
     {
       tag: 'circle',
       attrs: { cx, cy: headCy, r: HEAD_R, class: 'pc-glyph' },
@@ -61,7 +64,6 @@ function personGlyph(obj: SceneObject): ElSpec[] {
         fill: 'none',
       },
     },
-    bodyRect(obj),
     TEXT_MID(obj),
   ];
 }
