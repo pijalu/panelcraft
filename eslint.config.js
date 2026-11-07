@@ -10,6 +10,7 @@ export default tseslint.config(
     // `ignores` alongside other keys stops being a global exclude).
     ignores: [
       'web/dist/**',
+      'dist/**', // release dry-run output (binaries/pages copies) — never lint
       'coverage/**',
       'node_modules/**',
       'test-results/**',

@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Service worker program (web/src/sw.ts) — WebWorker lib, no DOM: SW globals
+// (ExtendableEvent/FetchEvent/clients) and the build-time precache constant
+// live outside the app type world (M7-WP3).
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "WebWorker"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["web/src/sw.ts"]
+}
