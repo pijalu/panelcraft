@@ -203,7 +203,7 @@ export function serializeDoc(doc: Doc): string {
     ['level', doc.level],
     ['direction', doc.direction],
     ['theme', doc.theme],
-    comments(doc.metaComments),
+    comments(doc.comments),
     ['imports', arr(doc.imports.map(importStmt))],
     ['objects', arr(doc.objects.map(objectStmt))],
     ['links', arr(doc.links.map(linkStmt))],

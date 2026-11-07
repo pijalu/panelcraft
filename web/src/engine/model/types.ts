@@ -151,7 +151,7 @@ export interface Doc {
   direction?: Dir;
   theme?: Theme;
   /** Comments preceding the first meta directive (canonical: after magic line). */
-  metaComments?: Comments;
+  comments?: Comments;
   imports: ImportStmt[];
   objects: Obj[];
   links: Link[];

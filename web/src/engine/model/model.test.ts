@@ -12,7 +12,7 @@ const sample: Doc = {
   level: 'container',
   direction: 'LR',
   theme: 'dark',
-  metaComments: ['header note'],
+  comments: ['header note'],
   imports: [{ alias: 'common', path: '../common/actors.pcd', comments: ['#x'], pos: { line: 5, col: 1 } }],
   objects: [
     {
