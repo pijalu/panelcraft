@@ -23,6 +23,12 @@ describe('lexer', () => {
     expect(tokens.filter((t) => t.type === 'comment').map((t) => t.text)).toEqual(['a comment']);
   });
 
+  it('lexes // line comments like # (D-M1-19: SPDX headers in .pcd)', () => {
+    const { tokens } = lex('// SPDX-License-Identifier: GPL-3.0-only\nperson a "A" // trailing\n');
+    expect(tokens.filter((t) => t.type === 'comment').map((t) => t.text))
+      .toEqual(['SPDX-License-Identifier: GPL-3.0-only', 'trailing']);
+  });
+
   it('collects lexer errors with positions', () => {
     const r = lex('s "a\\tb"\nt "unterminated');
     expect(r.diagnostics.map((d) => d.code)).toEqual(['E106', 'E101']);

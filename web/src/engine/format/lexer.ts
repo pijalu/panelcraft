@@ -65,6 +65,19 @@ function scanHash(src: string, i: number, line: number, col: number, _diags: Dia
   return { token: mk('comment', text, i, j, line, col), i: j, col: col + (j - i) };
 }
 
+/** `//` line comment (errata D-M1-19: SPDX header compatibility; `/` has no
+ * other grammar use). Text stored without the slashes, like `#` comments. */
+function scanSlash(src: string, i: number, line: number, col: number, diags: Diagnostic[]): ScanOut {
+  if (src[i + 1] !== '/') {
+    diags.push(diag(E.unexpected, `unexpected character '/'`, line, col));
+    return { token: null, i: i + 1, col: col + 1 };
+  }
+  let j = i + 2;
+  while (j < src.length && src[j] !== '\n' && src[j] !== '\r') j += 1;
+  const text = src.slice(i + 2, j).trim();
+  return { token: mk('comment', text, i, j, line, col), i: j, col: col + (j - i) };
+}
+
 function scanString(src: string, i: number, line: number, col: number, diags: Diagnostic[]): ScanOut {
   let j = i + 1;
   let value = '';
@@ -161,6 +174,7 @@ function scanIdent(src: string, i: number, line: number, col: number, diags: Dia
 function scanToken(src: string, i: number, line: number, col: number, diags: Diagnostic[]): ScanOut {
   const ch: string = src[i]!;
   if (ch === '#') return scanHash(src, i, line, col, diags);
+  if (ch === '/') return scanSlash(src, i, line, col, diags);
   if (ch === '"') return scanString(src, i, line, col, diags);
   if (ch === '-' || ch === '<') return scanDash(src, i, line, col, diags);
   if (/[0-9]/.test(ch)) return scanNumber(src, i, line, col, diags);

@@ -35,6 +35,11 @@ datastore fs "Local .pcd files" {
   description "Workspace directories and ZIP archives"
   tag cli
 }
+container docsarch "docs/architecture" {
+  description "PDL corpus seeds validated in CI by this very repo"
+  technology "plain files, dogfooded"
+  tag docs
+}
 
 author -> spa : "edits diagrams (browser-local only)"
 spa -> idb : "autosave workspace"
@@ -43,13 +48,14 @@ pages -serves-> spa : "static assets"
 author -> bin : "serve locally / run CLI"
 bin -embeds-> spa : "go:embed assets"
 bin -validates-> fs : "panelcraft validate/convert"
+bin -validates-> docsarch : "CI validates doc diagrams"
 bin -drives-> chrome : "panelcraft render"
 chrome -loads-> spa : "renders file to PNG/SVG"
 
 flow "Docs self-hosting" as docs {
   intro "PanelCraft documents its own architecture in PDL"
   process docsarch "docs/architecture/*.pcd corpus seeds"
-  bin -validates-> fs : "CI validates doc diagrams"
+  bin -validates-> docsarch : "CI validates doc diagrams"
   conclusion "Doc drift caught before release"
 }
 
