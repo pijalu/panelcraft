@@ -422,7 +422,8 @@ target = link mode · `F` fit · `+/-/0` zoom in/out/reset.
 
 Comments/annotations on objects · export to draw.io/PlantUML · plugin API for custom
 stencils · additional diagram notations (sequence-native, deployment advanced) ·
-optional file-system access API for real folders.
+optional file-system access API for real folders · flow→`sequenceDiagram` export
+(`.seq.mmd`, slipped from M6-WP7 per PLAN §10 — first M6 slip, nothing else cut).
 
 ---
 
