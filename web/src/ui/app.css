@@ -1,19 +1,31 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* M0 scaffold styles. Full token set lands with docs/STYLE-GUIDE.md (WP6). */
+/* Design tokens per docs/STYLE-GUIDE.md — single source of truth (M2-WP5:
+   shapes/colors reference CSS custom properties only, never hard-coded). */
 :root {
   color-scheme: light dark;
   --pc-bg: #ffffff;
+  --pc-surface: #f5f6f8;
   --pc-fg: #1a1d21;
   --pc-muted: #6b7280;
   --pc-accent: #2563eb;
+  --pc-border: #d1d5db;
+  --pc-canvas: #fafafa;
+  --pc-text-xs: 11px;
+  --pc-text-sm: 12px;
+  --pc-text-md: 14px;
+  --pc-radius-sm: 4px;
+  --pc-radius-md: 8px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --pc-bg: #14161a;
+    --pc-surface: #1e2126;
     --pc-fg: #e5e7eb;
     --pc-muted: #9ca3af;
     --pc-accent: #60a5fa;
+    --pc-border: #374151;
+    --pc-canvas: #111316;
   }
 }
 
@@ -37,7 +49,7 @@ body {
 .app-title {
   padding: 12px 16px;
   font-weight: 600;
-  border-bottom: 1px solid var(--pc-muted);
+  border-bottom: 1px solid var(--pc-border);
 }
 
 .empty-state {
@@ -54,4 +66,88 @@ body {
 .muted {
   color: var(--pc-muted);
   font-size: 0.875rem;
+}
+
+/* ---- canvas (M2) ------------------------------------------------------- */
+
+.pc-canvas {
+  background: var(--pc-canvas);
+  touch-action: none;
+  user-select: none;
+}
+
+/* object glyphs — fills/strokes exclusively via tokens (STYLE-GUIDE) */
+.pc-shape {
+  fill: var(--pc-surface);
+  stroke: var(--pc-border);
+  stroke-width: 1;
+}
+
+.pc-kind-group .pc-shape {
+  fill: none;
+  stroke-dasharray: 6 4;
+}
+
+.pc-kind-system_ext .pc-shape {
+  stroke-dasharray: 6 4;
+}
+
+.pc-glyph {
+  fill: var(--pc-muted);
+  stroke: var(--pc-border);
+  stroke-width: 1;
+}
+
+.pc-label {
+  fill: var(--pc-fg);
+  font-size: var(--pc-text-sm);
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  font-family: inherit;
+}
+
+.pc-label-title {
+  text-anchor: start;
+  dominant-baseline: hanging;
+  font-size: var(--pc-text-xs);
+  fill: var(--pc-muted);
+}
+
+/* selection: accent ring (FR-C4) */
+.pc-selected .pc-shape {
+  stroke: var(--pc-accent);
+  stroke-width: 2;
+}
+
+/* links */
+.pc-route {
+  fill: none;
+  stroke: var(--pc-fg);
+  stroke-width: 1.5;
+}
+
+.pc-arrow {
+  fill: var(--pc-fg);
+}
+
+.pc-dashed .pc-route {
+  stroke-dasharray: 5 3;
+}
+
+.pc-link-label {
+  fill: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+  text-anchor: middle;
+  dominant-baseline: hanging;
+  pointer-events: none;
+  font-family: inherit;
+}
+
+/* hit slop: invisible widened stroke for link hit-testing (hit-test.ts) */
+.pc-route-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+  pointer-events: stroke;
 }
