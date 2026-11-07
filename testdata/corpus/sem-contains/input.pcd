@@ -1,0 +1,13 @@
+pcd 1.0
+container app "App" {
+  contains ghost
+}
+group g "G" {
+  contains app
+}
+group g2 "G2" {
+  contains g
+}
+note n "N" {
+  attach missing
+}

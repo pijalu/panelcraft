@@ -1,0 +1,402 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "title": "PanelCraft web module graph",
+  "level": "component",
+  "direction": "LR",
+  "theme": "dark",
+  "comments": [
+    "SPDX-License-Identifier: GPL-3.0-only"
+  ],
+  "objects": [
+    {
+      "kind": "container",
+      "id": "app",
+      "name": "App shell",
+      "description": "Layout, routing between files, theme, shortcuts",
+      "technology": "Preact",
+      "tags": [
+        "web"
+      ],
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "ui_panels",
+      "name": "ui/panels",
+      "description": "Palette, properties, flows editor, dialogs",
+      "tags": [
+        "web"
+      ],
+      "pos": {
+        "line": 13,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "ui_code",
+      "name": "ui/codeview",
+      "description": "CodeMirror bridge, diagnostics markers",
+      "technology": "CodeMirror 6",
+      "tags": [
+        "web"
+      ],
+      "pos": {
+        "line": 17,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "wk_fs",
+      "name": "workspace/fs",
+      "description": "Virtual file tree, tabs, import/export",
+      "tags": [
+        "web"
+      ],
+      "pos": {
+        "line": 22,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "wk_zip",
+      "name": "workspace/zip",
+      "description": "ZIP container over CompressionStream; fflate fallback",
+      "tags": [
+        "web",
+        "internal"
+      ],
+      "pos": {
+        "line": 26,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "wk_store",
+      "name": "workspace/store",
+      "description": "IndexedDB persistence port + in-memory fallback",
+      "tags": [
+        "web",
+        "internal"
+      ],
+      "pos": {
+        "line": 30,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "wk_undo",
+      "name": "workspace/undo",
+      "description": "Command stack, coalescing",
+      "tags": [
+        "web",
+        "internal"
+      ],
+      "pos": {
+        "line": 34,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "eng_format",
+      "name": "engine/format",
+      "description": "PDL parser/printer, mermaid converters",
+      "tags": [
+        "core"
+      ],
+      "pos": {
+        "line": 38,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "eng_model",
+      "name": "engine/model",
+      "description": "IR types, operations, validation",
+      "tags": [
+        "core"
+      ],
+      "pos": {
+        "line": 42,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "eng_render",
+      "name": "engine/render",
+      "description": "Scene graph to SVG, hit-testing, viewport",
+      "tags": [
+        "core"
+      ],
+      "pos": {
+        "line": 46,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "eng_layout",
+      "name": "engine/layout",
+      "description": "LayoutEngine port; dagre adapter",
+      "tags": [
+        "core",
+        "internal"
+      ],
+      "pos": {
+        "line": 50,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "eng_flows",
+      "name": "engine/flows",
+      "description": "Step machine: 8 step types, playback plan",
+      "tags": [
+        "core"
+      ],
+      "pos": {
+        "line": 54,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "eng_anim",
+      "name": "engine/anim",
+      "description": "Animation plan builder; reduced-motion path",
+      "tags": [
+        "core",
+        "internal"
+      ],
+      "pos": {
+        "line": 58,
+        "col": 1
+      }
+    },
+    {
+      "kind": "datastore",
+      "id": "idb",
+      "name": "IndexedDB",
+      "technology": "Browser API",
+      "tags": [
+        "external"
+      ],
+      "pos": {
+        "line": 62,
+        "col": 1
+      }
+    },
+    {
+      "kind": "component",
+      "id": "dagre",
+      "name": "dagre",
+      "technology": "npm, MIT",
+      "tags": [
+        "external"
+      ],
+      "pos": {
+        "line": 66,
+        "col": 1
+      }
+    },
+    {
+      "kind": "note",
+      "id": "n1",
+      "name": "Engine packages depend on ports only: LayoutEngine, Storage, Clock, AnimPlayer",
+      "attach": "eng_render",
+      "pos": {
+        "line": 70,
+        "col": 1
+      }
+    },
+    {
+      "kind": "note",
+      "id": "n2",
+      "name": "Deps arrow points from consumer to provider; no cycles inside engine/",
+      "attach": "eng_model",
+      "pos": {
+        "line": 73,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "app",
+      "to": "ui_panels",
+      "pos": {
+        "line": 77,
+        "col": 1
+      }
+    },
+    {
+      "from": "app",
+      "to": "ui_code",
+      "pos": {
+        "line": 78,
+        "col": 1
+      }
+    },
+    {
+      "from": "app",
+      "to": "wk_fs",
+      "pos": {
+        "line": 79,
+        "col": 1
+      }
+    },
+    {
+      "from": "ui_panels",
+      "to": "eng_render",
+      "label": "canvas projection",
+      "pos": {
+        "line": 80,
+        "col": 1
+      }
+    },
+    {
+      "from": "ui_panels",
+      "to": "eng_flows",
+      "label": "playback controls",
+      "pos": {
+        "line": 81,
+        "col": 1
+      }
+    },
+    {
+      "from": "ui_code",
+      "to": "eng_format",
+      "label": "parse + diagnostics",
+      "pos": {
+        "line": 82,
+        "col": 1
+      }
+    },
+    {
+      "from": "wk_fs",
+      "to": "eng_format",
+      "label": "load/save .pcd",
+      "pos": {
+        "line": 83,
+        "col": 1
+      }
+    },
+    {
+      "from": "wk_fs",
+      "to": "wk_zip",
+      "label": "workspace import/export",
+      "pos": {
+        "line": 84,
+        "col": 1
+      }
+    },
+    {
+      "from": "wk_fs",
+      "to": "wk_store",
+      "label": "Storage port",
+      "pos": {
+        "line": 85,
+        "col": 1
+      }
+    },
+    {
+      "from": "wk_fs",
+      "to": "wk_undo",
+      "pos": {
+        "line": 86,
+        "col": 1
+      }
+    },
+    {
+      "from": "wk_store",
+      "to": "idb",
+      "label": "persistence",
+      "pos": {
+        "line": 87,
+        "col": 1
+      }
+    },
+    {
+      "from": "eng_layout",
+      "to": "dagre",
+      "label": "auto-layout adapter",
+      "pos": {
+        "line": 88,
+        "col": 1
+      }
+    },
+    {
+      "from": "eng_render",
+      "to": "eng_model",
+      "pos": {
+        "line": 89,
+        "col": 1
+      }
+    },
+    {
+      "from": "eng_format",
+      "to": "eng_model",
+      "pos": {
+        "line": 90,
+        "col": 1
+      }
+    },
+    {
+      "from": "eng_flows",
+      "to": "eng_model",
+      "pos": {
+        "line": 91,
+        "col": 1
+      }
+    },
+    {
+      "from": "eng_flows",
+      "to": "eng_anim",
+      "label": "AnimPlayer port",
+      "pos": {
+        "line": 92,
+        "col": 1
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "Dependencies",
+      "lines": [
+        {
+          "type": "layout",
+          "mode": "auto",
+          "dir": "LR",
+          "pos": {
+            "line": 95,
+            "col": 3
+          }
+        },
+        {
+          "type": "hideTag",
+          "id": "external",
+          "pos": {
+            "line": 96,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 94,
+        "col": 1
+      }
+    }
+  ]
+}

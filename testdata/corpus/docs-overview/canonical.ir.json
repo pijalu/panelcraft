@@ -1,0 +1,315 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "title": "PanelCraft deployment topology",
+  "level": "deployment",
+  "direction": "LR",
+  "theme": "dark",
+  "comments": [
+    "SPDX-License-Identifier: GPL-3.0-only"
+  ],
+  "objects": [
+    {
+      "kind": "person",
+      "id": "author",
+      "name": "Architect",
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "spa",
+      "name": "PanelCraft SPA",
+      "description": "Single-page editor: SVG canvas + code view",
+      "technology": "Preact + TypeScript SVG engine",
+      "tags": [
+        "product"
+      ],
+      "pos": {
+        "line": 10,
+        "col": 1
+      }
+    },
+    {
+      "kind": "datastore",
+      "id": "idb",
+      "name": "Browser IndexedDB",
+      "description": "Workspace autosave, snapshots, settings",
+      "technology": "IndexedDB",
+      "tags": [
+        "product",
+        "storage"
+      ],
+      "pos": {
+        "line": 15,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "pages",
+      "name": "GitHub Pages",
+      "description": "Static hosting of the built SPA",
+      "technology": "Static hosting",
+      "tags": [
+        "product",
+        "hosting"
+      ],
+      "pos": {
+        "line": 20,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "bin",
+      "name": "panelcraft binary",
+      "description": "serve + validate/convert/render CLI",
+      "technology": "Go, embeds SPA via go:embed",
+      "tags": [
+        "product",
+        "cli"
+      ],
+      "pos": {
+        "line": 25,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "chrome",
+      "name": "Headless Chrome",
+      "description": "Driven via Chrome DevTools Protocol",
+      "technology": "chromedp",
+      "tags": [
+        "cli"
+      ],
+      "pos": {
+        "line": 30,
+        "col": 1
+      }
+    },
+    {
+      "kind": "datastore",
+      "id": "fs",
+      "name": "Local .pcd files",
+      "description": "Workspace directories and ZIP archives",
+      "tags": [
+        "cli"
+      ],
+      "pos": {
+        "line": 35,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "docsarch",
+      "name": "docs/architecture",
+      "description": "PDL corpus seeds validated in CI by this very repo",
+      "technology": "plain files, dogfooded",
+      "tags": [
+        "docs"
+      ],
+      "pos": {
+        "line": 39,
+        "col": 1
+      }
+    },
+    {
+      "kind": "note",
+      "id": "n1",
+      "name": "No write endpoints exist server-side; storage stays in the browser",
+      "attach": "idb",
+      "pos": {
+        "line": 44,
+        "col": 1
+      }
+    },
+    {
+      "kind": "note",
+      "id": "n2",
+      "name": "Render CLI reuses the same SPA for pixel-identical output",
+      "attach": "chrome",
+      "pos": {
+        "line": 47,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "author",
+      "to": "spa",
+      "label": "edits diagrams (browser-local only)",
+      "pos": {
+        "line": 51,
+        "col": 1
+      }
+    },
+    {
+      "from": "spa",
+      "to": "idb",
+      "label": "autosave workspace",
+      "pos": {
+        "line": 52,
+        "col": 1
+      }
+    },
+    {
+      "from": "author",
+      "to": "pages",
+      "label": "uses hosted app",
+      "pos": {
+        "line": 53,
+        "col": 1
+      }
+    },
+    {
+      "from": "pages",
+      "to": "spa",
+      "type": "serves",
+      "label": "static assets",
+      "pos": {
+        "line": 54,
+        "col": 1
+      }
+    },
+    {
+      "from": "author",
+      "to": "bin",
+      "label": "serve locally / run CLI",
+      "pos": {
+        "line": 55,
+        "col": 1
+      }
+    },
+    {
+      "from": "bin",
+      "to": "spa",
+      "type": "embeds",
+      "label": "go:embed assets",
+      "pos": {
+        "line": 56,
+        "col": 1
+      }
+    },
+    {
+      "from": "bin",
+      "to": "fs",
+      "type": "validates",
+      "label": "panelcraft validate/convert",
+      "pos": {
+        "line": 57,
+        "col": 1
+      }
+    },
+    {
+      "from": "bin",
+      "to": "docsarch",
+      "type": "validates",
+      "label": "CI validates doc diagrams",
+      "pos": {
+        "line": 58,
+        "col": 1
+      }
+    },
+    {
+      "from": "bin",
+      "to": "chrome",
+      "type": "drives",
+      "label": "panelcraft render",
+      "pos": {
+        "line": 59,
+        "col": 1
+      }
+    },
+    {
+      "from": "chrome",
+      "to": "spa",
+      "type": "loads",
+      "label": "renders file to PNG/SVG",
+      "pos": {
+        "line": 60,
+        "col": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "id": "docs",
+      "title": "Docs self-hosting",
+      "steps": [
+        {
+          "type": "intro",
+          "text": "PanelCraft documents its own architecture in PDL",
+          "pos": {
+            "line": 63,
+            "col": 3
+          }
+        },
+        {
+          "type": "process",
+          "text": "docs/architecture/*.pcd corpus seeds",
+          "target": "docsarch",
+          "pos": {
+            "line": 64,
+            "col": 3
+          }
+        },
+        {
+          "type": "msg",
+          "from": "bin",
+          "to": "docsarch",
+          "label": "CI validates doc diagrams",
+          "pos": {
+            "line": 65,
+            "col": 3
+          }
+        },
+        {
+          "type": "conclusion",
+          "text": "Doc drift caught before release",
+          "pos": {
+            "line": 66,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 62,
+        "col": 1
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "Topology",
+      "lines": [
+        {
+          "type": "layout",
+          "mode": "auto",
+          "dir": "LR",
+          "pos": {
+            "line": 70,
+            "col": 3
+          }
+        },
+        {
+          "type": "hideTag",
+          "id": "internal",
+          "pos": {
+            "line": 71,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 69,
+        "col": 1
+      }
+    }
+  ]
+}

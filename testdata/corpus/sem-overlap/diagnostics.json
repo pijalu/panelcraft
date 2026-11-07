@@ -1,0 +1,19 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P204",
+      "message": "position overlap at (10, 20): \"a\" and \"b\"",
+      "line": 12,
+      "col": 3,
+      "severity": "info"
+    },
+    {
+      "code": "P203",
+      "message": "style targets non-existent id \"ghost\"",
+      "line": 15,
+      "col": 1,
+      "severity": "warning"
+    }
+  ]
+}

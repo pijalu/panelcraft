@@ -1,0 +1,77 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "objects": [
+    {
+      "kind": "person",
+      "id": "a",
+      "name": "A",
+      "pos": {
+        "line": 3,
+        "col": 1
+      }
+    },
+    {
+      "kind": "person",
+      "id": "b",
+      "name": "B",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "a",
+      "to": "b",
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "V",
+      "lines": [
+        {
+          "type": "position",
+          "id": "a",
+          "x": 10,
+          "y": 20,
+          "pos": {
+            "line": 11,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "b",
+          "x": 10,
+          "y": 20,
+          "pos": {
+            "line": 12,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 10,
+        "col": 1
+      }
+    }
+  ],
+  "styles": [
+    {
+      "target": "ghost",
+      "style": {
+        "shape": "rounded"
+      },
+      "pos": {
+        "line": 15,
+        "col": 1
+      }
+    }
+  ]
+}

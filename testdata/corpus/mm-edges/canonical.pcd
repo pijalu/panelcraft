@@ -1,0 +1,36 @@
+pcd 1.0
+level container
+direction LR
+
+container a "a" {
+}
+container b "b" {
+}
+container c "c" {
+}
+container d "d" {
+}
+container e "e" {
+}
+container f "f" {
+}
+container g "g" {
+}
+container h "h" {
+}
+container i "i" {
+}
+container j "j" {
+}
+container k "k" {
+}
+container l "l" {
+}
+
+a -> b : "pipe"
+c -> d : "inline"
+e -> f
+e -> g
+h -> j
+i -> j
+k -> l

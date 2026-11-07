@@ -1,0 +1,66 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "level": "container",
+  "direction": "TB",
+  "objects": [
+    {
+      "kind": "group",
+      "id": "shop",
+      "name": "Shop boundary",
+      "contains": [
+        "web",
+        "api"
+      ],
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "web",
+      "name": "Web",
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "api",
+      "name": "API",
+      "pos": {
+        "line": 10,
+        "col": 1
+      }
+    },
+    {
+      "kind": "datastore",
+      "id": "db",
+      "name": "DB",
+      "pos": {
+        "line": 12,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "web",
+      "to": "api",
+      "pos": {
+        "line": 15,
+        "col": 1
+      }
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "pos": {
+        "line": 16,
+        "col": 1
+      }
+    }
+  ]
+}

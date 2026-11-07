@@ -1,0 +1,10 @@
+C4Deployment
+title Prod deployment
+Deployment_Node(prod, "Prod", "AWS") {
+  Node(node1, "Node 1", "EC2") {
+    Container(api, "API", "Go", "Checkout API")
+    ContainerDb(db, "DB", "PostgreSQL", "Orders")
+  }
+}
+RelIndex(api, db, "Queries", "psql")
+BiRel(prod, api, "Manages")

@@ -1,0 +1,81 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "title": "Webshop containers",
+  "level": "container",
+  "objects": [
+    {
+      "kind": "group",
+      "id": "shop",
+      "name": "Webshop",
+      "contains": [
+        "web",
+        "db",
+        "cdn"
+      ],
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "web",
+      "name": "Web SPA",
+      "description": "Storefront",
+      "technology": "React",
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    },
+    {
+      "kind": "datastore",
+      "id": "db",
+      "name": "Orders",
+      "description": "Orders DB",
+      "technology": "PostgreSQL",
+      "pos": {
+        "line": 12,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "cdn",
+      "name": "CDN",
+      "description": "Assets",
+      "technology": "Static",
+      "tags": [
+        "external"
+      ],
+      "pos": {
+        "line": 16,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "web",
+      "to": "db",
+      "label": "Reads/writes",
+      "comments": [
+        "technology: psql"
+      ],
+      "pos": {
+        "line": 23,
+        "col": 1
+      }
+    },
+    {
+      "from": "web",
+      "to": "customer",
+      "label": "Uses",
+      "pos": {
+        "line": 24,
+        "col": 1
+      }
+    }
+  ]
+}

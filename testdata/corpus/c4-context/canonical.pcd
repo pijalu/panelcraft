@@ -1,0 +1,18 @@
+pcd 1.0
+title "Checkout context"
+level context
+
+person customer "Customer" {
+  description "A shopper"
+}
+system shop "Webshop" {
+  description "Storefront"
+}
+system_ext psp "PSP" {
+  description "Payments"
+  tag external
+}
+
+customer -> shop : "Browses"
+# technology: HTTPS
+shop -> psp : "Charges card"

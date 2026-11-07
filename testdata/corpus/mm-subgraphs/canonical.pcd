@@ -1,0 +1,16 @@
+pcd 1.0
+level container
+direction TB
+
+group shop "Shop boundary" {
+  contains web api
+}
+container web "Web" {
+}
+container api "API" {
+}
+datastore db "DB" {
+}
+
+web -> api
+api -> db

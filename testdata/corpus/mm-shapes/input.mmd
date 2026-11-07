@@ -1,0 +1,12 @@
+flowchart TD
+  u((Alice))
+  web[Web Shop]
+  db[(Orders DB)]
+  psp([PSP])
+  q>order events]
+  n{"fraud?"}
+  u --> web
+  web --> db
+  web -.-> psp
+  web ==> q
+  web --- n

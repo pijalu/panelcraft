@@ -1,0 +1,26 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P201",
+      "message": "\"shop\" is orphaned (no links, no flow references)",
+      "line": 5,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P201",
+      "message": "\"cdn\" is orphaned (no links, no flow references)",
+      "line": 16,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P101",
+      "message": "link \"web\" -> \"customer\" resolves to nothing",
+      "line": 24,
+      "col": 1,
+      "severity": "error"
+    }
+  ]
+}

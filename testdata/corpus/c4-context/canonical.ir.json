@@ -1,0 +1,64 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "title": "Checkout context",
+  "level": "context",
+  "objects": [
+    {
+      "kind": "person",
+      "id": "customer",
+      "name": "Customer",
+      "description": "A shopper",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "shop",
+      "name": "Webshop",
+      "description": "Storefront",
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system_ext",
+      "id": "psp",
+      "name": "PSP",
+      "description": "Payments",
+      "tags": [
+        "external"
+      ],
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "customer",
+      "to": "shop",
+      "label": "Browses",
+      "pos": {
+        "line": 16,
+        "col": 1
+      }
+    },
+    {
+      "from": "shop",
+      "to": "psp",
+      "label": "Charges card",
+      "comments": [
+        "technology: HTTPS"
+      ],
+      "pos": {
+        "line": 18,
+        "col": 1
+      }
+    }
+  ]
+}

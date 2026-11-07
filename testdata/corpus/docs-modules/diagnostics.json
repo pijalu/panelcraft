@@ -1,0 +1,19 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P201",
+      "message": "\"n1\" is orphaned (no links, no flow references)",
+      "line": 70,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P201",
+      "message": "\"n2\" is orphaned (no links, no flow references)",
+      "line": 73,
+      "col": 1,
+      "severity": "warning"
+    }
+  ]
+}

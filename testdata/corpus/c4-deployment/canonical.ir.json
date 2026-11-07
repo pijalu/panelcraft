@@ -1,0 +1,76 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "title": "Prod deployment",
+  "level": "deployment",
+  "objects": [
+    {
+      "kind": "group",
+      "id": "prod",
+      "name": "Prod",
+      "contains": [
+        "node1"
+      ],
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "group",
+      "id": "node1",
+      "name": "Node 1",
+      "contains": [
+        "api",
+        "db"
+      ],
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "api",
+      "name": "API",
+      "description": "Checkout API",
+      "technology": "Go",
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    },
+    {
+      "kind": "datastore",
+      "id": "db",
+      "name": "DB",
+      "description": "Orders",
+      "technology": "PostgreSQL",
+      "pos": {
+        "line": 15,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "db",
+      "to": "Queries",
+      "label": "psql",
+      "pos": {
+        "line": 20,
+        "col": 1
+      }
+    },
+    {
+      "from": "prod",
+      "to": "api",
+      "label": "Manages",
+      "bidir": true,
+      "pos": {
+        "line": 21,
+        "col": 1
+      }
+    }
+  ]
+}

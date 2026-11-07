@@ -1,0 +1,62 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "objects": [
+    {
+      "kind": "person",
+      "id": "a",
+      "name": "A",
+      "pos": {
+        "line": 3,
+        "col": 1
+      }
+    },
+    {
+      "kind": "person",
+      "id": "a",
+      "name": "A again",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "id": "f1",
+      "title": "one",
+      "steps": [
+        {
+          "type": "info",
+          "text": "x",
+          "pos": {
+            "line": 9,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    },
+    {
+      "id": "f1",
+      "title": "two",
+      "steps": [
+        {
+          "type": "info",
+          "text": "y",
+          "pos": {
+            "line": 12,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    }
+  ]
+}

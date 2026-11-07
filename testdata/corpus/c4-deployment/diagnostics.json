@@ -1,0 +1,26 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P105",
+      "message": "group \"prod\" contains nested group \"node1\" (v1: flat groups)",
+      "line": 5,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P201",
+      "message": "\"node1\" is orphaned (no links, no flow references)",
+      "line": 8,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P101",
+      "message": "link \"db\" -> \"Queries\" resolves to nothing",
+      "line": 20,
+      "col": 1,
+      "severity": "error"
+    }
+  ]
+}

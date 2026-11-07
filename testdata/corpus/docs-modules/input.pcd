@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: GPL-3.0-only
+pcd 1.0
+title "PanelCraft web module graph"
+level component
+direction LR
+theme dark
+
+container app "App shell" {
+  description "Layout, routing between files, theme, shortcuts"
+  technology "Preact"
+  tag web
+}
+component ui_panels "ui/panels" {
+  description "Palette, properties, flows editor, dialogs"
+  tag web
+}
+component ui_code "ui/codeview" {
+  description "CodeMirror bridge, diagnostics markers"
+  technology "CodeMirror 6"
+  tag web
+}
+component wk_fs "workspace/fs" {
+  description "Virtual file tree, tabs, import/export"
+  tag web
+}
+component wk_zip "workspace/zip" {
+  description "ZIP container over CompressionStream; fflate fallback"
+  tag web internal
+}
+component wk_store "workspace/store" {
+  description "IndexedDB persistence port + in-memory fallback"
+  tag web internal
+}
+component wk_undo "workspace/undo" {
+  description "Command stack, coalescing"
+  tag web internal
+}
+component eng_format "engine/format" {
+  description "PDL parser/printer, mermaid converters"
+  tag core
+}
+component eng_model "engine/model" {
+  description "IR types, operations, validation"
+  tag core
+}
+component eng_render "engine/render" {
+  description "Scene graph to SVG, hit-testing, viewport"
+  tag core
+}
+component eng_layout "engine/layout" {
+  description "LayoutEngine port; dagre adapter"
+  tag core internal
+}
+component eng_flows "engine/flows" {
+  description "Step machine: 8 step types, playback plan"
+  tag core
+}
+component eng_anim "engine/anim" {
+  description "Animation plan builder; reduced-motion path"
+  tag core internal
+}
+datastore idb "IndexedDB" {
+  technology "Browser API"
+  tag external
+}
+component dagre "dagre" {
+  technology "npm, MIT"
+  tag external
+}
+
+app -> ui_panels
+app -> ui_code
+app -> wk_fs
+ui_panels -> eng_render : "canvas projection"
+ui_panels -> eng_flows : "playback controls"
+ui_code -> eng_format : "parse + diagnostics"
+wk_fs -> eng_format : "load/save .pcd"
+wk_fs -> wk_zip : "workspace import/export"
+wk_fs -> wk_store : "Storage port"
+wk_fs -> wk_undo
+wk_store -> idb : "persistence"
+eng_layout -> dagre : "auto-layout adapter"
+eng_render -> eng_model
+eng_format -> eng_model
+eng_flows -> eng_model
+eng_flows -> eng_anim : "AnimPlayer port"
+
+view "Dependencies" {
+  layout auto LR
+  hide tag external
+}
+
+note n1 "Engine packages depend on ports only: LayoutEngine, Storage, Clock, AnimPlayer" { attach eng_render }
+note n2 "Deps arrow points from consumer to provider; no cycles inside engine/" { attach eng_model }

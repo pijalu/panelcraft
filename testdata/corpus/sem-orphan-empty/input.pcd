@@ -1,0 +1,7 @@
+pcd 1.0
+person lonely "Lonely"
+flow "Empty" as empty {
+}
+flow "Talk only" as talk {
+  info "nothing visual"
+}

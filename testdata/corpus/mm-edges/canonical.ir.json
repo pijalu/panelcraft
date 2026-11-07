@@ -1,0 +1,176 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "level": "container",
+  "direction": "LR",
+  "objects": [
+    {
+      "kind": "container",
+      "id": "a",
+      "name": "a",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "b",
+      "name": "b",
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "c",
+      "name": "c",
+      "pos": {
+        "line": 9,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "d",
+      "name": "d",
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "e",
+      "name": "e",
+      "pos": {
+        "line": 13,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "f",
+      "name": "f",
+      "pos": {
+        "line": 15,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "g",
+      "name": "g",
+      "pos": {
+        "line": 17,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "h",
+      "name": "h",
+      "pos": {
+        "line": 19,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "i",
+      "name": "i",
+      "pos": {
+        "line": 21,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "j",
+      "name": "j",
+      "pos": {
+        "line": 23,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "k",
+      "name": "k",
+      "pos": {
+        "line": 25,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "l",
+      "name": "l",
+      "pos": {
+        "line": 27,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "a",
+      "to": "b",
+      "label": "pipe",
+      "pos": {
+        "line": 30,
+        "col": 1
+      }
+    },
+    {
+      "from": "c",
+      "to": "d",
+      "label": "inline",
+      "pos": {
+        "line": 31,
+        "col": 1
+      }
+    },
+    {
+      "from": "e",
+      "to": "f",
+      "pos": {
+        "line": 32,
+        "col": 1
+      }
+    },
+    {
+      "from": "e",
+      "to": "g",
+      "pos": {
+        "line": 33,
+        "col": 1
+      }
+    },
+    {
+      "from": "h",
+      "to": "j",
+      "pos": {
+        "line": 34,
+        "col": 1
+      }
+    },
+    {
+      "from": "i",
+      "to": "j",
+      "pos": {
+        "line": 35,
+        "col": 1
+      }
+    },
+    {
+      "from": "k",
+      "to": "l",
+      "pos": {
+        "line": 36,
+        "col": 1
+      }
+    }
+  ]
+}

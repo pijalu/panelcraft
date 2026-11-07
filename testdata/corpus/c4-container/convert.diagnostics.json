@@ -1,0 +1,16 @@
+[
+  {
+    "code": "M100",
+    "message": "C4 directive ignored: UpdateElementStyle",
+    "line": 10,
+    "col": 1,
+    "severity": "info"
+  },
+  {
+    "code": "M100",
+    "message": "C4 directive ignored: Lay_R",
+    "line": 11,
+    "col": 1,
+    "severity": "info"
+  }
+]

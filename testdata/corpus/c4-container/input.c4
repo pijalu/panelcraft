@@ -1,0 +1,11 @@
+C4Container
+title Webshop containers
+System_Boundary(shop, "Webshop") {
+  Container(web, "Web SPA", "React", "Storefront")
+  ContainerDb(db, "Orders", "PostgreSQL", "Orders DB")
+  Container_Ext(cdn, "CDN", "Static", "Assets")
+}
+Rel(web, db, "Reads/writes", "psql")
+Rel_Back(customer, web, "Uses")
+UpdateElementStyle(web, $bgColor=red)
+Lay_R(web, db)

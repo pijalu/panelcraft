@@ -1,0 +1,43 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "objects": [
+    {
+      "kind": "person",
+      "id": "lonely",
+      "name": "Lonely",
+      "pos": {
+        "line": 3,
+        "col": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "id": "empty",
+      "title": "Empty",
+      "pos": {
+        "line": 6,
+        "col": 1
+      }
+    },
+    {
+      "id": "talk",
+      "title": "Talk only",
+      "steps": [
+        {
+          "type": "info",
+          "text": "nothing visual",
+          "pos": {
+            "line": 9,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    }
+  ]
+}

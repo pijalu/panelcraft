@@ -1,0 +1,9 @@
+pcd 1.0
+person a "A"
+person a "A again"
+flow "one" as f1 {
+  info "x"
+}
+flow "two" as f1 {
+  info "y"
+}

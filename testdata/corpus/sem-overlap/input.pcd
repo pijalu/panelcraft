@@ -1,0 +1,11 @@
+pcd 1.0
+person a "A"
+person b "B"
+a -> b
+view "V" {
+  position a (10, 20)
+  position b (10, 20)
+}
+style ghost {
+  shape rounded
+}

@@ -1,0 +1,12 @@
+pcd 1.0
+
+person a "A" {
+  blur "2px"
+  glow on
+}
+person b "B" {
+}
+
+a -> b {
+  shine true
+}

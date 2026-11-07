@@ -1,0 +1,21 @@
+pcd 1.0
+title "Prod deployment"
+level deployment
+
+group prod "Prod" {
+  contains node1
+}
+group node1 "Node 1" {
+  contains api db
+}
+container api "API" {
+  description "Checkout API"
+  technology "Go"
+}
+datastore db "DB" {
+  description "Orders"
+  technology "PostgreSQL"
+}
+
+db -> Queries : "psql"
+prod <-> api : "Manages"

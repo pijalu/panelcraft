@@ -1,0 +1,353 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "title": "Checkout",
+  "level": "container",
+  "direction": "LR",
+  "imports": [
+    {
+      "alias": "common",
+      "path": "../common/actors.pcd",
+      "pos": {
+        "line": 6,
+        "col": 1
+      }
+    }
+  ],
+  "objects": [
+    {
+      "kind": "person",
+      "id": "user",
+      "name": "Shopper",
+      "comments": [
+        "provides common.psp"
+      ],
+      "pos": {
+        "line": 9,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "shop",
+      "name": "Webshop",
+      "description": "Storefront SPA",
+      "technology": "React",
+      "tags": [
+        "core"
+      ],
+      "properties": [
+        {
+          "key": "owner",
+          "value": "team-commerce"
+        }
+      ],
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "api",
+      "name": "Checkout API",
+      "technology": "Go",
+      "tags": [
+        "core",
+        "pci"
+      ],
+      "pos": {
+        "line": 17,
+        "col": 1
+      }
+    },
+    {
+      "kind": "datastore",
+      "id": "db",
+      "name": "Orders DB",
+      "technology": "PostgreSQL",
+      "pos": {
+        "line": 21,
+        "col": 1
+      }
+    },
+    {
+      "kind": "queue",
+      "id": "events",
+      "name": "order.events",
+      "technology": "Kafka",
+      "pos": {
+        "line": 24,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system_ext",
+      "id": "psp",
+      "name": "Payment Provider",
+      "pos": {
+        "line": 27,
+        "col": 1
+      }
+    },
+    {
+      "kind": "group",
+      "id": "ctx",
+      "name": "Checkout context",
+      "contains": [
+        "api",
+        "db"
+      ],
+      "comments": [
+        "imported in real files; inlined here"
+      ],
+      "pos": {
+        "line": 30,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "user",
+      "to": "shop",
+      "label": "browses catalog",
+      "pos": {
+        "line": 34,
+        "col": 1
+      }
+    },
+    {
+      "id": "L1",
+      "from": "shop",
+      "to": "api",
+      "type": "requests",
+      "label": "POST /checkout",
+      "pos": {
+        "line": 35,
+        "col": 1
+      }
+    },
+    {
+      "from": "api",
+      "to": "db",
+      "type": "writes",
+      "pos": {
+        "line": 36,
+        "col": 1
+      }
+    },
+    {
+      "id": "L3",
+      "from": "api",
+      "to": "events",
+      "type": "publishes",
+      "pos": {
+        "line": 37,
+        "col": 1
+      }
+    },
+    {
+      "id": "L4",
+      "from": "api",
+      "to": "psp",
+      "type": "requests",
+      "label": "charge card",
+      "pos": {
+        "line": 38,
+        "col": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "id": "happy",
+      "title": "Happy path",
+      "steps": [
+        {
+          "type": "intro",
+          "text": "Customer buys a cart",
+          "pos": {
+            "line": 41,
+            "col": 3
+          }
+        },
+        {
+          "type": "msg",
+          "from": "user",
+          "to": "shop",
+          "label": "adds to cart",
+          "pos": {
+            "line": 42,
+            "col": 3
+          }
+        },
+        {
+          "type": "process",
+          "text": "Validates cart",
+          "target": "api",
+          "pos": {
+            "line": 43,
+            "col": 3
+          }
+        },
+        {
+          "type": "alt",
+          "label": "payment method",
+          "branches": [
+            {
+              "label": "card",
+              "steps": [
+                {
+                  "type": "msg",
+                  "from": "api",
+                  "to": "psp",
+                  "label": "charge",
+                  "linkRef": "L4",
+                  "pos": {
+                    "line": 46,
+                    "col": 7
+                  }
+                }
+              ],
+              "pos": {
+                "line": 45,
+                "col": 5
+              }
+            },
+            {
+              "label": "invoice",
+              "steps": [
+                {
+                  "type": "info",
+                  "text": "invoicing not in this story",
+                  "pos": {
+                    "line": 49,
+                    "col": 7
+                  }
+                }
+              ],
+              "pos": {
+                "line": 48,
+                "col": 5
+              }
+            }
+          ],
+          "pos": {
+            "line": 44,
+            "col": 3
+          }
+        },
+        {
+          "type": "par",
+          "label": "fan-out",
+          "lanes": [
+            [
+              {
+                "type": "msg",
+                "from": "api",
+                "to": "events",
+                "label": "order created",
+                "linkRef": "L3",
+                "pos": {
+                  "line": 54,
+                  "col": 7
+                }
+              }
+            ],
+            [
+              {
+                "type": "process",
+                "text": "send receipt",
+                "target": "mailx",
+                "pos": {
+                  "line": 57,
+                  "col": 7
+                }
+              }
+            ]
+          ],
+          "pos": {
+            "line": 52,
+            "col": 3
+          }
+        },
+        {
+          "type": "info",
+          "text": "PCI scope ends at PSP",
+          "comments": [
+            "unknown id `mailx` → P101 (kept for corpus test)"
+          ],
+          "pos": {
+            "line": 61,
+            "col": 3
+          }
+        },
+        {
+          "type": "conclusion",
+          "text": "Order stored",
+          "pos": {
+            "line": 62,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 40,
+        "col": 1
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "Main",
+      "lines": [
+        {
+          "type": "layout",
+          "mode": "auto",
+          "dir": "LR",
+          "pos": {
+            "line": 66,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "user",
+          "x": 80,
+          "y": 120,
+          "pos": {
+            "line": 67,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "api",
+          "x": 420,
+          "y": 90,
+          "pos": {
+            "line": 68,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 65,
+        "col": 1
+      }
+    }
+  ],
+  "styles": [
+    {
+      "target": "api",
+      "style": {
+        "fill": "#2d6cdf"
+      },
+      "pos": {
+        "line": 71,
+        "col": 1
+      }
+    }
+  ]
+}

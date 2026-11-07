@@ -1,0 +1,26 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P201",
+      "message": "\"lonely\" is orphaned (no links, no flow references)",
+      "line": 3,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P202",
+      "message": "flow \"Empty\" has no steps",
+      "line": 6,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P202",
+      "message": "flow \"Talk only\" has no visual steps",
+      "line": 8,
+      "col": 1,
+      "severity": "warning"
+    }
+  ]
+}

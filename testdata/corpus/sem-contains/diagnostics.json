@@ -1,0 +1,54 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P105",
+      "message": "container \"app\" contains unknown id \"ghost\"",
+      "line": 3,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P201",
+      "message": "\"app\" is orphaned (no links, no flow references)",
+      "line": 3,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P201",
+      "message": "\"g\" is orphaned (no links, no flow references)",
+      "line": 6,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P105",
+      "message": "group \"g2\" contains nested group \"g\" (v1: flat groups)",
+      "line": 9,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P201",
+      "message": "\"g2\" is orphaned (no links, no flow references)",
+      "line": 9,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P106",
+      "message": "note/object \"n\" attaches to unknown id \"missing\"",
+      "line": 12,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P201",
+      "message": "\"n\" is orphaned (no links, no flow references)",
+      "line": 12,
+      "col": 1,
+      "severity": "warning"
+    }
+  ]
+}

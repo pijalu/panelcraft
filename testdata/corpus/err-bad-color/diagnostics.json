@@ -1,0 +1,12 @@
+{
+  "parse": [
+    {
+      "code": "E111",
+      "message": "fill needs a #rgb/#rrggbb color",
+      "line": 4,
+      "col": 10,
+      "severity": "error"
+    }
+  ],
+  "validate": []
+}

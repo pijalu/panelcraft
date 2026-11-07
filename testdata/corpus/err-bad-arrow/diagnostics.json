@@ -1,0 +1,19 @@
+{
+  "parse": [
+    {
+      "code": "E108",
+      "message": "arrow needs a head or tail",
+      "line": 4,
+      "col": 3,
+      "severity": "error"
+    },
+    {
+      "code": "E100",
+      "message": "expected arrow, got 'b'",
+      "line": 4,
+      "col": 5,
+      "severity": "error"
+    }
+  ],
+  "validate": []
+}

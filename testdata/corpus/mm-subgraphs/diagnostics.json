@@ -1,0 +1,12 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P201",
+      "message": "\"shop\" is orphaned (no links, no flow references)",
+      "line": 5,
+      "col": 1,
+      "severity": "warning"
+    }
+  ]
+}

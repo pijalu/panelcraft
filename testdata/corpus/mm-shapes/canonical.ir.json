@@ -1,0 +1,106 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "level": "container",
+  "direction": "TB",
+  "objects": [
+    {
+      "kind": "person",
+      "id": "u",
+      "name": "Alice",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "web",
+      "name": "Web Shop",
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    },
+    {
+      "kind": "datastore",
+      "id": "db",
+      "name": "Orders DB",
+      "pos": {
+        "line": 9,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system_ext",
+      "id": "psp",
+      "name": "PSP",
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    },
+    {
+      "kind": "queue",
+      "id": "q",
+      "name": "order events",
+      "pos": {
+        "line": 13,
+        "col": 1
+      }
+    },
+    {
+      "kind": "note",
+      "id": "n",
+      "name": "fraud?",
+      "pos": {
+        "line": 15,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "u",
+      "to": "web",
+      "pos": {
+        "line": 18,
+        "col": 1
+      }
+    },
+    {
+      "from": "web",
+      "to": "db",
+      "pos": {
+        "line": 19,
+        "col": 1
+      }
+    },
+    {
+      "from": "web",
+      "to": "psp",
+      "type": "dotted",
+      "pos": {
+        "line": 20,
+        "col": 1
+      }
+    },
+    {
+      "from": "web",
+      "to": "q",
+      "type": "thick",
+      "pos": {
+        "line": 21,
+        "col": 1
+      }
+    },
+    {
+      "from": "web",
+      "to": "n",
+      "pos": {
+        "line": 22,
+        "col": 1
+      }
+    }
+  ]
+}

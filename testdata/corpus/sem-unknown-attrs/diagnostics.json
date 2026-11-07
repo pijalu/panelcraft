@@ -1,0 +1,26 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P205",
+      "message": "unknown attribute \"blur \"2px\"\" kept verbatim",
+      "line": 4,
+      "col": 3,
+      "severity": "warning"
+    },
+    {
+      "code": "P205",
+      "message": "unknown attribute \"glow on\" kept verbatim",
+      "line": 5,
+      "col": 3,
+      "severity": "warning"
+    },
+    {
+      "code": "P205",
+      "message": "unknown attribute \"shine true\" kept verbatim",
+      "line": 11,
+      "col": 3,
+      "severity": "warning"
+    }
+  ]
+}

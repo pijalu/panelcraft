@@ -1,0 +1,24 @@
+pcd 1.0
+title "Webshop containers"
+level container
+
+group shop "Webshop" {
+  contains web db cdn
+}
+container web "Web SPA" {
+  description "Storefront"
+  technology "React"
+}
+datastore db "Orders" {
+  description "Orders DB"
+  technology "PostgreSQL"
+}
+container cdn "CDN" {
+  description "Assets"
+  technology "Static"
+  tag external
+}
+
+# technology: psql
+web -> db : "Reads/writes"
+web -> customer : "Uses"

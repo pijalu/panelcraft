@@ -1,0 +1,72 @@
+pcd 1.0
+# SPDX-License-Identifier: GPL-3.0-only
+title "PanelCraft deployment topology"
+level deployment
+direction LR
+theme dark
+
+person author "Architect" {
+}
+container spa "PanelCraft SPA" {
+  description "Single-page editor: SVG canvas + code view"
+  technology "Preact + TypeScript SVG engine"
+  tag product
+}
+datastore idb "Browser IndexedDB" {
+  description "Workspace autosave, snapshots, settings"
+  technology "IndexedDB"
+  tag product storage
+}
+container pages "GitHub Pages" {
+  description "Static hosting of the built SPA"
+  technology "Static hosting"
+  tag product hosting
+}
+container bin "panelcraft binary" {
+  description "serve + validate/convert/render CLI"
+  technology "Go, embeds SPA via go:embed"
+  tag product cli
+}
+container chrome "Headless Chrome" {
+  description "Driven via Chrome DevTools Protocol"
+  technology "chromedp"
+  tag cli
+}
+datastore fs "Local .pcd files" {
+  description "Workspace directories and ZIP archives"
+  tag cli
+}
+container docsarch "docs/architecture" {
+  description "PDL corpus seeds validated in CI by this very repo"
+  technology "plain files, dogfooded"
+  tag docs
+}
+note n1 "No write endpoints exist server-side; storage stays in the browser" {
+  attach idb
+}
+note n2 "Render CLI reuses the same SPA for pixel-identical output" {
+  attach chrome
+}
+
+author -> spa : "edits diagrams (browser-local only)"
+spa -> idb : "autosave workspace"
+author -> pages : "uses hosted app"
+pages -serves-> spa : "static assets"
+author -> bin : "serve locally / run CLI"
+bin -embeds-> spa : "go:embed assets"
+bin -validates-> fs : "panelcraft validate/convert"
+bin -validates-> docsarch : "CI validates doc diagrams"
+bin -drives-> chrome : "panelcraft render"
+chrome -loads-> spa : "renders file to PNG/SVG"
+
+flow "Docs self-hosting" as docs {
+  intro "PanelCraft documents its own architecture in PDL"
+  process docsarch "docs/architecture/*.pcd corpus seeds"
+  bin -> docsarch : "CI validates doc diagrams"
+  conclusion "Doc drift caught before release"
+}
+
+view "Topology" {
+  layout auto LR
+  hide tag internal
+}

@@ -1,0 +1,12 @@
+{
+  "parse": [
+    {
+      "code": "E104",
+      "message": "unclosed object block",
+      "line": 2,
+      "col": 1,
+      "severity": "error"
+    }
+  ],
+  "validate": []
+}

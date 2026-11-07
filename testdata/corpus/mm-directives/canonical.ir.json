@@ -1,0 +1,36 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "level": "container",
+  "direction": "LR",
+  "objects": [
+    {
+      "kind": "container",
+      "id": "a",
+      "name": "Web",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "b",
+      "name": "API",
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "a",
+      "to": "b",
+      "pos": {
+        "line": 10,
+        "col": 1
+      }
+    }
+  ]
+}

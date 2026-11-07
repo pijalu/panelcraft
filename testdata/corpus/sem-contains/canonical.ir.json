@@ -1,0 +1,52 @@
+{
+  "irVersion": 1,
+  "formatVersion": "1.0",
+  "objects": [
+    {
+      "kind": "container",
+      "id": "app",
+      "name": "App",
+      "contains": [
+        "ghost"
+      ],
+      "pos": {
+        "line": 3,
+        "col": 1
+      }
+    },
+    {
+      "kind": "group",
+      "id": "g",
+      "name": "G",
+      "contains": [
+        "app"
+      ],
+      "pos": {
+        "line": 6,
+        "col": 1
+      }
+    },
+    {
+      "kind": "group",
+      "id": "g2",
+      "name": "G2",
+      "contains": [
+        "g"
+      ],
+      "pos": {
+        "line": 9,
+        "col": 1
+      }
+    },
+    {
+      "kind": "note",
+      "id": "n",
+      "name": "N",
+      "attach": "missing",
+      "pos": {
+        "line": 12,
+        "col": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P201",
+      "message": "\"a\" is orphaned (no links, no flow references)",
+      "line": 3,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P100",
+      "message": "duplicate object id \"a\"",
+      "line": 5,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P201",
+      "message": "\"a\" is orphaned (no links, no flow references)",
+      "line": 5,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P202",
+      "message": "flow \"one\" has no visual steps",
+      "line": 8,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P100",
+      "message": "duplicate flow id \"f1\"",
+      "line": 11,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P202",
+      "message": "flow \"two\" has no visual steps",
+      "line": 11,
+      "col": 1,
+      "severity": "warning"
+    }
+  ]
+}

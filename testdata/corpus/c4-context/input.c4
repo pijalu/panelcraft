@@ -1,0 +1,7 @@
+C4Context
+title Checkout context
+Person(customer, "Customer", "A shopper")
+System(shop, "Webshop", "Storefront")
+System_Ext(psp, "PSP", "Payments")
+Rel(customer, shop, "Browses")
+Rel(shop, psp, "Charges card", "HTTPS")
