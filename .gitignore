@@ -24,3 +24,6 @@ e2e/__screenshots__/**/*-failed.png
 # env
 .env
 .env.*
+
+# Agent session state (M6 hygiene: never commit tool sessions)
+.goa/
