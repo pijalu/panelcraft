@@ -19,6 +19,7 @@
 //    `dashed`, link `dashed`) are folded into that block, never duplicated.
 
 import type { Doc, Kind, Link, Obj, Pos, StyleBlock } from './types';
+import { isImportRef } from './imports';
 
 /** Structural subset of the UI's canvas object (model sits below ui/). */
 export interface CanvasObjectLike {
@@ -184,7 +185,10 @@ export function applyCanvasState(doc: Doc, state: CanvasStateLike): Doc {
   const prevLinks = new Map(doc.links.map((l) => [linkKey(l), l]));
   const linksById = new Map<string, Link>();
   for (const c of state.links) {
-    if (!objectsById.has(c.from) || !objectsById.has(c.to)) continue; // dangling
+    // a link may target an imported object (`alias.id`): not in this document,
+    // but perfectly valid (F-20) — only drop truly dangling endpoints
+    const known = (id: string): boolean => objectsById.has(id) || isImportRef(id);
+    if (!known(c.from) || !known(c.to)) continue;
     const existing = prevLinks.get(c.id) ?? prevLinks.get(`${c.from}\u0001${c.to}`);
     const merged = mergeLink(existing, c);
     const key = linkKey(merged);

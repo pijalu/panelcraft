@@ -20,6 +20,7 @@ import { layoutStyle } from './uiLayout';
 import { PanelRail, Splitter, focusRail } from './PanelChrome';
 import { InlineRename, type RenameTarget } from './InlineRename';
 import { CanvasMenu } from './CanvasMenu';
+import { useImportGhosts } from './useImportGhosts';
 import { PresentLayer } from './PresentDock';
 import { isPresenting } from './present';
 import { usePresentKeys } from './usePresentKeys';
@@ -299,8 +300,21 @@ function AppBody(p: {
   // F-19: canvas context menu (position in viewport coordinates)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const ctrl = canvas.ctrlRef.current;
+  const importErrors = useImportGhosts(
+    ws.manager,
+    ws.ready,
+    activePath,
+    ws.version,
+    canvas.ctrlRef,
+  );
   return (
       <div class="app-body">
+        {importErrors.length > 0 && (
+          <p class="import-banner" data-testid="import-errors" role="status">
+            {importErrors.length} import problem{importErrors.length === 1 ? '' : 's'}:{' '}
+            {importErrors.map((e) => e.message).join(' · ')}
+          </p>
+        )}
         <SidebarSlot
           ui={ui}
           sideTab={p.sideTab}
@@ -334,32 +348,22 @@ function AppBody(p: {
           onResize={(dx) => ui.setPanelWidth('palette', ui.layout.widths.palette + dx)}
           onEnd={ui.flushLayout}
         />
-        <main class="canvas-col">
-          <CanvasTopRow
-            manager={ws.manager}
-            diverged={p.diverged}
-            activePath={activePath}
-            viewName={viewName}
-            onView={p.onView}
-            onText={(t) => code.machine.textChanged(t)}
-            ctrl={canvas.ctrlRef.current}
-            selection={canvas.snap?.selection.objects ?? []}
-          />
-          <CanvasSplit
-            canvas={canvas}
-            code={code}
-            player={player}
-            codeCollapsed={ui.layout.panels.code === 'collapsed'}
-            onPresent={p.onPresent}
-            onCanvasContextMenu={(e) => {
-              e.preventDefault();
-              setMenu({ x: e.clientX, y: e.clientY });
-            }}
-            onToggleCode={() => ui.togglePanel('code')}
-            onResizeCode={(dx) => ui.setPanelWidth('code', ui.layout.widths.code + dx)}
-            onEndResizeCode={ui.flushLayout}
-          />
-        </main>
+        <CenterColumn
+          canvas={canvas}
+          code={code}
+          player={player}
+          ui={ui}
+          manager={ws.manager}
+          diverged={p.diverged}
+          activePath={activePath}
+          viewName={viewName}
+          onView={p.onView}
+          onPresent={p.onPresent}
+          onCanvasContextMenu={(e) => {
+            e.preventDefault();
+            setMenu({ x: e.clientX, y: e.clientY });
+          }}
+        />
         <Splitter
           id="props"
           label="Resize properties panel"
@@ -396,6 +400,48 @@ function AppBody(p: {
   );
 }
 
+/** Canvas + code column with its splitter (F-10/F-16 context menu hook). */
+function CenterColumn(props: {
+  canvas: ReturnType<typeof useCanvasController>;
+  code: CodeSyncHandle;
+  player: FlowPlayerApi;
+  ui: ReturnType<typeof useUiLayout>;
+  manager: WorkspaceManager;
+  diverged: ReturnType<typeof useDivergedClose>;
+  activePath: string | null;
+  viewName: string | undefined;
+  onView: (n: string | undefined) => void;
+  onPresent: () => void;
+  onCanvasContextMenu: (e: MouseEvent) => void;
+}) {
+  const { canvas, code, player, ui } = props;
+  return (
+    <main class="canvas-col">
+      <CanvasTopRow
+        manager={props.manager}
+        diverged={props.diverged}
+        activePath={props.activePath}
+        viewName={props.viewName}
+        onView={props.onView}
+        onText={(t) => code.machine.textChanged(t)}
+        ctrl={canvas.ctrlRef.current}
+        selection={canvas.snap?.selection.objects ?? []}
+      />
+      <CanvasSplit
+        canvas={canvas}
+        code={code}
+        player={player}
+        codeCollapsed={ui.layout.panels.code === 'collapsed'}
+        onPresent={props.onPresent}
+        onCanvasContextMenu={props.onCanvasContextMenu}
+        onToggleCode={() => ui.togglePanel('code')}
+        onResizeCode={(dx) => ui.setPanelWidth('code', ui.layout.widths.code + dx)}
+        onEndResizeCode={ui.flushLayout}
+      />
+    </main>
+  );
+}
+
 export function App() {
   const ws = useWorkspace();
   // Ref mirror of the active view name (declared before the canvas so the
@@ -415,6 +461,8 @@ export function App() {
     viewNameRef,
     commitDocRef,
     (id) => setRenaming(id),
+    // F-20: clicking an imported ghost opens its source file
+    (path) => ws.manager.openFile(path),
   );
   const activePath = ws.ready ? ws.manager.activePath : null;
   const { manager } = ws;

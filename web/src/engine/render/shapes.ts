@@ -28,6 +28,8 @@ export interface SceneObject {
   labelLines?: string[];
   /** Style overrides from the property panel (F-11). */
   style?: { fill?: string; stroke?: string; text?: string };
+  /** F-20: an imported object rendered read-only (dashed + badge). */
+  ghost?: boolean;
 }
 
 export const SHAPE_RADIUS = 8;
@@ -165,7 +167,18 @@ function noteGlyph(obj: SceneObject): ElSpec[] {
  */
 export function shapeGlyphs(obj: SceneObject): ElSpec[] {
   const glyphs = withIcon(obj, baseGlyphs(obj));
+  // F-20: imported objects carry a read-only badge
+  if (obj.ghost === true) glyphs.push(ghostBadge(obj));
   return glyphs;
+}
+
+/** Small "imported" badge in the shape's bottom-right corner (F-20). */
+function ghostBadge(obj: SceneObject): ElSpec {
+  return {
+    tag: 'text',
+    attrs: { x: obj.w - 6, y: obj.h - 6, class: 'pc-label pc-ghost-badge', 'text-anchor': 'end' },
+    text: 'imported',
+  };
 }
 
 /** Anchor the inline icon at the shape's top-right inset (M5-WP7). */

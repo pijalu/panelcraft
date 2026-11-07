@@ -2333,3 +2333,28 @@ marker .pc-arrow[fill='none'] {
 .pc-waypoint:hover {
   fill: var(--pc-accent);
 }
+
+/* F-20 imported ghosts: dashed, muted, with a badge; click-through opens source */
+.pc-obj.pc-ghost .pc-shape,
+.pc-obj.pc-ghost .pc-glyph {
+  stroke-dasharray: 6 4;
+  opacity: 0.8;
+}
+
+.pc-obj.pc-ghost {
+  cursor: pointer;
+}
+
+.pc-ghost-badge {
+  fill: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+}
+
+.import-banner {
+  margin: 0;
+  padding: 4px 12px;
+  background: var(--pc-surface);
+  border-bottom: 1px solid var(--pc-border);
+  color: var(--pc-warn);
+  font-size: var(--pc-text-xs);
+}

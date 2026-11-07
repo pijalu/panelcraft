@@ -201,6 +201,22 @@
       "validateDiags": []
     },
     {
+      "name": "import-qualified-refs",
+      "src": "pcd 1.0\n\nimport shared as \"../shared/actors.pcd\"\n\nsystem api \"API\"\nperson a2 \"A2\"\n\napi -> shared.psp : \"call\" as L1\n\na2 <- shared.auth as L2\n\nflow \"F\" {\n  intro \"x\"\n  api -> shared.psp\n  process shared.psp\n}\n\nnote n1 \"memo\" {\n  attach shared.psp\n}\n",
+      "doc": "{\n  \"irVersion\": 2,\n  \"formatVersion\": \"1.0\",\n  \"imports\": [\n    {\n      \"alias\": \"shared\",\n      \"path\": \"../shared/actors.pcd\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"api\",\n      \"name\": \"API\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"a2\",\n      \"name\": \"A2\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"note\",\n      \"id\": \"n1\",\n      \"name\": \"memo\",\n      \"attach\": \"shared.psp\",\n      \"pos\": {\n        \"line\": 18,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"api\",\n      \"to\": \"shared.psp\",\n      \"label\": \"call\",\n      \"pos\": {\n        \"line\": 8,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"L2\",\n      \"from\": \"shared.auth\",\n      \"to\": \"a2\",\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"x\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"api\",\n          \"to\": \"shared.psp\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"target\": \"shared.psp\",\n          \"pos\": {\n            \"line\": 15,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 12,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nimport shared as \"../shared/actors.pcd\"\n\nsystem api \"API\"\nperson a2 \"A2\"\nnote n1 \"memo\" {\n  attach shared.psp\n}\n\napi -> shared.psp : \"call\" as L1\nshared.auth -> a2 as L2\n\nflow \"F\" {\n  intro \"x\"\n  api -> shared.psp\n  process shared.psp\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P201",
+          "message": "\"n1\" is orphaned (no links, no flow references)",
+          "line": 18,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
       "name": "flow-minimal-msg",
       "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\nflow {\n a -> b\n}\n",
       "doc": "{\n  \"irVersion\": 2,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",

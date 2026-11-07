@@ -75,7 +75,7 @@ export function structuralKey(o: SceneObject): string {
   const styleKey = style ? `${style.fill ?? ''}/${style.stroke ?? ''}/${style.text ?? ''}` : '';
   return [
     o.kind, o.w, o.h, o.name ?? '', o.dashed ? 1 : 0,
-    o.labelLines?.join('\u0001') ?? '', styleKey,
+    o.labelLines?.join('\u0001') ?? '', styleKey, o.ghost ? 'ghost' : '',
   ].join('|');
 }
 
@@ -219,6 +219,7 @@ export class SceneRenderer {
     // round-tripped — the properties checkbox and the file used to disagree
     // with the drawing.
     g.classList.toggle('pc-dashed', obj.dashed === true);
+    g.classList.toggle('pc-ghost', obj.ghost === true);
     g.setAttribute('data-id', obj.id);
     this.applyStyleOverrides(g, obj);
     for (const spec of shapeGlyphs(obj)) this.applySpec(g, spec);
@@ -315,6 +316,7 @@ export class SceneRenderer {
     g.textContent = '';
     g.setAttribute('class', `pc-obj pc-kind-${obj.kind}`);
     g.classList.toggle('pc-dashed', obj.dashed === true);
+    g.classList.toggle('pc-ghost', obj.ghost === true);
     this.applyStyleOverrides(g, obj);
     for (const spec of shapeGlyphs(obj)) this.applySpec(g, spec);
     this.positionObject(g, obj);

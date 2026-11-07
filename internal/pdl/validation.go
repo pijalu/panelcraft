@@ -76,7 +76,17 @@ func collectIds(doc *ir.Doc) ids {
 	return s
 }
 
-func endpointOk(id string, s ids) bool { return s.objects[id] || s.aliases[id] }
+// endpointOk accepts a local object, an alias, or an import-qualified
+// `alias.object` reference (FR-I2).
+func endpointOk(id string, s ids) bool {
+	if s.objects[id] || s.aliases[id] {
+		return true
+	}
+	if i := strings.IndexByte(id, '.'); i > 0 {
+		return s.aliases[id[:i]]
+	}
+	return false
+}
 
 // --- P100 --------------------------------------------------------------------
 

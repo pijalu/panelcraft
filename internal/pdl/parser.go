@@ -321,7 +321,7 @@ func (p *parser) objectAttr(o *ir.Obj, seen map[string]bool, t0, t Token) bool {
 		o.Contains = p.identList()
 	case "attach":
 		p.once(seen, t, "attach")
-		o.Attach = p.ident()
+		o.Attach = p.refID()
 	case "icon":
 		p.once(seen, t, "icon")
 		o.Icon = p.ident()
@@ -487,9 +487,9 @@ func (p *parser) parseLink() ir.Link {
 // linkEnds: `from [type-]arrow to` with reversed-arrow normalization (errata
 // D-M1-11).
 func (p *parser) linkEnds(l *ir.Link, t0 Token) {
-	from := p.identTok(t0)
+	from := p.refIDFrom(t0)
 	arrow := p.expect(TokArrow, "")
-	to := p.ident()
+	to := p.refID()
 	info := arrow.Arrow
 	if info != nil && info.Tail && !info.Head {
 		l.From, l.To = to, from
@@ -607,6 +607,27 @@ func (p *parser) quoted(t Token, what string) string {
 	return t.Value
 }
 
+// refIDFrom is refID for the already-consumed leading token.
+func (p *parser) refIDFrom(t Token) string {
+	first := p.identTok(t)
+	if n := p.peek(); n.Type == TokPunct && n.Text == "." {
+		p.next()
+		return first + "." + p.ident()
+	}
+	return first
+}
+
+// refID parses an object reference: a plain id or an import-qualified
+// `alias.objectId` (FR-I2).
+func (p *parser) refID() string {
+	first := p.ident()
+	if t := p.peek(); t.Type == TokPunct && t.Text == "." {
+		p.next()
+		return first + "." + p.ident()
+	}
+	return first
+}
+
 // stepDelay consumes an optional trailing `delay <ms>` on the step's line (F-18).
 func (p *parser) stepDelay(line int, s *ir.Step) {
 	t := p.peek()
@@ -630,7 +651,7 @@ func (p *parser) parseKeywordStep(kw string, depth int) ir.Step {
 		v := p.quoted(p.next(), kw)
 		s.Text = &v
 	case "process":
-		s.Target = p.ident()
+		s.Target = p.refID()
 		if p.peek().Type == TokString {
 			v := p.next().Value
 			s.Text = &v
@@ -734,9 +755,9 @@ func (p *parser) parseGoto(s *ir.Step) {
 func (p *parser) parseMsgStep() ir.Step {
 	t0 := p.next()
 	comments := p.takeComments()
-	from := p.identTok(t0)
+	from := p.refIDFrom(t0)
 	arrow := p.expect(TokArrow, "")
-	to := p.ident()
+	to := p.refID()
 	info := arrow.Arrow
 	if info != nil && info.Tail && !info.Head {
 		from, to = to, from

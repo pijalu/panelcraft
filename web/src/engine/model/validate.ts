@@ -72,7 +72,12 @@ const linkPairs = (doc: Doc): Set<string> => {
   return s;
 };
 
-const endpointOk = (id: string, ids: Ids): boolean => ids.objects.has(id) || ids.aliases.has(id);
+/** An endpoint resolves to a local object, an alias, or `alias.object` (FR-I2). */
+const endpointOk = (id: string, ids: Ids): boolean => {
+  if (ids.objects.has(id) || ids.aliases.has(id)) return true;
+  const dot = id.indexOf('.');
+  return dot > 0 && ids.aliases.has(id.slice(0, dot));
+};
 
 // --- P101 + P104 (flow steps) ----------------------------------------------
 

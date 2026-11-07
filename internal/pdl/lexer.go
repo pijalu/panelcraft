@@ -269,7 +269,7 @@ func scanToken(src string, i, line, col int, diags *[]Diagnostic) scanOut {
 		return scanDash(src, i, line, col, diags)
 	case isDigitByte(ch):
 		return scanNumber(src, i, line, col, diags)
-	case ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == ':' || ch == ',':
+	case ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == ':' || ch == ',' || ch == '.':
 		tok := mk(TokPunct, string(ch), i, i+1, line, col)
 		return scanOut{tok: &tok, i: i + 1, col: col + 1}
 	default:

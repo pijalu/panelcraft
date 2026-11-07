@@ -333,6 +333,19 @@ Resolve `imports`, render ghost objects (dashed, badge), click-through to source
 errors surfaced in the UI, read-only enforcement.
 *Tests:* unit resolution + cycle detection; e2e two-file workspace.
 
+**Done.** `engine/model/imports.ts` resolves `alias.objectId` ghosts (path normalisation
++ workspace-escape rejection, missing/cycle/unparseable/nested reporting). Dotted refs
+are now part of the grammar (lexer `.`, `refId` for link endpoints, flow msg/process
+targets and `attach`) with TS⇄Go parity covered by a new fixture — before this, the
+format's own FR-I2 reference form could not be parsed. The canvas renders ghosts
+read-only (dashed + `imported` badge, `ui/ghostLayout.ts` places them below the
+document), a click opens the source file, and links to ghosts survive canvas writes
+because `docToState`/`applyCanvasState` accept qualified endpoints and
+`recomputeRoutes` resolves ghost anchors. Import problems surface in a banner.
+Tests: `engine/model/imports.test.ts`, `ui/ghostLayout.test.ts`, parity fixture
+`import-qualified-refs`, e2e `p3-imports.spec.ts` (ghosts + click-through + missing
+banner, light screenshot).
+
 ### F-21 Mermaid interop completion
 `sequenceDiagram` import → flows (FR-M3), C4 export, `classDef`/`linkStyle` mapping, and a generated
 `docs/MERMAID-MATRIX.md` that is asserted against the exporter's `dropped[]` list.

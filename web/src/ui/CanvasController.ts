@@ -156,6 +156,8 @@ export interface ControllerOptions {
   undo?: UndoStack;
   onState?: (s: Snapshot) => void;
   onRenameRequest?: (id: string) => void;
+  /** F-20: open the file an imported (ghost) object came from. */
+  onGhostOpen?: (path: string) => void;
   /** Text measurement port (F-13); defaults to an offscreen canvas in a DOM. */
   measure?: TextMeasurer;
   /**
@@ -256,6 +258,9 @@ export class CanvasController {
   private readonly onRenameRequest?: (id: string) => void;
   private readonly measure: TextMeasurer;
   private readonly onGeometry?: (positions: Record<string, { x: number; y: number }>) => void;
+  private readonly onGhostOpen?: (path: string) => void;
+  /** F-20: read-only imported objects (never part of `state`). */
+  private ghosts: Array<DiagramObject & { path: string }> = [];
   private detach: Array<() => void> = [];
 
   constructor(svg: SVGSVGElement, opts: ControllerOptions = {}) {
@@ -265,6 +270,7 @@ export class CanvasController {
     this.onRenameRequest = opts.onRenameRequest;
     this.measure = opts.measure ?? canvasMeasurer();
     this.onGeometry = opts.onGeometry;
+    this.onGhostOpen = opts.onGhostOpen;
     this.renderer = new SceneRenderer(svg);
     this.attach();
     this.render();
@@ -626,6 +632,23 @@ export class CanvasController {
     if (u) this.setTransform(fitRect(u, this.viewSize()));
   }
 
+  /**
+   * F-20: show imported objects as ghosts. They are laid out in extra grid rows
+   * below the document's own objects and are never written back to the file.
+   */
+  setGhosts(list: Array<DiagramObject & { path: string }>): void {
+    // Never re-render (and therefore never trigger a canvas write) when the
+    // ghost set is unchanged — otherwise merely opening a file looks like an
+    // edit and marks it dirty (F-20 regression).
+    const key = (xs: Array<DiagramObject & { path: string }>): string =>
+      JSON.stringify(xs.map((g) => [g.id, g.x, g.y, g.w, g.h, g.name, g.path]));
+    if (key(this.ghosts) === key(list)) return;
+    this.ghosts = list;
+    // links may end at a ghost (`alias.id`), so their routes must be recomputed
+    this.recomputeRoutes();
+    this.render();
+  }
+
   /** True once a file (or an explicit empty state) has been loaded. */
   isHydrated(): boolean {
     return this.hydrated;
@@ -794,12 +817,20 @@ export class CanvasController {
 
   private recomputeRoutes(): void {
     this.routes.clear();
+    // F-20: an endpoint may be an imported ghost (`alias.id`) — route to it too
+    const endpoint = (id: string): { x: number; y: number; w: number; h: number } | undefined =>
+      this.state.objects.find((o) => o.id === id) ?? this.ghosts.find((g) => g.id === id);
     for (const link of this.state.links) {
-      const from = this.state.objects.find((o) => o.id === link.from);
-      const to = this.state.objects.find((o) => o.id === link.to);
+      const from = endpoint(link.from);
+      const to = endpoint(link.to);
       if (!from || !to) continue;
-      const obstacles = this.state.objects.filter((o) => o.id !== from.id && o.id !== to.id);
-      this.routes.set(link.id, routeOrtho({ from, to, obstacles }));
+      const obstacles = this.state.objects.filter(
+        (o) => o.id !== link.from && o.id !== link.to,
+      );
+      this.routes.set(
+        link.id,
+        routeOrtho({ from, to, obstacles, ...(link.waypoints ? { waypoints: link.waypoints } : {}) }),
+      );
     }
   }
 
@@ -827,19 +858,31 @@ export class CanvasController {
 
   private render(): void {
     const scene: Scene = {
-      objects: this.state.objects.map((o) => ({
-        id: o.id,
-        kind: o.kind,
-        x: o.x,
-        y: o.y,
-        w: o.w,
-        h: o.h,
-        name: o.name,
-        dashed: o.dashed,
-        icon: o.icon,
-        labelLines: o.lines,
-        style: o.style,
-      })),
+      objects: [
+        ...this.state.objects.map((o) => ({
+          id: o.id,
+          kind: o.kind,
+          x: o.x,
+          y: o.y,
+          w: o.w,
+          h: o.h,
+          name: o.name,
+          dashed: o.dashed,
+          icon: o.icon,
+          labelLines: o.lines,
+          style: o.style,
+        })),
+        ...this.ghosts.map((g) => ({
+          id: g.id,
+          kind: g.kind,
+          x: g.x,
+          y: g.y,
+          w: g.w,
+          h: g.h,
+          name: g.name,
+          ghost: true,
+        })),
+      ],
       links: this.sceneLinks(),
     };
     this.renderer.render(scene);
@@ -1028,6 +1071,14 @@ export class CanvasController {
     if (this.beginPanOrHalo(e)) return;
     if (e.button !== 0) return;
     const p = this.toCanvas(e);
+    // F-20: an imported ghost is read-only — clicking it opens its source file
+    const ghost = this.ghosts.find(
+      (g) => p.x >= g.x && p.x <= g.x + g.w && p.y >= g.y && p.y <= g.y + g.h,
+    );
+    if (ghost) {
+      this.onGhostOpen?.(ghost.path);
+      return;
+    }
     const hit = pick(this.state.objects, this.sceneLinks(), p);
     if (hit?.type === 'object') {
       this.beginObjectDrag(hit.id, e, p);

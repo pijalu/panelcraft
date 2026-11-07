@@ -23,6 +23,7 @@ import { parsePDL } from '../engine/format/parser';
 import { printDoc } from '../engine/format/printer';
 import { DEFAULT_SHAPE } from '../ui/CanvasController';
 import { applyCanvasState } from '../engine/model/merge';
+import { isImportRef, resolveImportGhosts, type ImportError } from '../engine/model/imports';
 import {
   IR_VERSION, FORMAT_VERSION,
   type Doc, type Kind, type Link, type Obj, type StyleBlock,
@@ -240,8 +241,10 @@ export function docToState(doc: Doc, viewName?: string): CanvasState {
     };
   });
   const ids = new Set(objects.map((o) => o.id));
+  // F-20: a link may target an imported object (`alias.id`) — keep it, or the
+  // next canvas write would delete the user's cross-file links
   const links: CanvasLink[] = doc.links
-    .filter((l) => ids.has(l.from) && ids.has(l.to))
+    .filter((l) => (ids.has(l.from) || isImportRef(l.from)) && (ids.has(l.to) || isImportRef(l.to)))
     .map((l, i) => ({
       id: l.id ?? `${l.from}-${l.to}-${i}`,
       from: l.from,
@@ -514,6 +517,20 @@ export class WorkspaceManager {
   }
 
   private parseCache: { text: string | null; doc: Doc | null } = { text: null, doc: null };
+
+  /**
+   * F-20: ghosts (imported objects as `alias.id`) plus import errors for a file.
+   * Read-only: they render on the canvas but never enter the document.
+   */
+  importGhosts(path: string): { ghosts: Array<{ ref: string; alias: string; path: string; obj: Obj }>; errors: ImportError[] } {
+    const text = readFile(this.root, path);
+    const doc = this.parseForMerge(text);
+    if (doc === null) return { ghosts: [], errors: [] };
+    return resolveImportGhosts(doc, path, (p) => {
+      const node = getNode(this.root, p);
+      return node?.kind === 'file' ? (node.content ?? '') : null;
+    });
+  }
 
   /** File → canvas state (grid layout; empty text → empty state). */
   canvasState(path: string): CanvasState {

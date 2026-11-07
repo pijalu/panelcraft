@@ -100,6 +100,12 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   routing passes through them orthogonally and a selected link exposes draggable
   handles that write straight back to the file.
 
+- **F-20** Imports resolved and rendered: `alias.objectId` references are now part of
+  the grammar (lexer + parser for link endpoints, flow targets and `attach`, TS + Go
+  parity), imported objects render as read-only ghosts (dashed, `imported` badge)
+  click-through to their source file, links to them survive canvas writes, and
+  missing/cycle/escape problems surface in a banner.
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

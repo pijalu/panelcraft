@@ -159,6 +159,10 @@ flow "Checkout" as checkout {
     name: 'step-delay-negative',
     src: 'pcd 1.0\nflow "F" {\n  intro "x" delay -5\n}\n',
   },
+  {
+    name: 'import-qualified-refs',
+    src: 'pcd 1.0\n\nimport shared as "../shared/actors.pcd"\n\nsystem api "API"\nperson a2 "A2"\n\napi -> shared.psp : "call" as L1\n\na2 <- shared.auth as L2\n\nflow "F" {\n  intro "x"\n  api -> shared.psp\n  process shared.psp\n}\n\nnote n1 "memo" {\n  attach shared.psp\n}\n',
+  },
   { name: 'flow-minimal-msg', src: 'pcd 1.0\nperson a "A"\nperson b "B"\nflow {\n a -> b\n}\n' },
   {
     name: 'view-full',

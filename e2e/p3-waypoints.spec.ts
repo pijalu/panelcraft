@@ -27,7 +27,10 @@ async function seed(page: Page): Promise<void> {
 test('F-19: dragging a waypoint re-routes and persists', async ({ page }) => {
   await seed(page);
   const canvas = page.getByTestId('canvas');
-  await canvas.locator('g.pc-link[data-id="L1"] path.pc-route').click({ force: true });
+  // select the link by clicking ON its stroke (the route zig-zags through the
+  // waypoint, so the element's bbox centre is not on the path)
+  const canvasBox = (await canvas.boundingBox())!;
+  await page.mouse.click(canvasBox.x + 300, canvasBox.y + 200);
 
   const handle = canvas.locator('.pc-waypoint').first();
   await expect(handle).toBeVisible();
@@ -49,7 +52,9 @@ test('F-19: dragging a waypoint re-routes and persists', async ({ page }) => {
   // …and the reloaded canvas puts the handle back at the same place
   await page.reload();
   await expect(canvas.locator('g.pc-obj')).toHaveCount(2);
-  await canvas.locator('g.pc-link[data-id="L1"] path.pc-route').click({ force: true });
+  const box2 = (await canvas.boundingBox())!;
+  // the moved waypoint is on the route — click it to select the link again
+  await page.mouse.click(box2.x + wx, box2.y + wy);
   const after = await canvas
     .locator('.pc-waypoint')
     .first()

@@ -178,7 +178,7 @@ function scanToken(src: string, i: number, line: number, col: number, diags: Dia
   if (ch === '"') return scanString(src, i, line, col, diags);
   if (ch === '-' || ch === '<') return scanDash(src, i, line, col, diags);
   if (/[0-9]/.test(ch)) return scanNumber(src, i, line, col, diags);
-  if (/[{}():,]/.test(ch)) return { token: mk('punct', ch, i, i + 1, line, col), i: i + 1, col: col + 1 };
+  if (/[{}():,.]/.test(ch)) return { token: mk('punct', ch, i, i + 1, line, col), i: i + 1, col: col + 1 };
   return scanIdent(src, i, line, col, diags);
 }
 

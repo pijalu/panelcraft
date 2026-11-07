@@ -257,7 +257,7 @@ class Parser {
         return (o) => { o.contains = this.identList(); };
       case 'attach':
         this.once(seen, t, 'attach');
-        return (o) => { o.attach = this.ident(); };
+        return (o) => { o.attach = this.refId(); };
       case 'icon':
         this.once(seen, t, 'icon');
         return (o) => { o.icon = this.ident(); };
@@ -289,6 +289,31 @@ class Parser {
       this.fail(tok, E.invalidIdent, `invalid identifier '${tok.text}'`);
     }
     return tok.text;
+  }
+
+  /**
+   * Object reference: a plain id, or an import-qualified `alias.objectId`
+   * (FR-I2). Only object references accept the qualified form.
+   */
+  /** refId for an already-consumed leading token. */
+  private refIdFrom(t: Token): string {
+    const first = this.ident(t);
+    const dot = this.peek();
+    if (dot.type === 'punct' && dot.text === '.') {
+      this.next();
+      return `${first}.${this.ident()}`;
+    }
+    return first;
+  }
+
+  private refId(): string {
+    const first = this.ident();
+    const dot = this.peek();
+    if (dot.type === 'punct' && dot.text === '.') {
+      this.next();
+      return `${first}.${this.ident()}`;
+    }
+    return first;
   }
 
   private identList(): string[] {
@@ -398,9 +423,9 @@ class Parser {
 
   /** `from [type-]arrow to` with reversed-arrow normalization (errata D-M1-11). */
   private linkEnds(t0: Token): Pick<Link, 'from' | 'to' | 'type' | 'bidir'> {
-    const from = this.ident(t0);
+    const from = this.refIdFrom(t0);
     const arrow = this.expect('arrow');
-    const to = this.ident();
+    const to = this.refId();
     const info: ArrowInfo = arrow.arrow!;
     if (info.tail && !info.head) {
       const e = { from: to, to: from };
@@ -508,7 +533,7 @@ class Parser {
       case 'conclusion':
         return wrap({ text: this.quoted(this.next(), kw) });
       case 'process': {
-        const target = this.ident();
+        const target = this.refId();
         const text = this.peek().type === 'string' ? this.next().value : undefined;
         return wrap(text === undefined ? { target } : { target, text });
       }
@@ -581,9 +606,9 @@ class Parser {
   private parseMsgStep(): FlowStep {
     const t0 = this.next();
     const comments = this.takeComments();
-    let from = this.ident(t0);
+    let from = this.refIdFrom(t0);
     const arrow = this.expect('arrow');
-    let to = this.ident();
+    let to = this.refId();
     const info = arrow.arrow!;
     if (info.tail && !info.head) [from, to] = [to, from];
     const step = {
