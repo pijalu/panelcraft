@@ -87,6 +87,20 @@ flows_anim() { run npx vitest run web/src/engine/flows/ web/src/engine/anim/; }
 # e2e now includes S3 (play mode over a 6-step flow; M5-WP8).
 e2e_m5() { run npm run e2e -- --project=chromium; }
 
+# ---- m6 stages (views/tags/layout/search/snapshots; reuses m1 corpus gates) --
+# layout_engine: dagre adapter determinism + pin handling + apply-to-file
+# commit (M6-WP3) — pure functions, no DOM.
+layout_engine() { run npx vitest run web/src/engine/layout/; }
+# views_search: named-view apply/remove model ops (M6-WP2), dependencies
+# adjacency (M6-WP4), quick-search fuzzy index (M6-WP5).
+views_search() { run npx vitest run web/src/ui/views/ web/src/ui/search/; }
+# snapshots: IDB snapshot store save/restore/prune incl. versioned restore
+# (M6-WP6).
+snapshots() { run npx vitest run web/src/workspace/store/; }
+# e2e now includes S5 (tag filter fade, view switch, layout determinism
+# smoke, search jump; M6-WP8).
+e2e_m6() { run npm run e2e -- --project=chromium; }
+
 case "$MILESTONE" in
   m0)
     STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test selfcontained e2e_smoke)
@@ -106,8 +120,11 @@ case "$MILESTONE" in
   m5)
     STAGES=(web_check web_test perf_smoke workspace_unit sync_machine exporter_goldens flows_anim web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m5)
     ;;
+  m6)
+    STAGES=(web_check web_test perf_smoke workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m6)
+    ;;
   *)
-    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4, m5)" >&2
+    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4, m5, m6)" >&2
     exit 2
     ;;
 esac
