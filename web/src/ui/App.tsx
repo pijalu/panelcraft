@@ -18,6 +18,7 @@ import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useUiLayout } from './useUiLayout';
 import { layoutStyle } from './uiLayout';
 import { PanelRail, Splitter, focusRail } from './PanelChrome';
+import { InlineRename, type RenameTarget } from './InlineRename';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
 import { useCodeSync } from './useCodeSync';
 import { useDivergedClose } from './useDivergedClose';
@@ -216,6 +217,29 @@ function SidebarSlot(props: {
   );
 }
 
+/** Screen-space box of the object being renamed (F-15 tracks pan/zoom). */
+function renameBox(
+  snap: Snapshot | null,
+  svg: SVGSVGElement | null,
+  id: string | null,
+): RenameTarget | null {
+  if (id === null || snap === null || svg === null) return null;
+  const obj = snap.objects.find((o) => o.id === id);
+  if (!obj) return null;
+  const box = svg.getBoundingClientRect();
+  const t = snap.viewport;
+  return {
+    id: obj.id,
+    kind: obj.kind,
+    name: obj.name ?? obj.id,
+    left: box.left + t.x + obj.x * t.k,
+    top: box.top + t.y + obj.y * t.k,
+    width: Math.max(96, obj.w * t.k),
+    height: Math.max(24, obj.h * t.k),
+    zoom: t.k,
+  };
+}
+
 /** Shell body: sidebar | palette | canvas (+code) | properties, each collapsible. */
 function AppBody(p: {
   ws: ReturnType<typeof useWorkspace>;
@@ -320,7 +344,16 @@ export function App() {
   // Filled once the code-sync hook exists (geometry commits must render the
   // code view too, not just write the file).
   const commitDocRef = useRef<((doc: import('../engine/model/types').Doc) => void) | null>(null);
-  const canvas = useCanvasController(ws.manager, ws.ready, ws.version, viewNameRef, commitDocRef);
+  // F-15: which object is being renamed in place (null = no overlay)
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const canvas = useCanvasController(
+    ws.manager,
+    ws.ready,
+    ws.version,
+    viewNameRef,
+    commitDocRef,
+    (id) => setRenaming(id),
+  );
   const activePath = ws.ready ? ws.manager.activePath : null;
   const { manager } = ws;
   const [clearOpen, setClearOpen] = useState(false);
@@ -350,6 +383,7 @@ export function App() {
   const player = useFlowStage({ manager, canvas, activePath });
   const ui = useUiLayout(manager, ws.ready, ws.version);
   const sel = selections(canvas.snap);
+  const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
   const diverged = useDivergedClose({
     manager: ws.manager,
     activePath,
@@ -391,6 +425,16 @@ export function App() {
         sel={sel}
         diverged={diverged}
       />
+      {renameTarget && (
+        <InlineRename
+          target={renameTarget}
+          onCommit={(name) => {
+            canvas.ctrlRef.current?.updateObject(renameTarget.id, { name });
+            setRenaming(null);
+          }}
+          onCancel={() => setRenaming(null)}
+        />
+      )}
       <AppDialogs
         manager={manager}
         activePath={activePath}

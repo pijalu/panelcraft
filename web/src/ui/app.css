@@ -97,6 +97,31 @@ body {
   overflow-y: auto;
 }
 
+/* F-15: in-place rename overlay (fixed, so it tracks pan/zoom in screen space) */
+.inline-rename {
+  position: fixed;
+  z-index: 40;
+  padding: 0 6px;
+  border: 2px solid var(--pc-accent);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  font: inherit;
+  font-size: var(--pc-text-sm);
+  text-align: center;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 18%);
+}
+
+.inline-rename:focus {
+  outline: none;
+}
+
+/* above 200 % zoom the box is too small to read — a chip sits under the label */
+.inline-rename-chip {
+  font-size: var(--pc-text-xs);
+  border-width: 1px;
+}
+
 /* F-11: properties sections (Identity / Metadata / Style / Advanced) */
 .prop-section {
   border-top: 1px solid var(--pc-border);
@@ -1084,7 +1109,32 @@ marker .pc-arrow[fill='none'] {
   background: var(--pc-surface);
 }
 
-.code-pane-head /* F-11: properties sections (Identity / Metadata / Style / Advanced) */
+.code-pane-head /* F-15: in-place rename overlay (fixed, so it tracks pan/zoom in screen space) */
+.inline-rename {
+  position: fixed;
+  z-index: 40;
+  padding: 0 6px;
+  border: 2px solid var(--pc-accent);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  font: inherit;
+  font-size: var(--pc-text-sm);
+  text-align: center;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 18%);
+}
+
+.inline-rename:focus {
+  outline: none;
+}
+
+/* above 200 % zoom the box is too small to read — a chip sits under the label */
+.inline-rename-chip {
+  font-size: var(--pc-text-xs);
+  border-width: 1px;
+}
+
+/* F-11: properties sections (Identity / Metadata / Style / Advanced) */
 .prop-section {
   border-top: 1px solid var(--pc-border);
 }

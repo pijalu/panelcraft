@@ -252,6 +252,16 @@ auto-layout differs, undo restores, reset keeps the diagram).
 *Tests:* component — Enter/Esc/blur paths; e2e — rename on canvas, assert canvas label + properties field +
 code line all agree.
 
+**Done.** `F2` / double-click open `ui/InlineRename.tsx`: a fixed-position input
+seeded with the current label, placed from the object's canvas rect × viewport so it
+follows pan/zoom, switching to a compact chip at ≥ 200 % zoom. Enter/blur commit
+through `updateObject` (one coalesced undo entry), Escape cancels — including the
+unmount-blur that used to commit the discarded text; the properties panel mirrors the
+change because both write the same state. Tests: `ui/InlineRename.test.tsx`
+(seed/focus/aria-label, Enter, Escape, blur, no-op labels, chip presentation,
+Escape-then-blur regression), e2e `p1-rename.spec.ts` (double-click rename with canvas
+label + properties + code agreeing, undo, F2 + Escape, light/dark screenshots).
+
 ---
 
 ## Phase P2 — Presentation & animation

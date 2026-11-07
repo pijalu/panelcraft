@@ -795,6 +795,7 @@ export class CanvasController {
       this.quickAdd(Number(e.key));
       return;
     }
+    if (this.handleRenameKey(e)) return;
     if (this.handleArrowKey(e)) return;
     if (this.handleActionKey(e)) return;
   }
@@ -809,6 +810,16 @@ export class CanvasController {
     if (k === 'z' && !e.shiftKey) this.undo.undo();
     else this.undo.redo();
     this.applyState(this.state);
+    return true;
+  }
+
+  /** F-15 F2: rename the selected object in place — true when consumed. */
+  private handleRenameKey(e: KeyboardEvent): boolean {
+    if (e.key !== 'F2') return false;
+    const id = [...this.selObjects][0];
+    if (!id) return false;
+    e.preventDefault();
+    this.onRenameRequest?.(id);
     return true;
   }
 

@@ -80,6 +80,10 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   group) and a link `Bidirectional` toggle; the Advanced section shows id, size and the
   `Fit to name` command.
 
+- **F-15** In-place rename: `F2` or double-click opens an input on the canvas (screen
+  space, follows pan/zoom, chip above 200 % zoom), Enter/blur commit as one undoable
+  change, Escape cancels; canvas label, properties panel and code line stay in sync.
+
 ### Added — M2 Canvas MVP (PLAN §4)
 
 - Imperative SVG canvas (ADR-0001): viewport pan/zoom (10–400 %, wheel +

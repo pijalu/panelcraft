@@ -100,6 +100,7 @@ export function useCanvasController(
   commitDocRef: { current: ((doc: import('../engine/model/types').Doc) => void) | null } = {
     current: null,
   },
+  onInlineRename: (id: string) => void = () => {},
 ): CanvasHandle {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const ctrlRef = useRef<CanvasController | null>(null);
@@ -208,7 +209,7 @@ export function useCanvasController(
     if (!svg || ctrlRef.current) return;
     const ctrl = new CanvasController(svg, {
       onState: onCtrlState,
-      onRenameRequest: () => nameFieldRef.current?.focus(),
+      onRenameRequest: (id) => onInlineRename(id),
       onGeometry: commitGeometry,
     });
     ctrlRef.current = ctrl;
