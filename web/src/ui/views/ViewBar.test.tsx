@@ -26,10 +26,22 @@ view "Roadmap" {
 `;
 
 function fakeCtrl(): CanvasController {
+  const positions: Record<string, { x: number; y: number }> = {
+    api: { x: 0, y: 0 },
+    db: { x: 100, y: 0 },
+    web: { x: 200, y: 0 },
+  };
   return {
     setFaded: vi.fn(),
     applyPositions: vi.fn(),
-    currentPositions: () => ({ api: { x: 0, y: 0 }, db: { x: 100, y: 0 }, web: { x: 200, y: 0 } }),
+    currentPositions: () => positions,
+    // F-14: the view bar applies layout through the undoable command; the double
+    // must model that API (calling applyPositions like the real controller does),
+    // otherwise the double hides a production call.
+    applyLayoutCommand: vi.fn((next: Record<string, { x: number; y: number }>) => {
+      Object.assign(positions, next);
+    }),
+    clearPositions: vi.fn(),
   } as unknown as CanvasController;
 }
 

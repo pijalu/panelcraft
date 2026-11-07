@@ -51,6 +51,26 @@ Fix those three and roughly half of the requested enhancements become small, loc
 
 ---
 
+### 2.1 Fix status (all P0 defects closed)
+
+Every row above is fixed in the programme that followed this review. Shas are the
+commit that closed the row; each commit carries the regression test.
+
+| ID | Status | Fix | Commit |
+|----|--------|-----|--------|
+| D1 | **FIXED** | Canvas writes are merge-based (`applyCanvasState`): objects/links are merged by id into the parsed document, so flows/views/positions/styles/imports/waypoints/comments survive. | `f9a0895` (F-01) |
+| D2 | **FIXED** | `loadState` re-baselines the id counter and a free-id probe skips taken ids. | `f9a0895` (F-02) |
+| D3 | **FIXED** | Apply is caret-aware and no longer canonicalises under the caret; the idle parse applies the user's text verbatim. | `f9a0895` (F-03/F-04) |
+| D4 | **FIXED** | Machine→editor writes are minimal prefix/suffix diffs with selection restore. | `f9a0895` (F-03) |
+| D5 | **FIXED** | `group`/`note` are rendered, persisted and round-tripped. | `f9a0895`, `9d8fc3f` (F-06) |
+| D6 | **FIXED** | `dashed`, `bidir`, style overrides and custom properties round-trip through `stateToDoc`/merge. | `9d8fc3f` (F-07), `b3a761b` (F-11) |
+| D7 | **FIXED** | No injected link defaults; `head`/`tail`/`line`/`width` in the style block with per-type colour and panel controls. | `9d8fc3f` (F-08), `01a0417` (F-12) |
+| D8 | **FIXED** | Geometry commits on interaction end into the active view; re-layout is explicit and undoable. | `034f5a0` (F-14) |
+| D9 | **FIXED** | Imports resolve to read-only ghosts with click-through and cycle errors surfaced. | `9717073` (F-20) |
+| D10 | **FIXED** | Error rings on offending objects, `N problems` chip and an "out of date" canvas banner. | `62a373c` (F-23) |
+| D11 | **FIXED** | Scene nodes carry roles/labels; Tab/arrow roving focus; canvas↔code mapping. | `948ec2b` (F-22) |
+| D12 | **FIXED** | Header copy replaced by the saved/dirty status pill (no milestone text). | `916a22c` (F-25) |
+
 ## 3. Requested enhancements — state, gap, proposal
 
 ### 3.1 Collapsible Files sidebar / Properties / Code view (items 1-3)
