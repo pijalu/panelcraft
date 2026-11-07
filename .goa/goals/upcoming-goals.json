@@ -2,17 +2,6 @@
   "version": 1,
   "goals": [
     {
-      "id": "qg-1794034657105307000-2d0486d4caa4",
-      "name": "azure.puma",
-      "objective": "Deliver milestone M2 — Canvas MVP — per docs/IMPLEMENTATION-PLAN.md §4, WPs M2-WP1..M2-WP10: viewport+input, scene-graph SVG renderer (layers, diff-patch, stable ids), hit-testing/selection, drag/resize/snap, C4 shape set on theme tokens, link UX with orthogonal router v1, properties panel, undo/redo stack, palette, S1 e2e + vision round 1 + perf baseline.",
-      "completionCriterion": "S1 e2e scenario passes (create diagram via palette drop + link + properties, screenshots light/dark), vision review round 1 recorded in docs/milestones/M2.md with defects closed, perf baseline vs N1 logged, coverage ≥80% engine/render + workspace/undo, and `bash scripts/verify.sh m2` exits 0.",
-      "verifyCommand": "bash scripts/verify.sh m2",
-      "freshContext": true,
-      "handover": "CONTEXT: entry reads only: agents.md; docs/IMPLEMENTATION-PLAN.md §4 (WP list); tail docs/milestones/M1.md (IR schema + grammar freeze notes — you consume IR, never re-parse); grep SPEC §4.2 (FR-C1–C12), §5 N1, STYLE-GUIDE for visuals. PROTOCOL: (a) evidence → docs/milestones/M2.md continuously; (b) FIRST task: extend scripts/verify.sh stage m2 (e2e S1 + visual baseline + coverage gates); (c) pure-TS engine modules (render/undo) get unit tests before UI wiring; (d) viewport math + hit-testing are unit-test cores, DOM wiring thin; (e) orthogonal router timeboxed — fallback curved-only with decision note in M2.md; (f) screenshots per STYLE-GUIDE checklist for vision round. EXIT CONTRACT: verify.sh m2 exit 0; S1 green; vision round 1 findings logged + fixed; perf numbers recorded. Next goal (M3) cold-starts from its handover + PLAN §5 + M2.md tail.",
-      "createdAt": "2026-11-07T07:57:37.105306+01:00",
-      "updatedAt": "2026-11-07T07:57:37.105306+01:00"
-    },
-    {
       "id": "qg-1794034657105431000-99ae583b9954",
       "name": "crimson.koi",
       "objective": "Deliver milestone M3 — Workspace \u0026 storage — per docs/IMPLEMENTATION-PLAN.md §5, WPs M3-WP1..M3-WP5: virtual FS + tree UI + tabs (API freeze), IndexedDB store with autosave + forward-only migrations + Storage port (in-memory fallback), owned ZIP container over CompressionStream + lazy fflate fallback, per-file import/export .pcd/.mmd/.svg/.png, S4 e2e incl. quota + ephemeral paths.",

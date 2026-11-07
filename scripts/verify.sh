@@ -54,6 +54,15 @@ validate_docs() {
   run go run ./cmd/panelcraft validate docs/architecture
 }
 
+# ---- m2 stages (canvas MVP; reuses m1 corpus gates) ---------------------------
+# perf_smoke: render-perf sanity — 300-object synthetic scene renders+re-patches
+# under budget (N1 evidence for M2.md; full pan/drag baseline via e2e/PW traces).
+perf_smoke() {
+  run npx vitest run web/src/engine/render/perf.test.ts
+}
+# e2e now includes S1 (canvas create-flow) next to the S7 no-network smoke.
+e2e_m2() { run npm run e2e -- --project=chromium; }
+
 case "$MILESTONE" in
   m0)
     STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test selfcontained e2e_smoke)
@@ -61,8 +70,11 @@ case "$MILESTONE" in
   m1)
     STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_smoke)
     ;;
+  m2)
+    STAGES=(web_check web_test perf_smoke web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m2)
+    ;;
   *)
-    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1)" >&2
+    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2)" >&2
     exit 2
     ;;
 esac
