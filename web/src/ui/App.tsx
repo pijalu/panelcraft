@@ -4,7 +4,7 @@
 // around the SVG, never inside it); the WorkspaceManager owns the virtual FS,
 // tabs and autosave; chrome re-renders via manager.subscribe(). Lifecycle and
 // sync wiring live in useWorkspace.ts; panels below are presentational.
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { labelFor, CanvasController, type Snapshot } from './CanvasController';
 import { FileTree } from './FileTree';
 import { Tabs } from './Tabs';
@@ -14,16 +14,19 @@ import { PlayBar } from './flows/PlayBar';
 import { ViewBar } from './views/ViewBar';
 import { AppHeader } from './AppHeader';
 import { AppDialogs } from './AppDialogs';
+import { AppOverlays } from './AppOverlays';
+import { TemplateOverlay } from './EmptyState';
+import type { RenameTarget } from './InlineRename';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useUiLayout } from './useUiLayout';
 import { useHistory } from './useHistory';
+import { useViewSession } from './useViewSession';
+import type { HoverInfo } from './hoverInfo';
 import { layoutStyle } from './uiLayout';
 import { PanelRail, Splitter, focusRail } from './PanelChrome';
-import { InlineRename, type RenameTarget } from './InlineRename';
 import { CanvasMenu } from './CanvasMenu';
 import { ShellBanners } from './ShellBanners';
 import { useCanvasRevealPort } from './useCanvasReveal';
-import { PresentLayer } from './PresentDock';
 import { usePresentation } from './usePresentation';
 import type { IllustrationId } from '../engine/anim/illustrations';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
@@ -281,6 +284,30 @@ function renameBox(
   };
 }
 
+/** Wipe the workspace: forget the canvas state, clear storage, close the dialog. */
+function clearWorkspace(
+  manager: WorkspaceManager,
+  canvas: ReturnType<typeof useCanvasController>,
+  done: () => void,
+): void {
+  canvas.resync();
+  void manager.clearAll();
+  done();
+}
+
+/** F-25: status-pill inputs (dirty / last save / problem count). */
+function statusProps(
+  snapshot: CodeSyncHandle['snapshot'],
+  ready: boolean,
+  manager: WorkspaceManager,
+): { dirty: boolean; savedAt: number | null; problems: number } {
+  return {
+    dirty: snapshot.divergedFromSaved,
+    savedAt: ready ? manager.lastSavedAt || null : null,
+    problems: snapshot.state === 'error' ? snapshot.diagnostics.length : 0,
+  };
+}
+
 /** Shell body: sidebar | palette | canvas (+code) | properties, each collapsible. */
 function AppBody(p: {
   ws: ReturnType<typeof useWorkspace>;
@@ -420,6 +447,10 @@ function CenterColumn(props: {
   const { canvas, code, player, ui } = props;
   return (
     <main class="canvas-col">
+      <TemplateOverlay
+        show={(props.canvas.snap?.objects.length ?? 0) === 0}
+        onInsert={(t) => props.code.machine.textChanged(t.text)}
+      />
       <CanvasTopRow
         manager={props.manager}
         diverged={props.diverged}
@@ -451,37 +482,28 @@ function CenterColumn(props: {
 
 export function App() {
   const ws = useWorkspace();
-  // Ref mirror of the active view (F-14) and the code-sync commit port (F-14).
-  const viewNameRef = useRef<string | undefined>(undefined);
-  const commitDocRef = useRef<((doc: import('../engine/model/types').Doc) => void) | null>(null);
-  // F-15: which object is being renamed in place (null = no overlay)
-  const [renaming, setRenaming] = useState<string | null>(null);
+  const activePath = ws.ready ? ws.manager.activePath : null;
+  const view = useViewSession(activePath);
+  const [renaming, setRenaming] = useState<string | null>(null); // F-15 inline rename
+  const [hover, setHover] = useState<HoverInfo | null>(null);
   const canvas = useCanvasController(
     ws.manager,
     ws.ready,
     ws.version,
-    viewNameRef,
-    commitDocRef,
+    view.viewNameRef,
+    view.commitDocRef,
     (id) => setRenaming(id),
     // F-20: clicking an imported ghost opens its source file
     (path) => ws.manager.openFile(path),
+    // F-25: hover info card
+    (info) => setHover(info),
   );
-  const activePath = ws.ready ? ws.manager.activePath : null;
   const { manager } = ws;
   const [clearOpen, setClearOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [sideTab, setSideTab] = useState<'files' | 'flows'>('files');
-  const [viewName, setViewName] = useState<string | undefined>(undefined);
   const [snapsOpen, setSnapsOpen] = useState(false);
-  // Views are per-file session state: switching files resets to the default view.
-  useEffect(() => {
-    setViewName(undefined);
-  }, [activePath]);
-  // Ref mirror for the code-sync apply port (loads the active view's stored
-  // positions on apply — M6 FR-V4); refs survive the machine's long lifetime.
-  useEffect(() => {
-    viewNameRef.current = viewName;
-  }, [viewName]);
+  const { viewName, setViewName } = view;
   const code = useCodeSync({
     manager: ws.manager,
     ready: ws.ready,
@@ -489,14 +511,14 @@ export function App() {
     version: ws.version,
     ctrlRef: canvas.ctrlRef,
     snap: canvas.snap,
-    viewRef: viewNameRef,
+    viewRef: view.viewNameRef,
   });
-  commitDocRef.current = code.commitDoc;
+  view.commitDocRef.current = code.commitDoc;
   const [illustration, setIllustration] = useState<IllustrationId | 'auto'>('auto');
   const player = useFlowStage({ manager, canvas, activePath, illustration });
   const ui = useUiLayout(manager, ws.ready, ws.version);
-  const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null);
-  const [historyOpen, setHistoryOpen] = useState(false);  // F-24 history affordance
+  const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null, setFlash);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
   const sel = selections(canvas.snap);
   const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
@@ -509,11 +531,7 @@ export function App() {
     snapshot: code.snapshot,
   });
 
-  const clearData = (): void => {
-    canvas.resync(); // forget the old active path — the workspace is wiped
-    void manager.clearAll();
-    setClearOpen(false);
-  };
+
 
   return (
     <div
@@ -529,6 +547,7 @@ export function App() {
         onFlash={setFlash}
         onClearRequest={() => setClearOpen(true)}
         onSnapshotsRequest={() => setSnapsOpen(true)}
+        {...statusProps(code.snapshot, ws.ready, manager)}
         onHistoryRequest={() => setHistoryOpen(true)}
       />
       <AppBody
@@ -550,24 +569,24 @@ export function App() {
         dirty={code.snapshot.divergedFromSaved}
         revealRef={revealRef}
       />
-      {pres.presenting && <PresentLayer player={player} />}
-      {renameTarget && (
-        <InlineRename
-          target={renameTarget}
-          onCommit={(name) => {
-            canvas.ctrlRef.current?.updateObject(renameTarget.id, { name });
-            setRenaming(null);
-          }}
-          onCancel={() => setRenaming(null)}
-        />
-      )}
+      <AppOverlays
+        hover={hover}
+        presenting={pres.presenting}
+        player={player}
+        renameTarget={renameTarget}
+        onRenameCommit={(name) => {
+          if (renameTarget !== null) canvas.ctrlRef.current?.updateObject(renameTarget.id, { name });
+          setRenaming(null);
+        }}
+        onRenameCancel={() => setRenaming(null)}
+      />
       <AppDialogs
         manager={manager}
         activePath={activePath}
         ctrlRef={canvas.ctrlRef}
         diverged={diverged}
         clearOpen={clearOpen}
-        clearData={clearData}
+        clearData={() => clearWorkspace(manager, canvas, () => setClearOpen(false))}
         onClearCancel={() => setClearOpen(false)}
         flash={flash}
         onFlashDismiss={() => setFlash(null)}

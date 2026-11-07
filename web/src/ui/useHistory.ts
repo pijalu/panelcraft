@@ -24,6 +24,7 @@ export function useHistory(
   ctrlRef: { current: CanvasController | null },
   snapshot: SyncSnapshot,
   ready: boolean,
+  onToast: (msg: string) => void = () => {},
 ): HistoryHandle {
   const [feed] = useState(() => new HistoryFeed());
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
@@ -63,9 +64,10 @@ export function useHistory(
       const surface = undoSurface(focusInCode, feed.last);
       if (surface === 'code') codePorts.undo?.();
       else ctrlRef.current?.undoCommand();
+      onToast(`Undone: ${feed.last?.label ?? 'change'}`);
       refresh();
     },
-    [ctrlRef, feed, refresh],
+    [ctrlRef, feed, refresh, onToast],
   );
 
   const redo = useCallback(
@@ -73,9 +75,10 @@ export function useHistory(
       const surface = undoSurface(focusInCode, feed.last);
       if (surface === 'code') codePorts.redo?.();
       else ctrlRef.current?.redoCommand();
+      onToast('Redone');
       refresh();
     },
-    [ctrlRef, feed, refresh],
+    [ctrlRef, feed, refresh, onToast],
   );
 
   return {

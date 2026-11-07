@@ -97,6 +97,23 @@ export function PlayBar({ player: p, onPresent }: PlayBarProps) {
       <span class="playbar-narration" data-testid="pb-narration" aria-live="polite" role="status">
         {st.narration}
       </span>
+      {st.status === 'ended' && (
+        <div class="closing-card" data-testid="closing-card" role="status">
+          <strong>{st.progress === null ? 'Flow' : 'Flow complete'}</strong>
+          <span class="muted">
+            {st.progress === null ? '' : `${st.progress.total} steps`}
+          </span>
+          <button type="button" data-testid="cc-replay" onClick={() => p.restart()}>
+            Replay
+          </button>
+          <button type="button" data-testid="cc-export" onClick={() => p.exportSvg?.()}>
+            Export SVG
+          </button>
+          <button type="button" data-testid="cc-exit" onClick={() => p.exit()}>
+            Close
+          </button>
+        </div>
+      )}
     </div>
   );
 }

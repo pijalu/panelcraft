@@ -5,6 +5,7 @@ import { useRef } from 'preact/hooks';
 import type { Kind } from '../engine/model/types';
 import { labelFor } from './CanvasController';
 import { CollapseButton } from './PanelChrome';
+import { groupKinds, quickAddKey } from './paletteGroups';
 
 interface PaletteProps {
   kinds: Kind[];
@@ -49,25 +50,30 @@ export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps
         <h2 class="panel-title">Shapes</h2>
         {onCollapse && <CollapseButton id="palette" label="shapes" onCollapse={onCollapse} />}
       </div>
-      <ul class="palette-list">
-        {kinds.map((kind, i) => (
-          <li key={kind}>
-            <button
-              type="button"
-              class="palette-item"
-              data-kind={kind}
-              data-testid={`palette-${kind}`}
-              title={`${labelFor(kind)} (key ${i + 1})`}
-              onClick={() => onPlace(kind)}
-              onPointerDown={(e) => startDrag(kind, e as unknown as PointerEvent)}
-            >
-              <span class="palette-glyph" data-glyph={kind} aria-hidden="true" />
-              <span class="palette-label">{labelFor(kind)}</span>
-              <kbd class="palette-key">{i + 1}</kbd>
-            </button>
-          </li>
-        ))}
-      </ul>
+      {groupKinds(kinds).map((group) => (
+        <section class="palette-group" data-testid={`palette-group-${group.id}`} key={group.id}>
+          <h3 class="palette-group-title">{group.title}</h3>
+          <ul class="palette-list">
+            {group.kinds.map((kind) => (
+              <li key={kind}>
+                <button
+                  type="button"
+                  class="palette-item"
+                  data-kind={kind}
+                  data-testid={`palette-${kind}`}
+                  title={`${labelFor(kind)} (key ${quickAddKey(kinds, kind)})`}
+                  onClick={() => onPlace(kind)}
+                  onPointerDown={(e) => startDrag(kind, e as unknown as PointerEvent)}
+                >
+                  <span class="palette-glyph" data-glyph={kind} aria-hidden="true" />
+                  <span class="palette-label">{labelFor(kind)}</span>
+                  <kbd class="palette-key">{quickAddKey(kinds, kind)}</kbd>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </aside>
   );
 }

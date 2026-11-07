@@ -102,6 +102,7 @@ export function useCanvasController(
   },
   onInlineRename: (id: string) => void = () => {},
   onGhostOpen: (path: string) => void = () => {},
+  onHover: (info: import('./hoverInfo').HoverInfo | null) => void = () => {},
 ): CanvasHandle {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const ctrlRef = useRef<CanvasController | null>(null);
@@ -213,6 +214,7 @@ export function useCanvasController(
       onRenameRequest: (id) => onInlineRename(id),
       onGhostOpen,
       onGeometry: commitGeometry,
+      onHover,
     });
     ctrlRef.current = ctrl;
     return () => {

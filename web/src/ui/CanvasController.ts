@@ -168,6 +168,8 @@ export interface ControllerOptions {
   onGeometry?: (positions: Record<string, { x: number; y: number }>) => void;
   /** F-24: unified history feed (canvas commands, one row per user action). */
   onHistory?: (label: string, mergeKey?: string) => void;
+  /** F-25: hover info card data (null = nothing hovered). */
+  onHover?: (info: import('./hoverInfo').HoverInfo | null) => void;
 }
 
 export function labelFor(kind: Kind): string {
@@ -276,11 +278,14 @@ export class CanvasController {
   private readonly measure: TextMeasurer;
   private readonly onGeometry?: (positions: Record<string, { x: number; y: number }>) => void;
   private readonly onHistory?: (label: string, mergeKey?: string) => void;
+  private readonly onHover?: (info: import('./hoverInfo').HoverInfo | null) => void;
   private readonly onGhostOpen?: (path: string) => void;
   /** F-20: read-only imported objects (never part of `state`). */
   private ghosts: Array<DiagramObject & { path: string }> = [];
   /** F-22: roving focus (keyboard navigation across scene objects). */
   private focusId: string | null = null;
+  /** F-25: hovered object id (info card) — null when nothing is hovered. */
+  private hoverId: string | null = null;
   /** F-23: objects whose statement currently has a parse error. */
   private errorIds = new Set<string>();
   private detach: Array<() => void> = [];
@@ -293,6 +298,7 @@ export class CanvasController {
     this.measure = opts.measure ?? canvasMeasurer();
     this.onGeometry = opts.onGeometry;
     this.onHistory = opts.onHistory;
+    this.onHover = opts.onHover;
     this.undo.setObserver((cmd) => this.onHistory?.(cmd.label, cmd.coalesceKey));
     this.onGhostOpen = opts.onGhostOpen;
     this.renderer = new SceneRenderer(svg);
@@ -1050,6 +1056,33 @@ export class CanvasController {
     return true;
   }
 
+  /** F-25: hover info card — remember which object is under the pointer. */
+  private trackHover(p: Point): void {
+    const hit = pick(this.state.objects, [], p);
+    const id = hit?.type === 'object' ? hit.id : null;
+    if (id === this.hoverId) return;
+    this.hoverId = id;
+    for (const o of this.state.objects) {
+      const el = this.renderer.elementFor(o.id);
+      el?.classList.toggle('pc-hover', o.id === id);
+    }
+    this.onHover?.(id === null ? null : this.hoverInfoFor(id));
+  }
+
+  /** Data for the hover card (name, technology, description, tags). */
+  private hoverInfoFor(id: string): import('./hoverInfo').HoverInfo | null {
+    const o = this.state.objects.find((x) => x.id === id);
+    if (o === undefined) return null;
+    return {
+      id: o.id,
+      kind: o.kind,
+      name: o.name ?? o.id,
+      technology: o.technology,
+      description: o.description,
+      tags: o.tags,
+    };
+  }
+
   /** F-24: undo one canvas command (used by the history affordance too). */
   undoCommand(): boolean {
     const label = this.undo.undo();
@@ -1294,6 +1327,7 @@ export class CanvasController {
   }
 
   private onPointerMove(e: PointerEvent): void {
+    if (this.mode.t === 'idle') this.trackHover(this.toCanvas(e));
     switch (this.mode.t) {
       case 'pan': {
         const s = this.screenOf(e);

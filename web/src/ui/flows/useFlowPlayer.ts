@@ -37,6 +37,8 @@ export interface FlowPlayerApi {
   stepTo(index1: number): void;
   choose(branchIndex: number): void;
   setRectProvider(r: FlowRects): void;
+  /** F-25 (peak-end): export the current canvas as SVG from the closing card. */
+  exportSvg?: () => void;
 }
 
 export function useFlowPlayer(deps: FlowPlayerDeps): FlowPlayerApi {

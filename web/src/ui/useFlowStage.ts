@@ -13,6 +13,8 @@ import { useFlowPlayer, type FlowPlayerApi } from './flows/useFlowPlayer';
 import type { WorkspaceManager } from '../workspace/workspace';
 import type { CanvasHandle } from './useWorkspace';
 import type { IllustrationId } from '../engine/anim/illustrations';
+import { exportSvg as svgToText } from '../workspace/io';
+import { downloadText } from './download';
 
 export interface FlowStageDeps {
   manager: WorkspaceManager;
@@ -104,5 +106,13 @@ export function useFlowStage(deps: FlowStageDeps): FlowPlayerApi {
     });
   });
 
-  return player;
+  // F-25: the closing card can export the canvas as it stands.
+  return {
+    ...player,
+    exportSvg: () => {
+      const svg = canvas.svgRef.current;
+      if (svg === null) return;
+      downloadText(svgToText(svg), 'flow.svg', 'image/svg+xml');
+    },
+  };
 }

@@ -4,6 +4,7 @@
 import { useState } from 'preact/hooks';
 import type { RefObject } from 'preact';
 import { Banners } from './Banners';
+import { StatusPill } from './StatusPill';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { useWorkspace } from './useWorkspace';
 import type { WorkspaceManager } from '../workspace/workspace';
@@ -21,6 +22,10 @@ export function AppHeader(props: {
   onSnapshotsRequest(): void;
   /** F-24: open the unified history affordance. */
   onHistoryRequest(): void;
+  /** F-25: system-status pill. */
+  dirty: boolean;
+  savedAt: number | null;
+  problems: number;
 }) {
   const { ws } = props;
   const [dismissedError, setDismissedError] = useState<string | null>(null);
@@ -28,7 +33,7 @@ export function AppHeader(props: {
     <>
       <header class="app-header">
         <span class="app-title">PanelCraft</span>
-        <span class="muted">M3 workspace — autosaved in your browser</span>
+        <StatusPill dirty={props.dirty} savedAt={props.savedAt} problems={props.problems} />
         <WorkspaceToolbar
           manager={ws.manager}
           activePath={ws.ready ? ws.manager.activePath : null}

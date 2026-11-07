@@ -4,6 +4,17 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-02-14 — P4: laws-of-UX pass (F-25)
+
+- Saved/dirty pill with last-save time and a problem chip; template gallery for a new
+  file (three parsable starting points); palette grouped by C4 level; progressive
+  link-type picker (four verbs + "More types"); canvas hover info card; undo/redo
+  toasts; flow closing card (replay / export SVG / close); docked transport; 32 px
+  minimum hit targets.
+- Fixed while verifying: the gallery overlay was shell-level and blocked the editor
+  (F-35); the shipped templates did not parse (F-36) — a regression test now parses
+  every template.
+
 ## 2026-02-14 — P3: unified undo & history (F-24)
 
 - **F-24 unified undo**: canvas commands and code edits share one journal

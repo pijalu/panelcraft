@@ -1037,6 +1037,7 @@ marker .pc-arrow[fill='none'] {
 
 /* editor column + tab strip */
 .canvas-col {
+  position: relative; /* anchors the template gallery (F-25) to the canvas column */
   flex: 1;
   min-width: 0;
   display: flex;
@@ -2461,4 +2462,178 @@ marker .pc-arrow[fill='none'] {
   margin: 6px 2px;
   color: var(--pc-muted);
   font-size: var(--pc-text-xs);
+}
+
+/* F-25 (visibility of system status): saved/dirty pill + problem chip */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 1px 8px;
+  border: 1px solid var(--pc-border);
+  border-radius: 999px;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+}
+
+.status-pill[data-dirty='true'] {
+  border-color: var(--pc-warn);
+  color: var(--pc-fg);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pc-ok, #3fa66a);
+}
+
+.status-pill[data-dirty='true'] .status-dot {
+  background: var(--pc-warn);
+}
+
+.problem-chip {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pc-warn) 20%, transparent);
+  color: var(--pc-fg);
+}
+
+/* F-25 (Hick's law): palette grouped by C4 level */
+.palette-group {
+  margin: 0 0 6px;
+}
+
+.palette-group-title {
+  margin: 6px 8px 2px;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* F-25 (Fitts's law): 32 px minimum interactive size everywhere */
+.palette-item,
+.ghost-btn,
+.icon-btn,
+.rail-btn,
+.flow-step-row button,
+.props-col button,
+.history-actions button {
+  min-height: 32px;
+  min-width: 32px;
+}
+
+/* F-25 (law of proximity): transport is docked, never covering objects */
+.playbar {
+  position: static;
+  margin: 6px 8px;
+  border-radius: var(--pc-radius-md);
+}
+
+.canvas-col .playbar {
+  flex: 0 0 auto;
+}
+
+/* F-25 (working memory): canvas hover info card */
+.hover-card {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 260px;
+  padding: 8px 10px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-surface);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 18%);
+  font-size: var(--pc-text-xs);
+  pointer-events: none;
+}
+
+.hover-name {
+  font-weight: 600;
+}
+
+.hover-kind {
+  color: var(--pc-muted);
+  text-transform: capitalize;
+}
+
+/* F-25 (peak-end): closing card at the end of a flow */
+.closing-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 1px solid var(--pc-accent);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  font-size: var(--pc-text-xs);
+}
+
+/* F-25 (paradox of the active user): template gallery empty state */
+.empty-state {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--pc-bg) 88%, transparent);
+  text-align: center;
+}
+
+.empty-title {
+  margin: 0;
+  font-size: var(--pc-text-md);
+}
+
+.empty-list {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.empty-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 148px;
+  min-height: 32px;
+  padding: 8px 12px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-surface);
+  color: var(--pc-fg);
+  font: inherit;
+  font-size: var(--pc-text-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.empty-card {
+  pointer-events: auto;
+}
+
+.empty-card:hover {
+  border-color: var(--pc-accent);
+}
+
+.pc-hover .pc-shape {
+  stroke: var(--pc-accent);
 }

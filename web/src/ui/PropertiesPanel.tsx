@@ -7,6 +7,7 @@
 // Every change is an undoable ValueChange in the controller; this file is
 // presentational.
 import type { ComponentChildren, Ref } from 'preact';
+import { useState } from 'preact/hooks';
 import type { CanvasController } from './CanvasController';
 import type { DiagramLink, DiagramObject } from './CanvasController';
 import { CollapseButton } from './PanelChrome';
@@ -32,9 +33,13 @@ export interface PropertiesPanelProps {
 /** Arrow marker shapes offered by the link controls (F-12). */
 const MARKERS = ['arrow', 'open', 'diamond', 'circle', 'square', 'none'] as const;
 
-const LINK_TYPES = [
-  'uses', 'includes', 'requests', 'returns', 'publishes', 'subscribes', 'reads', 'writes', 'data',
-];
+/**
+ * F-25 (Miller's law): four verbs cover most diagrams; the rest live behind
+ * "More types" instead of making the picker a nine-item wall.
+ */
+const PRIMARY_LINK_TYPES = ['uses', 'requests', 'reads', 'writes'];
+const MORE_LINK_TYPES = ['includes', 'returns', 'publishes', 'subscribes', 'data'];
+const LINK_TYPES = [...PRIMARY_LINK_TYPES, ...MORE_LINK_TYPES];
 
 function Field(props: { label: string; children: ComponentChildren }) {
   return (
@@ -259,6 +264,8 @@ function ObjectFields(props: {
 /** Link fields: semantics, arrow model (F-12) and texture. */
 function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
   const { link, onChange } = props;
+  const [more, setMore] = useState(false);
+  const primary = more ? LINK_TYPES : PRIMARY_LINK_TYPES;
   return (
     <aside class="properties" data-testid="properties">
       <h2 class="panel-title">Link</h2>
@@ -269,12 +276,25 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
           onChange={(e) => onChange(link.id, { type: (e.target as HTMLSelectElement).value || undefined })}
         >
           <option value="">(untyped)</option>
-          {LINK_TYPES.map((t) => (
+          {/* keep the current value selectable even when it hides behind "more" */}
+          {link.type !== undefined && !primary.includes(link.type) && (
+            <option value={link.type}>{link.type}</option>
+          )}
+          {primary.map((t) => (
             <option key={t} value={t} selected={t === link.type}>
               {t}
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          class="prop-action"
+          data-testid="link-more-types"
+          aria-expanded={more}
+          onClick={() => setMore(!more)}
+        >
+          {more ? 'Fewer types' : 'More types'}
+        </button>
       </Field>
       <Field label="Label">
         <input

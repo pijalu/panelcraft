@@ -359,9 +359,13 @@ export class WorkspaceManager {
     this.tabs = openTab(this.tabs, 'untitled.pcd');
   }
 
+  /** F-25: epoch ms of the last persisted write (0 = never). */
+  lastSavedAt = 0;
+
   record(): StoredWorkspace {
     const rec = newStoredWorkspace(this.name);
     rec.savedAt = Date.now();
+    this.lastSavedAt = rec.savedAt;
     rec.tree = this.root;
     rec.openTabs = this.tabs.tabs.map((t) => t.path);
     rec.activePath = this.activePath;

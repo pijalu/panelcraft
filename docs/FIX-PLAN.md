@@ -439,6 +439,29 @@ palette grouped by C4 level, progressive link-type menu, feedback toasts, proble
 sticky flow headers, hover info cards, docked transport, 32 px minimum hit targets.
 *Tests:* component tests per affordance + screenshot set light/dark per state.
 
+**Done.** `ui/StatusPill.tsx` (Saved · HH:MM / Unsaved + problem chip, fed by
+`WorkspaceManager.lastSavedAt`), `ui/EmptyState.tsx` (three template cards, mounted in
+the canvas column), `ui/paletteGroups.ts` (C4 grouping, quick-add keys unchanged),
+progressive link-type picker (four verbs + "More types"), `ui/hoverInfo.ts` +
+`ui/HoverCard.tsx` (name/technology/description/tags on canvas hover, `trackHover` in
+the controller), undo/redo toasts through the history hook, closing card on `ended`
+(replay / export SVG / close, backed by a new `player.exportSvg` port), docked
+transport and 32 px minimum hit targets in CSS.
+
+**Done (continued).** Derived fixes found while verifying:
+- **F-35** the template gallery was mounted at shell level, so its `position:absolute`
+  overlay covered the whole window and swallowed clicks on the code editor; it now
+  lives inside `.canvas-col` (which gained `position:relative`) with
+  `pointer-events:none` outside its cards.
+- **F-36** all three templates and the spec doc I wrote were *not parsable* (labels are
+  `: "text"`, the attribute is `tag` not `tags`, flows are `flow "Name" as id`). Fixed,
+  and `uxLaws.test.tsx` now parses every template so they cannot drift again.
+
+*Tests:* `ui/uxLaws.test.tsx` (8 cases: grouping, pill clock/labels/problems, hover
+detail + card, template parsability), e2e `p4-uxlaws.spec.ts` (gallery insert, palette
+groups + 32 px targets, pill/hover/problem chip, screenshot set
+`f25-clean-light/dirty-dark/error-light`, closing card).
+
 ### F-26 Docs truth pass
 Update `SPEC.md` (either implemented or moved to a post-1.0 section: FR-C5/C6/C7/C8/C10/C12, FR-I*),
 `USER-GUIDE.md` (panels, rename, size, present mode), `AppHeader` copy (drop "M3 workspace"), `CHANGELOG.md`,
