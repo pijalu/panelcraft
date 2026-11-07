@@ -6,6 +6,8 @@ import tseslint from 'typescript-eslint';
 // disables without a `// rationale:` comment + ADR reference (agents.md).
 export default tseslint.config(
   {
+    // Global ignores — MUST be a standalone object (flat-config semantics:
+    // `ignores` alongside other keys stops being a global exclude).
     ignores: [
       'web/dist/**',
       'coverage/**',
@@ -14,6 +16,8 @@ export default tseslint.config(
       'playwright-report/**',
       'e2e/__screenshots__/**',
     ],
+  },
+  {
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
