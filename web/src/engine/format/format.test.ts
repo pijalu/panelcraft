@@ -4,59 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { parsePDL } from './parser';
 import { lex } from './lexer';
-
-// FILE-FORMAT §14 normative sample (with the deliberate P101 `process mailx`).
-const CHECKOUT_SRC = [
-  'pcd 1.0',
-  'title "Checkout"',
-  'level container',
-  'direction LR',
-  '',
-  'import common as "../common/actors.pcd"      # provides common.psp',
-  '',
-  'person user "Shopper"',
-  'system shop "Webshop" {',
-  '  description "Storefront SPA"',
-  '  technology "React"',
-  '  tag core',
-  '  property owner "team-commerce"',
-  '}',
-  'container api "Checkout API" { technology "Go" tag core pci }',
-  'datastore db "Orders DB" { technology "PostgreSQL" }',
-  'queue events "order.events" { technology "Kafka" }',
-  'system_ext psp "Payment Provider"            # imported in real files; inlined here',
-  'group ctx "Checkout context" { contains api db }',
-  '',
-  'user -> shop : "browses catalog"',
-  'shop -requests-> api : "POST /checkout" as L1',
-  'api -writes-> db',
-  'api -publishes-> events as L3',
-  'api -requests-> psp : "charge card" as L4',
-  '',
-  'flow "Happy path" as happy {',
-  '  intro "Customer buys a cart"',
-  '  user -> shop : "adds to cart"',
-  '  process api "Validates cart"',
-  '  alt "payment method" {',
-  '    "card"    { api -> psp : "charge" as L4 }',
-  '    "invoice" { info "invoicing not in this story" }',
-  '  }',
-  '  par "fan-out" {',
-  '    { api -> events as L3 : "order created" }',
-  '    { process mailx "send receipt" }        # ← unknown id `mailx` → P101 (kept for corpus test)',
-  '  }',
-  '  info "PCI scope ends at PSP"',
-  '  conclusion "Order stored"',
-  '}',
-  '',
-  'view "Main" {',
-  '  layout auto LR',
-  '  position user (80, 120)',
-  '  position api (420, 90)',
-  '}',
-  '',
-  'style api { fill #2d6cdf }',
-].join('\n');
+import { CHECKOUT_SRC } from './format.testdata';
 
 describe('lexer', () => {
   it('lexes arrows with direction + type', () => {
