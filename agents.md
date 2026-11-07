@@ -57,7 +57,8 @@ npm run build                # static bundle → web/dist
 go build ./...               # bin: panelcraft (embeds web/dist — build web first)
 go test ./...                # unit + corpus parity
 go vet ./... && staticcheck ./...
-gocyclo -over 15 . && echo OK   # CI fails >15; target ≤10
+gocyclo -over 15 cmd internal web && echo OK   # CI fails >15; target ≤10
+                                               # (scoped: node_modules ships Go code)
 
 # cli smoke
 panelcraft validate testdata/corpus

@@ -28,7 +28,9 @@ go_vet()      { run go vet ./...; }
 go_static()   { run staticcheck ./...; }
 go_cyclo() {
   log 'gocyclo -over 15 (CI fails >15; target ≤10)'
-  out="$(gocyclo -over 15 . || true)"
+  # Scoped to repo-owned dirs: gocyclo has no exclude list and third-party
+  # code under node_modules/** must not pollute the gate (M0 decision, M0.md).
+  out="$(gocyclo -over 15 cmd internal web || true)"
   if [[ -n "$out" ]]; then
     echo "$out"
     echo "gocyclo: functions above 15 found — FAIL" >&2
