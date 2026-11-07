@@ -412,6 +412,20 @@ export class WorkspaceManager {
     return snapshotTree(this.root);
   }
 
+  /**
+   * M6-WP7 (FR-W7): adopt a stored workspace record — snapshots restore
+   * point. Deep-copies the tree so the stored record stays pristine (it may
+   * be restored again later); open tabs are re-resolved like init().
+   */
+  restoreRecord(rec: StoredWorkspace): void {
+    this.root = structuredClone(rec.tree);
+    this.name = rec.name;
+    this.tabs = this.restoreTabs({ ...rec, openTabs: rec.openTabs.filter((p) => getNode(this.root, p)?.kind === 'file') });
+    this.openError = null;
+    this.emit();
+    this.scheduleSave();
+  }
+
   /* ---- storage lifecycle (FR-S2/S3/S4) ---- */
 
   /** FR-S4: wipe stored data + reset the session. */

@@ -3,7 +3,7 @@
 // All file edits round-trip through retext → onChangeText (single writer,
 // D-M4-6). Session-only state: active view name; canvas fade/positions are
 // applied via the controller (no persistence — apply-to-file is explicit).
-import { useEffect, useMemo } from 'preact/hooks';
+import { useMemo } from 'preact/hooks';
 import { parsePDL } from '../../engine/format/parser';
 import { printDoc } from '../../engine/format/printer';
 import type { Doc } from '../../engine/model/types';
@@ -15,7 +15,6 @@ import {
   addView,
   deleteView,
   effectiveView,
-  fadeSets,
   setLayout,
   toggleHideId,
   toggleHideTag,
@@ -94,13 +93,6 @@ export function ViewBar(props: ViewBarProps) {
   }, [props.text]);
 
   const ev = useMemo(() => (doc ? effectiveView(doc, props.viewName) : null), [doc, props.viewName]);
-
-  // Fade follows the active view + text live (FR-V1).
-  useEffect(() => {
-    if (!props.ctrl || !doc || !ev) return;
-    const f = fadeSets(doc, ev);
-    props.ctrl.setFaded(f.objects, f.links);
-  }, [props.ctrl, doc, ev]);
 
   if (!doc || !ev || props.text === null) return <div class="viewbar viewbar-empty" data-testid="viewbar" />;
 

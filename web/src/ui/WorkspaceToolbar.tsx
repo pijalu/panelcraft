@@ -16,6 +16,7 @@ export interface WorkspaceToolbarProps {
   onFlash: (msg: string) => void;
   onToggleEphemeral: (on: boolean) => void;
   onClearRequest: () => void;
+  onSnapshotsRequest: () => void;
 }
 
 export function WorkspaceToolbar(props: WorkspaceToolbarProps) {
@@ -106,6 +107,9 @@ export function WorkspaceToolbar(props: WorkspaceToolbarProps) {
         />
         private
       </label>
+      <button type="button" data-testid="tb-snapshots" onClick={props.onSnapshotsRequest}>
+        Snapshots
+      </button>
       <button type="button" class="tb-danger" data-testid="tb-clear-data" onClick={props.onClearRequest}>
         Clear data…
       </button>

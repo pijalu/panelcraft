@@ -373,6 +373,20 @@ export class CanvasController {
     return out;
   }
 
+  /**
+   * Jump-to (M6 search/deps click-through): select the object and center the
+   * viewport on it. No-op for unknown ids.
+   */
+  reveal(id: string): void {
+    const o = this.state.objects.find((ob) => ob.id === id);
+    if (!o) return;
+    this.selectObjects([id]);
+    const cx = o.x + o.w / 2;
+    const cy = o.y + o.h / 2;
+    const { w, h } = this.viewSize();
+    this.setTransform({ x: w / 2 - cx * this.t.k, y: h / 2 - cy * this.t.k, k: this.t.k });
+  }
+
   // ---- undo command helpers ----------------------------------------------
 
   private applyState(s: DiagramState): void {

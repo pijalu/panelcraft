@@ -55,6 +55,24 @@ describe('init (FR-S1 restore)', () => {
     expect(restored.tabs.tabs.map((t) => t.path)).toEqual(['a.pcd']);
   });
 
+  it('restoreRecord adopts a snapshot record: tree, tabs, name (M6 FR-W7)', () => {
+    const seed = new WorkspaceManager({ skipWelcome: true });
+    seed.createFileAt('svc/main.pcd', 'pcd 1.0\nsystem a "A" {\n}');
+    const rec = seed.record();
+    rec.name = 'pre-refactor';
+    // current workspace is different
+    const live = new WorkspaceManager({ skipWelcome: true });
+    live.createFileAt('other.pcd', 'pcd 1.0');
+    live.restoreRecord(rec);
+    expect(live.files().map((f) => f.path)).toEqual(['svc/main.pcd']);
+    expect(live.name).toBe('pre-refactor');
+    expect(live.activePath).toBe('svc/main.pcd');
+    // stored record pristine — a second restore yields the same tree
+    live.createFileAt('drift.pcd', '');
+    live.restoreRecord(rec);
+    expect(live.files().map((f) => f.path)).toEqual(['svc/main.pcd']);
+  });
+
   it('starts fresh on a corrupt record and reports the reason', async () => {
     const port = new MemoryStorage();
     await port.save({ ...newStoredWorkspace(), tree: 'junk' } as unknown as Parameters<StoragePort['save']>[0]);

@@ -10,14 +10,13 @@ import { PropertiesPanel } from './PropertiesPanel';
 import { Palette } from './Palette';
 import { FileTree } from './FileTree';
 import { Tabs } from './Tabs';
-import { Banners } from './Banners';
-import { ClearDataDialog } from './ClearDataDialog';
-import { DivergedDialog } from './DivergedDialog';
-import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { CodePane } from './CodePane';
 import { FlowPane } from './flows/FlowPane';
 import { PlayBar } from './flows/PlayBar';
 import { ViewBar } from './views/ViewBar';
+import { DepsPanel } from './deps/DepsPanel';
+import { AppHeader } from './AppHeader';
+import { AppDialogs } from './AppDialogs';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useCodeSync } from './useCodeSync';
 import { useDivergedClose } from './useDivergedClose';
@@ -41,11 +40,6 @@ function findLink(snap: Snapshot | null) {
   if (!snap || snap.selection.links.length !== 1) return null;
   const id = snap.selection.links[0];
   return snap.links.find((l) => l.id === id) ?? null;
-}
-
-function errorToShow(manager: WorkspaceManager, dismissed: string | null, ready: boolean): string | null {
-  if (!ready || manager.openError === null || manager.openError === dismissed) return null;
-  return manager.openError;
 }
 
 /** Sidebar: Files | Flows tabs — flow editor lives here to keep the row
@@ -160,10 +154,10 @@ export function App() {
   });
   const { manager } = ws;
   const [clearOpen, setClearOpen] = useState(false);
-  const [dismissedError, setDismissedError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [sideTab, setSideTab] = useState<'files' | 'flows'>('files');
   const [viewName, setViewName] = useState<string | undefined>(undefined);
+  const [snapsOpen, setSnapsOpen] = useState(false);
   // Views are per-file session state: switching files resets to the default view.
   useEffect(() => {
     setViewName(undefined);
@@ -186,29 +180,12 @@ export function App() {
 
   return (
     <div class="app-shell" data-testid="app-shell">
-      <header class="app-header">
-        <span class="app-title">PanelCraft</span>
-        <span class="muted">M3 workspace — autosaved in your browser</span>
-        <WorkspaceToolbar
-          manager={manager}
-          activePath={ws.ready ? manager.activePath : null}
-          ready={ws.ready}
-          svgRef={canvas.svgRef}
-          onFlash={setFlash}
-          onToggleEphemeral={(on) => {
-            ws.clearReminder();
-            void manager.setEphemeral(on);
-          }}
-          onClearRequest={() => setClearOpen(true)}
-        />
-      </header>
-      <Banners
-        openError={errorToShow(manager, dismissedError, ws.ready)}
-        quotaDegraded={ws.ready && manager.quotaDegraded}
-        ephemeral={ws.ready && manager.ephemeral}
-        reminder={ws.reminder}
-        onDismissError={() => setDismissedError(manager.openError)}
-        onDismissReminder={ws.clearReminder}
+      <AppHeader
+        ws={ws}
+        svgRef={canvas.svgRef}
+        onFlash={setFlash}
+        onClearRequest={() => setClearOpen(true)}
+        onSnapshotsRequest={() => setSnapsOpen(true)}
       />
       <div class="app-body">
         <SidePane
@@ -240,30 +217,36 @@ export function App() {
           />
           <CanvasSplit canvas={canvas} code={code} player={player} />
         </main>
-        <PropertiesPanel
-          obj={sel.obj}
-          link={sel.link}
-          nameFieldRef={canvas.nameFieldRef}
-          onChangeObject={(id, patch) => ctrl?.updateObject(id, patch)}
-          onChangeLink={(id, patch) => ctrl?.updateLink(id, patch)}
-        />
-      </div>
-      {clearOpen && <ClearDataDialog onConfirm={clearData} onCancel={() => setClearOpen(false)} />}
-      {diverged.prompt !== null && (
-        <DivergedDialog
-          path={diverged.prompt.path}
-          parseError={diverged.prompt.parseError}
-          onApply={diverged.prompt.onApply}
-          onDiscard={diverged.prompt.onDiscard}
-          onCancel={diverged.prompt.onCancel}
-        />
-      )}
-      {flash !== null && (
-        <div class="banner banner-error" data-testid="banner-flash" role="alert">
-          <span>{flash}</span>
-          <button type="button" onClick={() => setFlash(null)}>dismiss</button>
+        <div class="props-col">
+          <PropertiesPanel
+            obj={sel.obj}
+            link={sel.link}
+            nameFieldRef={canvas.nameFieldRef}
+            onChangeObject={(id, patch) => ctrl?.updateObject(id, patch)}
+            onChangeLink={(id, patch) => ctrl?.updateLink(id, patch)}
+          />
+          <DepsPanel
+            text={activePath !== null ? manager.text(activePath) : null}
+            viewName={viewName}
+            activeId={sel.obj?.id ?? null}
+            ctrl={canvas.ctrlRef.current}
+            onPick={(id) => canvas.ctrlRef.current?.reveal(id)}
+          />
         </div>
-      )}
+      </div>
+      <AppDialogs
+        manager={manager}
+        activePath={activePath}
+        ctrlRef={canvas.ctrlRef}
+        diverged={diverged}
+        clearOpen={clearOpen}
+        clearData={clearData}
+        onClearCancel={() => setClearOpen(false)}
+        flash={flash}
+        onFlashDismiss={() => setFlash(null)}
+        snapsOpen={snapsOpen}
+        onSnapsClose={() => setSnapsOpen(false)}
+      />
     </div>
   );
 }
