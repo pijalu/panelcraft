@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, redo, undo } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { linter, type Diagnostic as CmDiagnostic, lintGutter } from '@codemirror/lint';
 import type { SyncMachine, SyncSnapshot } from './sync';
@@ -19,6 +19,7 @@ import { pcTheme, pcHighlightExtension } from './cmTheme';
 import { minimalChange, trailingWhitespaceOnly } from './diff';
 import { objectAtLine, spanOf } from '../../engine/format/spans';
 import { highlightExtension, setHighlight } from './highlight';
+import { codePorts } from '../codePorts';
 
 export interface CodeEditorProps {
   /** The App-owned sync machine (single source of sync truth). */
@@ -117,6 +118,9 @@ export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProp
     const v = new EditorView({ state, parent: host.current! });
     view.current = v;
     // F-22 canvas → code: select the entity's statement lines
+    // F-24: undo/redo through the editor's own history command.
+    codePorts.undo = () => undo(v);
+    codePorts.redo = () => redo(v);
     if (revealRef) {
       revealRef.current = (id: string) => {
         const text = v.state.doc.toString();
@@ -143,6 +147,8 @@ export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProp
       v.dom.addEventListener('mouseup', report);
     }
     return () => {
+      codePorts.undo = null;
+      codePorts.redo = null;
       if (revealRef) revealRef.current = null;
       v.destroy();
       view.current = null;

@@ -16,6 +16,7 @@ import { AppHeader } from './AppHeader';
 import { AppDialogs } from './AppDialogs';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useUiLayout } from './useUiLayout';
+import { useHistory } from './useHistory';
 import { layoutStyle } from './uiLayout';
 import { PanelRail, Splitter, focusRail } from './PanelChrome';
 import { InlineRename, type RenameTarget } from './InlineRename';
@@ -494,6 +495,8 @@ export function App() {
   const [illustration, setIllustration] = useState<IllustrationId | 'auto'>('auto');
   const player = useFlowStage({ manager, canvas, activePath, illustration });
   const ui = useUiLayout(manager, ws.ready, ws.version);
+  const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null);
+  const [historyOpen, setHistoryOpen] = useState(false);  // F-24 history affordance
   const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
   const sel = selections(canvas.snap);
   const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
@@ -526,6 +529,7 @@ export function App() {
         onFlash={setFlash}
         onClearRequest={() => setClearOpen(true)}
         onSnapshotsRequest={() => setSnapsOpen(true)}
+        onHistoryRequest={() => setHistoryOpen(true)}
       />
       <AppBody
         ws={ws}
@@ -567,6 +571,7 @@ export function App() {
         onClearCancel={() => setClearOpen(false)}
         flash={flash}
         onFlashDismiss={() => setFlash(null)}
+        {...{ historyOpen, history, onHistoryClose: () => setHistoryOpen(false) }}
         snapsOpen={snapsOpen}
         onSnapsClose={() => setSnapsOpen(false)}
       />

@@ -166,6 +166,8 @@ export interface ControllerOptions {
    * active view (debounced) — the canvas never writes the file itself.
    */
   onGeometry?: (positions: Record<string, { x: number; y: number }>) => void;
+  /** F-24: unified history feed (canvas commands, one row per user action). */
+  onHistory?: (label: string, mergeKey?: string) => void;
 }
 
 export function labelFor(kind: Kind): string {
@@ -273,6 +275,7 @@ export class CanvasController {
   private readonly onRenameRequest?: (id: string) => void;
   private readonly measure: TextMeasurer;
   private readonly onGeometry?: (positions: Record<string, { x: number; y: number }>) => void;
+  private readonly onHistory?: (label: string, mergeKey?: string) => void;
   private readonly onGhostOpen?: (path: string) => void;
   /** F-20: read-only imported objects (never part of `state`). */
   private ghosts: Array<DiagramObject & { path: string }> = [];
@@ -289,6 +292,8 @@ export class CanvasController {
     this.onRenameRequest = opts.onRenameRequest;
     this.measure = opts.measure ?? canvasMeasurer();
     this.onGeometry = opts.onGeometry;
+    this.onHistory = opts.onHistory;
+    this.undo.setObserver((cmd) => this.onHistory?.(cmd.label, cmd.coalesceKey));
     this.onGhostOpen = opts.onGhostOpen;
     this.renderer = new SceneRenderer(svg);
     this.attach();
@@ -1040,10 +1045,35 @@ export class CanvasController {
     const k = e.key.toLowerCase();
     if (k !== 'z' && k !== 'y') return false;
     e.preventDefault();
-    if (k === 'z' && !e.shiftKey) this.undo.undo();
-    else this.undo.redo();
-    this.applyState(this.state);
+    if (k === 'z' && !e.shiftKey) this.undoCommand();
+    else this.redoCommand();
     return true;
+  }
+
+  /** F-24: undo one canvas command (used by the history affordance too). */
+  undoCommand(): boolean {
+    const label = this.undo.undo();
+    if (label === null) return false;
+    this.applyState(this.state);
+    this.onHistory?.('undo ' + label);
+    return true;
+  }
+
+  /** F-24: redo one canvas command. */
+  redoCommand(): boolean {
+    const label = this.undo.redo();
+    if (label === null) return false;
+    this.applyState(this.state);
+    this.onHistory?.('redo ' + label);
+    return true;
+  }
+
+  get undoDepth(): number {
+    return this.undo.canUndo ? 1 : 0;
+  }
+
+  get redoDepth(): number {
+    return this.undo.canRedo ? 1 : 0;
   }
 
   /**

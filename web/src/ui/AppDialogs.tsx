@@ -3,6 +3,8 @@
 // clear-data confirm, diverged-file prompt, flash banner, quick search
 // (M6-WP5) and snapshots (M6-WP6). Pure chrome — no canvas coupling beyond
 // the controller ref used for search jump-to.
+import { HistoryMenu } from './HistoryMenu';
+import type { HistoryHandle } from './useHistory';
 import { ClearDataDialog } from './ClearDataDialog';
 import { DivergedDialog } from './DivergedDialog';
 import { SnapshotsDialog } from './SnapshotsDialog';
@@ -27,11 +29,25 @@ export function AppDialogs(props: {
   onFlashDismiss(): void;
   snapsOpen: boolean;
   onSnapsClose(): void;
+  /** F-24: unified history affordance. */
+  historyOpen: boolean;
+  history: HistoryHandle;
+  onHistoryClose(): void;
 }) {
   const search = useQuickSearch(props.manager, props.activePath, props.ctrlRef);
   const store = useSnapshotStore();
   return (
     <>
+      {props.historyOpen && (
+        <HistoryMenu
+          entries={props.history.entries}
+          canUndo={props.history.canUndo}
+          canRedo={props.history.canRedo}
+          onUndo={() => props.history.undo(false)}
+          onRedo={() => props.history.redo(false)}
+          onClose={props.onHistoryClose}
+        />
+      )}
       {props.clearOpen && <ClearDataDialog onConfirm={props.clearData} onCancel={props.onClearCancel} />}
       {props.diverged.prompt !== null && (
         <DivergedDialog

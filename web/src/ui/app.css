@@ -2397,3 +2397,68 @@ marker .pc-arrow[fill='none'] {
   font-size: var(--pc-text-xs);
   cursor: pointer;
 }
+
+/* F-24 unified history affordance */
+.history-menu {
+  position: fixed;
+  top: 56px;
+  right: 16px;
+  z-index: 60;
+  width: 300px;
+  max-height: 60vh;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-surface);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 24%);
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.history-actions {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.history-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--pc-text-xs);
+}
+
+.history-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 2px;
+  border-bottom: 1px solid var(--pc-border);
+}
+
+.history-badge {
+  width: 18px;
+  color: var(--pc-muted);
+  text-align: center;
+}
+
+.history-row[data-surface='canvas'] .history-badge {
+  color: var(--pc-accent);
+}
+
+.history-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-empty {
+  margin: 6px 2px;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+}

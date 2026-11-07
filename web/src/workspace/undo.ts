@@ -24,9 +24,16 @@ export class UndoStack {
   private redoStack: CoalescableCommand[] = [];
   private lastPushAt = -Infinity;
   private readonly now: () => number;
+  /** F-24: observer notified on every pushed (or coalesced) command. */
+  private observer: ((cmd: CoalescableCommand) => void) | null = null;
 
   constructor(now: () => number = Date.now) {
     this.now = now;
+  }
+
+  /** F-24: observe pushes (the unified history feed subscribes here). */
+  setObserver(fn: ((cmd: CoalescableCommand) => void) | null): void {
+    this.observer = fn;
   }
 
   get size(): number {
@@ -63,6 +70,7 @@ export class UndoStack {
       if (merged) {
         this.undoStack[this.undoStack.length - 1] = merged;
         this.lastPushAt = t;
+        this.observer?.(merged);
         return;
       }
     }
@@ -70,6 +78,7 @@ export class UndoStack {
     this.lastPushAt = t;
     if (this.redoStack.length > 0) this.redoStack = [];
     if (this.undoStack.length > UNDO_CAP) this.undoStack.shift();
+    this.observer?.(cmd);
   }
 
   /** Roll the top command back. Returns its label, or null when empty. */

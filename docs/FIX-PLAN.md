@@ -416,6 +416,19 @@ One journal: canvas commands, code edits, flow/view edits with focus-aware `Ctrl
 history affordance for the last N entries.
 *Tests:* unit ordering/coalescing; e2e undo across all three surfaces.
 
+**Done.** `ui/historyFeed.ts` is the shared journal (`HistoryFeed` with
+coalescing `mergeKey`, cap 40, `undoSurface` routing rule) and `ui/useHistory.ts`
+feeds it: canvas commands arrive through a new `UndoStack.setObserver` hook (one row
+per push, coalesced runs fold into one), code edits through the machine's
+`editing` transition (one row per typing burst). `ui/HistoryMenu.tsx` (opened from
+the header's `⟲ History`) lists the last 12 rows with surface badges and offers
+Undo/Redo routed to whatever owns the top action — `Ctrl/Cmd+Z` keeps its
+focus-based routing. `CanvasController` gained `undoCommand`/`redoCommand` and
+depth getters; the editor installs `ui/codePorts.ts` so the shell can undo code
+without reaching into CodeMirror. Tests: `ui/historyFeed.test.ts`,
+e2e `p3-history.spec.ts` (drag + code edit → one journal → undo/redo across
+surfaces, screenshot).
+
 ---
 
 ## Phase P4 — Laws-of-UX pass & docs truth

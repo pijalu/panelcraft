@@ -4,6 +4,13 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-02-14 — P3: unified undo & history (F-24)
+
+- **F-24 unified undo**: canvas commands and code edits share one journal
+  (`HistoryFeed`), surfaced by a header `⟲ History` popover with surface badges and
+  Undo/Redo routed to the action's owner. Canvas pushes are observed through
+  `UndoStack.setObserver`; code edits are recorded per typing burst.
+
 ## 2026-02-14 — P3: canvas diagnostics (F-23)
 
 - **F-23 canvas diagnostics**: objects whose statement is invalid get an error ring while the

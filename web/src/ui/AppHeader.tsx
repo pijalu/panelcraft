@@ -19,6 +19,8 @@ export function AppHeader(props: {
   onFlash(msg: string): void;
   onClearRequest(): void;
   onSnapshotsRequest(): void;
+  /** F-24: open the unified history affordance. */
+  onHistoryRequest(): void;
 }) {
   const { ws } = props;
   const [dismissedError, setDismissedError] = useState<string | null>(null);
@@ -40,6 +42,15 @@ export function AppHeader(props: {
           onClearRequest={props.onClearRequest}
           onSnapshotsRequest={props.onSnapshotsRequest}
         />
+        <button
+          type="button"
+          class="ghost-btn"
+          data-testid="history-open"
+          aria-label="History"
+          onClick={props.onHistoryRequest}
+        >
+          ⟲ History
+        </button>
       </header>
       <Banners
         openError={errorToShow(ws.manager, dismissedError, ws.ready)}
