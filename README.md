@@ -4,31 +4,61 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 Web-based architecture diagramming tool (IcePanel-inspired — no affiliation):
-WYSIWYG canvas editor with an always-visible code view, step-by-step flow
+WYSIWYG SVG canvas with an always-visible code view, step-by-step flow
 animation, and a multi-file workspace that lives **entirely in your browser** —
-nothing is stored server-side.
+nothing is stored server-side. Ships as a static site (GitHub Pages-hostable,
+service-worker offline shell) and a single Go binary
+(`serve` + `validate` / `convert` CLI) for Windows/Linux/macOS.
 
-**Status: specification phase.** Implementation starts at milestone M0 — see
-[docs/SPEC.md](docs/SPEC.md) (product & technical spec) and
-[docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) (native `.pcd` file format).
+## Quick start (users)
 
-## Planned capabilities
+- **Hosted**: open the GitHub Pages URL — works offline after the first load
+  (service worker caches the app shell; your data stays in your browser).
+- **Self-host / CLI**: grab a binary from Releases (linux/darwin/windows ×
+  amd64/arm64, checksums in `SHA256SUMS`), then:
 
-- Editable, animated diagrams: drop components, draw typed links, edit properties;
-  play step-by-step flows over the diagram
-- Code view ⇄ canvas live sync; the text file is the single source of truth
-- Native format `.pcd` (own grammar, mermaid-inspired); mermaid import (converter)
-  and export (declared feature drop)
-- Browser-only storage (IndexedDB); per-file export `.pcd` / `.mmd` / `.svg` / `.png`,
-  full workspace ZIP round-trip
-- **Fully self-contained**: no CDN, no external resources, runs/builds offline;
-  system fonts, inline SVG icons only
-- GitHub Pages hostable (fully static) **and** single Go binary
-  (serve + `validate` / `convert` / `render` CLI) for Windows/Linux/macOS
+  ```bash
+  panelcraft serve --addr :8080 --open   # serves the app + your .pcd dir read-only
+  panelcraft validate docs/architecture  # validate .pcd files (exit 1 = errors)
+  panelcraft convert diagram.pcd -o out/ # canonical IR JSON
+  panelcraft version
+  ```
 
-## Repository layout (planned)
+  Full command reference: [docs/USER-GUIDE.md](docs/USER-GUIDE.md#cli-reference).
 
-See the repo map in [agents.md](agents.md).
+## What it does
+
+- Editable diagrams: drop components (person/system/container/datastore/…),
+  draw typed links, edit properties; auto-layout (dagre), named views, tags
+- **Code view ⇄ canvas live sync** — the text file is the single source of
+  truth; the native `.pcd` grammar is mermaid-inspired (spec:
+  [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md))
+- **Flows**: record step-by-step narratives over the diagram and play them
+  back with animated highlighting + ARIA narration
+- Multi-file workspace in IndexedDB; snapshots; per-file export `.pcd` / `.mmd`
+  / `.svg` (sanitized) / `.png`; full workspace ZIP round-trip; mermaid import
+- **Fully self-contained** (SPEC N7): no CDN, no external resources, runs and
+  builds offline; system fonts, inline SVG icons; WCAG 2.1 AA UI chrome
+
+## Documentation
+
+| Doc | Contents |
+|---|---|
+| [docs/SPEC.md](docs/SPEC.md) | product & technical spec, NFRs, quality gates |
+| [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md) | native `.pcd` grammar (normative) |
+| [docs/USER-GUIDE.md](docs/USER-GUIDE.md) | user guide: create/edit/flows/views/CLI reference |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | architecture prose + `.pcd` diagrams |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | release history |
+| [agents.md](agents.md) | contributor handbook (commands, gates, DoD) |
+| [docs/adr/](docs/adr/) | architecture decision records |
+
+## Development
+
+```bash
+npm ci && go mod download      # one-time (offline afterwards, SPEC N11)
+npm run dev                    # vite dev server :5173
+bash scripts/verify.sh m7      # full local CI gate (28 stages)
+```
 
 ## Contributing
 
