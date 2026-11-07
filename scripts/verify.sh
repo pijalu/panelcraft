@@ -101,6 +101,34 @@ snapshots() { run npx vitest run web/src/workspace/store/; }
 # smoke, search jump; M6-WP8).
 e2e_m6() { run npm run e2e -- --project=chromium; }
 
+# ---- m7 stages (hardening & release; reuses all earlier gates) ---------------
+# perf_nfr: N1–N3 budgets as hard assertions (M7-WP2, SPEC §5) — synthetic
+# scene ops budgets (N1), 100-object open-to-interactive (N2), 10k-line parse
+# (N3). Layer virtualization/culling only if a budget is missed.
+perf_nfr() { run npx vitest run web/src/engine/perf/; }
+# svg_fuzz: property/fuzz tests for the SVG export sanitizer — random hostile
+# labels (scripts, foreignObject, event attrs, entities) must sanitize clean
+# (M7-WP4, N6).
+svg_fuzz() { run npx vitest run web/src/workspace/sanitize.fuzz.test.ts; }
+# cli_traversal: Go CLI path-traversal gates — workspace-escape (P103) via CLI
+# validate, output-path handling, server /files traversal (M7-WP4, N6).
+cli_traversal() { run go test ./cmd/panelcraft/ ./internal/server/ -run 'Traversal|Escape' -count=1; }
+# a11y_e2e: axe-core WCAG 2.1 AA scan over app + every dialog, both themes
+# (M7-WP1, N5).
+a11y_e2e() { run npm run e2e -- --project=chromium e2e/m7-a11y.spec.ts; }
+# offline_e2e: service-worker offline shell — reload with network cut, app +
+# assets served from SW cache (M7-WP3, N8).
+offline_e2e() { run npm run e2e -- --project=chromium e2e/m7-offline.spec.ts; }
+# docs_links: README/ARCHITECTURE/user guide/CLI ref/CHANGELOG — relative links
+# resolve; embedded examples validate via the CLI (M7-WP5).
+docs_links() { run bash scripts/check-docs.sh; }
+# release_dry: dry-run release — binary matrix linux/darwin/windows × amd64/arm64
+# (CGO off, web/dist embedded), sha256 checksums, pages artifact, boot-smoke
+# (M7-WP6, N4/N11).
+release_dry() { run bash scripts/release.sh --dry-run; }
+# e2e now includes S6-shaped m7 additions (axe + offline) next to S1–S5/S7.
+e2e_m7() { run npm run e2e -- --project=chromium; }
+
 case "$MILESTONE" in
   m0)
     STAGES=(web_check web_test web_build go_vet go_static go_cyclo go_test selfcontained e2e_smoke)
@@ -123,8 +151,11 @@ case "$MILESTONE" in
   m6)
     STAGES=(web_check web_test perf_smoke workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m6)
     ;;
+  m7)
+    STAGES=(web_check web_test perf_smoke perf_nfr workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots svg_fuzz cli_traversal web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links selfcontained a11y_e2e offline_e2e e2e_m7 release_dry)
+    ;;
   *)
-    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4, m5, m6)" >&2
+    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4, m5, m6, m7)" >&2
     exit 2
     ;;
 esac

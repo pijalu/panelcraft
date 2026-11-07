@@ -38,7 +38,10 @@ the default.
 ## Approved dev/test set
 
 vite, typescript, eslint(+ts), vitest(+fake-indexeddb, jsdom),
-@testing-library/preact, playwright(+pixelmatch), staticcheck, gocyclo/gocognit.
+@testing-library/preact, playwright(+pixelmatch), staticcheck, gocyclo/gocognit,
+@axe-core/playwright (M7 a11y gate, N5 — MIT; test-only, zero bundle impact;
+hand-auditing WCAG 2.1 AA rules across all dialogs/themes does not scale and
+misses regressions).
 
 ## Explicit non-dependencies (v1)
 
