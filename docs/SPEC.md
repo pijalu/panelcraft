@@ -447,7 +447,8 @@ implemented and covered by tests.
 * FR-C9 cross-surface undo ordering is a shared journal (`HistoryFeed`) with
   focus-aware routing, not a single stack for every surface.
 * FR-C12 cross-file paste resolves imports by *linking*, not inlining.
-* FR-K* curved camera paths, mini-map: mini-map remains post-v1 (see the list above).
+* FR-C1 mini-map is implemented with pointer/keyboard navigation and live flow-camera
+  tracking; curved camera paths remain a presentation refinement.
 
 **Known UI limitations** (documented rather than silently different):
 

@@ -4,6 +4,14 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-11 — P6: accessible mini-map
+
+- Completed FR-C1's mini-map with topology/viewport rendering, click-to-center,
+  arrow-key panning, Home-to-fit, live flow-camera updates and responsive hiding.
+- Canvas rendering is O(objects + links) with device-pixel-ratio capped at 2;
+  the real 300-object pan/zoom/drag baseline remains at 60/60/122 fps.
+- Added geometry/component tests, narrow-screen E2E and reviewed light/dark goldens.
+
 ## 2026-11-11 — P6: sequence export
 
 - Completed M6-WP7: a selected flow downloads as `.seq.mmd`, preserving participants,

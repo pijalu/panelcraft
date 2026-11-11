@@ -663,6 +663,17 @@ export class CanvasController {
     if (u) this.setTransform(fitRect(u, this.viewSize()));
   }
 
+  /** Mini-map navigation: center a canvas point without changing zoom. */
+  centerOn(p: Point): void {
+    const { w, h } = this.viewSize();
+    this.setTransform({ x: w / 2 - p.x * this.t.k, y: h / 2 - p.y * this.t.k, k: this.t.k });
+  }
+
+  /** Mini-map keyboard navigation uses the same screen-space pan as the canvas. */
+  panBy(dx: number, dy: number): void {
+    this.setTransform(panBy(this.t, dx, dy));
+  }
+
   /**
    * F-20: show imported objects as ghosts. They are laid out in extra grid rows
    * below the document's own objects and are never written back to the file.
@@ -855,6 +866,8 @@ export class CanvasController {
   applyCamera(t: Transform): void {
     this.t = t;
     this.renderer.setWorldTransform(t);
+    // Local overlay notification only; the app snapshot/code-sync path stays silent.
+    this.svg.dispatchEvent(new CustomEvent<Transform>('pc-camera', { detail: t }));
   }
 
   private recomputeRoutes(): void {

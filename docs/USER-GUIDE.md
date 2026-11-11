@@ -33,6 +33,11 @@ mirrors every feature.
   waypoints. Drag a child link's midpoint to add a waypoint, and drag waypoints to move
   them. Labels automatically try nearby positions to avoid objects, other routes, and
   other labels; a text halo keeps the least-bad fallback readable in dense diagrams.
+- **Pan / zoom**: Space-drag or wheel/trackpad pans; Ctrl/Cmd+wheel zooms.
+  The upper-right **mini-map** shows the topology and current viewport. Click it
+  to center that location; with it focused, arrow keys pan and Home fits the
+  diagram. It follows flow-camera movement, hides during presentation and on
+  narrow screens (≤640px), and uses the active light/dark theme.
 - **Hover** an object to see its name, technology, description and tags.
 - **Keyboard**: arrows move the selection, Tab/Shift+Tab move focus between
   objects, Delete removes, Escape deselects or closes the active overlay.

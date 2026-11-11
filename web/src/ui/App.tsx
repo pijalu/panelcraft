@@ -25,6 +25,7 @@ import type { HoverInfo } from './hoverInfo';
 import { layoutStyle } from './uiLayout';
 import { PanelRail, Splitter, focusRail } from './PanelChrome';
 import { CanvasMenu } from './CanvasMenu';
+import { MiniMap } from './MiniMap';
 import { ShellBanners } from './ShellBanners';
 import { useCanvasRevealPort } from './useCanvasReveal';
 import { usePresentation } from './usePresentation';
@@ -142,6 +143,12 @@ function CanvasSplit(props: {
     <div class="canvas-split">
       <main class="canvas-wrap" onContextMenu={props.onCanvasContextMenu}>
         <svg ref={props.canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
+        <MiniMap
+          snapshot={props.canvas.snap}
+          controller={props.canvas.ctrlRef.current}
+          canvasElement={props.canvas.svgRef.current}
+          viewSize={{ w: 800, h: 600 }}
+        />
         <PlayBar player={props.player} onPresent={props.onPresent} />
       </main>
       {props.codeCollapsed ? (
