@@ -456,6 +456,8 @@ implemented and covered by tests.
   shown on the canvas hover card; there is no separate tooltip affordance.
 * The illustration styles in flow playback are chosen per flow (`auto` by default);
   there is no per-step illustration override.
+* Dense orthogonal routes may cross an unrelated relationship label; route/label collision
+  avoidance remains a post-v1 refinement (P5 visual review).
 
 ## 12.2 Open items (post-v1 backlog)
 
