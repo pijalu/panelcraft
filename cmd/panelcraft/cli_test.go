@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pijalu/panelcraft/internal/ir"
 	"github.com/pijalu/panelcraft/internal/pdl"
 )
 
@@ -211,50 +210,135 @@ func filterCodes(ds []pdl.Diagnostic, code string) []pdl.Diagnostic {
 	return out
 }
 
-func TestConvert(t *testing.T) {
+func TestConvertMermaidFlowchart(t *testing.T) {
 	dir := t.TempDir()
-	path := writeFile(t, dir, "ok.pcd", srcClean)
+	input := writeFile(t, dir, "architecture.mmd", `flowchart LR
+  user((Customer))
+  subgraph shop[Online shop]
+    web[Web app]
+    db[(Orders)]
+  end
+  user -->|uses| web
+  web -.-> db
+  style web fill:#fff
+`)
+	out := filepath.Join(dir, "nested", "architecture.pcd")
 	var stdout, stderr strings.Builder
-	if got := runConvert([]string{path}, &stdout, &stderr); got != 0 {
+	// SPEC form: flags may follow the input path.
+	if got := runConvert([]string{input, "-o", out}, &stdout, &stderr); got != 0 {
+		t.Fatalf("convert exit %d, want 0; stderr=%s", got, stderr.String())
+	}
+	raw, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed := pdl.Parse(string(raw))
+	if parsed.Doc == nil {
+		t.Fatalf("output is not valid PDL: %+v", parsed.Diagnostics)
+	}
+	if parsed.Doc.Direction != "LR" || len(parsed.Doc.Objects) != 4 || len(parsed.Doc.Links) != 2 {
+		t.Fatalf("unexpected conversion: %s", raw)
+	}
+	var groupFound bool
+	for _, obj := range parsed.Doc.Objects {
+		if obj.Kind == "group" && obj.ID == "shop" && len(obj.Contains) == 2 {
+			groupFound = true
+		}
+	}
+	if !groupFound {
+		t.Fatalf("C4-style boundary was not preserved: %s", raw)
+	}
+	if !strings.Contains(stderr.String(), "M200") {
+		t.Fatalf("unsupported style must be diagnosed, not silently dropped: %s", stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "architecture.ir.json")); !os.IsNotExist(err) {
+		t.Fatal("convert must write canonical PDL, not IR JSON")
+	}
+}
+
+func TestConvertMermaidC4(t *testing.T) {
+	dir := t.TempDir()
+	input := writeFile(t, dir, "c4.mmd", `C4Context
+  title Online shop
+  Person(customer, "Customer")
+  System_Ext(payments, "Payment provider")
+  System_Boundary(shop, "Online shop") {
+    Container(web, "Web app", "Go", "Serves the shop")
+    ContainerDb(db, "Orders", "PostgreSQL")
+  }
+  Rel(customer, web, "Uses")
+  BiRel(web, payments, "Charges", "HTTPS")
+`)
+	out := filepath.Join(dir, "c4.pcd")
+	var stdout, stderr strings.Builder
+	if got := runConvert([]string{"-o", out, input}, &stdout, &stderr); got != 0 {
+		t.Fatalf("C4 convert exit %d, want 0; stderr=%s", got, stderr.String())
+	}
+	raw, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed := pdl.Parse(string(raw))
+	if parsed.Doc == nil || parsed.Doc.Level != "context" || len(parsed.Doc.Objects) != 5 {
+		t.Fatalf("unexpected C4 conversion: %s (%+v)", raw, parsed.Diagnostics)
+	}
+	if len(parsed.Doc.Links) != 2 || !parsed.Doc.Links[1].Bidir {
+		t.Fatalf("C4 relationships were not preserved: %s", raw)
+	}
+	if !strings.Contains(string(raw), `technology "Go"`) || !strings.Contains(string(raw), "technology: HTTPS") {
+		t.Fatalf("C4 technology metadata was dropped: %s", raw)
+	}
+}
+
+func TestConvertCanonicalizesPCDAndDefaultsOutput(t *testing.T) {
+	dir := t.TempDir()
+	input := writeFile(t, dir, "ok.pcd", srcClean)
+	var stdout, stderr strings.Builder
+	if got := runConvert([]string{input}, &stdout, &stderr); got != 0 {
 		t.Fatalf("exit %d, want 0", got)
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, "ok.ir.json"))
+	raw, err := os.ReadFile(input)
 	if err != nil {
-		t.Fatalf("ir.json not written: %v", err)
+		t.Fatal(err)
 	}
-	res := pdl.Parse(srcClean)
-	want, _ := ir.Marshal(res.Doc)
-	if string(raw) != string(want) {
-		t.Fatalf("ir.json diverges from ir.Marshal:\n got %s\nwant %s", raw, want)
-	}
-
-	// --out DIR
-	outDir := filepath.Join(dir, "ir")
-	if got := runConvert([]string{"--out", outDir, path}, &stdout, &stderr); got != 0 {
-		t.Fatalf("--out exit %d, want 0", got)
-	}
-	if _, err := os.Stat(filepath.Join(outDir, "ok.ir.json")); err != nil {
-		t.Fatalf("--out file missing: %v", err)
+	parsed := pdl.Parse(srcClean)
+	want := pdl.PrintDoc(parsed.Doc)
+	if string(raw) != want {
+		t.Fatalf("canonical PDL diverges:\n got %s\nwant %s", raw, want)
 	}
 
-	// parse abort → 1, no output
-	abort := writeFile(t, dir, "abort.pcd", srcAbort)
+	mermaid := writeFile(t, dir, "default.mmd", "graph TD\na[A] --> b[B]\n")
 	stdout.Reset()
-	if got := runConvert([]string{abort}, &stdout, &stderr); got != 1 {
-		t.Fatalf("abort exit %d, want 1", got)
+	stderr.Reset()
+	if got := runConvert([]string{mermaid}, &stdout, &stderr); got != 0 {
+		t.Fatalf("default output exit %d: %s", got, stderr.String())
 	}
-	if _, err := os.Stat(filepath.Join(dir, "abort.ir.json")); !os.IsNotExist(err) {
-		t.Fatalf("abort must not write output")
+	if _, err := os.Stat(filepath.Join(dir, "default.pcd")); err != nil {
+		t.Fatalf("default .pcd output missing: %v", err)
 	}
-	if !strings.Contains(stderr.String(), "E104") {
-		t.Fatalf("abort should print E104 to stderr:\n%s", stderr.String())
-	}
+}
 
-	// usage errors → 2
-	if got := runConvert([]string{filepath.Join(dir, "nope.pcd")}, &stdout, &stderr); got != 2 {
-		t.Fatalf("missing file exit %d, want 2", got)
+func TestConvertErrors(t *testing.T) {
+	dir := t.TempDir()
+	abort := writeFile(t, dir, "abort.pcd", srcAbort)
+	unsupported := writeFile(t, dir, "diagram.svg", "<svg/>")
+	cases := []struct {
+		args []string
+		code int
+	}{
+		{[]string{abort}, 1},
+		{[]string{filepath.Join(dir, "nope.pcd")}, 2},
+		{nil, 2},
+		{[]string{unsupported}, 2},
+		{[]string{abort, abort}, 2},
 	}
-	if got := runConvert(nil, &stdout, &stderr); got != 2 {
-		t.Fatalf("no args exit %d, want 2", got)
+	for _, tc := range cases {
+		var stdout, stderr strings.Builder
+		if got := runConvert(tc.args, &stdout, &stderr); got != tc.code {
+			t.Fatalf("args %v: exit %d, want %d (%s)", tc.args, got, tc.code, stderr.String())
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "abort.pcd")); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { FlowAnimator } from '../engine/anim/engine';
 import { CameraController } from '../engine/anim/camera';
 import { waapiPlayer, systemClock } from '../engine/anim/ports';
-import type { Rect, Size } from '../engine/render/viewport';
+import { screenRectToCanvas, type Rect, type Size, type Transform } from '../engine/render/viewport';
 import { useFlowPlayer, type FlowPlayerApi } from './flows/useFlowPlayer';
 import type { WorkspaceManager } from '../workspace/workspace';
 import type { CanvasHandle } from './useWorkspace';
@@ -31,6 +31,21 @@ function screenRectOf(svg: SVGSVGElement, id: string): Rect | null {
   const r = el.getBoundingClientRect();
   if (r.width === 0 && r.height === 0) return null; // jsdom / hidden scene
   return { x: r.x, y: r.y, w: r.width, h: r.height };
+}
+
+/** DOM rect in the world's current (including in-flight WAAPI) coordinates. */
+function canvasRectOf(svg: SVGSVGElement, id: string, viewport: Transform): Rect | null {
+  const r = screenRectOf(svg, id);
+  if (r === null) return null;
+  const world = svg.querySelector('.pc-world');
+  const matrix = world instanceof SVGGraphicsElement ? world.getScreenCTM() : null;
+  if (matrix === null) {
+    return screenRectToCanvas(r, svg.getBoundingClientRect(), viewport);
+  }
+  const inverse = matrix.inverse();
+  const a = new DOMPoint(r.x, r.y).matrixTransform(inverse);
+  const b = new DOMPoint(r.x + r.w, r.y + r.h).matrixTransform(inverse);
+  return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
 }
 
 export function useFlowStage(deps: FlowStageDeps): FlowPlayerApi {
@@ -97,11 +112,9 @@ export function useFlowStage(deps: FlowStageDeps): FlowPlayerApi {
     player.setRectProvider({
       rectOf: (id) => {
         const svg = canvas.svgRef.current;
-        const v = canvas.ctrlRef.current?.viewport ?? { x: 0, y: 0, k: 1 };
-        const r = svg === null ? null : screenRectOf(svg, id);
-        return r === null
-          ? null
-          : { x: (r.x - v.x) / v.k, y: (r.y - v.y) / v.k, w: r.w / v.k, h: r.h / v.k };
+        if (svg === null) return null;
+        const viewport = canvas.ctrlRef.current?.viewport ?? { x: 0, y: 0, k: 1 };
+        return canvasRectOf(svg, id, viewport);
       },
     });
   });

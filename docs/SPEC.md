@@ -436,6 +436,8 @@ implemented and covered by tests.
 * FR-C12 copy/paste/duplicate within a file, with id re-allocation on paste.
 * FR-I1…FR-I3 imports: `import Alias as "./x.pcd"`, read-only ghosts rendered on the
   canvas, click-through to the source file, cycle detection.
+* FR-X / S6 CLI: Mermaid/PDL → canonical PDL conversion and real-Chrome SVG/PNG
+  rendering, including light/dark themes, named views, output sizing and C4 auto-layout.
 
 **Moved to the post-v1 backlog (not implemented, deliberately):**
 
@@ -462,9 +464,9 @@ stencils · additional diagram notations (sequence-native, deployment advanced) 
 optional file-system access API for real folders · flow→`sequenceDiagram` export
 (`.seq.mmd`, slipped from M6-WP7 per PLAN §10 — first M6 slip, nothing else cut).
 M7 groom adds: full i18n string centralization (`strings.ts`; N10 shipped English-only,
-see M7.md) · flow-playback camera edge containment (centered step can clip partially
-off-canvas near diagram borders) · deps panel heading naming the owning file (carried
-from M6 vision round 3)
+see M7.md). F-39/F-40 subsequently closed the carried camera-containment and
+dependencies-heading items; active flow actors now have browser containment assertions
+and the dependencies heading names the owning file.
 
 ---
 

@@ -2,7 +2,7 @@
 // Dagre adapter determinism + pin handling tests (M6-WP3 gate per PLAN §8:
 // "determinism tests (same input → same output across runs); pin-handling tests").
 import { describe, expect, it } from 'vitest';
-import { dagreLayoutEngine } from './dagre';
+import { dagreLayoutEngine, dagreLayoutGeometry } from './dagre';
 import type { LayoutEdgeInput, LayoutNodeInput } from './ports';
 
 const SZ = { width: 120, height: 60 };
@@ -68,6 +68,34 @@ describe('dagreLayoutEngine', () => {
     const r1 = eng.layout(nodes('a', 'b'), [{ from: 'a', to: 'b' }, { from: 'a', to: 'b', label: 'x' }], { dir: 'LR' });
     const r2 = eng.layout(nodes('a', 'b'), [{ from: 'a', to: 'b' }], { dir: 'LR' });
     expect(r1).toEqual(r2);
+  });
+
+  it('reserves rank space for C4 relationship labels', () => {
+    const eng = dagreLayoutEngine();
+    const r = eng.layout(nodes('web', 'db'), [{ from: 'web', to: 'db', label: 'Reads and writes' }], { dir: 'LR' });
+    const gap = r['db']!.x - (r['web']!.x + SZ.width);
+    expect(gap).toBeGreaterThanOrEqual('Reads and writes'.length * 7);
+  });
+
+  it('compound C4 boundaries enclose members and reserve space around non-members', () => {
+    const ns: LayoutNodeInput[] = [
+      { id: 'shop', size: { width: 160, height: 60 } },
+      { id: 'web', size: { ...SZ }, parent: 'shop' },
+      { id: 'db', size: { ...SZ }, parent: 'shop' },
+      { id: 'payments', size: { ...SZ } },
+    ];
+    const result = dagreLayoutGeometry(ns, [{ from: 'web', to: 'db' }, { from: 'web', to: 'payments' }], { dir: 'LR' });
+    const group = result.positions['shop']!;
+    const size = result.sizes['shop']!;
+    for (const id of ['web', 'db']) {
+      const p = result.positions[id]!;
+      expect(p.x).toBeGreaterThanOrEqual(group.x);
+      expect(p.y).toBeGreaterThanOrEqual(group.y);
+      expect(p.x + SZ.width).toBeLessThanOrEqual(group.x + size.width);
+      expect(p.y + SZ.height).toBeLessThanOrEqual(group.y + size.height);
+    }
+    const payment = result.positions['payments']!;
+    expect(payment.x >= group.x + size.width || payment.y >= group.y + size.height).toBe(true);
   });
 
   it('empty graph → empty result', () => {

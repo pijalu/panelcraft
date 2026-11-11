@@ -46,7 +46,7 @@ function layoutPositions(
     size: { width: DEFAULT_SHAPE[o.kind]?.w ?? 120, height: DEFAULT_SHAPE[o.kind]?.h ?? 60 },
     pinnedAt: e.pins.has(o.id) ? (e.positions.get(o.id) ?? current[o.id]) : undefined,
   }));
-  const edges = d.links.map((l) => ({ from: l.from, to: l.to }));
+  const edges = d.links.map((l) => ({ from: l.from, to: l.to, label: l.label }));
   return dagreLayoutEngine().layout(nodes, edges, { dir: e.layout.dir });
 }
 

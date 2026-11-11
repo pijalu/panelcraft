@@ -20,16 +20,17 @@ M1+). No server-side state, no runtime network beyond static asset load
 | `web/src/engine/model` | IR types + operations, semantic validation | — (pure) |
 | `web/src/engine/format` | PDL lexer/parser/printer, mermaid converters | model |
 | `web/src/engine/render` | SVG scene graph renderer, hit-testing | model |
-| `web/src/engine/layout` | dagre-port auto-layout | model |
+| `web/src/engine/layout` | deterministic dagre auto-layout, including compound C4 boundaries | model |
 | `web/src/engine/flows` | flow step machine | model |
 | `web/src/engine/anim` | animation plan builder, reduced-motion | flows |
 | `web/src/workspace` | virtual FS, ZIP, IDB store, undo | model |
 | `web/src/ui` | Preact components, panels, dialogs | engine + workspace via ports |
-| `cmd/panelcraft` | CLI entry (serve/version; M1: validate/convert/render) | internal/*, web |
+| `web/src/cliRender` | storage-free browser entry for standalone SVG/PNG rendering | engine + canvas controller |
+| `cmd/panelcraft` | CLI entry (serve/validate/convert/render/version) | internal/*, web |
 | `internal/server` | embedded SPA HTTP shell (CSP, fallback, /files/*) | web (dist) |
 | `internal/ir` | Go IR codec (M1) | — |
 | `internal/pdl` | Go PDL parser/printer (M1, mirrors TS) | ir |
-| `internal/render` | chromedp headless render (M7) | server (serves app) |
+| `internal/render` | loopback-only chromedp headless render | server (serves embedded CLI entry) |
 | `testdata/corpus` | golden corpus shared by TS + Go tests | — |
 
 ## Ports rule (SOLID, agents.md)
@@ -52,7 +53,11 @@ depend on interfaces ("ports"): `LayoutEngine`, `Storage`, `Clock`,
 ```
 
 Go mirrors the `text ⇄ IR` leg exactly (`internal/pdl` + `internal/ir`),
-enforced byte-parity on the shared golden corpus from M1 (CI gate).
+enforced byte-parity on the shared golden corpus from M1 (CI gate). The Go
+Mermaid converters emit canonical PDL directly. For CLI rendering, the binary
+serves the embedded `?cli-render=1` entry on an ephemeral loopback listener;
+that entry receives source through the browser adapter, never opens a workspace,
+and returns sanitized SVG or a Chrome PNG screenshot.
 
 ## Deployment topologies
 

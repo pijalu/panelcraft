@@ -21,6 +21,12 @@
   --pc-radius-md: 8px;
 }
 
+/* Headless export must capture final theme/geometry, never a transition frame. */
+.pc-canvas[data-cli-render='true'],
+.pc-canvas[data-cli-render='true'] * {
+  animation: none !important;
+  transition: none !important;
+}
 @media (prefers-color-scheme: dark) {
   :root {
     --pc-bg: #14161a;

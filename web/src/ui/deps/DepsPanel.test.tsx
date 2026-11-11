@@ -28,6 +28,7 @@ function Harness(props: Partial<DepsPanelProps> = {}) {
   const ctrl = stubCtrl();
   const all: DepsPanelProps = {
     text: TEXT,
+    filePath: 'systems/billing.pcd',
     viewName: undefined,
     activeId: 'api',
     ctrl,
@@ -46,6 +47,13 @@ describe('DepsPanel', () => {
     expect(screen.getByTestId('deps-incoming').textContent).toContain('auth');
     expect(screen.getByTestId('deps-outgoing').textContent).toContain('db');
     expect(screen.getByTestId('deps-panel').textContent).toContain('API');
+  });
+
+  it('names the owning file in the heading', () => {
+    Harness();
+    expect(screen.getByRole('heading', { level: 3 }).textContent).toBe(
+      'dependencies · systems/billing.pcd · API',
+    );
   });
 
   it('shows the hint when nothing is selected', () => {

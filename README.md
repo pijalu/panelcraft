@@ -8,7 +8,7 @@ WYSIWYG SVG canvas with an always-visible code view, step-by-step flow
 animation, and a multi-file workspace that lives **entirely in your browser** —
 nothing is stored server-side. Ships as a static site (GitHub Pages-hostable,
 service-worker offline shell) and a single Go binary
-(`serve` + `validate` / `convert` CLI) for Windows/Linux/macOS.
+(`serve` + `validate` / `convert` / `render` CLI) for Windows/Linux/macOS.
 
 ## Quick start (users)
 
@@ -20,7 +20,8 @@ service-worker offline shell) and a single Go binary
   ```bash
   panelcraft serve --addr :8080 --open   # serves the app + your .pcd dir read-only
   panelcraft validate docs/architecture  # validate .pcd files (exit 1 = errors)
-  panelcraft convert diagram.pcd -o out/ # canonical IR JSON
+  panelcraft convert diagram.mmd -o diagram.pcd # Mermaid C4/flowchart → canonical PDL
+  panelcraft render diagram.pcd -o diagram.png --theme dark --width 1920
   panelcraft version
   ```
 

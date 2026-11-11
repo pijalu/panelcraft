@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-// convert command (M1-WP9) — `panelcraft convert [--out DIR] PATH...`.
-// Parses each .pcd file and writes its canonical IR JSON as <name>.ir.json.
-// Convert is a format transform: semantic findings do not block it (that is
-// validate's job); parse aborts do (exit 1), usage errors are exit 2.
+// convert command (SPEC FR-X) — Mermaid → canonical PDL, or PDL canonicalisation.
+// Semantic findings do not block conversion; fatal PDL parses do (exit 1),
+// usage and IO errors are exit 2.
 package main
 
 import (
@@ -18,71 +17,83 @@ import (
 	"github.com/pijalu/panelcraft/internal/pdl"
 )
 
+var convertValueFlags = map[string]bool{"--out": true, "-o": true}
+
 // runConvert executes the convert command; returns the process exit code.
 func runConvert(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet("convert", flag.ExitOnError)
-	outDir := flags.String("out", "", "write output files here (default: next to each input)")
-	if err := flags.Parse(args); err != nil {
-		fmt.Fprintf(stderr, "panelcraft: %v\n", err)
+	flags := flag.NewFlagSet("convert", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	out := flags.String("out", "", "output .pcd path (default: next to input)")
+	flags.StringVar(out, "o", "", "output .pcd path")
+	if err := flags.Parse(flagsFirst(args, convertValueFlags)); err != nil {
 		return 2
 	}
-	files, err := expandPaths(flags.Args())
+	if flags.NArg() != 1 {
+		fmt.Fprintln(stderr, "panelcraft: convert takes one input .mmd/.mermaid/.txt/.pcd file")
+		return 2
+	}
+	input := flags.Arg(0)
+	src, err := os.ReadFile(input)
 	if err != nil {
 		fmt.Fprintf(stderr, "panelcraft: %v\n", err)
 		return 2
 	}
-	if len(files) == 0 {
-		fmt.Fprintf(stderr, "panelcraft: convert takes at least one PATH\n")
-		return 2
+	doc, diags, code := convertDocument(input, string(src))
+	if code != 0 {
+		printDiags(stderr, input, diags)
+		fmt.Fprintf(stderr, "panelcraft: %s: conversion failed, no output written\n", input)
+		return code
 	}
-	if *outDir != "" {
-		if err := os.MkdirAll(*outDir, 0o755); err != nil {
-			fmt.Fprintf(stderr, "panelcraft: %v\n", err)
-			return 2
-		}
-	}
-
-	exit := 0
-	for _, path := range files {
-		code := convertOne(path, *outDir, stdout, stderr)
-		if code > exit {
-			exit = code
-		}
-	}
-	return exit
-}
-
-func convertOne(path, outDir string, stdout, stderr io.Writer) int {
-	src, err := os.ReadFile(path)
+	printDiags(stderr, input, diags)
+	target, err := convertTargetPath(input, *out)
 	if err != nil {
 		fmt.Fprintf(stderr, "panelcraft: %v\n", err)
 		return 2
 	}
-	res := pdl.Parse(string(src))
-	if res.Doc == nil {
-		printDiags(stderr, path, res.Diagnostics)
-		fmt.Fprintf(stderr, "panelcraft: %s: parse failed, no IR written\n", path)
-		return 1
-	}
-	out, err := ir.Marshal(res.Doc)
-	if err != nil {
-		fmt.Fprintf(stderr, "panelcraft: %s: %v\n", path, err)
-		return 1
-	}
-	target := irTargetPath(path, outDir)
-	if err := os.WriteFile(target, out, 0o644); err != nil {
+	if err := writeOutput(target, []byte(pdl.PrintDoc(doc))); err != nil {
 		fmt.Fprintf(stderr, "panelcraft: %v\n", err)
-		return 1
+		return 2
 	}
 	fmt.Fprintf(stdout, "wrote %s\n", target)
 	return 0
 }
 
-// irTargetPath: foo.pcd → foo.ir.json (or DIR/foo.ir.json with --out).
-func irTargetPath(path, outDir string) string {
-	base := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)) + ".ir.json"
-	if outDir != "" {
-		return filepath.Join(outDir, base)
+func convertDocument(path, source string) (*ir.Doc, []pdl.Diagnostic, int) {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".pcd":
+		result := pdl.Parse(source)
+		if result.Doc == nil {
+			return nil, result.Diagnostics, 1
+		}
+		return result.Doc, result.Diagnostics, 0
+	case ".mmd", ".mermaid", ".txt":
+		result := pdl.FromMermaid(source)
+		return result.Doc, result.Diagnostics, 0
+	default:
+		return nil, []pdl.Diagnostic{{
+			Code: pdl.MermaidUnsupported, Message: "unsupported convert input type: " + ext,
+			Line: 1, Col: 1, Severity: pdl.SevError,
+		}}, 2
 	}
-	return filepath.Join(filepath.Dir(path), base)
+}
+
+func convertTargetPath(input, out string) (string, error) {
+	defaultName := strings.TrimSuffix(filepath.Base(input), filepath.Ext(input)) + ".pcd"
+	if out == "" {
+		if strings.EqualFold(filepath.Ext(input), ".pcd") {
+			return input, nil
+		}
+		return filepath.Join(filepath.Dir(input), defaultName), nil
+	}
+	if info, err := os.Stat(out); err == nil && info.IsDir() {
+		return filepath.Join(out, defaultName), nil
+	}
+	if strings.HasSuffix(out, string(os.PathSeparator)) {
+		return filepath.Join(out, defaultName), nil
+	}
+	if !strings.EqualFold(filepath.Ext(out), ".pcd") {
+		return "", fmt.Errorf("--out must be a .pcd file or an existing directory")
+	}
+	return out, nil
 }

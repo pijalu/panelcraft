@@ -69,6 +69,7 @@ export interface PropsSlotProps {
   onChangeLink: CanvasController['updateLink'];
   onFit: () => void;
   depsText: string | null;
+  activePath: string | null;
   viewName: string | undefined;
   activeId: string | null;
   ctrl: CanvasController | null;
@@ -98,6 +99,7 @@ export function PropsSlot(props: PropsSlotProps) {
       />
       <DepsPanel
         text={props.depsText}
+        filePath={props.activePath}
         viewName={props.viewName}
         activeId={props.activeId}
         ctrl={props.ctrl}

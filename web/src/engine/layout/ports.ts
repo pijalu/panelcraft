@@ -12,6 +12,8 @@ export interface LayoutSize {
 export interface LayoutNodeInput {
   id: string;
   size: LayoutSize;
+  /** Optional compound parent id (C4 boundary / flowchart subgraph). */
+  parent?: string;
   /** Saved/pinned position (canvas units, top-left) — wins over computed layout. */
   pinnedAt?: LayoutPoint;
 }
@@ -35,6 +37,12 @@ export interface LayoutOptions {
 
 /** id → top-left position (canvas units). */
 export type LayoutResult = Record<string, LayoutPoint>;
+
+/** Positions plus measured compound-node sizes (canvas units). */
+export interface LayoutGeometryResult {
+  positions: LayoutResult;
+  sizes: Record<string, LayoutSize>;
+}
 
 export interface LayoutEngine {
   /**

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// PanelCraft CLI entry (SPEC FR-X). M0: serve + version only; validate,
-// convert and render land with M1 per docs/IMPLEMENTATION-PLAN.md §3.
+// PanelCraft CLI entry (SPEC FR-X): embedded SPA server plus validate,
+// Mermaid/PDL conversion and headless SVG/PNG rendering.
 package main
 
 import (
@@ -25,18 +25,18 @@ const usage = `panelcraft — architecture diagrams, in your browser
 Usage:
   panelcraft serve [--addr :8080] [--open] [--dev-dir DIR] [DIR]
   panelcraft validate [--json] PATH...
-  panelcraft convert [--out DIR] PATH...
+  panelcraft convert <in.mmd|in.pcd> [-o out.pcd]
+  panelcraft render <file.pcd> --out out.png|svg [--width 1920]
+                   [--theme dark|light] [--view NAME] [--chrome PATH]
   panelcraft version
 
 Commands:
   serve     serve the embedded SPA at /, DIR (optional) read-only at /files/*
   validate  validate .pcd files (PATH: file or dir, globbed *.pcd); exit 1
             only for error-severity findings, 2 for usage errors (D-M1-20)
-  convert   parse .pcd files and write canonical IR JSON (<name>.ir.json);
-            parse failures exit 1
+  convert   convert Mermaid to canonical .pcd (or canonicalise .pcd)
+  render    render .pcd to standalone SVG or PNG via headless Chrome
   version   print version
-
-render arrives with M2 (renderer).
 `
 
 func main() {
@@ -56,8 +56,7 @@ func main() {
 	case "version":
 		fmt.Printf("panelcraft %s (%s/%s)\n", version, runtime.GOOS, runtime.GOARCH)
 	case "render":
-		fmt.Fprintln(os.Stderr, "panelcraft render: not implemented yet — lands with M2 (docs/IMPLEMENTATION-PLAN.md §4)")
-		os.Exit(2)
+		os.Exit(runRender(os.Args[2:], os.Stdout, os.Stderr))
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:

@@ -131,6 +131,8 @@ docs_links() { run bash scripts/check-docs.sh; }
 # (CGO off, web/dist embedded), sha256 checksums, pages artifact, boot-smoke
 # (M7-WP6, N4/N11).
 release_dry() { run bash scripts/release.sh --dry-run; }
+# S6 CLI: canonical Mermaid conversion and real-Chrome SVG/PNG rendering.
+render_cli() { run go test ./cmd/panelcraft -run 'TestRender|TestConvert' -count=1; }
 # e2e now includes S6-shaped m7 additions (axe + offline) next to S1–S5/S7.
 e2e_m7() { run npm run e2e -- --project=chromium; }
 
@@ -157,7 +159,7 @@ case "$MILESTONE" in
     STAGES=(web_check web_test perf_smoke workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m6)
     ;;
   m7)
-    STAGES=(web_check web_test perf_smoke perf_nfr workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots svg_fuzz cli_traversal web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links selfcontained a11y_e2e offline_e2e e2e_m7 repo_clean release_dry)
+    STAGES=(web_check web_test perf_smoke perf_nfr workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots svg_fuzz cli_traversal web_build render_cli go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links selfcontained a11y_e2e offline_e2e e2e_m7 repo_clean release_dry)
     ;;
   *)
     echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4, m5, m6, m7)" >&2

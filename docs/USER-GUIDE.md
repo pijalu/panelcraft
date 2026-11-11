@@ -121,10 +121,22 @@ Validates `.pcd` files (file or directory, globbed `*.pcd`, sorted).
 workspace: cycle ⇒ `P102` (warning), escape ⇒ `P103` (error), missing ⇒
 `P200` (warning). Exit `1` only for error-severity findings.
 
-### `panelcraft convert [--out DIR] PATH...`
-Parses and writes canonical IR JSON (`<name>.ir.json`); parse failures exit
-`1`. TS and Go converters are byte-parity-tested against the same goldens
-(CI gate).
+### `panelcraft convert [--out FILE.pcd|DIR] INPUT`
+Converts Mermaid flowchart/graph, C4 (Context/Container/Component/Dynamic and the
+supported deployment subset), or sequence input (`.mmd`/`.mermaid`/`.txt`) to
+canonical `.pcd`. A `.pcd` input is canonicalised instead. `-o`/`--out` works
+before or after the input; without it, Mermaid writes a sibling `.pcd` and PDL
+is formatted in place. Unsupported constructs produce named diagnostics rather
+than silent drops. Fatal input errors write no output.
+
+### `panelcraft render INPUT.pcd --out OUTPUT.png|svg [flags]`
+Renders the selected view through headless Chrome. Flags: `--width 1920`,
+`--theme dark|light`, `--view NAME`, and `--chrome /path/to/chrome`. Output
+uses a deterministic 16:9 canvas; position-free/auto views use compound dagre
+layout so C4 boundaries contain their members. The renderer is isolated from
+IndexedDB, service workers, workspace storage, and external network access.
+Chrome startup, parse, view, and output errors are actionable; `--chrome` (or
+`PANELCRAFT_CHROME` for tests) selects a non-default browser.
 
 ### `panelcraft version`
 Prints `panelcraft <semver> (<os>/<arch>)` — release builds stamp the version

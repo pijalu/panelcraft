@@ -866,7 +866,7 @@ export class CanvasController {
       const to = endpoint(link.to);
       if (!from || !to) continue;
       const obstacles = this.state.objects.filter(
-        (o) => o.id !== link.from && o.id !== link.to,
+        (o) => o.kind !== 'group' && o.id !== link.from && o.id !== link.to,
       );
       this.routes.set(
         link.id,

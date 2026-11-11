@@ -4,6 +4,19 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-02-14 — P5: spec-completion and C4 CLI rendering (F-37…F-41)
+
+- Implemented `panelcraft render` with isolated, storage-free browser rendering and
+  real-Chrome SVG/PNG output, theme/view/width flags, and actionable failures (F-37).
+- Corrected `convert` to produce canonical PDL from Mermaid flowchart, C4, and
+  sequence input (or canonicalise PDL), with `-o` accepted on either side of the
+  input and no output after fatal parse errors (F-38).
+- Fixed flow-camera SVG-origin mapping and added browser assertions that active
+  actors remain inside the canvas; dependencies now show the owning file (F-39/F-40).
+- Added compound C4 auto-layout and boundary-transparent routing for headless
+  output. Real conversion→render integration and light/dark visual review cover
+  boundaries, external objects, and relationship labels (F-41).
+
 ## 2026-02-14 — P4: docs truth pass and sync-path perf gate (F-26, F-27)
 
 - **F-27**: new `N4` perf gate — 500-object document, one rename, merge → print →

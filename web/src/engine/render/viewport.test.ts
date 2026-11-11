@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from 'vitest';
 import {
+  screenRectToCanvas,
   IDENTITY,
   ZOOM_MIN,
   ZOOM_MAX,
@@ -19,6 +20,21 @@ import {
   PAN_STEP_PX,
   ZOOM_STEP,
 } from './viewport';
+
+describe('flow camera coordinate mapping', () => {
+  it('subtracts the SVG page offset before applying the world viewport', () => {
+    const element = { x: 408, y: 154, w: 120, h: 72 };
+    const svgOrigin = { x: 368, y: 114 };
+    expect(screenRectToCanvas(element, svgOrigin, IDENTITY)).toEqual({ x: 40, y: 40, w: 120, h: 72 });
+  });
+
+  it('maps a panned and zoomed element into canvas coordinates', () => {
+    const element = { x: 508, y: 234, w: 240, h: 144 };
+    const svgOrigin = { x: 368, y: 114 };
+    const viewport = { x: 20, y: -10, k: 2 };
+    expect(screenRectToCanvas(element, svgOrigin, viewport)).toEqual({ x: 60, y: 65, w: 120, h: 72 });
+  });
+});
 
 describe('viewport transforms', () => {
   it('round-trips screen⇄canvas', () => {

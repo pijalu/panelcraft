@@ -409,6 +409,7 @@ function AppBody(p: {
             onChangeLink={(id, patch) => ctrl?.updateLink(id, patch)}
             onFit={() => ctrl?.fitSelection()}
             depsText={activePath !== null ? ws.manager.text(activePath) : null}
+            activePath={activePath}
             viewName={viewName}
             activeId={p.sel.obj?.id ?? null}
             ctrl={canvas.ctrlRef.current}

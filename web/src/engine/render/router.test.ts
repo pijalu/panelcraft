@@ -117,7 +117,17 @@ describe('link furniture', () => {
     expect(labelPoint(poly)).toEqual({ x: 10, y: 50 });
   });
 
-  it('polylineLength sums manhattan segments', () => {
+  it('labelPoint: equal short Z-route legs use the channel, not the source shape', () => {
+  const poly: Polyline = [
+    { x: 448, y: 72 },
+    { x: 509, y: 72 },
+    { x: 509, y: 62 },
+    { x: 570, y: 62 },
+  ];
+  expect(labelPoint(poly)).toEqual({ x: 509, y: 67 });
+});
+
+it('polylineLength sums manhattan segments', () => {
     const poly: Polyline = [
       { x: 0, y: 0 },
       { x: 10, y: 0 },

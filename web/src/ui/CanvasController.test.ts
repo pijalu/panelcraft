@@ -357,6 +357,21 @@ describe('link visual model (F-12)', () => {
   });
 });
 
+describe('C4 boundary routing', () => {
+  it('routes through a containing boundary instead of treating it as a solid obstacle', () => {
+    ctrl.loadState({
+      objects: [
+        { id: 'a', kind: 'person', x: 0, y: 100, w: 120, h: 72, size: { w: 120, h: 72 } },
+        { id: 'b', kind: 'container', x: 300, y: 106, w: 160, h: 60, size: { w: 160, h: 60 } },
+        { id: 'boundary', kind: 'group', x: 130, y: 40, w: 60, h: 180, size: { w: 60, h: 180 } },
+      ],
+      links: [{ id: 'L1', from: 'a', to: 'b' }],
+    });
+    const path = svg.querySelector('g.pc-link[data-id="L1"] path.pc-route')!;
+    expect(path.getAttribute('d')?.match(/L/g)).toHaveLength(1);
+  });
+});
+
 describe('clipboard + alignment (F-19)', () => {
   const seed = (): void => {
     ctrl.loadState({

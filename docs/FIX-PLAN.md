@@ -599,6 +599,81 @@ measure printer normalisation, which no user interaction produces.
 
 ---
 
+## Phase P5 — Spec-completion review
+
+Baseline review: `npm run check`, 865 Vitest tests, coverage thresholds, Go tests/vet,
+staticcheck/gocyclo, docs/hygiene, self-containment and all 67 Playwright specs passed.
+The passing UI suite did not exercise SPEC S6; direct CLI probes reproduced the gaps below.
+
+### F-37 Headless render CLI — **critical**
+*Problem:* `panelcraft render` exits 2 with “not implemented yet”, although SPEC FR-X and S6
+require PNG/SVG output through headless Chrome.
+*Change:* add an isolated browser render entry point and an `internal/render` chromedp adapter;
+support `--out`, `--width`, `--theme`, `--view`, `--chrome`, actionable startup/parse/view errors.
+*Tests:* browser render unit tests plus real-Chrome Go integration tests for SVG and PNG; CLI
+usage/IO/error-path table; S6 documentation and verification gate.
+
+**Done.** `web/src/cliRender.ts` renders through the real canvas controller without mounting the
+workspace; `internal/render` drives an ephemeral loopback server through chromedp. Verified by
+`go test ./cmd/panelcraft -run 'TestRender' -count=1` (real Chrome SVG, 640 px PNG, C4 conversion
+integration, validation/error paths) and `npx vitest run web/src/cliRender.test.ts`. `render_cli`
+is an m7 verification stage.
+
+### F-38 Convert command contract — **critical**
+*Problem:* `convert` writes `.pcd` input to IR JSON instead of converting Mermaid input to
+canonical `.pcd`; the documented `-o out.pcd` form is not accepted after the input path.
+*Change:* support `.mmd`/`.mermaid`/`.txt` → canonical PDL and `.pcd` canonicalisation, `-o`
+in either position, diagnostics without silent drops, and no output on fatal input.
+*Tests:* Go table tests for flowchart/C4 conversion, canonical output, flag order, output paths,
+parse failures and usage/IO exit codes.
+
+**Done.** Go Mermaid converters emit canonical PDL for flowchart/C4/sequence input; `.pcd` input
+canonicalises, `-o` works on either side of the input, and fatal parses leave no output. Verified
+by `go test ./cmd/panelcraft -run 'TestConvert' -count=1` and `go test ./...`.
+
+### F-39 Flow camera edge containment
+*Problem:* final vision review recorded actors clipping at canvas borders during playback.
+*Change:* contain fitted actor bounds within the usable viewport without changing zoom limits;
+subtract the embedded SVG's page origin before inverting the viewport.
+*Tests:* pure SVG-origin mapping regressions, existing camera target tests, and S3 active-actor
+containment assertions plus visual proof.
+
+**Done.** `screenRectToCanvas` removes the SVG origin before viewport inversion. The flow rect
+provider now inverts the world's actual screen CTM, so bounds measured during a WAAPI camera glide
+use the same transform as the rendered actors. The two pure mapping regressions failed before the
+origin fix and pass with the existing camera suite. S3 checks both message beats for active-actor
+containment; the beat-6 regression failed under full parallel load before the CTM fix and the full
+67-spec run now passes. Light/dark captures were reviewed. Conclusion retains Web/DB focus; dim Ada
+is intentionally outside that active set.
+
+### F-40 Dependencies panel context
+*Problem:* the panel names the selected object but not its owning file (M6/M7 carried defect).
+*Change:* pass the active workspace path into the panel heading.
+*Tests:* component heading test and existing properties/dependencies e2e coverage.
+
+**Done.** The heading is `dependencies · <active path> · <selected object>`. The component regression
+failed before `filePath` was threaded through App/ShellSlots and passes in the targeted Vitest run.
+
+### F-41 Headless C4 auto-layout quality (found in F-37 visual review)
+*Problem:* a real C4 conversion rendered, but grid fallback overlapped relationship labels and detached
+boundary layout. Successful file output alone was not a usable diagram.
+*Change:* run the existing dagre layout engine ephemerally for position-free auto views, then fit and render
+those positions without changing the source document. Compound boundaries reserve their members'
+geometry; group rectangles are routing containers, not solid obstacles.
+*Tests:* CLI browser regression for position-free C4 input; conversion → real-Chrome render integration;
+light/dark visual review of a C4 shop diagram.
+
+**Done.** Position-free views use compound dagre geometry, including ephemeral boundary sizes; the
+source is not mutated. RED evidence: grid layout kept API at `y=40`, flat dagre left the boundary
+outside its member, and a containing boundary forced a three-elbow detour. Regressions now pass in
+`dagre.test.ts`, `CanvasController.test.ts`, and `cliRender.test.ts`. Real-Chrome C4 conversion→SVG
+passes in `TestRenderChromeMermaidC4`; `/tmp/panelcraft-design-review/shop-final-light.png` and
+`shop-final-dark.png` were reviewed with members contained, the external provider outside, and full
+relationship labels visible. Follow-up regressions disable CSS transition frames during export,
+reserve rank space for labels, and centre labels across short Z-route channels.
+
+---
+
 ## Sequencing & dependencies
 
 ```

@@ -4,7 +4,7 @@
 // sidebar Flows tab, and assert transport, per-beat dim end-states, camera
 // movement, alt-branch choice, ARIA narration — plus light/dark screenshots
 // for the vision review round 2 (STYLE-GUIDE §visual).
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { capture } from './lib/screenshots';
 
 const DOC = `pcd 1.0
@@ -31,6 +31,21 @@ flow "Checkout" as main {
   conclusion "done"
 }
 `;
+
+async function expectActorsContained(canvas: Locator, ids: string[]): Promise<void> {
+  await expect.poll(async () => {
+    const frame = await canvas.boundingBox();
+    if (!frame) return false;
+    for (const id of ids) {
+      const box = await canvas.locator(`g.pc-obj[data-id="${id}"]`).boundingBox();
+      if (!box || box.x < frame.x || box.y < frame.y ||
+        box.x + box.width > frame.x + frame.width || box.y + box.height > frame.y + frame.height) {
+        return false;
+      }
+    }
+    return true;
+  }).toBe(true);
+}
 
 test('S3: 6-step flow playback — transport, alt chooser, par concurrency, dim, camera', async ({ page }) => {
   await page.goto('/');
@@ -76,6 +91,7 @@ test('S3: 6-step flow playback — transport, alt chooser, par concurrency, dim,
   // camera glided to the actors — the world transform is no longer identity
   const t = await canvas.locator('.pc-world').getAttribute('transform');
   expect(t).not.toBe('translate(0 0) scale(1)');
+  await expectActorsContained(canvas, ['ada', 'web']);
 
   // ---- beat 3: alt chooser parks playback (FR-F1) ---------------------------
   await page.getByTestId('pb-step-fwd').click();
@@ -107,6 +123,7 @@ test('S3: 6-step flow playback — transport, alt chooser, par concurrency, dim,
   // ---- beat 6: msg notify — ada leaves the stage ----------------------------
   await page.getByTestId('pb-step-fwd').click();
   await expect(narration).toHaveText('notify');
+  await expectActorsContained(canvas, ['web', 'db']);
   await expect(canvas.locator('g.pc-obj[data-id="ada"]')).toHaveClass(/pc-dim/);
   await expect(canvas.locator('g.pc-obj[data-id="web"]')).not.toHaveClass(/pc-dim/);
 

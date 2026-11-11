@@ -51,6 +51,11 @@ export function invertRect(t: Transform, r: Rect): Rect {
   return { x: a.x, y: a.y, w: r.w / t.k, h: r.h / t.k };
 }
 
+/** Browser-page rect → canvas coordinates for an SVG embedded in the shell. */
+export function screenRectToCanvas(r: Rect, svgOrigin: Point, t: Transform): Rect {
+  return invertRect(t, { x: r.x - svgOrigin.x, y: r.y - svgOrigin.y, w: r.w, h: r.h });
+}
+
 /** Pan by screen-space deltas. */
 export function panBy(t: Transform, dx: number, dy: number): Transform {
   return { ...t, x: t.x + dx, y: t.y + dy };

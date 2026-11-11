@@ -165,8 +165,32 @@ export function arrowDirection(points: Polyline): Point {
   return { x: Math.sign(p2.x - p1.x), y: Math.sign(p2.y - p1.y) };
 }
 
+function horizontalZLabel(a: Point, b: Point, c: Point, d: Point): Point | null {
+  if (a.y !== b.y || c.y !== d.y || b.x !== c.x) return null;
+  const legs = Math.min(Math.abs(b.x - a.x), Math.abs(d.x - c.x));
+  if (Math.abs(c.y - b.y) > legs) return null;
+  return { x: b.x, y: (a.y + d.y) / 2 };
+}
+
+function verticalZLabel(a: Point, b: Point, c: Point, d: Point): Point | null {
+  if (a.x !== b.x || c.x !== d.x || b.y !== c.y) return null;
+  const legs = Math.min(Math.abs(b.y - a.y), Math.abs(d.y - c.y));
+  if (Math.abs(c.x - b.x) > legs) return null;
+  return { x: (a.x + d.x) / 2, y: b.y };
+}
+
+/** Center labels across short Z-route channels instead of inside an endpoint. */
+function zRouteLabel(points: Polyline): Point | null {
+  if (points.length !== 4) return null;
+  const [a, b, c, d] = points;
+  if (!a || !b || !c || !d) return null;
+  return horizontalZLabel(a, b, c, d) ?? verticalZLabel(a, b, c, d);
+}
+
 /** Label anchor: midpoint of the longest interior segment (stable placement). */
 export function labelPoint(points: Polyline): Point {
+  const z = zRouteLabel(points);
+  if (z) return z;
   let bestLen = -1;
   let best = at(points, 0);
   for (let i = 1; i < points.length; i++) {

@@ -12,6 +12,7 @@ import { adjacency, depsFade, type DepEntry } from './depsDoc';
 
 export interface DepsPanelProps {
   text: string | null;
+  filePath: string | null;
   viewName: string | undefined;
   /** Selected object id (objects only; links don't get a deps panel). */
   activeId: string | null;
@@ -65,7 +66,10 @@ export function DepsPanel(props: DepsPanelProps) {
 
   return (
     <section class="deps-panel" data-testid="deps-panel">
-      <h3 class="deps-title">dependencies{activeObj ? ` · ${activeObj.name ?? activeObj.id}` : ''}</h3>
+      <h3 class="deps-title">
+        dependencies{props.filePath ? ` · ${props.filePath}` : ''}
+        {activeObj ? ` · ${activeObj.name ?? activeObj.id}` : ''}
+      </h3>
       {props.activeId === null && <div class="deps-empty">select an object to see its dependencies</div>}
       {props.activeId !== null && (
         <>
