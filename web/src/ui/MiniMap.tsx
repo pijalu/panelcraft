@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { IDENTITY, type Point, type Size, type Transform } from '../engine/render/viewport';
 import type { Snapshot } from './CanvasController';
 import { buildMiniMap, miniMapPointToCanvas, type MiniMapLayout } from './miniMapGeometry';
+import { s } from './strings';
 
 export interface MiniMapController {
   centerOn(point: Point): void;
@@ -98,7 +99,7 @@ export function MiniMap(props: {
         type="button"
         class="mini-map"
         data-testid="mini-map"
-        aria-label="Mini-map navigation"
+        aria-label={s('Mini-map navigation')}
         aria-describedby="mini-map-help"
         onClick={(e) => {
           if (e.detail === 0) return; // keyboard activation keeps the current centre
@@ -135,7 +136,7 @@ export function MiniMap(props: {
         />
       </button>
       <span id="mini-map-help" class="visually-hidden">
-        Diagram overview. Click a location to center it. Arrow keys pan; Home fits the diagram.
+        {s('Diagram overview. Click a location to center it. Arrow keys pan; Home fits the diagram.')}
       </span>
     </div>
   );

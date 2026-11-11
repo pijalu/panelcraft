@@ -2,6 +2,7 @@
 // Template gallery (F-25, paradox of the active user): a brand-new file is not
 // an empty grey void but three ways to get started.
 import type { ComponentChildren } from 'preact';
+import { s } from './strings';
 
 export interface Template {
   id: string;
@@ -13,8 +14,8 @@ export interface Template {
 export const TEMPLATES: Template[] = [
   {
     id: 'c4',
-    title: 'C4 context',
-    hint: 'Two systems, one person, one link',
+    title: s('C4 context'),
+    hint: s('Two systems, one person, one link'),
     text: `pcd 1.0
 
 person user "Customer"
@@ -27,8 +28,8 @@ app -> pay : "charges"
   },
   {
     id: 'flow',
-    title: 'Flow',
-    hint: 'A request/response flow you can play',
+    title: s('Flow'),
+    hint: s('A request/response flow you can play'),
     text: `pcd 1.0
 
 system web "Web app"
@@ -42,8 +43,8 @@ flow "Checkout" as checkout {
   },
   {
     id: 'mermaid',
-    title: 'From mermaid',
-    hint: 'Paste a flowchart and keep editing',
+    title: s('From mermaid'),
+    hint: s('Paste a flowchart and keep editing'),
     text: `pcd 1.0
 
 system a "Service A"
@@ -59,7 +60,7 @@ export function EmptyState(props: {
 }): ComponentChildren {
   return (
     <div class="empty-state" data-testid="empty-state">
-      <h2 class="empty-title">Start from a template</h2>
+      <h2 class="empty-title">{s("Start from a template")}</h2>
       <ul class="empty-list">
         {TEMPLATES.map((t) => (
           <li key={t.id}>
@@ -76,8 +77,7 @@ export function EmptyState(props: {
         ))}
       </ul>
       <p class="muted">
-        …or press <kbd>1</kbd>–<kbd>9</kbd> to place a shape, or type in the code view.
-      </p>
+        {s("…or press")}{' '}<kbd>{s("1")}</kbd>{s("–")}<kbd>{s("9")}</kbd> {s("to place a shape, or type in the code view.")}{' '}</p>
     </div>
   );
 }

@@ -439,6 +439,8 @@ implemented and covered by tests.
   canvas, click-through to the source file, cycle detection.
 * FR-X / S6 CLI: Mermaid/PDL → canonical PDL conversion and real-Chrome SVG/PNG
   rendering, including light/dark themes, named views, output sizing and C4 auto-layout.
+* N10 UI strings are centralized in a typed English catalog with named-placeholder
+  interpolation and an AST audit for rendered copy, accessible names and copy fields.
 
 **Moved to the post-v1 backlog (not implemented, deliberately):**
 
@@ -456,8 +458,6 @@ implemented and covered by tests.
   shown on the canvas hover card; there is no separate tooltip affordance.
 * The illustration styles in flow playback are chosen per flow (`auto` by default);
   there is no per-step illustration override.
-* Dense orthogonal routes may cross an unrelated relationship label; route/label collision
-  avoidance remains a post-v1 refinement (P5 visual review).
 
 ## 12.2 Open items (post-v1 backlog)
 
@@ -465,9 +465,9 @@ Comments/annotations on objects · export to draw.io/PlantUML · plugin API for 
 stencils · additional diagram notations (sequence-native, deployment advanced) ·
 optional file-system access API for real folders.
 Flow→`sequenceDiagram` export (`.seq.mmd`) was subsequently completed from M6-WP7.
-M7 groom adds: full i18n string centralization (`strings.ts`; N10 shipped English-only,
-see M7.md). F-39/F-40 subsequently closed the carried camera-containment and
-dependencies-heading items; active flow actors now have browser containment assertions
+N10 full UI string centralization was subsequently completed in `strings.ts`; the
+runtime remains English-only (see M7.md). F-39/F-40 subsequently closed the carried
+camera-containment and dependencies-heading items; active flow actors now have browser containment assertions
 and the dependencies heading names the owning file.
 
 ---

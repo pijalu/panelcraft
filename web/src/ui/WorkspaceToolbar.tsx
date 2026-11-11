@@ -7,6 +7,7 @@ import type { WorkspaceManager } from '../workspace/workspace';
 import { exportPng, exportSvg } from '../workspace/io';
 import { downloadBlob, downloadText, readFileAsBytes, readFileAsText } from './download';
 import { baseName, stem } from './paths';
+import { s } from './strings';
 
 export interface WorkspaceToolbarProps {
   manager: WorkspaceManager;
@@ -79,42 +80,32 @@ export function WorkspaceToolbar(props: WorkspaceToolbarProps) {
   return (
     <span class="toolbar">
       <button type="button" data-testid="tb-import-files" onClick={() => document.querySelector<HTMLInputElement>('[data-testid="import-files-input"]')?.click()}>
-        Import…
-      </button>
+        {s("Import…")}{' '}</button>
       <button type="button" data-testid="tb-import-zip" onClick={() => document.querySelector<HTMLInputElement>('[data-testid="import-zip-input"]')?.click()}>
-        Open ZIP
-      </button>
+        {s("Open ZIP")}{' '}</button>
       <button type="button" data-testid="tb-export-pcd" disabled={activePath === null} onClick={exportPcd}>
-        .pcd
-      </button>
+        {s(".pcd")}{' '}</button>
       <button type="button" data-testid="tb-export-mmd" disabled={activePath === null} onClick={exportMmd}>
-        .mmd
-      </button>
+        {s(".mmd")}{' '}</button>
       <button type="button" data-testid="tb-export-svg" disabled={activePath === null} onClick={exportSvgHandler}>
-        .svg
-      </button>
+        {s(".svg")}{' '}</button>
       <button type="button" data-testid="tb-export-png" disabled={activePath === null} onClick={exportPngHandler}>
-        .png
-      </button>
+        {s(".png")}{' '}</button>
       <button type="button" data-testid="tb-export-zip" onClick={exportZip}>
-        ZIP
-      </button>
-      <label class="toolbar-check" data-testid="tb-ephemeral" title="Private mode: keep this session in memory only (FR-S2)">
+        {s("ZIP")}{' '}</button>
+      <label class="toolbar-check" data-testid="tb-ephemeral" title={s("Private mode: keep this session in memory only (FR-S2)")}>
         <input
           type="checkbox"
           checked={ready && manager.ephemeral}
           onChange={(e) => props.onToggleEphemeral((e.target as HTMLInputElement).checked)}
         />
-        private
-      </label>
+        {s("private")}{' '}</label>
       <button type="button" data-testid="tb-snapshots" onClick={props.onSnapshotsRequest}>
-        Snapshots
-      </button>
+        {s("Snapshots")}{' '}</button>
       <button type="button" class="tb-danger" data-testid="tb-clear-data" onClick={props.onClearRequest}>
-        Clear data…
-      </button>
+        {s("Clear data…")}{' '}</button>
       <input
-        aria-label="Import .pcd or mermaid files"
+        aria-label={s("Import .pcd or mermaid files")}
         type="file"
         multiple
         accept=".pcd,.mmd,.mermaid,.txt"
@@ -126,7 +117,7 @@ export function WorkspaceToolbar(props: WorkspaceToolbarProps) {
         }}
       />
       <input
-        aria-label="Import workspace zip"
+        aria-label={s("Import workspace zip")}
         type="file"
         accept=".zip"
         data-testid="import-zip-input"

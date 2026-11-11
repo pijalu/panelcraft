@@ -6,6 +6,7 @@ import { HistoryFeed, type HistoryEntry, undoSurface } from './historyFeed';
 import { codePorts } from './codePorts';
 import type { CanvasController } from './CanvasController';
 import type { SyncSnapshot } from './codeview/sync';
+import { s } from './strings';
 
 export interface HistoryHandle {
   entries: HistoryEntry[];
@@ -47,7 +48,7 @@ export function useHistory(
   useEffect(() => {
     const editing = snapshot.state === 'editing';
     if (editing && !wasEditing) {
-      feed.record('code', 'code edit');
+      feed.record('code', s('code edit'));
       setEntries(feed.recent());
     }
     setWasEditing(editing);
@@ -64,7 +65,7 @@ export function useHistory(
       const surface = undoSurface(focusInCode, feed.last);
       if (surface === 'code') codePorts.undo?.();
       else ctrlRef.current?.undoCommand();
-      onToast(`Undone: ${feed.last?.label ?? 'change'}`);
+      onToast(s('Undone: {label}', { label: feed.last?.label ?? s('change') }));
       refresh();
     },
     [ctrlRef, feed, refresh, onToast],
@@ -75,7 +76,7 @@ export function useHistory(
       const surface = undoSurface(focusInCode, feed.last);
       if (surface === 'code') codePorts.redo?.();
       else ctrlRef.current?.redoCommand();
-      onToast('Redone');
+      onToast(s('Redone'));
       refresh();
     },
     [ctrlRef, feed, refresh, onToast],

@@ -6,6 +6,7 @@ import type { Kind } from '../engine/model/types';
 import { labelFor } from './CanvasController';
 import { CollapseButton } from './PanelChrome';
 import { groupKinds, quickAddKey } from './paletteGroups';
+import { s } from './strings';
 
 interface PaletteProps {
   kinds: Kind[];
@@ -45,10 +46,10 @@ export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps
   };
 
   return (
-    <aside class="palette" data-testid="palette" aria-label="Shape palette">
+    <aside class="palette" data-testid="palette" aria-label={s('Shape palette')}>
       <div class="panel-head">
-        <h2 class="panel-title">Shapes</h2>
-        {onCollapse && <CollapseButton id="palette" label="shapes" onCollapse={onCollapse} />}
+        <h2 class="panel-title">{s('Shapes')}</h2>
+        {onCollapse && <CollapseButton id="palette" label={s('shapes')} onCollapse={onCollapse} />}
       </div>
       {groupKinds(kinds).map((group) => (
         <section class="palette-group" data-testid={`palette-group-${group.id}`} key={group.id}>
@@ -61,7 +62,7 @@ export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps
                   class="palette-item"
                   data-kind={kind}
                   data-testid={`palette-${kind}`}
-                  title={`${labelFor(kind)} (key ${quickAddKey(kinds, kind)})`}
+                  title={s('{kind} (key {key})', { kind: labelFor(kind), key: quickAddKey(kinds, kind) })}
                   onClick={() => onPlace(kind)}
                   onPointerDown={(e) => startDrag(kind, e as unknown as PointerEvent)}
                 >

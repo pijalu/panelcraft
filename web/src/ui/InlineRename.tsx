@@ -4,6 +4,7 @@
 // screen space (fixed) from the object's canvas rect and the viewport transform,
 // so it tracks pan/zoom; above 200 % zoom it degrades to a compact chip.
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { s } from './strings';
 
 export interface RenameTarget {
   id: string;
@@ -62,7 +63,7 @@ export function InlineRename({ target, onCommit, onCancel }: InlineRenameProps) 
       class={`inline-rename${chip ? ' inline-rename-chip' : ''}`}
       data-testid="inline-rename"
       data-chip={chip ? 'true' : 'false'}
-      aria-label={`Rename ${target.kind.replace(/_/g, ' ')}`}
+      aria-label={s('Rename {kind}', { kind: target.kind.replace(/_/g, ' ') })}
       value={value}
       style={{
         left: `${target.left}px`,

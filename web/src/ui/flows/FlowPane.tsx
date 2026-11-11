@@ -6,12 +6,13 @@
 // App forwards to code.machine.textChanged so the sync machine stays the
 // single writer (D-M4-6). Takes narrow ports (textOf), no manager import.
 import { useRef, useState } from 'preact/hooks';
-import { ILLUSTRATIONS, ILLUSTRATION_IDS, type IllustrationId } from '../../engine/anim/illustrations';
+import { ILLUSTRATION_IDS, type IllustrationId } from '../../engine/anim/illustrations';
 import { parsePDL } from '../../engine/format/parser';
 import { flowToMermaid } from '../../engine/format/mermaidSequenceExport';
 import { downloadText } from '../download';
 import { stem } from '../paths';
 import type { Branch, Doc, Flow, FlowStep } from '../../engine/model/types';
+import { s } from '../strings';
 import {
   addBranch,
   duplicateStep,
@@ -61,6 +62,15 @@ interface InspectActions {
   addLane: () => void;
 }
 
+const ILLUSTRATION_LABELS = {
+  'travel-token': 'travel token',
+  pulse: 'pulse',
+  'sequential-glow': 'sequential glow',
+  'packet-burst': 'packet burst',
+  'compare-split': 'compare split',
+  'trail-fade': 'trail fade',
+} as const;
+
 const KINDS: FlowStep['type'][] = [
   'intro',
   'msg',
@@ -86,22 +96,22 @@ function Field(props: { label: string; value: string; onInput: (v: string) => vo
 }
 
 function TextFields({ step, patch }: { step: { text: string }; patch: Patch }) {
-  return <Field label="Text" value={step.text} onInput={(v) => patch({ text: v })} testid="insp-text" />;
+  return <Field label={s("Text")} value={step.text} onInput={(v) => patch({ text: v })} testid="insp-text" />;
 }
 
 function MsgFields({ step, patch }: { step: Extract<FlowStep, { type: 'msg' }>; patch: Patch }) {
   return (
     <>
-      <Field label="From" value={step.from} onInput={(v) => patch({ from: v })} testid="insp-from" />
-      <Field label="To" value={step.to} onInput={(v) => patch({ to: v })} testid="insp-to" />
+      <Field label={s("From")} value={step.from} onInput={(v) => patch({ from: v })} testid="insp-from" />
+      <Field label={s("To")} value={step.to} onInput={(v) => patch({ to: v })} testid="insp-to" />
       <Field
-        label="Label"
+        label={s("Label")}
         value={step.label ?? ''}
         onInput={(v) => patch({ label: v === '' ? undefined : v })}
         testid="insp-label"
       />
       <label class="flow-field">
-        <span class="flow-field-label">Flip</span>
+        <span class="flow-field-label">{s("Flip")}</span>
         <input
           type="checkbox"
           data-testid="insp-flip"
@@ -116,9 +126,9 @@ function MsgFields({ step, patch }: { step: Extract<FlowStep, { type: 'msg' }>; 
 function ProcessFields({ step, patch }: { step: Extract<FlowStep, { type: 'process' }>; patch: Patch }) {
   return (
     <>
-      <Field label="Target" value={step.target} onInput={(v) => patch({ target: v })} testid="insp-target" />
+      <Field label={s("Target")} value={step.target} onInput={(v) => patch({ target: v })} testid="insp-target" />
       <Field
-        label="Note"
+        label={s("Note")}
         value={step.text ?? ''}
         onInput={(v) => patch({ text: v === '' ? undefined : v })}
         testid="insp-process-note"
@@ -130,11 +140,11 @@ function ProcessFields({ step, patch }: { step: Extract<FlowStep, { type: 'proce
 function AltFields({ step, patch, addBranch }: { step: Extract<FlowStep, { type: 'alt' }>; patch: Patch; addBranch: () => void }) {
   return (
     <>
-      <Field label="Label" value={step.label ?? ''} onInput={(v) => patch({ label: v === '' ? undefined : v })} testid="insp-alt-label" />
+      <Field label={s("Label")} value={step.label ?? ''} onInput={(v) => patch({ label: v === '' ? undefined : v })} testid="insp-alt-label" />
       {step.branches.map((b: Branch, i) => (
         <Field
           key={i}
-          label={`Branch ${i + 1}`}
+          label={s('Branch {n}', { n: i + 1 })}
           value={b.label}
           onInput={(v) => {
             const branches = step.branches.map((bb, j) => (j === i ? { ...bb, label: v } : bb));
@@ -143,7 +153,7 @@ function AltFields({ step, patch, addBranch }: { step: Extract<FlowStep, { type:
           testid={`insp-branch-${i}`}
         />
       ))}
-      <button type="button" data-testid="insp-branch-add" onClick={addBranch}>+ branch</button>
+      <button type="button" data-testid="insp-branch-add" onClick={addBranch}>{s("+ branch")}</button>
     </>
   );
 }
@@ -151,10 +161,10 @@ function AltFields({ step, patch, addBranch }: { step: Extract<FlowStep, { type:
 function GotoFields({ step, patch }: { step: Extract<FlowStep, { type: 'goto' }>; patch: Patch }) {
   return (
     <>
-      <Field label="File" value={step.file ?? ''} onInput={(v) => patch({ file: v === '' ? undefined : v })} testid="insp-goto-file" />
-      <Field label="Flow" value={step.flow} onInput={(v) => patch({ flow: v })} testid="insp-goto-flow" />
+      <Field label={s("File")} value={step.file ?? ''} onInput={(v) => patch({ file: v === '' ? undefined : v })} testid="insp-goto-file" />
+      <Field label={s("Flow")} value={step.flow} onInput={(v) => patch({ flow: v })} testid="insp-goto-flow" />
       <label class="flow-field">
-        <span class="flow-field-label">Return here</span>
+        <span class="flow-field-label">{s("Return here")}</span>
         <input
           type="checkbox"
           data-testid="insp-goto-here"
@@ -176,12 +186,12 @@ function StepInspector({ step, a }: { step: FlowStep; a: InspectActions }) {
           onChange={(e) => a.patch(newStep((e.target as HTMLSelectElement).value as FlowStep['type']))}
         >
           {KINDS.map((k) => (
-            <option key={k} value={k}>{k}</option>
+            <option key={k} value={k}>{s(k)}</option>
           ))}
         </select>
-        <button type="button" data-testid="step-up" onClick={() => a.move(-1)}>↑</button>
-        <button type="button" data-testid="step-down" onClick={() => a.move(1)}>↓</button>
-        <button type="button" data-testid="step-remove" onClick={a.remove}>✕</button>
+        <button type="button" data-testid="step-up" onClick={() => a.move(-1)}>{s("↑")}</button>
+        <button type="button" data-testid="step-down" onClick={() => a.move(1)}>{s("↓")}</button>
+        <button type="button" data-testid="step-remove" onClick={a.remove}>{s("✕")}</button>
       </div>
       {step.type === 'msg' ? (
         <MsgFields step={step} patch={a.patch} />
@@ -191,8 +201,8 @@ function StepInspector({ step, a }: { step: FlowStep; a: InspectActions }) {
         <AltFields step={step} patch={a.patch} addBranch={a.addBranch} />
       ) : step.type === 'par' ? (
         <>
-          <Field label="Label" value={step.label ?? ''} onInput={(v) => patchLabel(a.patch, v)} testid="insp-par-label" />
-          <button type="button" data-testid="insp-lane-add" onClick={a.addLane}>+ lane</button>
+          <Field label={s("Label")} value={step.label ?? ''} onInput={(v) => patchLabel(a.patch, v)} testid="insp-par-label" />
+          <button type="button" data-testid="insp-lane-add" onClick={a.addLane}>{s("+ lane")}</button>
         </>
       ) : step.type === 'goto' ? (
         <GotoFields step={step} patch={a.patch} />
@@ -207,12 +217,12 @@ function patchLabel(patch: Patch, v: string): void {
   patch({ label: v === '' ? undefined : v } as Partial<FlowStep>);
 }
 
-function stepTitle(s: FlowStep): string {
-  if (s.type === 'msg') return s.label ?? `${s.from} → ${s.to}`;
-  if (s.type === 'process') return s.target;
-  if (s.type === 'alt' || s.type === 'par') return s.label ?? s.type;
-  if (s.type === 'goto') return `→ ${s.file === undefined ? '' : `${s.file}#`}${s.flow}`;
-  return s.text;
+function stepTitle(step: FlowStep): string {
+  if (step.type === 'msg') return step.label ?? `${step.from} → ${step.to}`;
+  if (step.type === 'process') return step.target;
+  if (step.type === 'alt' || step.type === 'par') return step.label ?? s(step.type);
+  if (step.type === 'goto') return `→ ${step.file === undefined ? '' : `${step.file}#`}${step.flow}`;
+  return step.text;
 }
 
 export interface StepOps {
@@ -265,29 +275,27 @@ function StepList(props: { steps: FlatStep[]; sel: number[]; ops: StepOps }) {
               style={`padding-left: ${8 + fs.depth * 14}px`}
               onClick={() => props.ops.select(fs.path)}
             >
-              <span class={`flow-step-kind kind-${fs.step.type}`}>{fs.step.type}</span>
+              <span class={`flow-step-kind kind-${fs.step.type}`}>{s(fs.step.type)}</span>
               <span class="flow-step-title">{stepTitle(fs.step)}</span>
             </button>
             <button
               type="button"
               class="flow-step-btn"
               data-testid={`step-play-${i}`}
-              title="Play from this step"
-              aria-label={`Play from step ${i + 1}`}
+              title={s("Play from this step")}
+              aria-label={s('Play from step {n}', { n: i + 1 })}
               onClick={() => props.ops.playFrom(i)}
             >
-              ▶
-            </button>
+              {s("▶")}{' '}</button>
             <button
               type="button"
               class="flow-step-btn"
               data-testid={`step-dup-${i}`}
-              title="Duplicate step"
-              aria-label={`Duplicate step ${i + 1}`}
+              title={s("Duplicate step")}
+              aria-label={s('Duplicate step {n}', { n: i + 1 })}
               onClick={() => props.ops.duplicate(fs.path)}
             >
-              ⧉
-            </button>
+              {s("⧉")}{' '}</button>
             {!isBlockStep(fs.step.type) && (
               <input
                 type="number"
@@ -295,8 +303,8 @@ function StepList(props: { steps: FlatStep[]; sel: number[]; ops: StepOps }) {
                 step={100}
                 class="flow-step-delay"
                 data-testid={`step-delay-${i}`}
-                aria-label={`Step ${i + 1} delay in milliseconds`}
-                placeholder="delay"
+                aria-label={s('Step {n} delay in milliseconds', { n: i + 1 })}
+                placeholder={s("delay")}
                 value={fs.step.delayMs ?? ''}
                 onInput={(e) => {
                   const raw = (e.target as HTMLInputElement).value;
@@ -328,24 +336,23 @@ function FlowList(props: {
             <button type="button" data-testid={`flow-row-${key}`} onClick={() => props.onPick(key)}>
               {f.title ?? f.id}
             </button>
-            <button type="button" title="Play" data-testid={`flow-play-${key}`} onClick={() => props.onPlay(key)}>
-              ▶
-            </button>
+            <button type="button" title={s("Play")} data-testid={`flow-play-${key}`} onClick={() => props.onPlay(key)}>
+              {s("▶")}{' '}</button>
             {props.onIllustration && props.selFlow === key && (
               <select
                 class="flow-illustration"
                 data-testid="flow-illustration"
-                aria-label="Illustration style"
-                title="How this flow is illustrated"
+                aria-label={s("Illustration style")}
+                title={s("How this flow is illustrated")}
                 value={props.illustration ?? 'auto'}
                 onChange={(e) =>
                   props.onIllustration?.((e.target as HTMLSelectElement).value as IllustrationId | 'auto')
                 }
               >
-                <option value="auto">auto</option>
+                <option value="auto">{s("auto")}</option>
                 {ILLUSTRATION_IDS.map((id) => (
                   <option key={id} value={id}>
-                    {ILLUSTRATIONS[id].label}
+                    {s(ILLUSTRATION_LABELS[id])}
                   </option>
                 ))}
               </select>
@@ -362,10 +369,10 @@ function StepBar(props: { addKindRef: { current: HTMLSelectElement | null }; onA
     <div class="flow-stepbar">
       <select ref={props.addKindRef} data-testid="step-add-kind" defaultValue="msg">
         {KINDS.map((k) => (
-          <option key={k} value={k}>{k}</option>
+          <option key={k} value={k}>{s(k)}</option>
         ))}
       </select>
-      <button type="button" data-testid="step-add" onClick={props.onAdd}>+ step</button>
+      <button type="button" data-testid="step-add" onClick={props.onAdd}>{s("+ step")}</button>
     </div>
   );
 }
@@ -374,7 +381,7 @@ function ErrorPane({ noFile }: { noFile: boolean }) {
   return (
     <div class="flow-pane" data-testid="flow-pane">
       <p class="muted" data-testid="flow-error">
-        {noFile ? 'Open a file to edit flows.' : 'Active file has parse errors.'}
+        {noFile ? s('Open a file to edit flows.') : s('Active file has parse errors.')}
       </p>
     </div>
   );
@@ -415,7 +422,7 @@ function makeActions(
       }),
     remove: () => mutateSel((f, path) => removeAt(f, path)),
     addBranch: () =>
-      mutateSel((f, path) => addBranch(f, path, `option ${(step?.type === 'alt' ? step.branches.length : 0) + 1}`)),
+      mutateSel((f, path) => addBranch(f, path, s('option {n}', { n: (step?.type === 'alt' ? step.branches.length : 0) + 1 }))),
     addLane: () => mutateSel((f, path) => addLane(f, path)),
   };
 }
@@ -459,14 +466,12 @@ function FlowDetail(props: {
   return (
     <>
       <div class="flow-detail-head">
-        <span class="panel-title">Steps</span>
-        <button type="button" data-testid="flow-export-seq" title="Export selected flow as Mermaid sequenceDiagram" onClick={props.onExport}>
-          .seq.mmd
-        </button>
+        <span class="panel-title">{s("Steps")}</span>
+        <button type="button" data-testid="flow-export-seq" title={s("Export selected flow as Mermaid sequenceDiagram")} onClick={props.onExport}>
+          {s(".seq.mmd")}{' '}</button>
         {props.dirty === true && (
-          <span class="chip chip-dirty" data-testid="flow-dirty" title="Unapplied code edits">
-            unsaved
-          </span>
+          <span class="chip chip-dirty" data-testid="flow-dirty" title={s("Unapplied code edits")}>
+            {s("unsaved")}{' '}</span>
         )}
       </div>
       <StepList steps={props.flat} sel={props.selStep} ops={props.ops} />
@@ -518,7 +523,7 @@ export function FlowPane(props: FlowPaneProps) {
   };
   const addFlowRow = (): void => {
     const seq = doc.flows.length + 1;
-    apply((d) => addFlow(d, 'New flow', seq));
+    apply((d) => addFlow(d, s('New flow'), seq));
     pick(`flow${seq}`);
   };
 
@@ -532,7 +537,7 @@ export function FlowPane(props: FlowPaneProps) {
         illustration={props.illustration}
         onIllustration={props.onIllustration}
       />
-      <button type="button" data-testid="flow-add" onClick={addFlowRow}>+ flow</button>
+      <button type="button" data-testid="flow-add" onClick={addFlowRow}>{s("+ flow")}</button>
       {flow !== null && (
         <FlowDetail
           ops={ops}

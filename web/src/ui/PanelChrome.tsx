@@ -5,6 +5,7 @@
 // code rail keeps the sync-state chip), and the draggable splitter.
 import { useRef } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
+import { s } from './strings';
 
 export interface RailProps {
   /** Panel id — drives the test ids and aria wiring. */
@@ -24,13 +25,12 @@ export function PanelRail({ id, label, onExpand, children }: RailProps) {
         type="button"
         class="rail-toggle"
         data-testid={`expand-${id}`}
-        aria-label={`Show ${label} panel`}
+        aria-label={s('Show {label} panel', { label })}
         aria-expanded={false}
-        title={`Show ${label} (expand)`}
+        title={s('Show {label} (expand)', { label })}
         onClick={onExpand}
       >
-        ›
-      </button>
+        {s("›")}{' '}</button>
       {children}
     </div>
   );
@@ -51,16 +51,15 @@ export function CollapseButton(props: { id: string; label: string; onCollapse: (
       type="button"
       class="panel-toggle"
       data-testid={`collapse-${props.id}`}
-      aria-label={`Hide ${props.label} panel`}
+      aria-label={s('Hide {label} panel', { label: props.label })}
       aria-expanded={true}
-      title={`Hide ${props.label}`}
+      title={s('Hide {label}', { label: props.label })}
       onClick={() => {
         props.onCollapse();
         focusRail(props.id);
       }}
     >
-      ‹
-    </button>
+      {s("‹")}{' '}</button>
   );
 }
 

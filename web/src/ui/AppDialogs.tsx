@@ -16,6 +16,7 @@ import type { RefObject } from 'preact';
 import type { CanvasController } from './CanvasController';
 import type { SnapshotRecord } from '../workspace/store/snapshots';
 import type { WorkspaceManager } from '../workspace/workspace';
+import { s } from './strings';
 
 export function AppDialogs(props: {
   manager: WorkspaceManager;
@@ -61,7 +62,7 @@ export function AppDialogs(props: {
       {props.flash !== null && (
         <div class="banner banner-error" data-testid="banner-flash" role="alert">
           <span>{props.flash}</span>
-          <button type="button" onClick={props.onFlashDismiss}>dismiss</button>
+          <button type="button" onClick={props.onFlashDismiss}>{s("dismiss")}</button>
         </div>
       )}
       {search.open && <SearchDialog entries={search.entries} onPick={search.onPick} onClose={search.close} />}

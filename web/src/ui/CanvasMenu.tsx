@@ -2,6 +2,7 @@
 // Canvas context menu contents (F-19): derives the available commands from the
 // controller's selection so the menu never offers a no-op.
 import type { CanvasController } from './CanvasController';
+import { s } from './strings';
 import { ContextMenu, type MenuItem } from './ContextMenu';
 
 export interface CanvasMenuProps {
@@ -19,79 +20,79 @@ export function CanvasMenu({ ctrl, x, y, selectionCount, onClose }: CanvasMenuPr
   const items: MenuItem[] = [
     {
       id: 'duplicate',
-      label: 'Duplicate',
+      label: s('Duplicate'),
       onSelect: () => ctrl.duplicateSelected(),
       disabled: selectionCount === 0,
     },
     {
       id: 'copy',
-      label: 'Copy',
+      label: s('Copy'),
       onSelect: () => ctrl.copySelected(),
       disabled: selectionCount === 0,
     },
     {
       id: 'paste',
-      label: 'Paste',
+      label: s('Paste'),
       onSelect: () => ctrl.pasteCopied(),
       disabled: !ctrl.canPaste(),
     },
     {
       id: 'delete',
-      label: 'Delete',
+      label: s('Delete'),
       onSelect: () => ctrl.deleteSelection(),
       disabled: selectionCount === 0 && ctrl.snapshot.selection.links.length === 0,
     },
     {
       id: 'align-left',
-      label: 'Align left',
+      label: s('Align left'),
       onSelect: () => ctrl.alignSelected('left'),
       disabled: !many,
     },
     {
       id: 'align-center-x',
-      label: 'Align centre (horizontal)',
+      label: s('Align centre (horizontal)'),
       onSelect: () => ctrl.alignSelected('centerX'),
       disabled: !many,
     },
     {
       id: 'align-right',
-      label: 'Align right',
+      label: s('Align right'),
       onSelect: () => ctrl.alignSelected('right'),
       disabled: !many,
     },
     {
       id: 'align-top',
-      label: 'Align top',
+      label: s('Align top'),
       onSelect: () => ctrl.alignSelected('top'),
       disabled: !many,
     },
     {
       id: 'align-center-y',
-      label: 'Align middle (vertical)',
+      label: s('Align middle (vertical)'),
       onSelect: () => ctrl.alignSelected('centerY'),
       disabled: !many,
     },
     {
       id: 'align-bottom',
-      label: 'Align bottom',
+      label: s('Align bottom'),
       onSelect: () => ctrl.alignSelected('bottom'),
       disabled: !many,
     },
     {
       id: 'distribute-x',
-      label: 'Distribute horizontally',
+      label: s('Distribute horizontally'),
       onSelect: () => ctrl.distributeSelected('x'),
       disabled: selectionCount < 3,
     },
     {
       id: 'distribute-y',
-      label: 'Distribute vertically',
+      label: s('Distribute vertically'),
       onSelect: () => ctrl.distributeSelected('y'),
       disabled: selectionCount < 3,
     },
     {
       id: 'equal-size',
-      label: 'Equal size',
+      label: s('Equal size'),
       onSelect: () => ctrl.equalSizeSelected(),
       disabled: !many,
     },

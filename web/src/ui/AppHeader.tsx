@@ -8,6 +8,7 @@ import { StatusPill } from './StatusPill';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { useWorkspace } from './useWorkspace';
 import type { WorkspaceManager } from '../workspace/workspace';
+import { s } from './strings';
 
 function errorToShow(manager: WorkspaceManager, dismissed: string | null, ready: boolean): string | null {
   if (!ready || manager.openError === null || manager.openError === dismissed) return null;
@@ -32,7 +33,7 @@ export function AppHeader(props: {
   return (
     <>
       <header class="app-header">
-        <span class="app-title">PanelCraft</span>
+        <span class="app-title">{s('PanelCraft')}</span>
         <StatusPill dirty={props.dirty} savedAt={props.savedAt} problems={props.problems} />
         <WorkspaceToolbar
           manager={ws.manager}
@@ -51,10 +52,10 @@ export function AppHeader(props: {
           type="button"
           class="ghost-btn"
           data-testid="history-open"
-          aria-label="History"
+          aria-label={s('History')}
           onClick={props.onHistoryRequest}
         >
-          ⟲ History
+          {s('⟲ History')}
         </button>
       </header>
       <Banners

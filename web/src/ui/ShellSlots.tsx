@@ -11,6 +11,7 @@ import { PALETTE_ORDER, type CanvasController, type DiagramLink, type DiagramObj
 import type { Kind } from '../engine/model/types';
 import type { UiLayoutHandle } from './useUiLayout';
 import type { ImportError } from '../engine/model/imports';
+import { s } from './strings';
 
 /** Collapsed-rail or panel, chosen from the layout. */
 export function slot(
@@ -32,7 +33,7 @@ export function ImportBanner(props: { errors: ImportError[] }): ComponentChildre
   if (props.errors.length === 0) return null;
   return (
     <p class="import-banner" data-testid="import-errors" role="status">
-      {props.errors.length} import problem{props.errors.length === 1 ? '' : 's'}:{' '}
+      {props.errors.length} {s('import problem')}{props.errors.length === 1 ? '' : s('s')}{s(":")}{' '}
       {props.errors.map((e) => e.message).join(' · ')}
     </p>
   );

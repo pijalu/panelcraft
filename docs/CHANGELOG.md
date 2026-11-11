@@ -4,6 +4,13 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-11 — P6: N10 string centralization
+
+- Centralized UI chrome, accessible names, context/history copy, template copy and
+  new-flow defaults in a typed English catalog with named-placeholder interpolation.
+- Added a TypeScript AST audit for rendered text, accessible attributes and copy-bearing
+  properties. English remains the only exposed locale; no runtime behavior change intended.
+
 ## 2026-11-11 — P6: accessible mini-map
 
 - Completed FR-C1's mini-map with topology/viewport rendering, click-to-center,

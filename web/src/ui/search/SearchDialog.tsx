@@ -3,6 +3,7 @@
 // files/objects/flows, arrow-key navigation, Enter picks, Esc closes.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { search, type SearchEntry } from './searchIndex';
+import { s } from '../strings';
 
 export interface SearchDialogProps {
   /** Workspace-wide entries (built by the caller, e.g. from snapshotTree). */
@@ -62,17 +63,17 @@ export function SearchDialog(props: SearchDialogProps) {
 
   return (
     <div class="search-overlay" data-testid="search-overlay" onKeyDown={onKey}>
-      <div class="search-dialog" role="dialog" aria-label="Quick search">
+      <div class="search-dialog" role="dialog" aria-label={s("Quick search")}>
         <input
           ref={inputRef}
           class="search-input"
           data-testid="search-input"
-          placeholder="Search files, objects, flows…"
+          placeholder={s("Search files, objects, flows…")}
           value={query}
           onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
         />
         <ul class="search-results" data-testid="search-results" ref={listRef}>
-          {hits.length === 0 && <li class="search-empty">no matches</li>}
+          {hits.length === 0 && <li class="search-empty">{s("no matches")}</li>}
           {hits.map((h, i) => (
             <li key={`${h.kind}:${h.path}:${h.id ?? ''}`}>
               <button
@@ -82,7 +83,7 @@ export function SearchDialog(props: SearchDialogProps) {
                 onClick={() => pick(i)}
                 onMouseEnter={() => setSel(i)}
               >
-                <span class={`search-kind search-kind-${h.kind}`}>{h.kind}</span>
+                <span class={`search-kind search-kind-${h.kind}`}>{s(h.kind)}</span>
                 <span class="search-label">{h.label}</span>
                 {h.path !== h.label && <span class="search-path">{h.path}</span>}
               </button>

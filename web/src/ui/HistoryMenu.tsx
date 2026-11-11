@@ -3,6 +3,7 @@
 // surface badges and undo/redo routed to the surface that owns the action.
 import type { ComponentChildren } from 'preact';
 import type { HistoryEntry } from './historyFeed';
+import { s } from './strings';
 
 export interface HistoryMenuProps {
   entries: HistoryEntry[];
@@ -15,18 +16,17 @@ export interface HistoryMenuProps {
 
 export function HistoryMenu(props: HistoryMenuProps): ComponentChildren {
   return (
-    <div class="history-menu" data-testid="history-menu" role="dialog" aria-label="History">
+    <div class="history-menu" data-testid="history-menu" role="dialog" aria-label={s("History")}>
       <div class="history-head">
-        <span class="panel-title">History</span>
+        <span class="panel-title">{s("History")}</span>
         <button
           type="button"
           class="icon-btn"
           data-testid="history-close"
-          aria-label="Close history"
+          aria-label={s("Close history")}
           onClick={props.onClose}
         >
-          ×
-        </button>
+          {s("×")}{' '}</button>
       </div>
       <div class="history-actions">
         <button
@@ -36,8 +36,7 @@ export function HistoryMenu(props: HistoryMenuProps): ComponentChildren {
           disabled={!props.canUndo}
           onClick={props.onUndo}
         >
-          Undo
-        </button>
+          {s("Undo")}{' '}</button>
         <button
           type="button"
           class="ghost-btn"
@@ -45,13 +44,11 @@ export function HistoryMenu(props: HistoryMenuProps): ComponentChildren {
           disabled={!props.canRedo}
           onClick={props.onRedo}
         >
-          Redo
-        </button>
+          {s("Redo")}{' '}</button>
       </div>
       {props.entries.length === 0 ? (
         <p class="history-empty" data-testid="history-empty">
-          Nothing yet — move something on the canvas or edit the code.
-        </p>
+          {s("Nothing yet — move something on the canvas or edit the code.")}{' '}</p>
       ) : (
         <ol class="history-list" data-testid="history-list">
           {props.entries.map((e) => (
@@ -60,7 +57,7 @@ export function HistoryMenu(props: HistoryMenuProps): ComponentChildren {
                 {e.surface === 'canvas' ? '◇' : '</>'}
               </span>
               <span class="history-label">{e.label}</span>
-              <span class="sr-only">{e.surface === 'canvas' ? 'canvas' : 'code'} action</span>
+              <span class="sr-only">{e.surface === 'canvas' ? s('canvas') : s('code')} {s("action")}</span>
             </li>
           ))}
         </ol>

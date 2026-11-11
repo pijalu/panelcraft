@@ -11,6 +11,7 @@
 import { parsePDL } from '../../engine/format/parser';
 import { printDoc } from '../../engine/format/printer';
 import type { Branch, Doc, Flow, FlowStep } from '../../engine/model/types';
+import { s } from '../strings';
 
 type StepList = FlowStep[];
 
@@ -104,7 +105,7 @@ export function newStep(kind: FlowStep['type']): FlowStep {
   const pos = { line: 0, col: 0 };
   switch (kind) {
     case 'intro':
-      return { type: 'intro', text: 'New intro', pos };
+      return { type: 'intro', text: s('New intro'), pos };
     case 'msg':
       return { type: 'msg', from: '', to: '', pos };
     case 'process':
@@ -112,21 +113,21 @@ export function newStep(kind: FlowStep['type']): FlowStep {
     case 'alt':
       return {
         type: 'alt',
-        label: 'Alternative',
+        label: s('Alternative'),
         pos,
         branches: [
-          { label: 'option 1', steps: [], pos },
-          { label: 'option 2', steps: [], pos },
+          { label: s('option 1'), steps: [], pos },
+          { label: s('option 2'), steps: [], pos },
         ],
       };
     case 'par':
-      return { type: 'par', label: 'In parallel', pos, lanes: [[], []] };
+      return { type: 'par', label: s('In parallel'), pos, lanes: [[], []] };
     case 'goto':
       return { type: 'goto', flow: '', pos };
     case 'info':
-      return { type: 'info', text: 'Note', pos };
+      return { type: 'info', text: s('Note'), pos };
     case 'conclusion':
-      return { type: 'conclusion', text: 'Summary', pos };
+      return { type: 'conclusion', text: s('Summary'), pos };
   }
 }
 

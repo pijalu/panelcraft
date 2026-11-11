@@ -8,6 +8,7 @@ import type { WorkspaceManager } from '../workspace/workspace';
 import { useCanvasDiagnostics } from './useCanvasDiagnostics';
 import { useImportGhosts } from './useImportGhosts';
 import { ImportBanner } from './ShellSlots';
+import { s } from './strings';
 
 export interface ShellBannersProps {
   snapshot: SyncSnapshot;
@@ -41,8 +42,7 @@ export function ShellBanners(props: ShellBannersProps): ComponentChildren {
       </span>
       {diag.stale && (
         <p class="canvas-stale" data-testid="canvas-stale" role="status">
-          Diagram out of date — fix {diag.count} problem{diag.count === 1 ? '' : 's'} in the code
-          view.
+          {s('Diagram out of date — fix')} {diag.count} {s('problem')}{diag.count === 1 ? '' : s('s')} {s('in the code view.')}
         </p>
       )}
     </>

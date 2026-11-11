@@ -11,6 +11,7 @@ import { useState } from 'preact/hooks';
 import type { CanvasController } from './CanvasController';
 import type { DiagramLink, DiagramObject } from './CanvasController';
 import { CollapseButton } from './PanelChrome';
+import { s } from './strings';
 
 type ObjectChange = CanvasController['updateObject'];
 type LinkChange = CanvasController['updateLink'];
@@ -53,7 +54,7 @@ function Field(props: { label: string; children: ComponentChildren }) {
 function RouteField(props: { link: DiagramLink; onChange: LinkChange }) {
   const { link, onChange } = props;
   return (
-    <Field label="Route">
+    <Field label={s("Route")}>
       <select
         data-testid="link-route"
         value={link.route ?? 'orthogonal'}
@@ -62,9 +63,9 @@ function RouteField(props: { link: DiagramLink; onChange: LinkChange }) {
           onChange(link.id, { route: value === 'orthogonal' ? undefined : value as DiagramLink['route'] });
         }}
       >
-        <option value="orthogonal">orthogonal</option>
-        <option value="straight">straight</option>
-        <option value="curved">curved</option>
+        <option value="orthogonal">{s("orthogonal")}</option>
+        <option value="straight">{s("straight")}</option>
+        <option value="curved">{s("curved")}</option>
       </select>
     </Field>
   );
@@ -111,7 +112,7 @@ function PropertiesEditor(props: { obj: DiagramObject; onChange: ObjectChange })
       {rows.map((row, i) => (
         <div class="prop-row" key={`${row.key}-${i}`}>
           <input
-            aria-label={`Property ${i + 1} key`}
+            aria-label={s('Property {n} key', { n: i + 1 })}
             data-testid={`prop-prop-key-${i}`}
             value={row.key}
             onInput={(e) => {
@@ -122,7 +123,7 @@ function PropertiesEditor(props: { obj: DiagramObject; onChange: ObjectChange })
             }}
           />
           <input
-            aria-label={`Property ${i + 1} value`}
+            aria-label={s('Property {n} value', { n: i + 1 })}
             data-testid={`prop-prop-value-${i}`}
             value={row.value}
             onInput={(e) => {
@@ -136,11 +137,10 @@ function PropertiesEditor(props: { obj: DiagramObject; onChange: ObjectChange })
             type="button"
             class="prop-row-del"
             data-testid={`prop-prop-del-${i}`}
-            aria-label={`Remove property ${i + 1}`}
+            aria-label={s('Remove property {n}', { n: i + 1 })}
             onClick={() => update(rows.filter((_, j) => j !== i))}
           >
-            ×
-          </button>
+            {s("×")}{' '}</button>
         </div>
       ))}
       <button
@@ -149,8 +149,7 @@ function PropertiesEditor(props: { obj: DiagramObject; onChange: ObjectChange })
         data-testid="prop-prop-add"
         onClick={() => update([...rows, { key: `key${rows.length + 1}`, value: '' }])}
       >
-        + property
-      </button>
+        {s("+ property")}{' '}</button>
     </div>
   );
 }
@@ -170,10 +169,10 @@ function StyleControls(props: { obj: DiagramObject; onChange: ObjectChange }) {
           checked={props.obj.dashed === true}
           onChange={(e) => props.onChange(props.obj.id, { dashed: (e.target as HTMLInputElement).checked })}
         />
-        <span class="field-label">Dashed border</span>
+        <span class="field-label">{s("Dashed border")}</span>
       </label>
       {(['fill', 'stroke', 'text'] as const).map((key) => (
-        <Field key={key} label={key}>
+        <Field key={key} label={s(key)}>
           <input
             type="color"
             data-testid={`prop-style-${key}`}
@@ -184,11 +183,11 @@ function StyleControls(props: { obj: DiagramObject; onChange: ObjectChange }) {
           />
         </Field>
       ))}
-      <Field label="Icon">
+      <Field label={s("Icon")}>
         <input
           data-testid="prop-style-icon"
           value={style.icon ?? ''}
-          placeholder="(none)"
+          placeholder={s("(none)")}
           onInput={(e) => {
             const v = (e.target as HTMLInputElement).value.trim();
             set({ icon: v === '' ? undefined : v });
@@ -214,11 +213,11 @@ function ObjectFields(props: {
   return (
     <aside class="properties" data-testid="properties">
       <div class="panel-head">
-        <h2 class="panel-title">Properties</h2>
-        {props.onCollapse && <CollapseButton id="props" label="properties" onCollapse={props.onCollapse} />}
+        <h2 class="panel-title">{s("Properties")}</h2>
+        {props.onCollapse && <CollapseButton id="props" label={s("properties")} onCollapse={props.onCollapse} />}
       </div>
-      <Section id="identity" title="Identity" open={open('identity')} onToggle={onToggleSection}>
-        <Field label="Name">
+      <Section id="identity" title={s("Identity")} open={open('identity')} onToggle={onToggleSection}>
+        <Field label={s("Name")}>
           <input
             ref={props.nameFieldRef}
             data-testid="prop-name"
@@ -226,12 +225,12 @@ function ObjectFields(props: {
             onInput={(e) => onChange(obj.id, { name: (e.target as HTMLInputElement).value })}
           />
         </Field>
-        <Field label="Kind">
+        <Field label={s("Kind")}>
           <input data-testid="prop-kind" value={obj.kind} disabled />
         </Field>
       </Section>
-      <Section id="metadata" title="Metadata" open={open('metadata')} onToggle={onToggleSection}>
-        <Field label="Description">
+      <Section id="metadata" title={s("Metadata")} open={open('metadata')} onToggle={onToggleSection}>
+        <Field label={s("Description")}>
           <textarea
             data-testid="prop-description"
             rows={2}
@@ -239,14 +238,14 @@ function ObjectFields(props: {
             onInput={(e) => onChange(obj.id, { description: (e.target as HTMLTextAreaElement).value })}
           />
         </Field>
-        <Field label="Technology">
+        <Field label={s("Technology")}>
           <input
             data-testid="prop-technology"
             value={obj.technology ?? ''}
             onInput={(e) => onChange(obj.id, { technology: (e.target as HTMLInputElement).value })}
           />
         </Field>
-        <Field label="Tags (comma-separated)">
+        <Field label={s("Tags (comma-separated)")}>
           <input
             data-testid="prop-tags"
             value={(obj.tags ?? []).join(', ')}
@@ -262,20 +261,19 @@ function ObjectFields(props: {
         </Field>
         <PropertiesEditor obj={obj} onChange={onChange} />
       </Section>
-      <Section id="style" title="Style" open={open('style')} onToggle={onToggleSection}>
+      <Section id="style" title={s("Style")} open={open('style')} onToggle={onToggleSection}>
         <StyleControls obj={obj} onChange={onChange} />
       </Section>
-      <Section id="advanced" title="Advanced" open={open('advanced')} onToggle={onToggleSection}>
+      <Section id="advanced" title={s("Advanced")} open={open('advanced')} onToggle={onToggleSection}>
         <p class="muted" data-testid="prop-id">
-          id: {obj.id}
+          {s("id:")}{' '}{obj.id}
         </p>
         <p class="muted" data-testid="prop-size">
-          size: {Math.round(obj.w)} × {Math.round(obj.h)}
-          {obj.size ? ' (explicit)' : ' (fit to name)'}
+          {s("size:")}{' '}{Math.round(obj.w)} {s("×")}{' '}{Math.round(obj.h)}
+          {obj.size ? s(' (explicit)') : s(' (fit to name)')}
         </p>
         <button type="button" class="prop-action" data-testid="prop-fit" onClick={() => props.onFit?.()}>
-          Fit to name
-        </button>
+          {s("Fit to name")}{' '}</button>
       </Section>
     </aside>
   );
@@ -288,14 +286,14 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
   const primary = more ? LINK_TYPES : PRIMARY_LINK_TYPES;
   return (
     <aside class="properties" data-testid="properties">
-      <h2 class="panel-title">Link</h2>
-      <Field label="Type">
+      <h2 class="panel-title">{s("Link")}</h2>
+      <Field label={s("Type")}>
         <select
           data-testid="link-type"
           value={link.type ?? ''}
           onChange={(e) => onChange(link.id, { type: (e.target as HTMLSelectElement).value || undefined })}
         >
-          <option value="">(untyped)</option>
+          <option value="">{s("(untyped)")}</option>
           {/* keep the current value selectable even when it hides behind "more" */}
           {link.type !== undefined && !primary.includes(link.type) && (
             <option value={link.type}>{link.type}</option>
@@ -313,17 +311,17 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
           aria-expanded={more}
           onClick={() => setMore(!more)}
         >
-          {more ? 'Fewer types' : 'More types'}
+          {more ? s('Fewer types') : s('More types')}
         </button>
       </Field>
-      <Field label="Label">
+      <Field label={s("Label")}>
         <input
           data-testid="link-label"
           value={link.label ?? ''}
           onInput={(e) => onChange(link.id, { label: (e.target as HTMLInputElement).value })}
         />
       </Field>
-      <Field label="Head">
+      <Field label={s("Head")}>
         <select
           data-testid="link-head"
           value={link.head ?? 'arrow'}
@@ -336,7 +334,7 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
           ))}
         </select>
       </Field>
-      <Field label="Tail">
+      <Field label={s("Tail")}>
         <select
           data-testid="link-tail"
           value={link.tail ?? 'none'}
@@ -349,19 +347,19 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
           ))}
         </select>
       </Field>
-      <Field label="Line">
+      <Field label={s("Line")}>
         <select
           data-testid="link-line"
           value={link.line ?? 'solid'}
           onChange={(e) => onChange(link.id, { line: (e.target as HTMLSelectElement).value })}
         >
-          <option value="solid">solid</option>
-          <option value="dashed">dashed</option>
-          <option value="dotted">dotted</option>
+          <option value="solid">{s("solid")}</option>
+          <option value="dashed">{s("dashed")}</option>
+          <option value="dotted">{s("dotted")}</option>
         </select>
       </Field>
       <RouteField link={link} onChange={onChange} />
-      <Field label="Width">
+      <Field label={s("Width")}>
         <input
           type="number"
           min={1}
@@ -382,7 +380,7 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
           checked={link.dashed === true}
           onChange={(e) => onChange(link.id, { dashed: (e.target as HTMLInputElement).checked })}
         />
-        <span class="field-label">Dashed</span>
+        <span class="field-label">{s("Dashed")}</span>
       </label>
       <label class="field field-checkbox">
         <input
@@ -391,7 +389,7 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
           checked={link.bidir === true}
           onChange={(e) => onChange(link.id, { bidir: (e.target as HTMLInputElement).checked })}
         />
-        <span class="field-label">Bidirectional</span>
+        <span class="field-label">{s("Bidirectional")}</span>
       </label>
     </aside>
   );
@@ -417,10 +415,10 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
   return (
     <aside class="properties" data-testid="properties">
       <div class="panel-head">
-        <h2 class="panel-title">Properties</h2>
-        {onCollapse && <CollapseButton id="props" label="properties" onCollapse={onCollapse} />}
+        <h2 class="panel-title">{s("Properties")}</h2>
+        {onCollapse && <CollapseButton id="props" label={s("properties")} onCollapse={onCollapse} />}
       </div>
-      <p class="muted panel-empty">Select an object or link to edit its properties.</p>
+      <p class="muted panel-empty">{s("Select an object or link to edit its properties.")}</p>
     </aside>
   );
 }

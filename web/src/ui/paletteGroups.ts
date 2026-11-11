@@ -3,6 +3,7 @@
 // once is too many choices, so they are grouped into the three levels people
 // actually think in, plus a "structural" bucket for group/note.
 import type { Kind } from '../engine/model/types';
+import { s } from './strings';
 
 export type PaletteGroupId = 'context' | 'container' | 'component' | 'structural';
 
@@ -25,10 +26,10 @@ const GROUP_OF: Record<Kind, PaletteGroupId> = {
 };
 
 const TITLES: Record<PaletteGroupId, string> = {
-  context: 'Context',
-  container: 'Container',
-  component: 'Component',
-  structural: 'Structure',
+  context: s('Context'),
+  container: s('Container'),
+  component: s('Component'),
+  structural: s('Structure'),
 };
 
 /** Group `kinds`, preserving the caller's order inside each group. */

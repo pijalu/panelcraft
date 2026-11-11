@@ -7,6 +7,7 @@ import { useState } from 'preact/hooks';
 import type { WorkspaceManager } from '../workspace/workspace';
 import { listDir } from '../workspace/fs';
 import { baseName } from './paths';
+import { s } from './strings';
 
 export interface FileTreeProps {
   manager: WorkspaceManager;
@@ -195,20 +196,18 @@ function TreeToolbar(props: TreeToolbarProps) {
   return (
     <>
       <div class="tree-toolbar" data-no-drag>
-        <button type="button" data-testid="tree-new-file" title="New file" onClick={() => props.onCreate('file')}>
-          + file
-        </button>
-        <button type="button" data-testid="tree-new-folder" title="New folder" onClick={() => props.onCreate('folder')}>
-          + folder
-        </button>
+        <button type="button" data-testid="tree-new-file" title={s("New file")} onClick={() => props.onCreate('file')}>
+          {s("+ file")}{' '}</button>
+        <button type="button" data-testid="tree-new-folder" title={s("New folder")} onClick={() => props.onCreate('folder')}>
+          {s("+ folder")}{' '}</button>
       </div>
       {props.creating !== null && (
         <div class="tree-create" data-no-drag>
           <input
             data-testid="tree-create-input"
             value={props.createName}
-            placeholder={props.creating === 'file' ? 'name.pcd' : 'folder'}
-            title={props.dir === '' ? 'in workspace root' : `in ${props.dir}`}
+            placeholder={s(props.creating === 'file' ? 'name.pcd' : 'folder')}
+            title={props.dir === '' ? s('in workspace root') : s('in {dir}', { dir: props.dir })}
             onInput={(e) => props.onName((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') props.onCommit();
@@ -292,21 +291,17 @@ function TreeRow(props: TreeRowProps) {
       )}
       <span class="tree-actions" data-no-drag>
         {row.kind === 'file' && (
-          <button type="button" title="Duplicate" data-testid={`tree-dup-${row.path}`} onClick={() => props.onDuplicate(row.path)}>
-            ⧉
-          </button>
+          <button type="button" title={s("Duplicate")} data-testid={`tree-dup-${row.path}`} onClick={() => props.onDuplicate(row.path)}>
+            {s("⧉")}{' '}</button>
         )}
-        <button type="button" title="Rename" data-testid={`tree-ren-${row.path}`} onClick={() => props.onStartRename(row.path)}>
-          ✎
-        </button>
+        <button type="button" title={s("Rename")} data-testid={`tree-ren-${row.path}`} onClick={() => props.onStartRename(row.path)}>
+          {s("✎")}{' '}</button>
         {props.confirmDelete ? (
-          <button type="button" class="tree-danger" title="Click again to delete" data-testid={`tree-del-confirm-${row.path}`} onClick={() => props.onDelete(row.path)}>
-            sure?
-          </button>
+          <button type="button" class="tree-danger" title={s("Click again to delete")} data-testid={`tree-del-confirm-${row.path}`} onClick={() => props.onDelete(row.path)}>
+            {s("sure?")}{' '}</button>
         ) : (
-          <button type="button" title="Delete" data-testid={`tree-del-${row.path}`} onClick={() => props.onDelete(row.path)}>
-            ✕
-          </button>
+          <button type="button" title={s("Delete")} data-testid={`tree-del-${row.path}`} onClick={() => props.onDelete(row.path)}>
+            {s("✕")}{' '}</button>
         )}
       </span>
     </li>

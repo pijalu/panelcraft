@@ -54,6 +54,7 @@ import {
 } from '../engine/render/overlay';
 import { ValueChange, UndoStack, type CoalescableCommand } from '../workspace/undo';
 import type { Kind } from '../engine/model/types';
+import { s, type StringKey } from './strings';
 
 export interface DiagramObject {
   id: string;
@@ -173,11 +174,20 @@ export interface ControllerOptions {
   onHover?: (info: import('./hoverInfo').HoverInfo | null) => void;
 }
 
+const KIND_LABELS = {
+  person: 'Person',
+  system: 'System',
+  system_ext: 'System Ext',
+  container: 'Container',
+  component: 'Component',
+  datastore: 'Datastore',
+  queue: 'Queue',
+  group: 'Group',
+  note: 'Note',
+} as const satisfies Record<Kind, StringKey>;
+
 export function labelFor(kind: Kind): string {
-  return kind
-    .split('_')
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(' ');
+  return s(KIND_LABELS[kind]);
 }
 
 /** Numeric suffix of a generated id (`o12` → 12); 0 when it is not one. */
@@ -348,7 +358,7 @@ export class CanvasController {
     // F-02: probe for a free id — never reuse an id loaded from the file
     const id = uniqueId(this.takenObjectIds(), 'o', ++this.seq);
     this.seq = Math.max(this.seq, seqOf(id, 'o'));
-    const name = `${labelFor(kind)} ${seqOf(id, 'o')}`;
+    const name = s('{kind} {n}', { kind: labelFor(kind), n: seqOf(id, 'o') });
     // F-13 fit-to-name on create: the default box is a fallback, the label wins
     const fit = autoSize({ text: name, kind }, this.measure);
     const obj: DiagramObject = {
@@ -422,7 +432,7 @@ export class CanvasController {
     this.state = res.state;
     this.selectObjects(res.objects);
     this.undo.push({
-      label: 'paste',
+      label: s('paste'),
       undo: () => this.applyState(before),
       redo: () => this.applyState(res.state),
       coalesce: () => null,
@@ -445,7 +455,7 @@ export class CanvasController {
       if (targets.length < 2) return objects;
       const moved = new Map(alignObjects(targets, mode).map((o) => [o.id, o]));
       return objects.map((o) => moved.get(o.id) ?? o);
-    }, `align ${mode}`);
+    }, s('align {mode}', { mode }));
   }
 
   /** Distribute the selection evenly (needs ≥3 objects). */
@@ -455,7 +465,7 @@ export class CanvasController {
       if (targets.length < 3) return objects;
       const moved = new Map(distributeObjects(targets, axis).map((o) => [o.id, o]));
       return objects.map((o) => moved.get(o.id) ?? o);
-    }, `distribute ${axis}`);
+    }, s('distribute {axis}', { axis }));
   }
 
   /** Give the selection one size (the largest). */
@@ -465,7 +475,7 @@ export class CanvasController {
       if (targets.length < 2) return objects;
       const sized = new Map(equalSizeObjects(targets).map((o) => [o.id, o]));
       return objects.map((o) => sized.get(o.id) ?? o);
-    }, 'equal size');
+    }, s('equal size'));
   }
 
   /** Apply an object-list transform as one undoable command (no-op when equal). */
@@ -515,7 +525,7 @@ export class CanvasController {
         before,
         after,
         `link:${ids.join(',')}`,
-        'arrow head',
+        s('arrow head'),
         listEq,
       ),
     );
@@ -543,7 +553,7 @@ export class CanvasController {
         before,
         after,
         `fit:${targets.map((t) => t.id).join(',')}`,
-        'fit to name',
+        s('fit to name'),
         listEq,
       ),
     );
@@ -588,7 +598,7 @@ export class CanvasController {
         before,
         after,
         `props:${id}`,
-        'edit properties',
+        s('edit properties'),
         listEq,
       ),
     );
@@ -616,7 +626,7 @@ export class CanvasController {
         before,
         after,
         `link:${id}`,
-        'edit link',
+        s('edit link'),
         listEq,
       ),
     );
@@ -638,7 +648,7 @@ export class CanvasController {
     this.selectObjects([]);
     this.selLinks.clear();
     this.undo.push({
-      label: 'delete',
+      label: s('delete'),
       undo: () => this.applyState(before),
       redo: () => this.applyState(after),
       coalesce: () => null,
@@ -827,7 +837,7 @@ export class CanvasController {
   private addRemoveCommand(obj: DiagramObject, before: DiagramObject[]): CoalescableCommand {
     const afterObjects = [...before, obj];
     return {
-      label: 'add object',
+      label: s('add object'),
       undo: () => this.applyState({ ...this.state, objects: before }),
       redo: () => this.applyState({ ...this.state, objects: afterObjects }),
       coalesce: () => null,
@@ -1103,7 +1113,7 @@ export class CanvasController {
     const label = this.undo.undo();
     if (label === null) return false;
     this.applyState(this.state);
-    this.onHistory?.('undo ' + label);
+    this.onHistory?.(s('undo {label}', { label }));
     return true;
   }
 
@@ -1112,7 +1122,7 @@ export class CanvasController {
     const label = this.undo.redo();
     if (label === null) return false;
     this.applyState(this.state);
-    this.onHistory?.('redo ' + label);
+    this.onHistory?.(s('redo {label}', { label }));
     return true;
   }
 
@@ -1518,7 +1528,7 @@ export class CanvasController {
       this.render();
     };
     this.undo.push({
-      label: 'move waypoint',
+      label: s('move waypoint'),
       undo: () => set(m.before),
       redo: () => set(after as [number, number][]),
       coalesce: () => null,
@@ -1543,7 +1553,7 @@ export class CanvasController {
       this.render();
     };
     this.undo.push({
-      label: 'move',
+      label: s('move'),
       coalesceKey: m.before.length === 1 ? `pos:${m.before[0]?.id}` : 'pos:multi',
       undo: () => {
         set(m.before);
@@ -1589,7 +1599,7 @@ export class CanvasController {
     this.state = { ...this.state, links: after };
     this.recomputeRoutes();
     this.undo.push({
-      label: 'connect',
+      label: s('connect'),
       undo: () => this.applyState({ ...this.state, links: before }),
       redo: () => this.applyState({ ...this.state, links: after }),
       coalesce: () => null,

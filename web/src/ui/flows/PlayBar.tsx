@@ -5,6 +5,7 @@
 // e2e can assert it and the host can attach aria-live semantics). Purely
 // presentational: all behavior lives in the FlowRunner executor.
 import type { FlowPlayerApi } from './useFlowPlayer';
+import { s } from '../strings';
 
 export interface PlayBarProps {
   player: FlowPlayerApi;
@@ -32,28 +33,25 @@ export function PlayBar({ player: p, onPresent }: PlayBarProps) {
         <button
           type="button"
           data-testid="pb-present"
-          title="Present (fullscreen, no editor chrome)"
+          title={s("Present (fullscreen, no editor chrome)")}
           onClick={onPresent}
         >
-          ⛶
-        </button>
+          {s("⛶")}{' '}</button>
       )}
       <button
         type="button"
         data-testid="pb-restart"
-        title="Restart"
+        title={s("Restart")}
         onClick={() => p.restart()}
       >
-        ↺
-      </button>
+        {s("↺")}{' '}</button>
       <button
         type="button"
         data-testid="pb-step-back"
-        title="Step back"
+        title={s("Step back")}
         onClick={() => p.stepTo(Math.max(1, (st.progress?.index ?? 1) - 1))}
       >
-        ⏮
-      </button>
+        {s("⏮")}{' '}</button>
       <button
         type="button"
         data-testid="pb-toggle"
@@ -69,21 +67,18 @@ export function PlayBar({ player: p, onPresent }: PlayBarProps) {
       <button
         type="button"
         data-testid="pb-step-fwd"
-        title="Step forward"
+        title={s("Step forward")}
         onClick={() => p.stepTo((st.progress?.index ?? 0) + 1)}
       >
-        ⏭
-      </button>
-      <button type="button" data-testid="pb-exit" title="Exit" onClick={() => p.exit()}>
-        ✕
-      </button>
+        {s("⏭")}{' '}</button>
+      <button type="button" data-testid="pb-exit" title={s("Exit")} onClick={() => p.exit()}>
+        {s("✕")}{' '}</button>
       <span class="playbar-progress" data-testid="pb-progress">
         {st.progress === null ? '' : `${st.progress.index}/${st.progress.total}`}
       </span>
       {st.breadcrumb.length > 0 && (
         <span class="playbar-crumbs" data-testid="pb-breadcrumb">
-          {st.breadcrumb.join(' › ')} ›
-        </span>
+          {st.breadcrumb.join(' › ')} {s("›")}{' '}</span>
       )}
       {alt !== null && (
         <span class="playbar-choice" data-testid="pb-choice">
@@ -99,19 +94,16 @@ export function PlayBar({ player: p, onPresent }: PlayBarProps) {
       </span>
       {st.status === 'ended' && (
         <div class="closing-card" data-testid="closing-card" role="status">
-          <strong>{st.progress === null ? 'Flow' : 'Flow complete'}</strong>
+          <strong>{st.progress === null ? s('Flow') : s('Flow complete')}</strong>
           <span class="muted">
-            {st.progress === null ? '' : `${st.progress.total} steps`}
+            {st.progress === null ? '' : s('{n} steps', { n: st.progress.total })}
           </span>
           <button type="button" data-testid="cc-replay" onClick={() => p.restart()}>
-            Replay
-          </button>
+            {s("Replay")}{' '}</button>
           <button type="button" data-testid="cc-export" onClick={() => p.exportSvg?.()}>
-            Export SVG
-          </button>
+            {s("Export SVG")}{' '}</button>
           <button type="button" data-testid="cc-exit" onClick={() => p.exit()}>
-            Close
-          </button>
+            {s("Close")}{' '}</button>
         </div>
       )}
     </div>

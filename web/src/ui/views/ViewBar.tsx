@@ -10,6 +10,7 @@ import type { Doc } from '../../engine/model/types';
 import { dagreLayoutEngine } from '../../engine/layout/dagre';
 import { CanvasController, DEFAULT_SHAPE } from '../CanvasController';
 import { retext } from '../flows/flowDoc';
+import { s } from '../strings';
 import {
   addView,
   clearPositions,
@@ -75,21 +76,17 @@ function ViewActions(props: {
 }) {
   return (
     <span class="viewbar-actions">
-      <button type="button" data-testid="apply-layout" onClick={props.onApply} title="Compute layout and write positions to the file">
-        apply layout
-      </button>
-      <button type="button" data-testid="reset-layout" onClick={props.onReset} title="Forget this view's stored positions">
-        reset
-      </button>
+      <button type="button" data-testid="apply-layout" onClick={props.onApply} title={s("Compute layout and write positions to the file")}>
+        {s("apply layout")}{' '}</button>
+      <button type="button" data-testid="reset-layout" onClick={props.onReset} title={s("Forget this view's stored positions")}>
+        {s("reset")}{' '}</button>
       <button type="button" data-testid="layout-mode" onClick={props.onToggleMode}>
         {props.layoutLabel}
       </button>
       <button type="button" data-testid="pin-sel" disabled={props.hasSelection === false} onClick={props.onPin}>
-        pin
-      </button>
+        {s("pin")}{' '}</button>
       <button type="button" data-testid="hide-sel" disabled={props.hasSelection === false} onClick={props.onHide}>
-        hide
-      </button>
+        {s("hide")}{' '}</button>
     </span>
   );
 }
@@ -112,9 +109,9 @@ export function ViewBar(props: ViewBarProps) {
 
   const addNewView = (): void => {
     let n = 1;
-    while (viewNames(doc).includes(`View ${n}`)) n++;
-    commit((d) => addView(d, `View ${n}`));
-    props.onView(`View ${n}`);
+    while (viewNames(doc).includes(s('View {n}', { n }))) n++;
+    commit((d) => addView(d, s('View {n}', { n })));
+    props.onView(s('View {n}', { n }));
   };
 
   const tags = allTags(doc);
@@ -123,8 +120,7 @@ export function ViewBar(props: ViewBarProps) {
   return (
     <div class="viewbar" data-testid="viewbar">
       <label class="viewbar-views">
-        view
-        <select
+        {s("view")}{' '}<select
           data-testid="view-select"
           value={props.viewName ?? ''}
           onChange={(e) => {
@@ -133,12 +129,12 @@ export function ViewBar(props: ViewBarProps) {
             applyViewLayout(doc, props.ctrl!, effectiveView(doc, v === '' ? undefined : v));
           }}
         >
-          <option value="">(default)</option>
+          <option value="">{s("(default)")}</option>
           {viewNames(doc).map((n) => (
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
-        <button type="button" data-testid="view-add" onClick={addNewView} title="Add view">+ view</button>
+        <button type="button" data-testid="view-add" onClick={addNewView} title={s("Add view")}>{s("+ view")}</button>
         <button
           type="button"
           data-testid="view-del"
@@ -147,13 +143,12 @@ export function ViewBar(props: ViewBarProps) {
             props.onView(undefined);
           }}
           disabled={props.viewName === undefined}
-          title="Delete active view"
+          title={s("Delete active view")}
         >
-          del
-        </button>
+          {s("del")}{' '}</button>
       </label>
       <span class="viewbar-tags" data-testid="tag-chips">
-        {tags.length === 0 && <span class="muted">no tags</span>}
+        {tags.length === 0 && <span class="muted">{s("no tags")}</span>}
         {tags.map((t) => (
           <button
             key={t}

@@ -26,6 +26,7 @@ import { layoutStyle } from './uiLayout';
 import { PanelRail, Splitter, focusRail } from './PanelChrome';
 import { CanvasMenu } from './CanvasMenu';
 import { MiniMap } from './MiniMap';
+import { s } from './strings';
 import { ShellBanners } from './ShellBanners';
 import { useCanvasRevealPort } from './useCanvasReveal';
 import { usePresentation } from './usePresentation';
@@ -80,7 +81,7 @@ function SidePane(props: {
           class={props.tab === 'files' ? 'active' : ''}
           onClick={() => props.onTab('files')}
         >
-          Files
+          {s('Files')}
         </button>
         <button
           type="button"
@@ -88,22 +89,21 @@ function SidePane(props: {
           class={props.tab === 'flows' ? 'active' : ''}
           onClick={() => props.onTab('flows')}
         >
-          Flows
+          {s('Flows')}
         </button>
         {props.onCollapse && (
           <button
             type="button"
             class="panel-toggle"
             data-testid="collapse-sidebar"
-            aria-label="Hide files panel"
+            aria-label={s('Hide files panel')}
             aria-expanded={true}
             onClick={() => {
               props.onCollapse?.();
               focusRail('sidebar');
             }}
           >
-            ‹
-          </button>
+            {s("‹")}{' '}</button>
         )}
       </div>
       {props.tab === 'files' ? (
@@ -152,7 +152,7 @@ function CanvasSplit(props: {
         <PlayBar player={props.player} onPresent={props.onPresent} />
       </main>
       {props.codeCollapsed ? (
-        <PanelRail id="code" label="code" onExpand={props.onToggleCode}>
+        <PanelRail id="code" label={s('code')} onExpand={props.onToggleCode}>
           {/* the sync state must stay visible even with the pane collapsed */}
           <span
             class="rail-chip"
@@ -166,7 +166,7 @@ function CanvasSplit(props: {
         <>
           <Splitter
             id="code"
-            label="Resize code panel"
+            label={s('Resize code panel')}
             onResize={(dx) => props.onResizeCode(-dx)}
             onEnd={props.onEndResizeCode}
           />
@@ -368,7 +368,7 @@ function AppBody(p: {
         />
         <Splitter
           id="sidebar"
-          label="Resize files panel"
+          label={s('Resize files panel')}
           onResize={(dx) => ui.setPanelWidth('sidebar', ui.layout.widths.sidebar + dx)}
           onEnd={ui.flushLayout}
         />
@@ -379,7 +379,7 @@ function AppBody(p: {
         />
         <Splitter
           id="palette"
-          label="Resize shapes panel"
+          label={s('Resize shapes panel')}
           onResize={(dx) => ui.setPanelWidth('palette', ui.layout.widths.palette + dx)}
           onEnd={ui.flushLayout}
         />
@@ -402,7 +402,7 @@ function AppBody(p: {
         />
         <Splitter
           id="props"
-          label="Resize properties panel"
+          label={s('Resize properties panel')}
           onResize={(dx) => ui.setPanelWidth('props', ui.layout.widths.props - dx)}
           onEnd={ui.flushLayout}
         />

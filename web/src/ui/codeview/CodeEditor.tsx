@@ -20,6 +20,7 @@ import { minimalChange, trailingWhitespaceOnly } from './diff';
 import { objectAtLine, spanOf } from '../../engine/format/spans';
 import { highlightExtension, setHighlight } from './highlight';
 import { codePorts } from '../codePorts';
+import { s } from '../strings';
 
 export interface CodeEditorProps {
   /** The App-owned sync machine (single source of sync truth). */
@@ -108,7 +109,7 @@ export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProp
         pcTheme,
         pcHighlightExtension,
         // N5: the editable content region needs an accessible name
-        EditorView.contentAttributes.of({ 'aria-label': 'Diagram source (PDL)' }),
+        EditorView.contentAttributes.of({ 'aria-label': s('Diagram source (PDL)') }),
         lintGutter(),
         linter(lintSource),
         EditorView.updateListener.of((u) => onDocChanged(u.state.doc.toString())),
@@ -179,12 +180,12 @@ export function ProblemsPanel({ snapshot }: { snapshot: SyncSnapshot | null }) {
   if (snapshot === null || snapshot.diagnostics.length === 0) {
     return (
       <div class="problems" data-testid="problems-empty">
-        {snapshot?.state === 'error' ? 'no diagnostics' : ''}
+        {snapshot?.state === 'error' ? s('no diagnostics') : ''}
       </div>
     );
   }
   return (
-    <div class="problems" data-testid="problems" role="listbox" aria-label="Problems">
+    <div class="problems" data-testid="problems" role="listbox" aria-label={s("Problems")}>
       {snapshot.diagnostics.map((d, i) => (
         <button
           key={i}
@@ -195,7 +196,7 @@ export function ProblemsPanel({ snapshot }: { snapshot: SyncSnapshot | null }) {
           aria-selected="false"
           onClick={() => focusLine(d.line)}
         >
-          <span class="problem-loc">{d.line}:{d.col}</span>
+          <span class="problem-loc">{d.line}{s(":")}{d.col}</span>
           <span class="problem-code">{d.code ?? ''}</span>
           <span class="problem-msg">{d.message ?? ''}</span>
         </button>

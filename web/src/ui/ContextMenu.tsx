@@ -3,6 +3,7 @@
 // and edge actions. Keyboard: Escape closes, items are real buttons so Tab and
 // Enter work; the first item receives focus on open.
 import { useEffect, useRef } from 'preact/hooks';
+import { s } from './strings';
 
 export interface MenuItem {
   label: string;
@@ -48,7 +49,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       class="context-menu"
       data-testid="context-menu"
       role="menu"
-      aria-label="Canvas actions"
+      aria-label={s('Canvas actions')}
       style={{ left: `${x}px`, top: `${y}px` }}
     >
       {items.map((item) => (

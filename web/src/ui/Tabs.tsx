@@ -3,6 +3,7 @@
 // pointer-based drag reorder (moveTab reducer owns the invariants).
 import { useRef } from 'preact/hooks';
 import type { Tab } from '../workspace/tabs';
+import { s } from './strings';
 
 export interface TabsProps {
   tabs: Tab[];
@@ -42,22 +43,21 @@ export function Tabs({ tabs, active, onSelect, onClose, onReorder }: TabsProps) 
             data-active={i === active ? 'true' : 'false'}
             onClick={() => onSelect(i)}
           >
-            {t.dirty && <span class="tab-dirty" data-testid={`tab-dirty-${t.path}`} title="Unsaved changes">●</span>}
+            {t.dirty && <span class="tab-dirty" data-testid={`tab-dirty-${t.path}`} title={s('Unsaved changes')}>{s("●")}</span>}
             {t.path.split('/').pop()}
           </button>
           <button
             type="button"
             class="tab-close"
             data-testid={`tab-close-${t.path}`}
-            title="Close tab"
-            aria-label={`Close ${t.path}`}
+            title={s('Close tab')}
+            aria-label={s('Close {path}', { path: t.path })}
             onClick={() => onClose(i)}
           >
-            ×
-          </button>
+            {s("×")}{' '}</button>
         </span>
       ))}
-      {tabs.length === 0 && <span class="tab-empty">no open files</span>}
+      {tabs.length === 0 && <span class="tab-empty">{s('no open files')}</span>}
     </div>
   );
 }

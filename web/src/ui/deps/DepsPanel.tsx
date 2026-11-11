@@ -9,6 +9,7 @@ import type { Doc } from '../../engine/model/types';
 import type { CanvasController } from '../CanvasController';
 import { effectiveView } from '../views/viewDoc';
 import { adjacency, depsFade, type DepEntry } from './depsDoc';
+import { s } from '../strings';
 
 export interface DepsPanelProps {
   text: string | null;
@@ -67,15 +68,15 @@ export function DepsPanel(props: DepsPanelProps) {
   return (
     <section class="deps-panel" data-testid="deps-panel">
       <h3 class="deps-title">
-        dependencies{props.filePath ? ` · ${props.filePath}` : ''}
+        {s("dependencies")}{props.filePath ? ` · ${props.filePath}` : ''}
         {activeObj ? ` · ${activeObj.name ?? activeObj.id}` : ''}
       </h3>
-      {props.activeId === null && <div class="deps-empty">select an object to see its dependencies</div>}
+      {props.activeId === null && <div class="deps-empty">{s("select an object to see its dependencies")}</div>}
       {props.activeId !== null && (
         <>
-          <div class="deps-sub">incoming</div>
+          <div class="deps-sub">{s("incoming")}</div>
           <DepRows entries={adj.incoming} testid="deps-incoming" onPick={props.onPick} empty="none" />
-          <div class="deps-sub">outgoing</div>
+          <div class="deps-sub">{s("outgoing")}</div>
           <DepRows entries={adj.outgoing} testid="deps-outgoing" onPick={props.onPick} empty="none" />
         </>
       )}

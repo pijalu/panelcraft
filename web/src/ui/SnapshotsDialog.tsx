@@ -3,6 +3,7 @@
 // save current, restore, delete (prune). Storage browser-local only (ADR-0003).
 import { useEffect, useState } from 'preact/hooks';
 import type { SnapshotRecord } from '../workspace/store/snapshots';
+import { s } from './strings';
 
 export interface SnapshotsDialogProps {
   snapshots(): Promise<Array<SnapshotRecord>>;
@@ -45,13 +46,13 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
 
   return (
     <div class="dialog-overlay" data-testid="snapshots-overlay">
-      <div class="dialog" role="dialog" aria-label="Snapshots">
-        <h2>snapshots</h2>
-        <p class="muted">Named restore points of the whole workspace, stored locally in your browser.</p>
+      <div class="dialog" role="dialog" aria-label={s("Snapshots")}>
+        <h2>{s("snapshots")}</h2>
+        <p class="muted">{s("Named restore points of the whole workspace, stored locally in your browser.")}</p>
         <div class="snapshot-create">
           <input
             data-testid="snapshot-name"
-            placeholder="snapshot name…"
+            placeholder={s("snapshot name…")}
             value={name}
             onInput={(e) => setName((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => {
@@ -59,28 +60,24 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
             }}
           />
           <button type="button" data-testid="snapshot-save" onClick={save} disabled={busy || name.trim() === ''}>
-            save
-          </button>
+            {s("save")}{' '}</button>
         </div>
         <ul class="snapshot-list" data-testid="snapshot-list">
-          {list.length === 0 && <li class="deps-empty">no snapshots yet</li>}
-          {list.map((s) => (
-            <li key={s.id}>
-              <span class="snapshot-name">{s.name}</span>
-              <span class="snapshot-at muted">{new Date(s.savedAt).toLocaleString()}</span>
-              <button type="button" data-testid={`snapshot-restore-${s.id}`} onClick={() => { props.onRestore(s); props.onClose(); }} disabled={busy}>
-                restore
-              </button>
-              <button type="button" data-testid={`snapshot-delete-${s.id}`} onClick={() => remove(s.id)} disabled={busy}>
-                delete
-              </button>
+          {list.length === 0 && <li class="deps-empty">{s("no snapshots yet")}</li>}
+          {list.map((snapshot) => (
+            <li key={snapshot.id}>
+              <span class="snapshot-name">{snapshot.name}</span>
+              <span class="snapshot-at muted">{new Date(snapshot.savedAt).toLocaleString()}</span>
+              <button type="button" data-testid={`snapshot-restore-${snapshot.id}`} onClick={() => { props.onRestore(snapshot); props.onClose(); }} disabled={busy}>
+                {s("restore")}{' '}</button>
+              <button type="button" data-testid={`snapshot-delete-${snapshot.id}`} onClick={() => remove(snapshot.id)} disabled={busy}>
+                {s("delete")}{' '}</button>
             </li>
           ))}
         </ul>
         <div class="dialog-actions">
           <button type="button" data-testid="snapshot-close" onClick={props.onClose}>
-            close
-          </button>
+            {s("close")}{' '}</button>
         </div>
       </div>
     </div>

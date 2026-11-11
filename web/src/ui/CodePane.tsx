@@ -5,6 +5,7 @@
 import type { SyncMachine, SyncSnapshot } from './codeview/sync';
 import { CodeEditor } from './codeview/CodeEditor';
 import { CollapseButton } from './PanelChrome';
+import { s } from './strings';
 
 export interface CodePaneProps {
   machine: SyncMachine;
@@ -21,9 +22,9 @@ export interface CodePaneProps {
 /** Split-pane code view for the active file. */
 export function CodePane({ machine, snapshot, onFormat, onCollapse, revealRef, onCaretObject }: CodePaneProps) {
   return (
-    <section class="code-pane" data-testid="code-pane" aria-label="Code view">
+    <section class="code-pane" data-testid="code-pane" aria-label={s('Code view')}>
       <header class="code-pane-head">
-        <span class="panel-title">Code</span>
+        <span class="panel-title">{s('Code')}</span>
         <span
           class="muted"
           data-testid="sync-state"
@@ -32,15 +33,15 @@ export function CodePane({ machine, snapshot, onFormat, onCollapse, revealRef, o
         >
           {snapshot.state}
         </span>
-        {onCollapse && <CollapseButton id="code" label="code" onCollapse={onCollapse} />}
+        {onCollapse && <CollapseButton id="code" label={s('code')} onCollapse={onCollapse} />}
         <button
           type="button"
           class="code-pane-btn"
           data-testid="format-code"
-          title="Format the PDL buffer (Shift+Alt+F)"
+          title={s('Format the PDL buffer (Shift+Alt+F)')}
           onClick={onFormat}
         >
-          Format
+          {s('Format')}
         </button>
       </header>
       <CodeEditor machine={machine} revealRef={revealRef} onCaretObject={onCaretObject} />

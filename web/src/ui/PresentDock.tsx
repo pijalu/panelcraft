@@ -4,6 +4,7 @@
 // Docked at the bottom so the diagram keeps the whole viewport.
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
 import { progressDots } from './present';
+import { s } from './strings';
 
 export interface PresentDockProps {
   player: FlowPlayerApi;
@@ -18,7 +19,7 @@ export function PresentLayer({ player }: PresentDockProps) {
         type="button"
         class="present-advance"
         data-testid="present-advance"
-        aria-label="Next step"
+                  aria-label={s('Next step')}
         onClick={() => player.stepTo(index + 1)}
       />
       <PresentDock player={player} />
@@ -39,15 +40,14 @@ export function PresentDock({ player: p }: PresentDockProps) {
         <button
           type="button"
           data-testid="present-back"
-          aria-label="Previous step"
+          aria-label={s('Previous step')}
           onClick={() => p.stepTo(Math.max(1, index - 1))}
         >
-          ‹
-        </button>
+          {s("‹")}{' '}</button>
         <button
           type="button"
           data-testid="present-toggle"
-          aria-label={st.status === 'playing' ? 'Pause' : 'Play'}
+          aria-label={st.status === 'playing' ? s('Pause') : s('Play')}
           onClick={() => (st.status === 'playing' ? p.pause() : p.resume())}
         >
           {st.status === 'playing' ? '⏸' : '▶'}
@@ -55,20 +55,17 @@ export function PresentDock({ player: p }: PresentDockProps) {
         <button
           type="button"
           data-testid="present-next"
-          aria-label="Next step"
+                      aria-label={s('Next step')}
           onClick={() => p.stepTo(index + 1)}
         >
-          ›
-        </button>
+          {s("›")}{' '}</button>
         <span class="present-counter" data-testid="present-counter">
-          {index} / {total}
+          {index} {s("/")}{' '}{total}
         </span>
-        <button type="button" data-testid="present-restart" aria-label="Restart" onClick={() => p.restart()}>
-          ↺
-        </button>
-        <button type="button" data-testid="present-exit" aria-label="Exit presentation" onClick={() => p.exit()}>
-          ✕
-        </button>
+        <button type="button" data-testid="present-restart" aria-label={s('Restart')} onClick={() => p.restart()}>
+          {s("↺")}{' '}</button>
+        <button type="button" data-testid="present-exit" aria-label={s('Exit presentation')} onClick={() => p.exit()}>
+          {s("✕")}{' '}</button>
       </div>
       <div class="present-dots" data-testid="present-dots">
         {dots.map((d) => (
@@ -77,7 +74,7 @@ export function PresentDock({ player: p }: PresentDockProps) {
             type="button"
             class={`present-dot${d.current ? ' current' : ''}`}
             data-testid={`present-dot-${d.step}`}
-            aria-label={`Step ${d.step}`}
+            aria-label={s('Step {n}', { n: d.step })}
             aria-current={d.current ? 'step' : undefined}
             onClick={() => p.stepTo(d.step)}
           />
