@@ -37,8 +37,12 @@ view "Default" {
 
 /** Paste text into the code view and wait for a clean sync. */
 async function seedDoc(page: Page, text: string): Promise<void> {
-  await page.locator('.cm-content').click();
-  await page.keyboard.press('Control+a');
+  const editor = page.locator('.cm-content');
+  // The shell renders before workspace hydration; do not select text until the
+  // initial file has reached the editor, or that write can reset the selection.
+  await expect(editor).toContainText('pcd 1.0');
+  await editor.click();
+  await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(text);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
@@ -113,12 +117,16 @@ test('P0/D2: adding objects to a loaded file never duplicates an id', async ({ p
   );
   expect(new Set(ids).size).toBe(5); // five render nodes, five distinct ids
 
-  const content = await page.locator('.cm-content').innerText();
-  const declared = [...content.matchAll(/(?:system|container|datastore|component|person)\s+(\w+)/g)].map(
-    (m) => m[1],
-  );
-  expect(declared).toHaveLength(5);
-  expect(new Set(declared).size).toBe(5);
+  // `clean` stays set during the trailing 150 ms canvas → code debounce. Wait
+  // for the final projection, not merely the first newly inserted container.
+  await expect
+    .poll(async () => {
+      const content = await page.locator('.cm-content').innerText();
+      return [...content.matchAll(/(?:system|container|datastore|component|person)\s+(\w+)/g)].map(
+        (m) => m[1],
+      );
+    })
+    .toEqual(['api', 'db', 'o1', 'o2', 'o3']);
 });
 
 test('P0/D5: a group survives a reload with its size (F-06)', async ({ page }) => {
