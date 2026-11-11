@@ -9,10 +9,10 @@ and the importer emits M200 diagnostics instead of ignoring lines silently.
 
 ## Import / export coverage
 
-| Construct | Import (fromMermaid / fromC4) | Export (docToMermaid / docToC4) | Notes |
+| Construct | Import (fromMermaid / fromC4) | Export (docToMermaid / docToC4 / flowToMermaid) | Notes |
 |---|---|---|---|
 | flowchart / graph | yes | yes | shapes, subgraphs, chained/`&` edges |
-| sequenceDiagram | yes (→ flows) | no | participants → objects, messages → msg steps |
+| sequenceDiagram | yes (→ flows) | yes (selected flow) | messages, alt/par and notes; import blocks still warn |
 | C4Context | yes | yes | Person/System/Container*/Component*, Rel* |
 | classDef + class | tags only (colours M100) | yes (from tags) | colours are declared drops |
 | linkStyle | yes (→ link style) | partial | stroke/dash mapped; width/index-only lost |
@@ -49,6 +49,15 @@ Every string below can appear in `dropped[]`; anything starting with
 - `views (positions/layout)`
 - `imports (flattened)`
 - `link style beyond a label`
+
+## Declared sequence export drops (`flowToMermaid`)
+
+One selected Flow becomes one `.seq.mmd` document. Presentation, animation and
+diagram topology stay in PDL; navigation and timing loss are explicit.
+
+- `per-step delays`
+- `goto navigation`
+- `notes without participants`
 
 ## Importer diagnostics
 

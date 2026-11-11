@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// M6-WP7: the selected flow downloads as a real Mermaid sequenceDiagram.
+import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+
+const DOC = `pcd 1.0
+person user "Customer"
+system shop "Shop"
+system api "API"
+user -> shop
+api -> shop
+flow "Checkout" as main {
+  intro "Start"
+  user -> shop : "submit"
+  alt "result" {
+    "ok" { process api "capture" }
+    "failed" { info "try again" }
+  }
+  par "receipts" {
+    { api -> shop : "event" }
+    { process api "email" }
+  }
+  conclusion "Done"
+}
+`;
+
+test('M6-WP7: selected flow exports to .seq.mmd', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.cm-content').click();
+  await page.keyboard.insertText(DOC);
+  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await page.getByTestId('side-tab-flows').click();
+  await page.getByTestId('flow-row-main').click();
+  const pending = page.waitForEvent('download');
+  await page.getByTestId('flow-export-seq').click();
+  const download = await pending;
+  expect(download.suggestedFilename()).toBe('untitled.seq.mmd');
+  const path = await download.path();
+  expect(path).not.toBeNull();
+  const text = await readFile(path!, 'utf8');
+  expect(text).toContain('sequenceDiagram\n  title Checkout');
+  expect(text).toContain('actor user as Customer');
+  expect(text).toContain('user->>shop: submit');
+  expect(text).toContain('alt result — ok');
+  expect(text).toContain('par receipts');
+  expect(text).toContain('Note over user,api: Done');
+});

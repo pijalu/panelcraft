@@ -8,6 +8,9 @@
 import { useRef, useState } from 'preact/hooks';
 import { ILLUSTRATIONS, ILLUSTRATION_IDS, type IllustrationId } from '../../engine/anim/illustrations';
 import { parsePDL } from '../../engine/format/parser';
+import { flowToMermaid } from '../../engine/format/mermaidSequenceExport';
+import { downloadText } from '../download';
+import { stem } from '../paths';
 import type { Branch, Doc, Flow, FlowStep } from '../../engine/model/types';
 import {
   addBranch,
@@ -451,11 +454,15 @@ function FlowDetail(props: {
   addKindRef: { current: HTMLSelectElement | null };
   onPickStep(p: number[]): void;
   onAddStep(): void;
+  onExport(): void;
 }) {
   return (
     <>
       <div class="flow-detail-head">
         <span class="panel-title">Steps</span>
+        <button type="button" data-testid="flow-export-seq" title="Export selected flow as Mermaid sequenceDiagram" onClick={props.onExport}>
+          .seq.mmd
+        </button>
         {props.dirty === true && (
           <span class="chip chip-dirty" data-testid="flow-dirty" title="Unapplied code edits">
             unsaved
@@ -537,6 +544,11 @@ export function FlowPane(props: FlowPaneProps) {
           addKindRef={addKindRef}
           onPickStep={(p) => setSel({ flow: selFlow, step: p })}
           onAddStep={addStep}
+          onExport={() => {
+            if (props.activePath !== null) {
+              downloadText(flowToMermaid(doc, flow).text, `${stem(props.activePath)}.seq.mmd`);
+            }
+          }}
         />
       )}
     </div>

@@ -4,7 +4,8 @@
 // import the TS sources. Never hand-edit testdata/corpus/** artifacts; rerun
 // this instead. Go replays the parse goldens byte-for-byte (internal/corpus)
 // — parity gate. Export goldens (export.mmd, M4-WP5) are TS-only: the Go
-// replay job has no converters (corpus.test.ts layout note).
+// replay job has no converters (corpus.test.ts layout note). Sequence export
+// goldens (export.<flow>.seq.mmd, M6-WP7) are TS-only for the same reason.
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { argv } from 'node:process';
@@ -18,6 +19,7 @@ if (argv[1]?.endsWith('corpus-accept.mjs')) {
       'run',
       'web/src/engine/format/corpus.test.ts',
       'web/src/engine/format/mermaidExport.test.ts',
+      'web/src/engine/format/mermaidSequenceExport.test.ts',
     ],
     {
       stdio: 'inherit',

@@ -462,8 +462,8 @@ implemented and covered by tests.
 
 Comments/annotations on objects · export to draw.io/PlantUML · plugin API for custom
 stencils · additional diagram notations (sequence-native, deployment advanced) ·
-optional file-system access API for real folders · flow→`sequenceDiagram` export
-(`.seq.mmd`, slipped from M6-WP7 per PLAN §10 — first M6 slip, nothing else cut).
+optional file-system access API for real folders.
+Flow→`sequenceDiagram` export (`.seq.mmd`) was subsequently completed from M6-WP7.
 M7 groom adds: full i18n string centralization (`strings.ts`; N10 shipped English-only,
 see M7.md). F-39/F-40 subsequently closed the carried camera-containment and
 dependencies-heading items; active flow actors now have browser containment assertions

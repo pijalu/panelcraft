@@ -3,11 +3,14 @@
 // per-type inspectors, structural ops. All edits asserted through the
 // retext round-trip (the onChangeText payload re-parses).
 // @vitest-environment jsdom
-import { describe, expect, it, afterEach } from 'vitest';
+import { describe, expect, it, afterEach, vi } from 'vitest';
 import { render, fireEvent, screen, cleanup } from '@testing-library/preact';
 import { useState } from 'preact/hooks';
 import { parsePDL } from '../../engine/format/parser';
 import { FlowPane, type FlowPaneProps } from './FlowPane';
+import { downloadText } from '../download';
+
+vi.mock('../download', () => ({ downloadText: vi.fn() }));
 
 const DOC = `pcd 1.0
 
@@ -60,6 +63,16 @@ function mount() {
 }
 
 afterEach(cleanup);
+
+describe('FlowPane sequence export (M6-WP7)', () => {
+  it('downloads the selected flow as .seq.mmd', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('flow-export-seq'));
+    expect(downloadText).toHaveBeenCalledWith(expect.stringContaining('sequenceDiagram'), 'main.seq.mmd');
+    expect(vi.mocked(downloadText).mock.calls[0]?.[0]).toContain('a->>b: order');
+  });
+});
 
 describe('FlowPane flow list (M5-WP4)', () => {
   it('lists flows and starts playback on ▶', () => {

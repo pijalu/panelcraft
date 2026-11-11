@@ -4,6 +4,13 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-11 — P6: sequence export
+
+- Completed M6-WP7: a selected flow downloads as `.seq.mmd`, preserving participants,
+  messages, `alt`/`par` blocks, process/info/conclusion notes, direction flips and
+  dashed links. Timing, navigation and participant-less-note loss is explicitly declared.
+- Added converter/UI regressions, a checkout golden and a real-browser download E2E.
+
 ## 2026-11-11 — P6: routing completion
 
 - Completed FR-C8 with persisted orthogonal/straight/curved link routes (IR v3), curved

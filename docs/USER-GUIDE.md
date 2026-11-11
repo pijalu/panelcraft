@@ -91,12 +91,18 @@ mirrors every feature.
 4. **Present**: `⛶` enters the chrome-free shell — click or press Space/→ to
    advance, ← to go back, `P` pauses, `R` restarts, `Esc` exits and restores the
    previous chrome and viewport.
+5. **Export a sequence**: select a flow, then choose `.seq.mmd` beside *Steps*.
+  The download is a Mermaid `sequenceDiagram` with participants, messages,
+  alternatives, parallel lanes and notes. `goto` navigation, per-step delays and
+  notes in a flow with no participants cannot be represented and are reported by
+  the converter's `dropped[]` result; sequence import still warns on block syntax.
 
 ## 4. Import / export
 
 | Action | How | Notes |
 |---|---|---|
 | Export single file | toolbar → *Export* | `.pcd` (canonical), `.mmd` (flowchart), `.svg` (sanitized), `.png` (2×) |
+| Export selected flow | *Flows* → select flow → `.seq.mmd` | Mermaid `sequenceDiagram`; one flow per download |
 | Import mermaid | toolbar → *Import* | best-effort converter; result lands in the code view for review |
 | Workspace round-trip | *Export ZIP* / *Import ZIP* | includes all files; snapshots stay local |
 | SVG safety | automatic | exported SVG is sanitized (no scripts/event handlers/foreign objects) — SPEC N6 |
