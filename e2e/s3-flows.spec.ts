@@ -120,22 +120,26 @@ test('S3: 6-step flow playback — transport, alt chooser, par concurrency, dim,
   await expect(canvas.locator('g.pc-obj[data-id="db"]')).not.toHaveClass(/pc-dim/);
   await expect(canvas.locator('g.pc-link[data-id="aw"]')).toHaveClass(/pc-dim/);
 
-  // ---- beat 6: msg notify — ada leaves the stage ----------------------------
+  // ---- beat 6: msg notify — ada remains as recent narrative context ---------
   await page.getByTestId('pb-step-fwd').click();
   await expect(narration).toHaveText('notify');
   await expectActorsContained(canvas, ['web', 'db']);
-  await expect(canvas.locator('g.pc-obj[data-id="ada"]')).toHaveClass(/pc-dim/);
+  const ada = canvas.locator('g.pc-obj[data-id="ada"]');
+  await expect(ada).toHaveClass(/pc-dim-history/);
+  await expect(ada).not.toHaveClass(/(?:^|\s)pc-dim(?:\s|$)/);
+  await expect(ada).toHaveCSS('opacity', '0.55');
+  await expect(canvas.locator('g.pc-link[data-id="aw"]')).toHaveClass(/(?:^|\s)pc-dim(?:\s|$)/);
   await expect(canvas.locator('g.pc-obj[data-id="web"]')).not.toHaveClass(/pc-dim/);
+
+  // Vision input: the three-level emphasis state (live/history/dim), light+dark.
+  await capture(page, 'm5-s3-light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await capture(page, 'm5-s3-dark');
 
   // ---- beat 7: conclusion — flow ends (FR-F1) -------------------------------
   await page.getByTestId('pb-step-fwd').click();
   await expect(narration).toHaveText('done');
   await expect(page.getByTestId('pb-progress')).toHaveText('7/7');
-
-  // vision round 2 input: light (mid-flow) + dark (end-state) screenshots
-  await capture(page, 'm5-s3-light');
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await capture(page, 'm5-s3-dark');
 
   // exit restores the pre-play viewport (FR-F3) — transform back to identity
   await page.getByTestId('pb-exit').click();

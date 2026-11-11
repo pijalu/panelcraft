@@ -98,12 +98,42 @@ describe('FlowAnimator dims (FR-F4)', () => {
     expect(svg.querySelector('.pc-link[data-id="ab"]')?.classList.contains('pc-dim')).toBe(false);
   });
 
-  it('switching beats restores the previous dim set', () => {
+  it('switching beats clears stale dim classes before applying history', () => {
     const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry() });
     anim.play(beatOf({ index: 1, kind: 'process', actors: ['a'], dim: ['b', 'c', 'ab', 'bc'] }), ctx);
     anim.play(beatOf({ index: 2, kind: 'process', actors: ['c'], dim: ['a', 'b', 'ab', 'bc'] }), ctx);
-    expect(svg.querySelector('.pc-obj[data-id="a"]')?.classList.contains('pc-dim')).toBe(true);
+    expect(svg.querySelector('.pc-obj[data-id="a"]')?.classList.contains('pc-dim-history')).toBe(true);
+    expect(svg.querySelector('.pc-obj[data-id="a"]')?.classList.contains('pc-dim')).toBe(false);
+    expect(svg.querySelector('.pc-obj[data-id="b"]')?.classList.contains('pc-dim')).toBe(true);
     expect(svg.querySelector('.pc-obj[data-id="c"]')?.classList.contains('pc-dim')).toBe(false);
+  });
+
+  it('keeps the previous beat legible with a softer history fade', () => {
+    const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry() });
+    anim.play(beatOf({
+      index: 1,
+      kind: 'msg',
+      actors: ['a', 'b'],
+      links: [{ linkId: 'ab', from: 'a', to: 'b', flipped: false }],
+      dim: ['c', 'bc'],
+    }), ctx);
+    anim.play(beatOf({ index: 2, kind: 'process', actors: ['b'], dim: ['a', 'c', 'ab', 'bc'] }), ctx);
+
+    const previousObject = svg.querySelector('.pc-obj[data-id="a"]');
+    const previousLink = svg.querySelector('.pc-link[data-id="ab"]');
+    expect(previousObject?.classList.contains('pc-dim-history')).toBe(true);
+    expect(previousObject?.classList.contains('pc-dim')).toBe(false);
+    expect(previousLink?.classList.contains('pc-dim-history')).toBe(true);
+    expect(previousLink?.classList.contains('pc-dim')).toBe(false);
+    expect(svg.querySelector('.pc-obj[data-id="c"]')?.classList.contains('pc-dim')).toBe(true);
+
+    // Only the immediately previous beat gets the softer treatment.
+    anim.play(beatOf({ index: 3, kind: 'process', actors: ['c'], dim: ['a', 'b', 'ab', 'bc'] }), ctx);
+    expect(previousObject?.classList.contains('pc-dim-history')).toBe(false);
+    expect(previousObject?.classList.contains('pc-dim')).toBe(true);
+    expect(svg.querySelector('.pc-obj[data-id="b"]')?.classList.contains('pc-dim-history')).toBe(true);
+    anim.stop();
+    expect(svg.querySelectorAll('.pc-dim-history')).toHaveLength(0);
   });
 
   it('stop() restores everything and empties the anim layer', () => {

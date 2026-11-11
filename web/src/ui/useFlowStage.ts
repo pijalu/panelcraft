@@ -61,19 +61,20 @@ export function useFlowStage(deps: FlowStageDeps): FlowPlayerApi {
     if (stage !== null || svg === null) return;
     const world = svg.querySelector('.pc-world');
     if (world === null) return;
+    const reducedMotion =
+      typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        : false;
     const camera = new CameraController({
       el: world,
       apply: (t) => canvas.ctrlRef.current?.applyCamera(t),
       view: (): Size => ({ w: svg.clientWidth, h: svg.clientHeight }),
       player: waapiPlayer,
       clock: systemClock,
-      // F-16: reduced-motion users get instant camera moves and no beat animation
-      reducedMotion:
-        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-          ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-          : false,
+      // F-16: reduced-motion users get instant camera moves and no beat animation.
+      reducedMotion,
     });
-    setStage({ animator: new FlowAnimator(svg, { player: waapiPlayer }), camera });
+    setStage({ animator: new FlowAnimator(svg, { player: waapiPlayer, reducedMotion }), camera });
   }, [stage, canvas.svgRef, canvas.ctrlRef]);
 
   // F-17: apply the flow's illustration choice to the animator

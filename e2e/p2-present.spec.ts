@@ -107,6 +107,10 @@ test('F-16: a chooser waits in present mode, choices advance, R restarts', async
   const before = await page.getByTestId('present-counter').innerText();
   await choices.first().click();
   await expect.poll(async () => page.getByTestId('present-counter').innerText()).not.toBe(before);
+  // Reduced motion applies to the animator as well as the camera: a static
+  // emphasis end state, never a pulsing ring.
+  await expect(page.locator('.pc-obj.pc-emph')).toHaveCount(1);
+  await expect(page.locator('.pc-ring')).toHaveCount(0);
 
   // R restarts the flow from the first beat
   await page.keyboard.press('r');

@@ -468,7 +468,8 @@ Flow→`sequenceDiagram` export (`.seq.mmd`) was subsequently completed from M6-
 N10 full UI string centralization was subsequently completed in `strings.ts`; the
 runtime remains English-only (see M7.md). F-39/F-40 subsequently closed the carried
 camera-containment and dependencies-heading items; active flow actors now have browser containment assertions
-and the dependencies heading names the owning file.
+and the dependencies heading names the owning file. The flow-presentation pass subsequently
+added one-beat history fading and production reduced-motion parity, with light/dark review.
 
 ---
 

@@ -34,7 +34,7 @@ mirrors every feature.
   them. Labels automatically try nearby positions to avoid objects, other routes, and
   other labels; a text halo keeps the least-bad fallback readable in dense diagrams.
 - **Pan / zoom**: Space-drag or wheel/trackpad pans; Ctrl/Cmd+wheel zooms.
-  The upper-right **mini-map** shows the topology and current viewport. Click it
+  The bottom-right **mini-map** shows the topology and current viewport. Click it
   to center that location; with it focused, arrow keys pan and Home fits the
   diagram. It follows flow-camera movement, hides during presentation and on
   narrow screens (≤640px), and uses the active light/dark theme.
@@ -87,7 +87,8 @@ mirrors every feature.
 2. Each step targets an object/link with optional focus rules; reorder steps
    by drag.
 3. **Play**: the docked transport steps through the plan — the active step's
-   elements highlight, the rest dim; the narration line is an ARIA live region
+   elements highlight, the previous step's participants fade lightly, and the rest
+   dim; the narration line is an ARIA live region
    (screen readers announce every step). `prefers-reduced-motion` plays without
    transition animation. Each step may carry `delay <ms>`; the flow's
    illustration style (token, pulse, glow, burst, split, trail) is chosen per

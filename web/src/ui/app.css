@@ -1907,6 +1907,12 @@ marker .pc-arrow[fill='none'] {
   opacity: 0.25;
 }
 
+/* Previous-beat participants remain visible as context without competing with
+   the current actors; older/non-participating elements use the full dim. */
+.pc-dim-history {
+  opacity: 0.55;
+}
+
 /* Tag-filter/view fade (FR-V1/V2): same opacity as dim, its own class so play
    mode dim and perspective fade never fight over one attribute. */
 .pc-faded {

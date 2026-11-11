@@ -61,6 +61,8 @@ export class FlowAnimator {
   private readonly reduced: boolean;
   private dimmed: Element[] = [];
   private emphasized: Element[] = [];
+  /** Immediately previous participants stay readable as narrative context. */
+  private previous = new Set<string>();
   /** F-17: flow-level illustration choice (null = auto per beat kind). */
   private illustration: IllustrationId | null = null;
 
@@ -103,14 +105,18 @@ export class FlowAnimator {
 
   /** Play a beat: clears the previous one, applies dim/emphasis/visuals. */
   play(beat: Beat, ctx: BeatCtx): void {
-    this.stop();
+    this.clearVisuals();
     for (const id of beat.dim) {
       const el = this.findEl(id);
       if (el !== null) {
-        el.classList.add('pc-dim');
+        el.classList.add(this.previous.has(id) ? 'pc-dim-history' : 'pc-dim');
         this.dimmed.push(el);
       }
     }
+    this.previous = new Set([
+      ...this.allActors(beat),
+      ...this.allLinks(beat).map((link) => link.linkId),
+    ]);
     this.badge(beat, ctx);
     if (this.reduced) {
       // FR-F5: jump to end states — persistent emphasis, no movement
@@ -199,13 +205,18 @@ export class FlowAnimator {
     this.ensureLayer().appendChild(line);
   }
 
-  /** Cancel nothing (CSS transitions finish naturally) but restore the scene. */
-  stop(): void {
-    for (const el of this.dimmed) el.classList.remove('pc-dim');
+  private clearVisuals(): void {
+    for (const el of this.dimmed) el.classList.remove('pc-dim', 'pc-dim-history');
     for (const el of this.emphasized) el.classList.remove('pc-emph');
     this.dimmed = [];
     this.emphasized = [];
     this.ensureLayer().textContent = '';
+  }
+
+  /** Cancel nothing (CSS transitions finish naturally) but restore the scene. */
+  stop(): void {
+    this.clearVisuals();
+    this.previous.clear();
   }
 
   private badge(beat: Beat, ctx: BeatCtx): void {

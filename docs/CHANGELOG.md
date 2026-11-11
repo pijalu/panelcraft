@@ -4,6 +4,15 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-11 — P6: flow-presentation polish
+
+- Added a softer one-beat history fade for previous objects and links while keeping
+  current actors live and all other elements at the specified 25% opacity.
+- Wired the production animator to `prefers-reduced-motion`, matching the existing
+  instant camera behavior with static emphasis and no pulsing rings or travel.
+- Added unit and real-browser regressions plus reviewed light/dark playback and
+  presentation captures; numbered badges, parallel lanes and compact transports remain.
+
 ## 2026-11-11 — P6: N10 string centralization
 
 - Centralized UI chrome, accessible names, context/history copy, template copy and
