@@ -12,7 +12,9 @@
 // - removals/order changes → remove nodes / re-append in z order
 
 import { shapeGlyphs, type ElSpec, type SceneObject } from './shapes';
-import { labelPoint, type Polyline } from './router';
+import type { Polyline, RouteMode } from './router';
+import { routeLabelPoint, routeToPath } from './routePath';
+import { layoutLinkLabels } from './labelLayout';
 import { GRID_SIZE } from './snap';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -44,6 +46,8 @@ export interface SceneLink {
   line?: 'solid' | 'dashed' | 'dotted';
   /** Stroke width in document units (F-12). */
   width?: number;
+  /** Geometry mode; absent preserves orthogonal routing. */
+  route?: RouteMode;
 }
 
 export interface Scene {
@@ -90,7 +94,7 @@ function markerRef(shape: MarkerShape): string {
 
 /** Everything `updateLink` writes besides the polyline (F-12 visual model). */
 function visualKey(l: SceneLink): string {
-  return [l.head ?? 'arrow', l.tail ?? 'none', l.line ?? (l.dashed ? 'dashed' : 'solid'), l.width ?? '', l.type ?? ''].join('|');
+  return [l.head ?? 'arrow', l.tail ?? 'none', l.line ?? (l.dashed ? 'dashed' : 'solid'), l.width ?? '', l.type ?? '', l.route ?? 'orthogonal'].join('|');
 }
 
 function polylineKey(points: Polyline): string {
@@ -112,6 +116,7 @@ export class SceneRenderer {
   /** Selection survives rebuilds: reapplied after each patch. */
   private selectedIds = new Set<string>();
   private selectedLinkIds = new Set<string>();
+  private labelPlacements: ReturnType<typeof layoutLinkLabels> = new Map();
 
   constructor(svg: SVGSVGElement) {
     this.svg = svg;
@@ -286,9 +291,9 @@ export class SceneRenderer {
     entry.path.setAttribute('marker-start', markerRef(link.tail ?? 'none'));
     if (link.width !== undefined) entry.path.setAttribute('stroke-width', String(link.width));
     else entry.path.removeAttribute('stroke-width');
-    entry.path.setAttribute('d', pointsToPath(link.points));
+    entry.path.setAttribute('d', pointsToPath(link.points, link.route));
     if (entry.label) {
-      const mid = labelPoint(link.points);
+      const mid = this.labelPlacements.get(link.id)?.point ?? routeLabelPoint(link.points, link.route);
       entry.label.setAttribute('x', String(mid.x));
       entry.label.setAttribute('y', String(mid.y));
     }
@@ -298,6 +303,7 @@ export class SceneRenderer {
    * Diff-patch the scene. Returns operation counts for perf/test assertions.
    */
   render(scene: Scene): PatchStats {
+    this.labelPlacements = layoutLinkLabels(scene);
     const stats: PatchStats = { created: 0, updated: 0, removed: 0, reordered: false };
     this.patchObjects(scene.objects, stats);
     this.patchLinks(scene.links, stats);
@@ -448,9 +454,6 @@ export class SceneRenderer {
 }
 
 /** Polyline → SVG path d string. */
-export function pointsToPath(points: Polyline): string {
-  if (points.length === 0) return '';
-  return points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
-    .join(' ');
+export function pointsToPath(points: Polyline, mode: RouteMode = 'orthogonal'): string {
+  return routeToPath(points, mode);
 }

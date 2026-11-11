@@ -7,6 +7,7 @@
 import type { Point, Rect } from './viewport';
 
 export type Side = 'top' | 'bottom' | 'left' | 'right';
+export type RouteMode = 'orthogonal' | 'straight' | 'curved';
 
 export const ROUTER_CLEARANCE = 12;
 
@@ -108,6 +109,17 @@ export function routeOrtho(input: RouteInput): Polyline {
     return routeThroughWaypoints(input); // F-19: user-stated path wins
   }
   return routeAuto(input);
+}
+
+/** Route one link using its visual mode; orthogonal remains the default. */
+export function routeLink(input: RouteInput, mode: RouteMode = 'orthogonal'): Polyline {
+  if (mode === 'orthogonal') return routeOrtho(input);
+  const [sideA, sideB] = pickSides(input.from, input.to);
+  return [
+    portPoint(input.from, sideA),
+    ...(input.waypoints ?? []).map(([x, y]) => ({ x, y })),
+    portPoint(input.to, sideB),
+  ];
 }
 
 /** Automatic orthogonal route with obstacle detours. */

@@ -67,6 +67,7 @@ export interface CanvasLink {
   head?: string;
   tail?: string;
   line?: string;
+  route?: StyleBlock['route'];
   width?: number;
 }
 
@@ -96,6 +97,7 @@ function linkStyle(l: CanvasLink): StyleBlock | undefined {
     head: l.head,
     tail: l.tail,
     line: l.line,
+    route: l.route,
     width: l.width,
   };
   const empty = Object.values(style).every((v) => v === undefined);
@@ -257,6 +259,7 @@ export function docToState(doc: Doc, viewName?: string): CanvasState {
       head: l.style?.head,
       tail: l.style?.tail,
       line: l.style?.line,
+      route: l.style?.route,
       width: l.style?.width,
       waypoints: l.waypoints?.map((w) => [w[0], w[1]] as [number, number]),
     }));

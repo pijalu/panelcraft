@@ -4,6 +4,14 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-11 — P6: routing completion
+
+- Completed FR-C8 with persisted orthogonal/straight/curved link routes (IR v3), curved
+  hit-testing, route-aware rendering, properties controls, and TS⇄Go corpus parity.
+- Added deterministic label placement around solid objects, unrelated routes, and other
+  labels, plus a theme-aware halo for crowded fallbacks. Existing orthogonal geometry
+  remains the default; explicit waypoints survive all three modes.
+
 ## 2026-02-14 — P5: spec-completion and C4 CLI rendering (F-37…F-41)
 
 - Implemented `panelcraft render` with isolated, storage-free browser rendering and

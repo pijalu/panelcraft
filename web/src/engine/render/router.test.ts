@@ -4,6 +4,7 @@ import {
   portPoint,
   pickSides,
   routeOrtho,
+  routeLink,
   arrowDirection,
   labelPoint,
   polylineLength,
@@ -91,6 +92,23 @@ describe('routeOrtho (WP6 v1)', () => {
   it('deterministic: same input → same output', () => {
     const input = { from: R(0, 0), to: R(300, 100), obstacles: [R(150, 0, 60, 200)] };
     expect(routeOrtho(input)).toEqual(routeOrtho(input));
+  });
+});
+
+describe('route modes', () => {
+  it('straight mode joins side anchors diagonally and preserves waypoints', () => {
+    expect(routeLink({ from: R(0, 0), to: R(300, 100) }, 'straight')).toEqual([
+      { x: 80, y: 20 },
+      { x: 300, y: 120 },
+    ]);
+    expect(routeLink({ from: R(0, 0), to: R(300, 100), waypoints: [[150, 200]] }, 'straight'))
+      .toEqual([{ x: 80, y: 20 }, { x: 150, y: 200 }, { x: 300, y: 120 }]);
+  });
+
+  it('curved mode uses the same anchors and leaves orthogonal behavior unchanged', () => {
+    const input = { from: R(0, 0), to: R(300, 100), obstacles: [R(150, 0, 60, 200)] };
+    expect(routeLink(input, 'curved')).toEqual(routeLink(input, 'straight'));
+    expect(routeLink(input, 'orthogonal')).toEqual(routeOrtho(input));
   });
 });
 

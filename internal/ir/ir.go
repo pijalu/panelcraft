@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 2
+const IRVersion = 3
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -44,6 +44,7 @@ type StyleBlock struct {
 	Head   string    `json:"head,omitempty"`
 	Tail   string    `json:"tail,omitempty"`
 	Line   string    `json:"line,omitempty"`
+	Route  string    `json:"route,omitempty"`
 	Width  *float64  `json:"width,omitempty"`
 	Raw    []RawAttr `json:"raw,omitempty"`
 }

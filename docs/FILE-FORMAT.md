@@ -158,14 +158,20 @@ style {
   head diamond                 ← arrow-head marker: arrow | open | diamond | circle | square | none
   tail circle                  ← marker at the link's tail (same set; default none)
   line dotted                  ← texture: solid | dashed | dotted
+  route curved                 ← geometry: orthogonal | straight | curved (IR v3)
   width 2.5                    ← stroke width in document units
   dashed                       ← legacy alias of `line dashed`
 }
 ```
 
-  Absent keys fall back to `head arrow`, `tail none`, `line solid`, width 1.5. The
-  printer emits only the keys the document carries, so canvas writes stay minimal.
-  `head`/`tail`/`line`/`width` are link-only; the object style block rejects neither
+  Absent keys fall back to `head arrow`, `tail none`, `line solid`, `route orthogonal`,
+  width 1.5. The printer emits only the keys the document carries, so canvas writes stay
+  minimal. Straight and curved routes retain explicit waypoints without orthogonal
+  obstacle detours; two-point curves use endpoint tangents and waypoint curves use
+  Catmull-Rom-derived cubic Bézier segments. Curves are sampled for hit-testing and
+  deterministic link-label placement. Labels prefer their route midpoint, then stable
+  nearby candidates that avoid solid objects, unrelated routes, and earlier labels.
+  `head`/`tail`/`line`/`route`/`width` are link-only; the object style block rejects neither
   (they round-trip) but the renderer ignores them there.
 
 ## 5. Imports (hybrid reuse, SPEC D1)

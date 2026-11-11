@@ -1,0 +1,7 @@
+flowchart TD
+  client[Client]
+  api[API]
+  worker[Worker]
+  client -->|requests:| api
+  api -->|publishes: jobs| worker
+  client -->|fallback| worker

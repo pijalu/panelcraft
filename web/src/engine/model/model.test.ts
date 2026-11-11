@@ -77,7 +77,7 @@ describe('serializeDoc (WP1)', () => {
     const b = serializeDoc(JSON.parse(JSON.stringify(sample)) as Doc);
     expect(a).toBe(b);
     expect(a).not.toContain('[]');
-    expect(a).toContain('"irVersion": 2');
+    expect(a).toContain(`"irVersion": ${IR_VERSION}`);
     // x:0 must survive (positional zero is legal)
     expect(a).toContain('"x": 0');
   });

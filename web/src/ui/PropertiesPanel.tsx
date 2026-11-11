@@ -50,6 +50,26 @@ function Field(props: { label: string; children: ComponentChildren }) {
   );
 }
 
+function RouteField(props: { link: DiagramLink; onChange: LinkChange }) {
+  const { link, onChange } = props;
+  return (
+    <Field label="Route">
+      <select
+        data-testid="link-route"
+        value={link.route ?? 'orthogonal'}
+        onChange={(e) => {
+          const value = (e.target as HTMLSelectElement).value;
+          onChange(link.id, { route: value === 'orthogonal' ? undefined : value as DiagramLink['route'] });
+        }}
+      >
+        <option value="orthogonal">orthogonal</option>
+        <option value="straight">straight</option>
+        <option value="curved">curved</option>
+      </select>
+    </Field>
+  );
+}
+
 /** Collapsible section with a persisted expanded state (F-11). */
 function Section(props: {
   id: string;
@@ -340,6 +360,7 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
           <option value="dotted">dotted</option>
         </select>
       </Field>
+      <RouteField link={link} onChange={onChange} />
       <Field label="Width">
         <input
           type="number"

@@ -27,9 +27,12 @@ mirrors every feature.
   on the grid and never gets smaller than 48×32. An explicit size is saved as
   `size <w> <h>`; "Fit to name" (properties → Advanced) recomputes it.
 - **Connect**: drag from an edge halo (or right-click → connect) to a target.
-  A link's type/label/arrowheads/line/width live in the properties panel;
-  `Shift+A` cycles the head shape. Drag a child link's midpoint to add a
-  waypoint, and drag waypoints to move them.
+  A link's type/label/arrowheads/line/route/width live in the properties panel;
+  `Shift+A` cycles the head shape. Route defaults to obstacle-avoiding orthogonal;
+  straight draws direct segments and curved draws Bézier geometry. Both retain explicit
+  waypoints. Drag a child link's midpoint to add a waypoint, and drag waypoints to move
+  them. Labels automatically try nearby positions to avoid objects, other routes, and
+  other labels; a text halo keeps the least-bad fallback readable in dense diagrams.
 - **Hover** an object to see its name, technology, description and tags.
 - **Keyboard**: arrows move the selection, Tab/Shift+Tab move focus between
   objects, Delete removes, Escape deselects or closes the active overlay.

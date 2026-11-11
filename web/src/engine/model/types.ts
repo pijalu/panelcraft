@@ -3,7 +3,7 @@
 // Normative shape: docs/FILE-FORMAT.md §7 + docs/milestones/M1.md decisions.
 // Versioning rule: `irVersion` (int) bumps on any schema change; forward-only.
 
-export const IR_VERSION = 2;
+export const IR_VERSION = 3;
 export const FORMAT_VERSION = '1.0';
 
 /** 1-based source position attached to every statement (FILE-FORMAT §10). */
@@ -66,6 +66,8 @@ export interface StyleBlock {
   tail?: string;
   /** Link line texture: solid | dashed | dotted (F-12). */
   line?: string;
+  /** Link geometry: orthogonal (default) | straight | curved. */
+  route?: 'orthogonal' | 'straight' | 'curved';
   /** Link stroke width in document units (F-12). */
   width?: number;
   raw?: RawAttr[];

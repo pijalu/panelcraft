@@ -365,6 +365,16 @@ class Parser {
         sb.line = id;
       };
     }
+    if (t.text === 'route') {
+      this.once(seen, t, 'route');
+      return (sb) => {
+        const id = this.ident();
+        if (id !== 'orthogonal' && id !== 'straight' && id !== 'curved') {
+          this.fail(t, E.unexpected, `invalid route mode '${id}'`);
+        }
+        sb.route = id;
+      };
+    }
     if (t.text === 'width') {
       this.once(seen, t, 'width');
       return (sb) => {

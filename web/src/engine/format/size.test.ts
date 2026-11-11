@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { parsePDL } from './parser';
 import { printDoc } from './printer';
 import { serializeDoc } from '../model/serialize';
+import { IR_VERSION } from '../model/types';
 
 const docOf = (text: string) => {
   const { doc, diagnostics } = parsePDL(text);
@@ -37,8 +38,7 @@ describe('size attribute (F-13)', () => {
     expect(json).toContain('"size": {');
     expect(json).toContain('"w": 200');
     expect(json).toContain('"h": 96');
-    // irVersion bumped to 2 with the schema change
-    expect(json).toContain('"irVersion": 2');
+    expect(json).toContain(`"irVersion": ${IR_VERSION}`);
   });
 
   it('rejects a non-positive size', () => {

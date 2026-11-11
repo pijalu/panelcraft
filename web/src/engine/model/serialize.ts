@@ -48,6 +48,7 @@ function styleBlock(s?: StyleBlock): Entry {
     ['head', s.head],
     ['tail', s.tail],
     ['line', s.line],
+    ['route', s.route],
     ['width', s.width],
     rawAttrs(s.raw),
   );

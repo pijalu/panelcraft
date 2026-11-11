@@ -11,7 +11,7 @@ import {
   type Scene,
   type SceneLink,
 } from '../engine/render/scenegraph';
-import { routeOrtho, portPoint, type Side, type Polyline } from '../engine/render/router';
+import { routeLink, portPoint, type Side, type Polyline } from '../engine/render/router';
 import {
   invert,
   panBy,
@@ -94,6 +94,7 @@ export interface DiagramLink {
   head?: string;
   tail?: string;
   line?: string;
+  route?: 'orthogonal' | 'straight' | 'curved';
   width?: number;
 }
 
@@ -598,7 +599,7 @@ export class CanvasController {
   updateLink(
     id: string,
     patch: Partial<
-      Pick<DiagramLink, 'type' | 'label' | 'dashed' | 'bidir' | 'head' | 'tail' | 'line' | 'width'>
+      Pick<DiagramLink, 'type' | 'label' | 'dashed' | 'bidir' | 'head' | 'tail' | 'line' | 'route' | 'width'>
     >,
   ): void {
     const before = this.state.links;
@@ -870,7 +871,7 @@ export class CanvasController {
       );
       this.routes.set(
         link.id,
-        routeOrtho({ from, to, obstacles, ...(link.waypoints ? { waypoints: link.waypoints } : {}) }),
+        routeLink({ from, to, obstacles, ...(link.waypoints ? { waypoints: link.waypoints } : {}) }, link.route),
       );
     }
   }
@@ -889,6 +890,7 @@ export class CanvasController {
           head: (l.head ?? 'arrow') as MarkerShape,
           tail: (l.tail ?? 'none') as MarkerShape,
           line: (l.line ?? (l.dashed ? 'dashed' : 'solid')) as 'solid' | 'dashed' | 'dotted',
+          route: l.route,
           width: l.width,
         },
       ];

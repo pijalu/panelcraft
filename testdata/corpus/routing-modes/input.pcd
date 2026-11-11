@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: GPL-3.0-only
+pcd 1.0
+title "Routing modes"
+
+system client "Client"
+system api "API"
+system worker "Worker"
+
+client -requests-> api as direct {
+  style {
+    route straight
+  }
+}
+api -publishes-> worker as curve {
+  label "jobs"
+  style {
+    route curved
+    width 2
+  }
+  waypoint (300, 180)
+}
+client -> worker as ortho {
+  label "fallback"
+}

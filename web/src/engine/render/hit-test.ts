@@ -7,6 +7,7 @@
 
 import { distanceToPolyline } from './router';
 import type { Polyline } from './router';
+import { sampleRoute } from './routePath';
 import type { SceneObject } from './shapes';
 import type { SceneLink } from './scenegraph';
 
@@ -62,7 +63,7 @@ export function hitLink(
   for (let i = links.length - 1; i >= 0; i--) {
     const l = links[i];
     if (!l) continue;
-    const d = distanceToPolyline(p, l.points as Polyline);
+    const d = distanceToPolyline(p, sampleRoute(l.points as Polyline, l.route));
     if (d <= slop && d < bestDist) {
       bestDist = d;
       best = l;

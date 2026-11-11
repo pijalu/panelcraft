@@ -355,6 +355,18 @@ describe('link visual model (F-12)', () => {
     expect(path.getAttribute('stroke-width')).toBe('3');
     expect(svg.querySelector('g.pc-link[data-id="L1"]')!.classList.contains('pc-dotted')).toBe(true);
   });
+
+  it('applies per-link route modes to the rendered path', () => {
+    seed();
+    ctrl.loadState({
+      objects: ctrl.snapshot.objects,
+      links: ctrl.snapshot.links.map((l) => ({ ...l, waypoints: [[150, 100]] })),
+    });
+    ctrl.updateLink('L1', { route: 'curved' });
+    expect(svg.querySelector('g.pc-link[data-id="L1"] path.pc-route')!.getAttribute('d')).toContain(' C ');
+    ctrl.updateLink('L1', { route: 'straight' });
+    expect(svg.querySelector('g.pc-link[data-id="L1"] path.pc-route')!.getAttribute('d')).not.toContain(' C ');
+  });
 });
 
 describe('C4 boundary routing', () => {

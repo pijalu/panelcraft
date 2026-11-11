@@ -93,6 +93,16 @@ describe('link hits (FR-C7)', () => {
     expect(hitLink(links, { x: 53, y: 10 })?.id).toBe('v');
   });
 
+  it('hit-tests the rendered curve instead of its control polygon', () => {
+    const curved: SceneLink = {
+      id: 'curve',
+      route: 'curved',
+      points: [{ x: 0, y: 0 }, { x: 100, y: 40 }],
+    };
+    expect(hitLink([curved], { x: 19, y: 2 }, 2)?.id).toBe('curve');
+    expect(hitLink([curved], { x: 30, y: 30 })).toBeNull();
+  });
+
   it('outside slop → null', () => {
     expect(hitLink(links, { x: 40, y: LINK_HIT_SLOP_PX + 1 })).toBeNull();
   });

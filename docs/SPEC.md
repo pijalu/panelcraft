@@ -430,7 +430,8 @@ implemented and covered by tests.
 * FR-C6 custom key-value properties and style overrides (fill, stroke, text, icon).
 * FR-C7 typed links, label, direction (uni/bi), arrowheads (`head`/`tail`:
   arrow/open/diamond/circle/square/none), line texture (solid/dashed/dotted), width.
-* FR-C8 waypoints are draggable and persisted (`waypoint` lines); orthogonal routing.
+* FR-C8 waypoints are draggable and persisted (`waypoint` lines); orthogonal, straight,
+  and curved routing with deterministic object/route/label collision avoidance for labels.
 * FR-C10 canvas and object context menus (duplicate, delete, copy/paste, align,
   distribute, equalise size).
 * FR-C12 copy/paste/duplicate within a file, with id re-allocation on paste.
@@ -443,8 +444,6 @@ implemented and covered by tests.
 
 * FR-C4 resize applies to *every* object kind (not only groups/boundaries); rotation
   is still not supported (axis-aligned C4 shapes).
-* FR-C8 curved (bezier) and straight routing: v1.0 routes orthogonally only — the
-  router's timeboxed fallback, recorded in `docs/milestones/M2.md`.
 * FR-C9 cross-surface undo ordering is a shared journal (`HistoryFeed`) with
   focus-aware routing, not a single stack for every surface.
 * FR-C12 cross-file paste resolves imports by *linking*, not inlining.

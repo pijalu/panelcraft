@@ -168,7 +168,17 @@ describe('links', () => {
     expect(svg.querySelector('.pc-route')?.getAttribute('d')).toBe('M 120 30 L 200 80');
   });
 
-  it('adding a label to a label-less link rebuilds the node', () => {
+  it('renders curved routes and updates when only the route mode changes', () => {
+    r.render(scene([], [{ id: 'l1', points: poly }]));
+    const before = svg.querySelector('g.pc-link');
+    const stats = r.render(scene([], [{ id: 'l1', points: poly, route: 'curved' }]));
+    expect(stats.updated).toBe(1);
+    expect(svg.querySelector('g.pc-link')).toBe(before);
+    expect(svg.querySelector('.pc-route')?.getAttribute('d')).toContain(' C ');
+    expect(svg.querySelector('.pc-route')?.getAttribute('d')).not.toContain(' L ');
+  });
+
+  it('adds a label to a label-less link rebuilds the node', () => {
     r.render(scene([], [{ id: 'l1', points: poly }]));
     expect(svg.querySelector('.pc-link-label')).toBeNull();
     const stats = r.render(scene([], [{ id: 'l1', points: poly, label: 'x' }]));

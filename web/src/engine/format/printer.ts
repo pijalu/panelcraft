@@ -39,7 +39,7 @@ class Printer {
 }
 
 /** Style keys printed as `key value` in this fixed order (§11). */
-const STYLE_TEXT_KEYS = ['fill', 'stroke', 'text', 'icon', 'shape', 'head', 'tail', 'line'] as const;
+const STYLE_TEXT_KEYS = ['fill', 'stroke', 'text', 'icon', 'shape', 'head', 'tail', 'line', 'route'] as const;
 
 /** Non-empty style lines of a block (order is canonical, §11). */
 function stylePairs(sb: StyleBlock): string[] {

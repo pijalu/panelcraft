@@ -82,11 +82,15 @@ container cart "Cart"
   },
   {
     name: 'link-style-model',
-    src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -requests-> b as L1 {\n  style {\n    head diamond\n    tail circle\n    line dotted\n    width 2.5\n  }\n}\n',
+    src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -requests-> b as L1 {\n  style {\n    head diamond\n    tail circle\n    line dotted\n    route curved\n    width 2.5\n  }\n}\n',
   },
   {
     name: 'link-style-invalid-line',
     src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -> b as L {\n  style {\n    line dashdot\n  }\n}\n',
+  },
+  {
+    name: 'link-style-invalid-route',
+    src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -> b as L {\n  style {\n    route diagonal\n  }\n}\n',
   },
   {
     name: 'links-and-arrows',

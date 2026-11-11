@@ -1,0 +1,83 @@
+{
+  "irVersion": 3,
+  "formatVersion": "1.0",
+  "title": "Routing modes",
+  "comments": [
+    "SPDX-License-Identifier: GPL-3.0-only"
+  ],
+  "objects": [
+    {
+      "kind": "system",
+      "id": "client",
+      "name": "Client",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "api",
+      "name": "API",
+      "pos": {
+        "line": 6,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "worker",
+      "name": "Worker",
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "direct",
+      "from": "client",
+      "to": "api",
+      "type": "requests",
+      "style": {
+        "route": "straight"
+      },
+      "pos": {
+        "line": 9,
+        "col": 1
+      }
+    },
+    {
+      "id": "curve",
+      "from": "api",
+      "to": "worker",
+      "type": "publishes",
+      "label": "jobs",
+      "style": {
+        "route": "curved",
+        "width": 2
+      },
+      "waypoints": [
+        [
+          300,
+          180
+        ]
+      ],
+      "pos": {
+        "line": 14,
+        "col": 1
+      }
+    },
+    {
+      "id": "ortho",
+      "from": "client",
+      "to": "worker",
+      "label": "fallback",
+      "pos": {
+        "line": 21,
+        "col": 1
+      }
+    }
+  ]
+}

@@ -332,6 +332,22 @@ describe('link waypoints (F-19)', () => {
   });
 });
 
+describe('link route modes', () => {
+  it('round-trips route style through canvas state and file merge', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\n\nsystem a "A"\nsystem b "B"\n\na -> b as L1 {\n  style {\n    route curved\n  }\n}\n');
+    const st = ws.canvasState('a.pcd');
+    expect(st.links[0]?.route).toBe('curved');
+    ws.saveCanvas('a.pcd', {
+      objects: st.objects,
+      links: st.links.map((l) => ({ ...l, route: 'straight' })),
+    });
+    expect(ws.text('a.pcd')).toContain('route straight');
+    expect(ws.text('a.pcd')).not.toContain('route curved');
+    expect(ws.canvasState('a.pcd').links[0]?.route).toBe('straight');
+  });
+});
+
 describe('content durability (F-29)', () => {
   it('saveText persists to storage immediately, without waiting for the debounce', async () => {
     const port = new MemoryStorage();

@@ -401,8 +401,46 @@ func (p *parser) parseStyleBlock(t0 Token, where string) *ir.StyleBlock {
 	return sb
 }
 
+// linkStyleLine handles the visual model shared by inline link style blocks.
+func (p *parser) linkStyleLine(sb *ir.StyleBlock, seen map[string]bool, t Token) bool {
+	switch t.Text {
+	case "head", "tail":
+		p.once(seen, t, t.Text)
+		id := p.ident()
+		if t.Text == "head" {
+			sb.Head = id
+		} else {
+			sb.Tail = id
+		}
+	case "line":
+		p.once(seen, t, "line")
+		id := p.ident()
+		if id != "solid" && id != "dashed" && id != "dotted" {
+			p.fail(t, ErrUnexpected, fmt.Sprintf("invalid line style '%s'", id))
+		}
+		sb.Line = id
+	case "route":
+		p.once(seen, t, "route")
+		id := p.ident()
+		if id != "orthogonal" && id != "straight" && id != "curved" {
+			p.fail(t, ErrUnexpected, fmt.Sprintf("invalid route mode '%s'", id))
+		}
+		sb.Route = id
+	case "width":
+		p.once(seen, t, "width")
+		w := p.num(p.expect(TokNumber, ""))
+		sb.Width = &w
+	default:
+		return false
+	}
+	return true
+}
+
 // styleLine handles one known style line; false = unknown (raw).
 func (p *parser) styleLine(sb *ir.StyleBlock, seen map[string]bool, t Token) bool {
+	if p.linkStyleLine(sb, seen, t) {
+		return true
+	}
 	switch t.Text {
 	case "fill", "stroke", "text":
 		p.once(seen, t, t.Text)
@@ -429,25 +467,6 @@ func (p *parser) styleLine(sb *ir.StyleBlock, seen map[string]bool, t Token) boo
 	case "dashed":
 		p.once(seen, t, "dashed")
 		sb.Dashed = true
-	case "head", "tail":
-		p.once(seen, t, t.Text)
-		id := p.ident()
-		if t.Text == "head" {
-			sb.Head = id
-		} else {
-			sb.Tail = id
-		}
-	case "line":
-		p.once(seen, t, "line")
-		id := p.ident()
-		if id != "solid" && id != "dashed" && id != "dotted" {
-			p.fail(t, ErrUnexpected, fmt.Sprintf("invalid line style '%s'", id))
-		}
-		sb.Line = id
-	case "width":
-		p.once(seen, t, "width")
-		w := p.num(p.expect(TokNumber, ""))
-		sb.Width = &w
 	default:
 		return false
 	}
@@ -457,7 +476,7 @@ func (p *parser) styleLine(sb *ir.StyleBlock, seen map[string]bool, t Token) boo
 func isEmptyStyle(sb *ir.StyleBlock) bool {
 	return sb.Fill == "" && sb.Stroke == "" && sb.Text == "" && sb.Icon == "" &&
 		sb.Shape == "" && !sb.Dashed && sb.Head == "" && sb.Tail == "" &&
-		sb.Line == "" && sb.Width == nil && len(sb.Raw) == 0
+		sb.Line == "" && sb.Route == "" && sb.Width == nil && len(sb.Raw) == 0
 }
 
 func (p *parser) parseStyleStmt() ir.StyleStmt {
