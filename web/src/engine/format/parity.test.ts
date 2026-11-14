@@ -97,6 +97,14 @@ container cart "Cart"
     src: 'pcd 1.0\na -> b {\n  anchor to 1\n}\n',
   },
   {
+    name: 'link-allow-overlap',
+    src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -> b as L1 {\n  allow overlap\n}\n',
+  },
+  {
+    name: 'link-allow-overlap-duplicate',
+    src: 'pcd 1.0\na -> b {\n  allow overlap\n  allow overlap\n}\n',
+  },
+  {
     name: 'link-style-invalid-line',
     src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -> b as L {\n  style {\n    line dashdot\n  }\n}\n',
   },

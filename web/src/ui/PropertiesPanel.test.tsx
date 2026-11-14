@@ -122,12 +122,14 @@ describe('link controls (F-11/F-12)', () => {
       />,
     );
     fireEvent.click(screen.getByTestId('link-bidir'));
+    fireEvent.click(screen.getByTestId('link-allow-overlap'));
     fireEvent.change(screen.getByTestId('link-head'), { target: { value: 'diamond' } });
     fireEvent.change(screen.getByTestId('link-route'), { target: { value: 'curved' } });
     fireEvent.change(screen.getByTestId('link-route'), { target: { value: 'orthogonal' } });
     expect(patches[0]).toEqual({ bidir: true });
-    expect(patches[1]).toEqual({ head: 'diamond' });
-    expect(patches[2]).toEqual({ route: 'curved' });
-    expect(patches[3]).toEqual({ route: undefined });
+    expect(patches[1]).toEqual({ allowOverlap: true });
+    expect(patches[2]).toEqual({ head: 'diamond' });
+    expect(patches[3]).toEqual({ route: 'curved' });
+    expect(patches[4]).toEqual({ route: undefined });
   });
 });

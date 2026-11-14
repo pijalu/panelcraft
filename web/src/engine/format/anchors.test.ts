@@ -20,11 +20,11 @@ a -> b as L1 {
 `;
 
 describe('link endpoint anchors (CX-01)', () => {
-  it('parses, prints and serializes complete anchors with IR v4', () => {
+  it('parses, prints and serializes complete anchors with current IR', () => {
     const { doc, diagnostics } = parsePDL(SOURCE);
     expect(diagnostics).toEqual([]);
     expect(doc?.links[0]).toMatchObject({ fromAnchor: 0.25, toAnchor: 0.875 });
-    expect(IR_VERSION).toBe(4);
+    expect(IR_VERSION).toBe(5);
     expect(printDoc(doc!)).toBe(SOURCE);
     const json = serializeDoc(doc!);
     expect(json).toContain('"fromAnchor": 0.25');

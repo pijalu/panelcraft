@@ -156,6 +156,7 @@ const linkDrops = (doc: Doc): string[] => {
     d.push('endpoint perimeter anchors');
   }
   if (doc.links.some((l) => l.waypoints?.length)) d.push('waypoints');
+  if (doc.links.some((l) => l.allowOverlap === true)) d.push('overlap overrides');
   return d;
 };
 

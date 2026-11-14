@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: GPL-3.0-only
+pcd 1.0
+title "Connector overlap avoidance"
+
+system a "A"
+system b "B"
+system c "C"
+system d "D"
+
+a -> b as automatic
+c -> d as exception {
+  allow overlap
+}
+
+view "Default" {
+  position a (40, 100)
+  position b (520, 100)
+  position c (40, 260)
+  position d (520, 260)
+}

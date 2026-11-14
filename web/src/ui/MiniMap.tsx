@@ -34,8 +34,18 @@ function drawOverview(canvas: HTMLCanvasElement, snapshot: Snapshot, layout: Min
     const a = byId.get(link.from);
     const b = byId.get(link.to);
     if (!a || !b) return;
-    ctx.moveTo(a.x + a.w / 2, a.y + a.h / 2);
-    ctx.lineTo(b.x + b.w / 2, b.y + b.h / 2);
+    const route = snapshot.routes?.[link.id];
+    if (route?.length) {
+      route.forEach((point, index) => {
+        const x = layout.offset.x + (point.x - layout.bounds.x) * layout.scale;
+        const y = layout.offset.y + (point.y - layout.bounds.y) * layout.scale;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+    } else {
+      ctx.moveTo(a.x + a.w / 2, a.y + a.h / 2);
+      ctx.lineTo(b.x + b.w / 2, b.y + b.h / 2);
+    }
   });
   ctx.stroke();
   ctx.globalAlpha = 0.8;
@@ -84,7 +94,10 @@ export function MiniMap(props: {
   useEffect(() => setCamera(null), [snapshot?.viewport]);
   const empty = snapshot === null || snapshot.objects.length === 0;
   const viewSize = canvasElement ? observedSize : props.viewSize;
-  const layout = empty ? null : buildMiniMap(snapshot.objects, camera ?? snapshot.viewport ?? IDENTITY, viewSize, MAP_SIZE);
+  const layout = empty ? null : buildMiniMap(
+        snapshot.objects, camera ?? snapshot.viewport ?? IDENTITY, viewSize, MAP_SIZE,
+        Object.values(snapshot.routes ?? {}),
+      );
   if (layout !== null) layoutRef.current = layout;
   useEffect(() => {
     if (canvasRef.current !== null && snapshot !== null && layout !== null) {

@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — CX-02 object and connector overlap avoidance
+
+- Added deterministic bounded avoidance across solid objects and earlier connectors, a persisted per-link **Allow overlap** override with PDL/IR v5 and Go parity, authoritative manual waypoints, minimum-conflict fallback, and shared canvas/minimap/SVG/PNG/CLI route geometry.
+
 ## 2026-11-14 — CX-01 perimeter-locked connector endpoints
 
 - Added draggable, normalized start/end anchors with PDL/IR v4 and Go parity, exact routing across all modes, resize-safe persistence, undo/redo, accessible light/dark handles, and consistent SVG/PNG/CLI geometry; PNG export now falls back to local image decoding where Chromium rejects SVG bitmap blobs.

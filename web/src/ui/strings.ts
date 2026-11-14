@@ -201,6 +201,7 @@ const EN = {
   "Width": "Width",
   "Dashed": "Dashed",
   "Bidirectional": "Bidirectional",
+  "Allow overlap": "Allow overlap",
   "Select an object or link to edit its properties.": "Select an object or link to edit its properties.",
   "snapshots": "snapshots",
   "Named restore points of the whole workspace, stored locally in your browser.": "Named restore points of the whole workspace, stored locally in your browser.",

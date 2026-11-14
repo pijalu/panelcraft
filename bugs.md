@@ -110,50 +110,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 
 
-## CX-02 Avoid object and connector overlap with a per-link exception
-
-**Observed/current behavior**
-
-- Automatic orthogonal routing attempts object avoidance but does not route around other
-  connectors (`web/src/ui/CanvasController.ts`, `web/src/engine/render/router.ts`).
-- Explicit waypoints bypass object avoidance.
-
-**Expected behavior**
-
-- Automatically avoid both solid objects and other connectors where possible. Crossing or
-  coincident routes may remain when no reasonable route exists; this is best-effort, not a
-  guarantee for dense graphs.
-- Add a per-connector **allow overlap** override. When enabled, that connector may cross
-  objects and other connectors rather than being forced around them.
-- Explicit waypoints always win over automatic avoidance, regardless of the override.
-- Routing remains deterministic, stable across unrelated edits, responsive at the project's
-  performance budgets, and consistent in canvas/minimap/export/CLI output.
-- Existing label-collision avoidance remains enabled and does not substitute for route
-  collision handling.
-
-**Implementation plan**
-
-1. Add the optional per-link overlap property atomically to PDL/IR and properties UI.
-2. Extend routing inputs with relevant obstacle routes and deterministic candidate scoring;
-  define handling for shared endpoints, parallel edges, groups, and explicit anchors.
-3. Preserve the manual-waypoint fast path and add performance bounds/fallback behavior.
-
-**Test approach**
-
-- Unit: object detours, edge-edge crossings, coincident segments, shared endpoints, parallel
-  links, allow-overlap, explicit waypoints, deterministic ties, and fallback cases.
-- Corpus: round-trip/default/Go parity for the new property.
-- Performance: dense diagrams within established routing/frame budgets.
-- E2E: toggle the override, move objects/endpoints/waypoints, reload, undo, and export.
-- Visual filmstrip: automatic avoidance, unavoidable crossing, allowed overlap, and manual
-  exception in both themes.
-
-**Validation steps**
-
-- Run router/format/performance tests, corpus parity, routing E2E, and the common gate.
-- Record any unavoidable-route limitations explicitly rather than hiding them in fixtures.
-
----
 
 ## CX-03 Add automatic and explicit object stacking order
 

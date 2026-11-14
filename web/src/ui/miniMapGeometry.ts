@@ -23,9 +23,12 @@ function project(r: Rect, bounds: Rect, scale: number, offset: Point): Rect {
   };
 }
 
-export function buildMiniMap(objects: Rect[], t: Transform, view: Size, map: Size): MiniMapLayout {
+export function buildMiniMap(
+  objects: Rect[], t: Transform, view: Size, map: Size, routes: Point[][] = [],
+): MiniMapLayout {
   const viewport = visibleCanvasRect(t, view);
-  const content = unionRects([...objects, viewport]) ?? viewport;
+  const routeBounds = routes.flatMap((points) => points.map((point) => ({ x: point.x, y: point.y, w: 0, h: 0 })));
+  const content = unionRects([...objects, ...routeBounds, viewport]) ?? viewport;
   const padding = 24 / t.k;
   const bounds = {
     x: content.x - padding,

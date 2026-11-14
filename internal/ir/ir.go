@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 4
+const IRVersion = 5
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -84,20 +84,21 @@ type Obj struct {
 
 // Link is a link statement (§4); endpoints normalized to from -> to.
 type Link struct {
-	ID         string       `json:"id,omitempty"`
-	From       string       `json:"from"`
-	To         string       `json:"to"`
-	Type       string       `json:"type,omitempty"`
-	Label      *string      `json:"label,omitempty"`
-	Bidir      bool         `json:"bidir,omitempty"`
-	Tags       []string     `json:"tags,omitempty"`
-	Style      *StyleBlock  `json:"style,omitempty"`
-	Waypoints  [][2]float64 `json:"waypoints,omitempty"`
-	FromAnchor *float64     `json:"fromAnchor,omitempty"`
-	ToAnchor   *float64     `json:"toAnchor,omitempty"`
-	Attributes []RawAttr    `json:"attributes,omitempty"`
-	Comments   []string     `json:"comments,omitempty"`
-	Pos        Pos          `json:"pos"`
+	ID           string       `json:"id,omitempty"`
+	From         string       `json:"from"`
+	To           string       `json:"to"`
+	Type         string       `json:"type,omitempty"`
+	Label        *string      `json:"label,omitempty"`
+	Bidir        bool         `json:"bidir,omitempty"`
+	Tags         []string     `json:"tags,omitempty"`
+	Style        *StyleBlock  `json:"style,omitempty"`
+	Waypoints    [][2]float64 `json:"waypoints,omitempty"`
+	FromAnchor   *float64     `json:"fromAnchor,omitempty"`
+	ToAnchor     *float64     `json:"toAnchor,omitempty"`
+	AllowOverlap bool         `json:"allowOverlap,omitempty"`
+	Attributes   []RawAttr    `json:"attributes,omitempty"`
+	Comments     []string     `json:"comments,omitempty"`
+	Pos          Pos          `json:"pos"`
 }
 
 // Branch is one alt arm (label + its steps). Label is *string: the parser

@@ -268,7 +268,7 @@ func printObject(o ir.Obj, p *printer) {
 // linkNeedsBlock: block form for tags/style/waypoints/raw attributes. Link ids
 // are data and always printed inline (D-M1-16).
 func linkNeedsBlock(l ir.Link) bool {
-	return hasStyle(l.Style) || len(l.Waypoints) > 0 || l.FromAnchor != nil || l.ToAnchor != nil || len(l.Tags) > 0 || len(l.Attributes) > 0
+	return hasStyle(l.Style) || len(l.Waypoints) > 0 || l.FromAnchor != nil || l.ToAnchor != nil || l.AllowOverlap || len(l.Tags) > 0 || len(l.Attributes) > 0
 }
 
 func printLink(l ir.Link, p *printer) {
@@ -298,6 +298,9 @@ func printLink(l ir.Link, p *printer) {
 	}
 	if l.ToAnchor != nil {
 		p.add(indent + "anchor to " + jsNum(*l.ToAnchor))
+	}
+	if l.AllowOverlap {
+		p.add(indent + "allow overlap")
 	}
 	for _, w := range l.Waypoints {
 		p.add(indent + "waypoint (" + jsNum(w[0]) + ", " + jsNum(w[1]) + ")")

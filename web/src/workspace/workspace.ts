@@ -66,6 +66,7 @@ export interface CanvasLink {
   /** Normalized perimeter endpoint anchors (CX-01, IR v4). */
   fromAnchor?: number;
   toAnchor?: number;
+  allowOverlap?: boolean;
   /** Arrow visual model (F-12). */
   head?: string;
   tail?: string;
@@ -149,6 +150,7 @@ export function stateToDoc(state: CanvasState): Doc {
       : undefined,
     fromAnchor: l.fromAnchor,
     toAnchor: l.toAnchor,
+    allowOverlap: l.allowOverlap === true ? true : undefined,
     pos: { line: 0, col: 0 },
   }));
   return {
@@ -269,6 +271,7 @@ export function docToState(doc: Doc, viewName?: string): CanvasState {
       waypoints: l.waypoints?.map((w) => [w[0], w[1]] as [number, number]),
       fromAnchor: l.fromAnchor,
       toAnchor: l.toAnchor,
+      allowOverlap: l.allowOverlap === true ? true : undefined,
     }));
   return { objects, links };
 }

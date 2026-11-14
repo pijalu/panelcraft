@@ -182,10 +182,13 @@ const printObject = (o: Obj, p: Printer): void => {
 
 /** Link ids are data: always emitted when present (lossless round-trip,
  * design goal §1.2 — D-M1-16 supersedes §4's minimal-noise sketch). */
+const linkHasGeometry = (l: Link): boolean =>
+  (l.waypoints?.length ?? 0) > 0 || l.fromAnchor !== undefined ||
+  l.toAnchor !== undefined || l.allowOverlap === true;
+
 const linkNeedsBlock = (l: Link): boolean =>
   hasStyle(l.style) ||
-  (l.waypoints?.length ?? 0) > 0 ||
-  l.fromAnchor !== undefined || l.toAnchor !== undefined ||
+  linkHasGeometry(l) ||
   (l.tags?.length ?? 0) > 0 ||
   (l.attributes?.length ?? 0) > 0;
 
@@ -211,6 +214,7 @@ const printLink = (l: Link, p: Printer): void => {
     p.add(`${INDENT}}`);
   }
   printLinkAnchors(l, p);
+  if (l.allowOverlap === true) p.add(`${INDENT}allow overlap`);
   for (const w of l.waypoints ?? []) p.add(`${INDENT}waypoint (${w[0]}, ${w[1]})`);
   for (const r of l.attributes ?? []) p.add(`${INDENT}${r.raw}`);
   p.add('}');

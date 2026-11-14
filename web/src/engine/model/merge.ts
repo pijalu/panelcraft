@@ -55,6 +55,7 @@ export interface CanvasLinkLike {
   /** Normalized perimeter endpoint anchors (CX-01, IR v4). */
   fromAnchor?: number;
   toAnchor?: number;
+  allowOverlap?: boolean;
   /** Arrow visual model (F-12). */
   head?: string;
   tail?: string;
@@ -148,6 +149,7 @@ function mergeLink(existing: Link | undefined, c: CanvasLinkLike): Link {
   );
   setField(l, 'fromAnchor', c.fromAnchor);
   setField(l, 'toAnchor', c.toAnchor);
+  setField(l, 'allowOverlap', c.allowOverlap === true ? true : undefined);
   let style = withStyleKey(l.style, 'dashed', c.dashed === true ? true : undefined);
   style = withStyleKey(style, 'head', c.head);
   style = withStyleKey(style, 'tail', c.tail);

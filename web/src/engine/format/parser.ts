@@ -479,12 +479,19 @@ class Parser {
     (l.waypoints ??= []).push([x, y]);
   }
 
+  private linkAllowOverlap(l: Link, seen: Set<string>, t: Token): void {
+    this.once(seen, t, 'allow overlap');
+    this.expect('ident', 'overlap');
+    l.allowOverlap = true;
+  }
+
   private linkBlockAttribute(l: Link, seen: Set<string>, t: Token, t0: Token): boolean {
     if (t.text === 'label') l.label = this.expect('string').value;
     else if (t.text === 'tag') (l.tags ??= []).push(...this.identList());
     else if (t.text === 'style') l.style = this.parseStyleBlock(t0, 'link');
     else if (t.text === 'anchor') this.linkAnchor(l, seen, t);
     else if (t.text === 'waypoint') this.linkWaypoint(l);
+    else if (t.text === 'allow') this.linkAllowOverlap(l, seen, t);
     else return false;
     return true;
   }

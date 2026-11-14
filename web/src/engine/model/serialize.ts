@@ -93,6 +93,7 @@ const linkStmt = (l: Link): JSONRecord =>
     ['waypoints', arr(l.waypoints ?? [])],
     ['fromAnchor', l.fromAnchor],
     ['toAnchor', l.toAnchor],
+    ['allowOverlap', l.allowOverlap === true ? true : undefined],
     [
       'attributes',
       l.attributes?.map((r) => obj(['raw', r.raw], ['pos', pos(r.pos)], comments(r.comments))),

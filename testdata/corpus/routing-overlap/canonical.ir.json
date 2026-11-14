@@ -1,0 +1,118 @@
+{
+  "irVersion": 5,
+  "formatVersion": "1.0",
+  "title": "Connector overlap avoidance",
+  "comments": [
+    "SPDX-License-Identifier: GPL-3.0-only"
+  ],
+  "objects": [
+    {
+      "kind": "system",
+      "id": "a",
+      "name": "A",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "b",
+      "name": "B",
+      "pos": {
+        "line": 6,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "c",
+      "name": "C",
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "d",
+      "name": "D",
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "automatic",
+      "from": "a",
+      "to": "b",
+      "pos": {
+        "line": 10,
+        "col": 1
+      }
+    },
+    {
+      "id": "exception",
+      "from": "c",
+      "to": "d",
+      "allowOverlap": true,
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "Default",
+      "lines": [
+        {
+          "type": "position",
+          "id": "a",
+          "x": 40,
+          "y": 100,
+          "pos": {
+            "line": 16,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "b",
+          "x": 520,
+          "y": 100,
+          "pos": {
+            "line": 17,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "c",
+          "x": 40,
+          "y": 260,
+          "pos": {
+            "line": 18,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "d",
+          "x": 520,
+          "y": 260,
+          "pos": {
+            "line": 19,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 15,
+        "col": 1
+      }
+    }
+  ]
+}

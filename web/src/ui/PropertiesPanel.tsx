@@ -279,6 +279,20 @@ function ObjectFields(props: {
   );
 }
 
+function OverlapField({ link, onChange }: { link: DiagramLink; onChange: LinkChange }) {
+  return (
+    <label class="field field-checkbox">
+      <input
+        type="checkbox"
+        data-testid="link-allow-overlap"
+        checked={link.allowOverlap === true}
+        onChange={(e) => onChange(link.id, { allowOverlap: (e.target as HTMLInputElement).checked })}
+      />
+      <span class="field-label">{s("Allow overlap")}</span>
+    </label>
+  );
+}
+
 /** Link fields: semantics, arrow model (F-12) and texture. */
 function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
   const { link, onChange } = props;
@@ -382,6 +396,7 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
         />
         <span class="field-label">{s("Dashed")}</span>
       </label>
+      <OverlapField link={link} onChange={onChange} />
       <label class="field field-checkbox">
         <input
           type="checkbox"

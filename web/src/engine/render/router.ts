@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Orthogonal link router v1 (M2-WP6, FR-C7/C8). Pure geometry: side anchors,
-// Z/L segment generation on the dominant axis, single-obstacle detours.
+// Z/L segment generation on the dominant axis, object and connector detours.
 // Timeboxed per plan: curved-only fallback decided in M2.md if v1 quality
 // stalls — see docs/milestones/M2.md router decision note.
 
@@ -13,12 +13,18 @@ export type RouteMode = 'orthogonal' | 'straight' | 'curved';
 export const ROUTER_CLEARANCE = 12;
 
 export type Polyline = Point[];
+export interface RouteObstacle {
+  id: string;
+  points: Point[];
+}
 
 export interface RouteInput {
   from: Rect;
   to: Rect;
   /** Shapes to avoid (excludes endpoints). */
   obstacles?: Rect[];
+  routes?: RouteObstacle[];
+  allowOverlap?: boolean;
   clearance?: number;
   /**
    * Explicit user waypoints (F-19). When present the route passes through them
@@ -116,6 +122,7 @@ export function routeOrtho(input: RouteInput): Polyline {
 
 /** Route one link using its visual mode; orthogonal remains the default. */
 export function routeLink(input: RouteInput, mode: RouteMode = 'orthogonal'): Polyline {
+  if (input.allowOverlap) return routeLink({ ...input, obstacles: [], routes: [], allowOverlap: false }, mode);
   if (mode === 'orthogonal') return routeOrtho(input);
   const { a, b } = routeEndpoints(input);
   return [
@@ -217,9 +224,143 @@ function routeLegacyAuto(input: RouteInput): Polyline {
   return points;
 }
 
+function samePoint(a: Point, b: Point): boolean {
+  return Math.abs(a.x - b.x) < 1e-9 && Math.abs(a.y - b.y) < 1e-9;
+}
+
+function onSegment(p: Point, a: Point, b: Point): boolean {
+  return p.x >= Math.min(a.x, b.x) - 1e-9 && p.x <= Math.max(a.x, b.x) + 1e-9 &&
+    p.y >= Math.min(a.y, b.y) - 1e-9 && p.y <= Math.max(a.y, b.y) + 1e-9;
+}
+
+function orientation(a: Point, b: Point, c: Point): number {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+function segmentsTouch(a: Point, b: Point, c: Point, d: Point): boolean {
+  const abC = orientation(a, b, c);
+  const abD = orientation(a, b, d);
+  const cdA = orientation(c, d, a);
+  const cdB = orientation(c, d, b);
+  if (abC * abD < 0 && cdA * cdB < 0) return true;
+  return (Math.abs(abC) < 1e-9 && onSegment(c, a, b)) ||
+    (Math.abs(abD) < 1e-9 && onSegment(d, a, b)) ||
+    (Math.abs(cdA) < 1e-9 && onSegment(a, c, d)) ||
+    (Math.abs(cdB) < 1e-9 && onSegment(b, c, d));
+}
+
+function sharedEndpoint(a: Point, b: Point, c: Point, d: Point, ends: Point[]): boolean {
+  const pairs = [[a, c], [a, d], [b, c], [b, d]];
+  return pairs.some(([p, q]) => samePoint(p!, q!) && ends.some((end) => samePoint(p!, end))) &&
+    (Math.abs(orientation(a, b, c)) > 1e-9 || Math.abs(orientation(a, b, d)) > 1e-9);
+}
+
+function routeConflictCount(points: Polyline, routes: RouteObstacle[]): number {
+  const ends = [points[0]!, points[points.length - 1]!];
+  let conflicts = 0;
+  for (let i = 1; i < points.length; i++) {
+    for (const route of routes) {
+      for (let j = 1; j < route.points.length; j++) {
+        if (segmentsTouch(points[i - 1]!, points[i]!, route.points[j - 1]!, route.points[j]!) &&
+          !sharedEndpoint(points[i - 1]!, points[i]!, route.points[j - 1]!, route.points[j]!, ends)) conflicts++;
+      }
+    }
+  }
+  return conflicts;
+}
+
+function objectConflictCount(points: Polyline, obstacles: Rect[]): number {
+  return points.slice(1).reduce((total, point, index) => total +
+    obstacles.filter((rect) => segIntersectsRect(points[index]!, point, rect)).length, 0);
+}
+
+function pathLength(points: Polyline): number {
+  return points.slice(1).reduce((total, point, index) => total +
+    Math.abs(point.x - points[index]!.x) + Math.abs(point.y - points[index]!.y), 0);
+}
+
+function shiftedChannel(points: Polyline, segment: number, channel: number): Polyline {
+  const copy = points.map((point) => ({ ...point }));
+  const horizontal = points[segment - 1]!.y === points[segment]!.y;
+  if (points.length === 2) {
+    return horizontal
+      ? [copy[0]!, { x: copy[0]!.x, y: channel }, { x: copy[1]!.x, y: channel }, copy[1]!]
+      : [copy[0]!, { x: channel, y: copy[0]!.y }, { x: channel, y: copy[1]!.y }, copy[1]!];
+  }
+  if (horizontal) {
+    copy[segment - 1]!.y = channel;
+    copy[segment]!.y = channel;
+  } else {
+    copy[segment - 1]!.x = channel;
+    copy[segment]!.x = channel;
+  }
+  return compact(copy);
+}
+
+function routeChannels(input: RouteInput, axis: 'x' | 'y'): number[] {
+  const clearance = (input.clearance ?? ROUTER_CLEARANCE) * 2;
+  const values = (input.routes ?? []).flatMap((route) => route.points.flatMap((point) =>
+    [point[axis] - clearance, point[axis] + clearance]));
+  values.push(...(input.obstacles ?? []).flatMap((rect) => axis === 'x'
+    ? [rect.x - clearance, rect.x + rect.w + clearance]
+    : [rect.y - clearance, rect.y + rect.h + clearance]));
+  return [...new Set(values)].sort((a, b) => a - b).slice(0, 48);
+}
+
+function appendDirectCandidates(candidates: Polyline[], a: Point, b: Point, input: RouteInput): void {
+  for (const y of routeChannels(input, 'y')) {
+    candidates.push([a, { x: a.x, y }, { x: b.x, y }, b]);
+  }
+  for (const x of routeChannels(input, 'x')) {
+    candidates.push([a, { x, y: a.y }, { x, y: b.y }, b]);
+  }
+}
+
+function appendChannelCandidates(candidates: Polyline[], base: Polyline, input: RouteInput): void {
+  if (base.length === 2 && base[0]!.x !== base[1]!.x && base[0]!.y !== base[1]!.y) {
+    appendDirectCandidates(candidates, base[0]!, base[1]!, input);
+    return;
+  }
+  const first = base.length === 2 ? 1 : 2;
+  const last = base.length === 2 ? 1 : base.length - 2;
+  for (let segment = first; segment <= last; segment++) {
+    const horizontal = base[segment - 1]!.y === base[segment]!.y;
+    for (const channel of routeChannels(input, horizontal ? 'y' : 'x')) {
+      candidates.push(shiftedChannel(base, segment, channel));
+    }
+  }
+}
+
+function routeCandidates(base: Polyline, input: RouteInput): Polyline[] {
+  const candidates = [base];
+  appendChannelCandidates(candidates, base, input);
+  const a = base[0]!;
+  const b = base[base.length - 1]!;
+  if (base.length > 2 && input.fromAnchor === undefined && input.toAnchor === undefined) {
+    const direct = [a, b];
+    candidates.push(direct);
+    appendChannelCandidates(candidates, direct, input);
+  }
+  return candidates;
+}
+
+function avoidRouteConflicts(base: Polyline, input: RouteInput): Polyline {
+  const obstacles = input.obstacles ?? [];
+  const routes = input.routes ?? [];
+  if (objectConflictCount(base, obstacles) === 0 && routeConflictCount(base, routes) === 0) return base;
+  return routeCandidates(base, input).reduce((best, candidate) => {
+    const score = objectConflictCount(candidate, obstacles) * 100000 +
+      routeConflictCount(candidate, routes) * 10000 + pathLength(candidate);
+    const bestScore = objectConflictCount(best, obstacles) * 100000 +
+      routeConflictCount(best, routes) * 10000 + pathLength(best);
+    return score < bestScore ? candidate : best;
+  }, base);
+}
+
 function routeAuto(input: RouteInput): Polyline {
   const ends = routeEndpoints(input);
-  return ends.explicit ? routeAnchoredAuto(input, ends) : routeLegacyAuto(input);
+  const base = ends.explicit ? routeAnchoredAuto(input, ends) : routeLegacyAuto(input);
+  return avoidRouteConflicts(base, input);
 }
 
 /** Index with invariant check — polylines are internal, ≥2 points by contract. */

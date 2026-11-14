@@ -74,13 +74,12 @@ describe('routeOrtho (WP6 v1)', () => {
     expect(pts.at(3)).toEqual({ x: 300, y: 20 });
   });
 
-  it('channel detours around obstacle on the Z channel (vertical shift)', () => {
-    const obstacle = R(150, 0, 60, 200); // blocks vertical channel x=190
+  it('detours the whole Z route around an obstacle, including its endpoint legs', () => {
+    const obstacle = R(150, 0, 60, 200); // blocks the vertical channel and both legs
     const pts = routeOrtho({ from: R(0, 0), to: R(300, 100), obstacles: [obstacle] });
-    expect(pts).toHaveLength(4);
-    const nx = pts.at(1)?.x;
-    expect(nx).toBe(obstacle.x + obstacle.w + ROUTER_CLEARANCE); // right edge + 12 = 222
-    expect(pts.at(2)).toEqual({ x: nx, y: 120 });
+    expect(pts).toEqual([
+      { x: 80, y: 20 }, { x: 80, y: -24 }, { x: 300, y: -24 }, { x: 300, y: 120 },
+    ]);
   });
 
   it('no detour when obstacle clear of channel', () => {

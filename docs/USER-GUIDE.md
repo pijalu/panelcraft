@@ -35,7 +35,10 @@ and the CLI's `--theme` option.
   "Fit to name" (properties → Advanced) recomputes it.
 - **Connect**: drag from an edge halo (or right-click → connect) to a target.
   A link's type/label/arrowheads/line/route/width live in the properties panel;
-  `Shift+A` cycles the head shape. Route defaults to obstacle-avoiding orthogonal;
+  `Shift+A` cycles the head shape. Route defaults to orthogonal routing that avoids
+  solid objects and earlier connectors where possible. Enable **Allow overlap** on
+  one link to permit crossings instead; dense or fully blocked diagrams can still
+  have unavoidable intersections. The mini-map uses the same routed geometry;
   straight draws direct segments and curved draws Bézier geometry. Both retain explicit
   waypoints. Drag a child link's midpoint to add a waypoint. Select a link to reveal its
   hollow start handle, filled destination handle,
@@ -43,7 +46,8 @@ and the CLI's `--theme` option.
   corner: pointers inside or beyond the object clamp to the nearest perimeter point,
   so the connector cannot detach. Endpoint positions are stored as normalized
   `anchor from` / `anchor to` values and retain their side-relative position after
-  resizing and reloads. Intermediate waypoints remain freely draggable. Labels
+  resizing and reloads. Intermediate waypoints remain freely draggable and always
+  override automatic avoidance, including when **Allow overlap** is off. Labels
   automatically try nearby positions to avoid objects, other routes, and
   other labels; a text halo keeps the least-bad fallback readable in dense diagrams.
 - **Pan / zoom**: Space-drag or wheel/trackpad pans; Ctrl/Cmd+wheel zooms.

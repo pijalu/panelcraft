@@ -149,6 +149,7 @@ api -publishes-> events as L7 {
   style { dashed }
   anchor from 0.125             ← optional normalized start perimeter anchor (IR v4)
   anchor to 0.875               ← optional normalized end perimeter anchor (IR v4)
+  allow overlap                ← optional avoidance opt-out (IR v5; true-only)
   waypoint (120, 300)          ← 0..n, canvas routing hints, view-independent
 }
 ```
@@ -165,6 +166,21 @@ api -publishes-> events as L7 {
   Orthogonal, straight, curved and explicit-waypoint routes all use the same
   resolved endpoints. Mermaid export declares `endpoint perimeter anchors` as
   dropped because Mermaid has no equivalent data.
+
+* **Overlap avoidance (CX-02, IR v5)**: automatic orthogonal routes avoid solid
+  non-group objects and previously routed links where a reasonable bounded
+  candidate exists. Document order is deterministic; clear existing routes stay
+  unchanged, shared endpoint points are allowed, and parallel/coincident links
+  use separate channels when possible. Explicit perimeter anchors keep their
+  outward stubs. Group boundaries are not solid obstacles, but their non-group
+  children are. If every candidate conflicts, the minimum-conflict, shortest
+  deterministic fallback is used; dense graphs can therefore retain crossings.
+  `allow overlap` opts one link out of object and connector avoidance. It is
+  emitted only when true; absence and false have identical default behavior.
+  Explicit `waypoint` geometry remains authoritative and bypasses automatic
+  avoidance with or without this override. Canvas, minimap, SVG/PNG and CLI use
+  the committed route polylines. Mermaid export declares `overlap overrides`
+  as dropped because the target has no equivalent data.
 
 * **Arrow visual model (F-12)** — links accept these `style` keys, all optional:
 
@@ -347,7 +363,7 @@ nested subgraph ids): warning + skipped, never silent.
 **Dropped (declared, per SPEC FR-M4):** flows, positions/layout, views, imports
 (exported file is flattened: imported objects inlined and marked via comment `%%
 imported from …`), properties, notes detach, icons, endpoint perimeter anchors,
-waypoints, custom shapes.
+waypoints, overlap overrides, custom shapes.
 C4 export mode (`--c4`): emits C4Context/Container statements when kinds fit, else
 fallback flowchart.
 

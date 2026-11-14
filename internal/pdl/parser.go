@@ -582,6 +582,10 @@ func (p *parser) linkBlock(l *ir.Link, t0 Token) {
 			l.Style = p.parseStyleBlock(t0, "link")
 		case "anchor":
 			p.linkAnchor(l, seen, t)
+		case "allow":
+			p.once(seen, t, "allow overlap")
+			p.expect(TokIdent, "overlap")
+			l.AllowOverlap = true
 		case "waypoint":
 			p.expect(TokPunct, "(")
 			x := p.num(p.next())

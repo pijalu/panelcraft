@@ -100,6 +100,7 @@ export interface DiagramLink {
   /** Normalized perimeter endpoint anchors (CX-01, IR v4). */
   fromAnchor?: number;
   toAnchor?: number;
+  allowOverlap?: boolean;
   /** Arrow visual model (F-12). */
   head?: string;
   tail?: string;
@@ -169,6 +170,8 @@ export interface Snapshot {
   links: DiagramLink[];
   selection: { objects: string[]; links: string[] };
   viewport: Transform;
+  /** Committed route geometry shared with the mini-map (CX-02). */
+  routes?: Record<string, Point[]>;
 }
 
 export interface ControllerOptions {
@@ -371,6 +374,7 @@ export class CanvasController {
       links: this.state.links,
       selection: { objects: [...this.selObjects], links: [...this.selLinks] },
       viewport: this.t,
+      routes: Object.fromEntries(this.routes),
     };
   }
 
@@ -651,7 +655,7 @@ export class CanvasController {
   updateLink(
     id: string,
     patch: Partial<
-      Pick<DiagramLink, 'type' | 'label' | 'dashed' | 'bidir' | 'head' | 'tail' | 'line' | 'route' | 'width'>
+      Pick<DiagramLink, 'type' | 'label' | 'dashed' | 'bidir' | 'head' | 'tail' | 'line' | 'route' | 'width' | 'allowOverlap'>
     >,
   ): void {
     const before = this.state.links;
@@ -938,6 +942,8 @@ export class CanvasController {
         link.id,
         routeLink({
           from, to, obstacles,
+          routes: [...this.routes].map(([id, points]) => ({ id, points })),
+          ...(link.allowOverlap === true ? { allowOverlap: true } : {}),
           ...(link.waypoints ? { waypoints: link.waypoints } : {}),
           ...(link.fromAnchor !== undefined ? { fromAnchor: link.fromAnchor } : {}),
           ...(link.toAnchor !== undefined ? { toAnchor: link.toAnchor } : {}),
