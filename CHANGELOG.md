@@ -13,6 +13,35 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   waits for the resize to settle and ignores implausible widths, so a settled
   docked workspace survives such frames.
 
+### Added — connector, flow and UX review (CX/FLOW/UX backlog)
+
+Closes the queued backlog items in `bugs.md`; each one keeps its own archive record
+under `docs/archive/` with the executed plan, validation and review evidence.
+
+- **CX-01** Connector start/end points are draggable and lock to the entity perimeter,
+  with the automatic side/midpoint choice still the default and one undoable edit per move.
+- **CX-02** Deterministic route avoidance keeps committed connector polylines clear of
+  objects, with an explicit per-link overlap override where avoidance is impossible.
+- **CX-03** Objects carry a persisted stacking order (Auto by default, stable
+  document-order ties) projected identically by paint order, hit-testing, the mini-map,
+  exports and the CLI.
+- **CX-04** Connector route, line texture, typical weights and independent head/tail
+  markers are chosen from inline-SVG preview tiles in front of a real radio group; the
+  numeric Width field still accepts any custom width and no document/IR change was needed.
+- **FLOW-01** Flows are edited through an on-demand Flow Steps panel the canvas can drive,
+  without a separate flow store and without inventing links.
+- **FLOW-02** Connectors carry playback intensity (spark count and speed) without changing
+  flow timing, dwell or validation; missing values reproduce the previous behaviour.
+- **UX-03** Files became an on-demand workspace browser instead of a permanently docked list.
+- **UX-04** Element text no longer mixes with glyphs and icons: label and icon content live
+  in separate regions that survive resize and reload.
+- **UX-05** A persisted System/Light/Dark application selector applies before first paint and
+  stays independent of the diagram's own PDL theme.
+- **UX-06** Equal-size cues and snapping guide component resize, with the snapped result kept
+  as one undoable resize.
+- **DOC-01** The user guide now documents the context-menu commands the canvas really offers
+  and no longer advertises stacking commands that do not exist.
+
 ### Fixed — review pass 2 (docs/FIX-PLAN.md)
 
 - **F-01** Canvas edits no longer rewrite the file as an objects+links
