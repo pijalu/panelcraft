@@ -192,6 +192,9 @@ export function setFloatingBounds(
 const MIN_CANVAS_WIDTH = 320;
 
 function fitHorizontalDocks(layout: UiLayout, viewportWidth: number): UiLayout {
+  // Implausible metrics (zero-width capture frames, detached windows) say
+  // nothing about the user's screen; fitting them would collapse everything.
+  if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) return layout;
   let next = layout;
   for (const panel of [...PANELS].reverse()) {
     if (chromeWidth(next) + MIN_CANVAS_WIDTH <= viewportWidth) break;

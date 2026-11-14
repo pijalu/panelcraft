@@ -23,6 +23,9 @@ import {
   type UiLayout,
 } from './uiLayout';
 
+/** A resize must stay put this long before the layout is refitted to it (ms). */
+const RESIZE_SETTLE_MS = 150;
+
 export interface UiLayoutHandle {
   layout: UiLayout;
   /** Write the pending layout now (drag end, unmount) instead of waiting. */
@@ -81,15 +84,29 @@ function useLayoutRecovery(
   useEffect(() => {
     let width = window.innerWidth;
     let height = window.innerHeight;
+    let settleTimer: ReturnType<typeof setTimeout> | null = null;
+    // Resize metrics can be transient (fullPage screenshots, device-metric
+    // overrides, hidden/minimised windows). Fitting a settled layout to one
+    // such blip collapses every open panel and persists it, so only a resize
+    // that stays put long enough to be real may rewrite the workspace.
+    const settle = () => {
+      settleTimer = null;
+      const nextWidth = window.innerWidth;
+      const nextHeight = window.innerHeight;
+      if (!Number.isFinite(nextWidth) || nextWidth <= 0) return;
+      if (nextWidth === width && nextHeight === height) return;
+      width = nextWidth;
+      height = nextHeight;
+      update((current) => recoverLayout(current, nextWidth, nextHeight));
+    };
     const recover = () => {
-      if (window.innerWidth === width && window.innerHeight === height) return;
-      width = window.innerWidth;
-      height = window.innerHeight;
-      update((current) => recoverLayout(current, width, height));
+      if (settleTimer !== null) clearTimeout(settleTimer);
+      settleTimer = setTimeout(settle, RESIZE_SETTLE_MS);
     };
     window.addEventListener('resize', recover);
     return () => {
       window.removeEventListener('resize', recover);
+      if (settleTimer !== null) clearTimeout(settleTimer);
       if (saveTimer.current !== null) clearTimeout(saveTimer.current);
     };
   }, [saveTimer, update]);

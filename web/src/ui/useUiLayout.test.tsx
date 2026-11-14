@@ -52,6 +52,45 @@ describe('useUiLayout (UX-02)', () => {
     expect(Object.values(result.current.layout.panels)).toEqual(['open', 'open', 'open', 'open', 'open']);
   });
 
+  it('ignores a transient resize blip so screenshots or metric overrides cannot collapse the workspace', async () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
+    const stored = defaultLayout(1440);
+    const { manager } = managerWith(stored);
+    const { result } = renderHook(() => useUiLayout(manager, true, 0));
+    act(() => {
+      for (const panel of ['sidebar', 'flows', 'palette', 'code', 'props'] as const) {
+        result.current.openPanel(panel);
+      }
+    });
+    const opened = Object.values(result.current.layout.panels);
+    // A fullPage screenshot resizes the viewport for one frame; the width is
+    // implausible and must never rewrite the settled layout.
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 120 });
+    act(() => { window.dispatchEvent(new Event('resize')); });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+    act(() => { window.dispatchEvent(new Event('resize')); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 250)); });
+    expect(Object.values(result.current.layout.panels)).toEqual(opened);
+  });
+
+  it('still recovers a genuinely narrow viewport once the resize settles', async () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
+    const stored = defaultLayout(1440);
+    const { manager } = managerWith(stored);
+    const { result } = renderHook(() => useUiLayout(manager, true, 0));
+    act(() => {
+      for (const panel of ['sidebar', 'flows', 'palette', 'code', 'props'] as const) {
+        result.current.openPanel(panel);
+      }
+    });
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 640 });
+    act(() => { window.dispatchEvent(new Event('resize')); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 250)); });
+    expect(Object.values(result.current.layout.panels)).not.toEqual(['open', 'open', 'open', 'open', 'open']);
+  });
+
   it('restores an unchanged stored layout and persists dock/close operations at once', () => {
     const stored = openPanel(defaultLayout(1280), 'code');
     const { manager, setSetting } = managerWith(stored);

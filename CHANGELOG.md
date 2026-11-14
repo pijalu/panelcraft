@@ -8,6 +8,10 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 ### Added — UX review
 
 - **UX-01** Added a reusable Laws of UX review skill with 30 PanelCraft-specific references.
+- **UX-02 follow-up** A transient viewport blip (fullPage screenshot metrics, a
+  hidden/minimised window) no longer collapses every open panel: resize recovery
+  waits for the resize to settle and ignores implausible widths, so a settled
+  docked workspace survives such frames.
 
 ### Fixed — review pass 2 (docs/FIX-PLAN.md)
 

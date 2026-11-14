@@ -111,3 +111,25 @@ All commands were run separately and their actual output inspected:
   parser/printer/lexer/tests; no Go code changed.
 - `bash scripts/check-docs.sh`: documentation links and PCD fences passed.
 - `bash scripts/check-repo-clean.sh --worktree`: passed after the UX-02 commit.
+
+## Follow-up defect (found while validating UX-01)
+
+`npx playwright test` failed intermittently (roughly one full run in five) with
+`flow02-sparks.spec.ts` stuck on `getByTestId('step-play-2')` for the whole 120 s
+timeout. The failure snapshot showed the flow-steps panel replaced by its rail, and a
+temporary `console.log` in `useUiLayout`'s `update` proved the layout was rewritten by the
+resize-recovery path (`recoverLayout` → `fitHorizontalDocks`), not by any user gesture.
+The trace screencast recorded a one-frame `1440x936` viewport (a fullPage capture), so a
+transient metric override was fitting the settled layout and collapsing every open panel,
+then persisting that collapse.
+
+Fix: resize recovery now debounces (`RESIZE_SETTLE_MS = 150`) and fits only a resize that
+is still present when it settles; `fitHorizontalDocks` also ignores non-finite or
+non-positive widths. Regression coverage:
+`useUiLayout.test.tsx › ignores a transient resize blip` (RED before the fix — all five
+panels collapsed — green after) and `› still recovers a genuinely narrow viewport`, so
+narrow recovery keeps working.
+
+Evidence: `npm run check` clean; `npm test` **100 files passed**, coverage thresholds
+passed; `npm run build` passed; six consecutive full `npx playwright test` runs green
+(105 passed each) after the fix versus one failing run in five before it.
