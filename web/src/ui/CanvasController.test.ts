@@ -324,6 +324,82 @@ describe('properties + grid + resize', () => {
   });
 });
 
+describe('UX-06 equal-size resize interaction', () => {
+  const seed = (): void => {
+    ctrl.loadState({
+      objects: [
+        { id: 'target', kind: 'system', name: 'Target', x: 100, y: 100, w: 120, h: 60 },
+        { id: 'match', kind: 'group', name: 'Wide', x: 400, y: 300, w: 200, h: 100 },
+      ],
+      links: [],
+    });
+    ctrl.setSelection(['target'], []);
+  };
+
+  const start = (handleName: string): Element => {
+    const handle = svg.querySelector(`.pc-resize-handle[data-handle="${handleName}"]`);
+    if (!handle) throw new Error(`missing ${handleName} handle`);
+    handle.dispatchEvent(ptr('pointerdown', 0, 0));
+    return handle;
+  };
+
+  it('shows an accessible group match only during resize and keeps one undo command', () => {
+    seed();
+    const undoBefore = ctrl.undo.size;
+    start('e');
+    window.dispatchEvent(ptr('pointermove', 296, 0));
+    expect(obj('target').w).toBe(200);
+    expect(svg.querySelectorAll('.pc-resize-cue-width')).toHaveLength(1);
+    expect(svg.getAttribute('aria-description')).toContain('Wide');
+    expect(snapshots.at(-1)?.objects.find((o) => o.id === 'target')?.w).toBe(120);
+    window.dispatchEvent(ptr('pointerup', 296, 0));
+    expect(snapshots.at(-1)?.objects.find((o) => o.id === 'target')?.w).toBe(200);
+    expect(svg.querySelectorAll('.pc-resize-cue')).toHaveLength(0);
+    expect(svg.hasAttribute('aria-description')).toBe(false);
+    expect(ctrl.undo.size).toBe(undoBefore + 1);
+    ctrl.undo.undo();
+    expect(obj('target').w).toBe(120);
+    expect(obj('target').size).toBeUndefined();
+    ctrl.undo.redo();
+    expect(obj('target').w).toBe(200);
+  });
+
+  it('clears cues on Escape without committing the drag', () => {
+    seed();
+    const undoBefore = ctrl.undo.size;
+    start('e');
+    window.dispatchEvent(ptr('pointermove', 296, 0));
+    expect(svg.querySelectorAll('.pc-resize-cue')).toHaveLength(1);
+    window.dispatchEvent(key('keydown', { key: 'Escape' }));
+    expect(svg.querySelectorAll('.pc-resize-cue')).toHaveLength(0);
+    expect(svg.hasAttribute('aria-description')).toBe(false);
+    expect(obj('target').w).toBe(120);
+    expect(obj('target').size).toBeUndefined();
+    window.dispatchEvent(ptr('pointerup', 296, 0));
+    expect(ctrl.undo.size).toBe(undoBefore);
+  });
+
+  it('matches read-only imported geometry without mutating the ghost', () => {
+    ctrl.loadState({
+      objects: [{ id: 'target', kind: 'system', x: 100, y: 100, w: 120, h: 60 }],
+      links: [],
+    });
+    ctrl.setGhosts([{
+      id: 'imported', path: 'library.pcd', kind: 'system', name: 'Imported',
+      x: 400, y: 300, w: 200, h: 96,
+    }]);
+    ctrl.setSelection(['target'], []);
+    start('se');
+    window.dispatchEvent(ptr('pointermove', 296, 192));
+    expect(obj('target')).toMatchObject({ w: 200, h: 96 });
+    expect(svg.querySelectorAll('.pc-resize-cue')).toHaveLength(2);
+    expect(svg.getAttribute('aria-description')).toContain('Imported');
+    expect(ctrl.snapshot.objects).toHaveLength(1);
+    expect(svg.querySelector('g.pc-obj[data-id="imported"] rect.pc-shape')?.getAttribute('width')).toBe('200');
+    window.dispatchEvent(ptr('pointerup', 296, 192));
+  });
+});
+
 describe('link visual model (F-12)', () => {
   const seed = (): void => {
     ctrl.loadState({

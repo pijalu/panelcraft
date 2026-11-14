@@ -27,7 +27,7 @@ import {
   type Transform,
 } from '../engine/render/viewport';
 import { snapToGrid, computeGuides } from '../engine/render/snap';
-import { resizedRect } from '../engine/render/resize';
+import { resizedRectWithCues, type ResizeCandidate, type ResizeCue } from '../engine/render/resize';
 import {
   alignObjects,
   copySelection,
@@ -51,6 +51,7 @@ import {
   drawGhostLink,
   drawHalos,
   drawResizeHandle,
+  drawResizeCues,
   drawWaypointHandles,
   type HaloSide,
   type ResizeHandle,
@@ -148,7 +149,7 @@ type Mode =
   | { t: 'drag'; startCanvas: Point; before: PositionRec[]; moved: boolean }
   | { t: 'band'; startCanvas: Point; additive: boolean }
   | { t: 'link'; fromId: string; fromSide: Side }
-  | { t: 'resize'; id: string; handle: ResizeHandle; startCanvas: Point; before: Rect }
+  | { t: 'resize'; id: string; handle: ResizeHandle; startCanvas: Point; before: Rect; original: DiagramObject }
   | { t: 'waypoint'; linkId: string; index: number; before: [number, number][] };
 
 interface PositionRec {
@@ -219,6 +220,19 @@ export function uniqueId(taken: ReadonlySet<string>, prefix: 'o' | 'l', from: nu
 
 function rectOf(o: Rect): Rect {
   return { x: o.x, y: o.y, w: o.w, h: o.h };
+}
+
+function resizeCandidate(o: DiagramObject): ResizeCandidate {
+  return { id: o.id, label: o.name || o.id, rect: rectOf(o) };
+}
+
+function resizeStatus(cues: ResizeCue[]): string {
+  return cues.map((cue) => s(
+    cue.dimension === 'width'
+      ? 'Equal width with {label} ({value})'
+      : 'Equal height with {label} ({value})',
+    { label: cue.candidate.label ?? cue.candidate.id, value: cue.value },
+  )).join('; ');
 }
 
 function normRect(a: Point, b: Point): Rect {
@@ -937,7 +951,7 @@ export class CanvasController {
 
   // ---- render + notify ----------------------------------------------------
 
-  private render(): void {
+  private render(notify = true): void {
     const scene: Scene = {
       objects: [
         ...this.state.objects.map((o) => ({
@@ -973,7 +987,7 @@ export class CanvasController {
     }
     this.renderer.setSelection([...this.selObjects], [...this.selLinks]);
     if (this.mode.t === 'idle') this.paintIdleOverlay();
-    this.emit();
+    if (notify) this.emit();
   }
 
   private emit(): void {
@@ -981,6 +995,7 @@ export class CanvasController {
   }
 
   private paintIdleOverlay(): void {
+    this.svg.removeAttribute('aria-description');
     clearOverlay(this.renderer.overlay);
     const obj = this.selectedObject();
     if (obj) {
@@ -1264,6 +1279,14 @@ export class CanvasController {
     if (action === 'grid-toggle') return void this.toggleGrid();
     if (action === 'delete') return void this.deleteSelection();
     if (action === 'escape') {
+      if (this.mode.t === 'resize') {
+        const { id, original } = this.mode;
+        this.state = {
+          ...this.state,
+          objects: this.state.objects.map((o) => o.id === id ? original : o),
+        };
+        this.recomputeRoutes();
+      }
       this.mode = { t: 'idle' };
       this.selectObjects([]);
       this.render();
@@ -1332,6 +1355,7 @@ export class CanvasController {
           handle: target.handle,
           startCanvas: this.toCanvas(e),
           before: rectOf(obj),
+          original: obj,
         };
       }
       return true;
@@ -1469,7 +1493,16 @@ export class CanvasController {
   private resizeMove(e: PointerEvent): void {
     const m = this.mode;
     if (m.t !== 'resize') return;
-    const snapped = resizedRect(m.before, m.handle, this.toCanvas(e));
+    const candidates = [
+      ...this.state.objects.filter((o) => o.id !== m.id),
+      ...this.ghosts,
+    ].map(resizeCandidate);
+    const { rect: snapped, cues } = resizedRectWithCues(
+      m.before,
+      m.handle,
+      this.toCanvas(e),
+      candidates,
+    );
     this.state = {
       ...this.state,
       objects: this.state.objects.map((o) => {
@@ -1488,9 +1521,14 @@ export class CanvasController {
       }),
     };
     this.recomputeRoutes();
-    this.render();
+    // Intermediate geometry is view-only: commit/cancel owns code sync and persistence.
+    this.render(false);
     clearOverlay(this.renderer.overlay);
     drawResizeHandle(this.renderer.overlay, snapped, m.id);
+    drawResizeCues(this.renderer.overlay, cues);
+    const description = resizeStatus(cues);
+    if (description) this.svg.setAttribute('aria-description', description);
+    else this.svg.removeAttribute('aria-description');
   }
 
   private onPointerUp(e: PointerEvent): void {
@@ -1635,11 +1673,7 @@ export class CanvasController {
     if (m.t !== 'resize') return;
     // one undo entry per drag: the before-rect is restored without a size flag
     // unless the object already had an explicit size
-    const before = this.state.objects.map((o) =>
-      o.id === m.id
-        ? { ...o, x: m.before.x, y: m.before.y, w: m.before.w, h: m.before.h }
-        : o,
-    );
+    const before = this.state.objects.map((o) => o.id === m.id ? m.original : o);
     const after = this.state.objects;
     if (listEq(before, after)) return;
     this.undo.push(

@@ -24,7 +24,7 @@ export interface CliRenderResult {
 
 const THEME_VARS = [
   '--pc-bg', '--pc-surface', '--pc-fg', '--pc-muted', '--pc-accent', '--pc-info',
-  '--pc-warn', '--pc-border', '--pc-canvas', '--pc-text-xs', '--pc-text-sm',
+  '--pc-warn', '--pc-border', '--pc-canvas', '--pc-match', '--pc-text-xs', '--pc-text-sm',
   '--pc-text-md', '--pc-radius-sm', '--pc-radius-md',
 ] as const;
 

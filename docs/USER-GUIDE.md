@@ -27,8 +27,12 @@ and the CLI's `--theme` option.
   the grid). **Rename** in place with `F2` or double-click; Enter commits,
   Escape cancels.
 - **Resize**: select anything and drag one of the eight handles; the box stays
-  on the grid and never gets smaller than 48×32. An explicit size is saved as
-  `size <w> <h>`; "Fit to name" (properties → Advanced) recomputes it.
+  on the grid and never gets smaller than 48×32. Within 4 canvas units of another
+  visible object's width or height, the nearest matching dimension snaps into place
+  and a red bracket labels `W = …` or `H = …`. Corner handles can match both dimensions.
+  These cues also describe the match to assistive technology and disappear on commit
+  or Escape without entering document data. An explicit size is saved as `size <w> <h>`;
+  "Fit to name" (properties → Advanced) recomputes it.
 - **Connect**: drag from an edge halo (or right-click → connect) to a target.
   A link's type/label/arrowheads/line/route/width live in the properties panel;
   `Shift+A` cycles the head shape. Route defaults to obstacle-avoiding orthogonal;

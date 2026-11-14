@@ -18,6 +18,7 @@ CSS custom properties, never hard-coded values (M2-WP5 enforces).
 | `--pc-accent` | `#2563eb` | selection, primary actions |
 | `--pc-border` | `#d1d5db` | hairlines, separators |
 | `--pc-canvas` | `#fafafa` | diagram canvas |
+| `--pc-match` | `#b91c1c` | equal-size resize brackets and dimension labels |
 
 ### Color — dark
 
@@ -30,6 +31,7 @@ CSS custom properties, never hard-coded values (M2-WP5 enforces).
 | `--pc-accent` | `#60a5fa` | selection, primary actions |
 | `--pc-border` | `#374151` | hairlines, separators |
 | `--pc-canvas` | `#111316` | diagram canvas |
+| `--pc-match` | `#f87171` | equal-size resize brackets and dimension labels |
 
 Rules: contrast ≥ 4.5:1 for body text, ≥ 3:1 for large text/UI glyphs in both
 schemes; never rely on hue alone (a11y, M7 pass formalizes audit).

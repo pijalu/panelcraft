@@ -7,6 +7,7 @@
 import type { Point, Rect } from './viewport';
 import type { Polyline } from './router';
 import type { Guide } from './snap';
+import type { ResizeCue } from './resize';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -139,4 +140,35 @@ export function drawResizeHandle(overlay: SVGGElement, r: Rect, id: string): voi
     rect.setAttribute('height', '8');
     overlay.appendChild(rect);
   }
+}
+
+function drawResizeCue(overlay: SVGGElement, cue: ResizeCue): void {
+  const { rect } = cue.candidate;
+  const width = cue.dimension === 'width';
+  const group = el('g') as SVGGElement;
+  group.setAttribute('class', `pc-resize-cue pc-resize-cue-${cue.dimension}`);
+  group.setAttribute('data-testid', `resize-cue-${cue.dimension}`);
+  group.setAttribute('data-match-id', cue.candidate.id);
+  group.setAttribute('aria-hidden', 'true');
+  const path = el('path') as SVGPathElement;
+  path.setAttribute('class', 'pc-resize-cue-line');
+  path.setAttribute('d', width
+    ? `M ${rect.x} ${rect.y - 12} v 4 M ${rect.x} ${rect.y - 12} h ${rect.w} M ${rect.x + rect.w} ${rect.y - 12} v 4`
+    : `M ${rect.x - 12} ${rect.y} h 4 M ${rect.x - 12} ${rect.y} v ${rect.h} M ${rect.x - 12} ${rect.y + rect.h} h 4`);
+  group.appendChild(path);
+  const label = el('text') as SVGTextElement;
+  label.setAttribute('class', 'pc-resize-cue-label');
+  label.setAttribute('x', String(width ? rect.x + rect.w / 2 : rect.x - 20));
+  label.setAttribute('y', String(width ? rect.y - 20 : rect.y + rect.h / 2));
+  if (!width) {
+    label.setAttribute('transform', `rotate(-90 ${rect.x - 20} ${rect.y + rect.h / 2})`);
+  }
+  label.textContent = `${width ? 'W' : 'H'} = ${cue.value}`;
+  group.appendChild(label);
+  overlay.appendChild(group);
+}
+
+/** Resize-only dimension brackets; the canvas owns their ARIA description. */
+export function drawResizeCues(overlay: SVGGElement, cues: ResizeCue[]): void {
+  for (const cue of cues) drawResizeCue(overlay, cue);
 }

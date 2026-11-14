@@ -4,6 +4,8 @@
 const EN = {
   "View": "View",
   "Workspace panels": "Workspace panels",
+  "Equal width with {label} ({value})": "Equal width with {label} ({value})",
+  "Equal height with {label} ({value})": "Equal height with {label} ({value})",
   "Application theme": "Application theme",
   "Light": "Light",
   "Dark": "Dark",

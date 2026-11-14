@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — UX-06 equal-size resize cues
+
+- Added deterministic equal-width/height snapping with labeled, accessible resize-only cues, transient geometry, cancel cleanup, and one persistent undo command per committed resize.
+
 ## 2026-11-14 — UX-05 application theme preference
 
 - Added a persisted, no-flash System/Light/Dark selector across application surfaces while keeping document and CLI render themes independent, including deterministic light/dark SVG and PNG output.

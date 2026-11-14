@@ -3,7 +3,13 @@
 // own stay put, dragged edges snap to the grid and stop at the minimum size.
 
 import { describe, expect, it } from 'vitest';
-import { MIN_SIZE, resizedRect } from './resize';
+import {
+  MIN_SIZE,
+  RESIZE_MATCH_THRESHOLD_PX,
+  resizedRect,
+  resizedRectWithCues,
+  type ResizeCandidate,
+} from './resize';
 import { handlePoint } from './overlay';
 import { GRID_SIZE } from './snap';
 
@@ -54,6 +60,95 @@ describe('resizedRect (F-13)', () => {
   it('w-anchor keeps the right edge fixed', () => {
     const r = resizedRect(base, 'w', { x: 144, y: 0 });
     expect(r.x + r.w).toBe(base.x + base.w);
+  });
+});
+
+describe('UX-06 equal-size resize cues', () => {
+  const before = { x: 100, y: 100, w: 120, h: 60 };
+  const candidate = (id: string, w: number, h: number): ResizeCandidate => ({
+    id,
+    label: id.toUpperCase(),
+    rect: { x: 400, y: 300, w, h },
+  });
+
+  it('snaps and cues width only for a horizontal handle', () => {
+    const result = resizedRectWithCues(before, 'e', { x: 296, y: 0 }, [candidate('wide', 200, 100)]);
+    expect(result.rect).toEqual({ x: 100, y: 100, w: 200, h: 60 });
+    expect(result.cues.map((cue) => cue.dimension)).toEqual(['width']);
+  });
+
+  it('snaps and cues height only for a vertical handle', () => {
+    const result = resizedRectWithCues(before, 's', { x: 0, y: 196 }, [candidate('tall', 200, 100)]);
+    expect(result.rect).toEqual({ x: 100, y: 100, w: 120, h: 100 });
+    expect(result.cues.map((cue) => cue.dimension)).toEqual(['height']);
+  });
+
+  it('cues both dimensions and keeps the opposite corner fixed', () => {
+    const result = resizedRectWithCues(before, 'nw', { x: 20, y: 60 }, [candidate('both', 200, 100)]);
+    expect(result.rect).toEqual({ x: 20, y: 60, w: 200, h: 100 });
+    expect(result.rect.x + result.rect.w).toBe(before.x + before.w);
+    expect(result.rect.y + result.rect.h).toBe(before.y + before.h);
+    expect(result.cues.map((cue) => cue.dimension)).toEqual(['width', 'height']);
+  });
+
+  it('chooses the nearest candidate independently for each dimension', () => {
+    const result = resizedRectWithCues(before, 'se', { x: 296, y: 192 }, [
+      candidate('far', 200, 96),
+      candidate('near', 198, 94),
+    ]);
+    expect(result.rect.w).toBe(198);
+    expect(result.rect.h).toBe(94);
+    expect(result.cues.map((cue) => cue.candidate.id)).toEqual(['near', 'near']);
+  });
+
+  it('uses smaller dimensions then lexical ids for deterministic ties', () => {
+    const result = resizedRectWithCues(before, 'se', { x: 300, y: 200 }, [
+      candidate('z', 208, 104),
+      candidate('a', 200, 96),
+      candidate('b', 200, 96),
+    ]);
+    expect(result.rect.w).toBe(200);
+    expect(result.rect.h).toBe(96);
+    expect(result.cues.map((cue) => cue.candidate.id)).toEqual(['a', 'a']);
+  });
+
+  it('honors the inclusive threshold and returns no match beyond it', () => {
+    const at = resizedRectWithCues(before, 'e', { x: 300, y: 0 }, [
+      candidate('edge', 204 + RESIZE_MATCH_THRESHOLD_PX, 100),
+    ]);
+    expect(at.rect.w).toBe(208);
+    expect(at.cues).toHaveLength(1);
+    const beyond = resizedRectWithCues(before, 'e', { x: 300, y: 0 }, [
+      candidate('outside', 204 + RESIZE_MATCH_THRESHOLD_PX + 0.1, 100),
+    ]);
+    expect(beyond.rect).toEqual(resizedRect(before, 'e', { x: 300, y: 0 }));
+    expect(beyond.cues).toEqual([]);
+  });
+
+  it.each([
+    ['nw', { x: 20, y: 60 }, { x: 20, y: 60, w: 200, h: 100 }, ['width', 'height']],
+    ['n', { x: 0, y: 60 }, { x: 100, y: 60, w: 120, h: 100 }, ['height']],
+    ['ne', { x: 300, y: 60 }, { x: 100, y: 60, w: 200, h: 100 }, ['width', 'height']],
+    ['e', { x: 300, y: 0 }, { x: 100, y: 100, w: 200, h: 60 }, ['width']],
+    ['se', { x: 300, y: 200 }, { x: 100, y: 100, w: 200, h: 100 }, ['width', 'height']],
+    ['s', { x: 0, y: 200 }, { x: 100, y: 100, w: 120, h: 100 }, ['height']],
+    ['sw', { x: 20, y: 200 }, { x: 20, y: 100, w: 200, h: 100 }, ['width', 'height']],
+    ['w', { x: 20, y: 0 }, { x: 20, y: 100, w: 200, h: 60 }, ['width']],
+  ] as const)('%s handle preserves unowned edges', (handle, pointer, expected, dimensions) => {
+    const result = resizedRectWithCues(before, handle, pointer, [candidate('match', 200, 100)]);
+    expect(result.rect).toEqual(expected);
+    expect(result.cues.map((cue) => cue.dimension)).toEqual(dimensions);
+  });
+
+  it('never snaps below minimum size but can match the minimum exactly', () => {
+    const tooSmall = resizedRectWithCues(before, 'se', { x: 0, y: 0 }, [candidate('small', 40, 24)]);
+    expect(tooSmall.rect).toMatchObject(MIN_SIZE);
+    expect(tooSmall.cues).toEqual([]);
+    const minimum = resizedRectWithCues(before, 'se', { x: 0, y: 0 }, [
+      candidate('minimum', MIN_SIZE.w, MIN_SIZE.h),
+    ]);
+    expect(minimum.rect).toMatchObject(MIN_SIZE);
+    expect(minimum.cues).toHaveLength(2);
   });
 });
 

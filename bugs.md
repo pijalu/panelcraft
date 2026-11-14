@@ -108,48 +108,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 ---
 
 
-## UX-06 Add equal-size cues and snapping during component resize
-
-**Observed/current behavior**
-
-- The diagram canvas has an 8 px grid, resize snapping, movement alignment guides, and an
-  Equal size command.
-- Resize does not indicate when another component has the same width or height.
-
-**Expected behavior**
-
-- During an active resize, compare the resized object with other eligible visible canvas
-  objects and show subtle red cues for **equal width**, **equal height**, or **both**.
-- Snap to the closest matching dimension using deterministic tie-breaking. Do not change
-  position except where required by the active resize handle.
-- Cues appear only during relevant resizing, disappear on commit/cancel, and do not become
-  document data. Use a line/label treatment in addition to hue so the distinction is not
-  color-only.
-- Existing grid snapping, minimum size, eight handles, undo coalescing, groups, and imported
-  read-only objects continue to behave correctly.
-
-**Implementation plan**
-
-1. Add pure geometry that finds nearest width/height matches and produces resize deltas plus
-   cue descriptors.
-2. Integrate it with `resizedRect` and the controller's resize state machine without
-   interfering with grid snapping or minimum sizes.
-3. Render lightweight resize-only cues and expose a nonvisual accessible description.
-
-**Test approach**
-
-- Unit: width-only, height-only, both, nearest candidate, deterministic ties, no match,
-  threshold boundaries, each handle, minimum size, and cancel/commit behavior.
-- E2E: resize to another object's width/height; verify snapped saved dimensions, undo/redo,
-  reload persistence, and no cues after pointer-up/Escape.
-- Visual filmstrip: width, height, both, and no-match states in both themes.
-
-**Validation steps**
-
-- Run snap/resize/controller tests and geometry E2E, review screenshots, then run the common
-  gate.
-
----
 
 ## CX-01 Add draggable connector endpoints locked to entity perimeters
 
