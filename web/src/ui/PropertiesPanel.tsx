@@ -11,6 +11,8 @@ import { useState } from 'preact/hooks';
 import type { CanvasController } from './CanvasController';
 import type { DiagramLink, DiagramObject } from './CanvasController';
 import { CollapseButton } from './PanelChrome';
+import { LINE_OPTIONS, MARKER_OPTIONS, ROUTE_OPTIONS, WIDTH_OPTIONS } from './connectorOptions';
+import { VisualPicker } from './VisualPicker';
 import { s } from './strings';
 
 type ObjectChange = CanvasController['updateObject'];
@@ -31,9 +33,6 @@ export interface PropertiesPanelProps {
   onToggleSection?: (section: string) => void;
 }
 
-/** Arrow marker shapes offered by the link controls (F-12). */
-const MARKERS = ['arrow', 'open', 'diamond', 'circle', 'square', 'none'] as const;
-
 /**
  * F-25 (Miller's law): four verbs cover most diagrams; the rest live behind
  * "More types" instead of making the picker a nine-item wall.
@@ -48,26 +47,6 @@ function Field(props: { label: string; children: ComponentChildren }) {
       <span class="field-label">{props.label}</span>
       {props.children}
     </label>
-  );
-}
-
-function RouteField(props: { link: DiagramLink; onChange: LinkChange }) {
-  const { link, onChange } = props;
-  return (
-    <Field label={s("Route")}>
-      <select
-        data-testid="link-route"
-        value={link.route ?? 'orthogonal'}
-        onChange={(e) => {
-          const value = (e.target as HTMLSelectElement).value;
-          onChange(link.id, { route: value === 'orthogonal' ? undefined : value as DiagramLink['route'] });
-        }}
-      >
-        <option value="orthogonal">{s("orthogonal")}</option>
-        <option value="straight">{s("straight")}</option>
-        <option value="curved">{s("curved")}</option>
-      </select>
-    </Field>
   );
 }
 
@@ -313,7 +292,69 @@ function OverlapField({ link, onChange }: { link: DiagramLink; onChange: LinkCha
   );
 }
 
-/** Link fields: semantics, arrow model (F-12) and texture. */
+/** CX-04: visual connector-style controls (markers, texture, route, weight). */
+function ConnectorStyleControls(props: { link: DiagramLink; onChange: LinkChange }) {
+  const { link, onChange } = props;
+  return (
+    <>
+      <VisualPicker
+        id="link-head"
+        label={s('Head')}
+        value={link.head ?? 'arrow'}
+        options={MARKER_OPTIONS}
+        onChange={(value) => onChange(link.id, { head: value })}
+      />
+      <VisualPicker
+        id="link-tail"
+        label={s('Tail')}
+        value={link.tail ?? 'none'}
+        options={MARKER_OPTIONS}
+        onChange={(value) => onChange(link.id, { tail: value })}
+      />
+      <VisualPicker
+        id="link-line"
+        label={s('Line')}
+        value={link.line ?? 'solid'}
+        options={LINE_OPTIONS}
+        onChange={(value) => onChange(link.id, { line: value })}
+      />
+      <VisualPicker
+        id="link-route"
+        label={s('Route')}
+        value={link.route ?? 'orthogonal'}
+        options={ROUTE_OPTIONS}
+        onChange={(value) =>
+          onChange(link.id, {
+            route: value === 'orthogonal' ? undefined : (value as DiagramLink['route']),
+          })
+        }
+      />
+      <VisualPicker
+        id="link-width-preset"
+        label={s('Weight')}
+        value={String(link.width ?? 1.5)}
+        options={WIDTH_OPTIONS}
+        onChange={(value) => onChange(link.id, { width: Number(value) })}
+      />
+      <Field label={s("Width")}>
+        <input
+          type="number"
+          min={1}
+          max={6}
+          step={0.5}
+          data-testid="link-width"
+          value={link.width ?? 1.5}
+          onInput={(e) => {
+            const v = Number((e.target as HTMLInputElement).value);
+            onChange(link.id, { width: Number.isFinite(v) ? v : undefined });
+          }}
+        />
+      </Field>
+    </>
+  );
+}
+
+/** Link fields: semantics, arrow model (F-12, CX-04) and texture. */
 function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
   const { link, onChange } = props;
   const [more, setMore] = useState(false);
@@ -355,58 +396,7 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
           onInput={(e) => onChange(link.id, { label: (e.target as HTMLInputElement).value })}
         />
       </Field>
-      <Field label={s("Head")}>
-        <select
-          data-testid="link-head"
-          value={link.head ?? 'arrow'}
-          onChange={(e) => onChange(link.id, { head: (e.target as HTMLSelectElement).value })}
-        >
-          {MARKERS.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label={s("Tail")}>
-        <select
-          data-testid="link-tail"
-          value={link.tail ?? 'none'}
-          onChange={(e) => onChange(link.id, { tail: (e.target as HTMLSelectElement).value })}
-        >
-          {MARKERS.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label={s("Line")}>
-        <select
-          data-testid="link-line"
-          value={link.line ?? 'solid'}
-          onChange={(e) => onChange(link.id, { line: (e.target as HTMLSelectElement).value })}
-        >
-          <option value="solid">{s("solid")}</option>
-          <option value="dashed">{s("dashed")}</option>
-          <option value="dotted">{s("dotted")}</option>
-        </select>
-      </Field>
-      <RouteField link={link} onChange={onChange} />
-      <Field label={s("Width")}>
-        <input
-          type="number"
-          min={1}
-          max={6}
-          step={0.5}
-          data-testid="link-width"
-          value={link.width ?? 1.5}
-          onInput={(e) => {
-            const v = Number((e.target as HTMLInputElement).value);
-            onChange(link.id, { width: Number.isFinite(v) ? v : undefined });
-          }}
-        />
-      </Field>
+      <ConnectorStyleControls link={link} onChange={onChange} />
       <label class="field field-checkbox">
         <input
           type="checkbox"

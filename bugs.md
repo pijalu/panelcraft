@@ -213,48 +213,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 ---
 
-## CX-04 Make route, line, and arrow selection visual
-
-**Observed/current behavior**
-
-- Orthogonal/straight/curved routes, solid/dashed/dotted lines, width, and head/tail markers
-  already work through text dropdowns and numeric input.
-- The request for “dotted/stripped/full/bold” maps to existing dotted/dashed/solid textures
-  and width; curved switching itself does not need a new routing model.
-
-**Expected behavior**
-
-- Replace text-only selection with visual previews for route geometry, line texture, common
-  widths/boldness, arrow/no-arrow, and independent head/tail marker choices.
-- Keep all existing options and custom width support. The currently selected preview is
-  obvious by more than color alone and has an accessible text name.
-- Selection updates the selected connector immediately, remains undoable, persists through
-  PDL/reload, and works in docked/floating Properties and reduced-motion mode.
-- No new document property is required unless an actual missing visual capability is found.
-
-**Implementation plan**
-
-1. Build a reusable accessible visual option picker using inline SVG previews and existing
-   theme tokens.
-2. Wire it to current route/line/width/head/tail controls without changing their update
-   semantics.
-3. Retain textual labels/tooltips and keyboard navigation.
-
-**Test approach**
-
-- Component: every preview, selected state, keyboard operation, accessible names, and custom
-  current values not represented by a preset.
-- E2E: choose every route/texture/marker and bold width; verify canvas path/marker/style,
-  code text, undo, and reload.
-- Visual filmstrip: picker open/selected states and a connector style gallery in both themes.
-
-**Validation steps**
-
-- Run PropertiesPanel/controller/link tests and link/routing E2E, review the style gallery,
-  then run the common gate.
-
----
-
 ## Recommended execution order and dependencies
 
 1. **Independent foundation:** UX-01. DOC-01 closes with CX-03.

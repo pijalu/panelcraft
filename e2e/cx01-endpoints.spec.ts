@@ -159,7 +159,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(editor).toContainText('anchor to 0.75');
 
     for (const mode of ['straight', 'curved', 'orthogonal'] as const) {
-      await page.getByTestId('link-route').selectOption(mode);
+      await page.getByTestId(`link-route-${mode}`).click();
       await expectRouteAtHandles(page);
       await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
       await expect(page.getByTestId('status-pill')).toHaveAttribute('data-dirty', 'false');

@@ -48,9 +48,9 @@ test('F-12: head/tail/line/width persist and render after a reload', async ({ pa
   await expect(canvas.locator('g.pc-link')).toHaveCount(3);
 
   await selectLink(page, 'L1');
-  await page.getByTestId('link-tail').selectOption('diamond');
-  await page.getByTestId('link-head').selectOption('open');
-  await page.getByTestId('link-line').selectOption('dotted');
+  await page.getByTestId('link-tail-diamond').click();
+  await page.getByTestId('link-head-open').click();
+  await page.getByTestId('link-line-dotted').click();
   await page.getByTestId('link-width').fill('3');
 
   const route = canvas.locator('g.pc-link[data-id="L1"] path.pc-route');

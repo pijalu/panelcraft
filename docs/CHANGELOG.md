@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — CX-04 visual connector style pickers
+
+- Replaced the connector dropdowns with accessible preview tiles (inline SVG + text label, check mark and weight for the selection, arrow-key navigation) for route geometry, line texture, common weights and independent head/tail markers, keeping the numeric Width field for custom values.
+
 ## 2026-11-14 — DOC-01 context-menu documentation
 
 - Corrected the user guide's context-menu list to the shipped commands (duplicate/copy/paste/delete, six align, two distribute, equal size) and removed the unsupported "bring to front" claim, pointing layering at the Stacking order field instead; a light/dark E2E now fails if the guide and the menu drift apart.

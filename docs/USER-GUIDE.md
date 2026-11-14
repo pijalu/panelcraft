@@ -34,7 +34,10 @@ and the CLI's `--theme` option.
   or Escape without entering document data. An explicit size is saved as `size <w> <h>`;
   "Fit to name" (properties → Advanced) recomputes it.
 - **Connect**: drag from an edge halo (or right-click → connect) to a target.
-  A link's type/label/arrowheads/line/route/width live in the properties panel;
+  A link's type/label/arrowheads/line/route/width live in the properties panel. Head, tail,
+  line texture, route and typical weights are **preview tiles** (inline SVG + text label):
+  click one or use the arrow keys inside the radio group, and the selected tile shows a check
+  mark and weight rather than colour alone; any other width is typed in the **Width** field.
   `Shift+A` cycles the head shape. Route defaults to orthogonal routing that avoids
   solid objects and earlier connectors where possible. Enable **Allow overlap** on
   one link to permit crossings instead; dense or fully blocked diagrams can still

@@ -64,7 +64,7 @@ test('FR-C8: curved/straight routes persist and render in light and dark themes'
   await expect(canvas.locator('g.pc-link[data-id="L2"] path.pc-route')).not.toHaveAttribute('d', / C /);
 
   await selectLink(page, 'L1');
-  await page.getByTestId('link-route').selectOption('curved');
+  await page.getByTestId('link-route-curved').click();
   await expect(canvas.locator('g.pc-link[data-id="L1"] path.pc-route')).toHaveAttribute('d', / C /);
   await expect(page.locator('.cm-content')).toContainText('route curved');
 
@@ -79,9 +79,9 @@ test('FR-C8: curved/straight routes persist and render in light and dark themes'
   await capture(page, 'p6-routing-dark');
 
   await selectLink(page, 'L1');
-  await expect(page.getByTestId('link-route')).toHaveValue('curved');
-  await page.getByTestId('link-route').selectOption('orthogonal');
-  await expect(page.getByTestId('link-route')).toHaveValue('orthogonal');
+  await expect(page.getByTestId('link-route-curved').locator('input')).toBeChecked();
+  await page.getByTestId('link-route-orthogonal').click();
+  await expect(page.getByTestId('link-route-orthogonal').locator('input')).toBeChecked();
   await page.getByTestId('expand-code').click();
   await expect(page.locator('.cm-content')).not.toContainText('route curved');
   await expect(canvas.locator('g.pc-link[data-id="L1"] path.pc-route')).not.toHaveAttribute('d', / C /);
