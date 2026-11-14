@@ -32,6 +32,11 @@ export interface BeatLink {
   from: string;
   to: string;
   flipped: boolean;
+  /** FLOW-02: spark count (1..8) and speed multiplier (0.25..4) from the link style. */
+  sparks?: number;
+  speed?: number;
+  /** FLOW-02: bidirectional connectors ping-pong until the step ends. */
+  bidir?: boolean;
 }
 
 export interface BeatGoto {
@@ -139,6 +144,9 @@ function beatLink(doc: Doc, s: MsgStepLike): BeatLink | null {
     from: flipped ? s.to : s.from,
     to: flipped ? s.from : s.to,
     flipped,
+    ...(r.link.style?.sparks === undefined ? {} : { sparks: r.link.style.sparks }),
+    ...(r.link.style?.speed === undefined ? {} : { speed: r.link.style.speed }),
+    ...(r.link.bidir === true ? { bidir: true } : {}),
   };
 }
 

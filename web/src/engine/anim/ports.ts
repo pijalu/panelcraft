@@ -25,6 +25,8 @@ export interface AnimOpts {
   easing?: string;
   /** Start offset (F-17 sequential-glow staggers parallel actors). */
   delayMs?: number;
+  /** FLOW-02: repeat count; `Infinity` keeps bidirectional sparks ping-ponging. */
+  iterations?: number;
 }
 
 export interface AnimHandle {
@@ -43,7 +45,7 @@ export const waapiPlayer: AnimPlayer = {
       el as Element & {
         animate?: (
           kf: Keyframe[],
-          o: { duration: number; easing: string; fill: 'none'; delay?: number },
+          o: { duration: number; easing: string; fill: 'none'; delay?: number; iterations?: number },
         ) => { cancel(): void };
       }
     ).animate;
@@ -56,6 +58,7 @@ export const waapiPlayer: AnimPlayer = {
         easing: opts.easing ?? 'linear',
         fill: 'none',
         delay: opts.delayMs ?? 0,
+        iterations: opts.iterations ?? 1,
       },
     );
     return anim === undefined ? { cancel: () => {} } : { cancel: () => anim.cancel() };

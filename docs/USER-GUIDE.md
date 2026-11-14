@@ -53,6 +53,11 @@ and the CLI's `--theme` option.
   override automatic avoidance, including when **Allow overlap** is off. Labels
   automatically try nearby positions to avoid objects, other routes, and
   other labels; a text halo keeps the least-bad fallback readable in dense diagrams.
+- **Sparks**: a link can carry **Spark count** (1–8) and **Spark speed** (0.25–4×) for
+  flow playback, saved as `sparks n` / `speed n` inside its style block. Several sparks
+  stagger along the path; a bidirectional (`<->`) link ping-pongs until the step ends,
+  while a one-way link completes once. Speed changes only the spark motion, never the
+  step delay, and reduced-motion playback shows static emphasis instead.
 - **Pan / zoom**: Space-drag or wheel/trackpad pans; Ctrl/Cmd+wheel zooms.
   The bottom-right **mini-map** shows the topology and current viewport. Click it
   to center that location; with it focused, arrow keys pan and Home fits the

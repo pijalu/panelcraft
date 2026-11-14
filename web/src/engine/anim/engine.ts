@@ -58,7 +58,8 @@ export class FlowAnimator {
   private readonly player: AnimPlayer;
   private readonly geometry: PathGeometry;
   private readonly motion: typeof MOTION;
-  private readonly reduced: boolean;
+  /** FR-F5: evaluated per beat so a media-query change takes effect live. */
+  private readonly reducedAtMount: boolean;
   private dimmed: Element[] = [];
   private emphasized: Element[] = [];
   /** Immediately previous participants stay readable as narrative context. */
@@ -71,12 +72,20 @@ export class FlowAnimator {
     this.player = deps.player;
     this.geometry = deps.geometry ?? domGeometry;
     this.motion = deps.motion ?? MOTION;
-    this.reduced = deps.reducedMotion ?? false;
+    this.reducedAtMount = deps.reducedMotion ?? false;
   }
 
   /** F-17: pick the illustration style for this flow (null = auto). */
   setIllustration(id: IllustrationId | null): void {
     this.illustration = id;
+  }
+
+  /** Reduced motion now: the injected value OR the live media query. */
+  private reduced(): boolean {
+    if (this.reducedAtMount) return true;
+    return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false;
   }
 
   /** Prep the anim layer (world child). Called lazily; idempotent. Queried
@@ -118,7 +127,7 @@ export class FlowAnimator {
       ...this.allLinks(beat).map((link) => link.linkId),
     ]);
     this.badge(beat, ctx);
-    if (this.reduced) {
+    if (this.reduced()) {
       // FR-F5: jump to end states — persistent emphasis, no movement
       for (const id of this.allActors(beat)) {
         const el = this.findEl(id);
@@ -270,33 +279,74 @@ export class FlowAnimator {
     const pathEl = this.svg.querySelector(`.pc-link[data-id="${link.linkId}"] .pc-route`);
     if (pathEl === null) return;
     const len = this.geometry.length(pathEl);
+    const count = clampCount(link.sparks);
+    const speed = clampSpeed(link.speed);
+    const durationMs = this.motion.tokenMs / speed;
     const trailLen = Math.max(len * TRAIL_FRAC, 1);
-    // trailing dash overlay (FR-F4): same d, dash segment slides with token
-    const trail = mkEl('path', 'pc-trail');
-    trail.setAttribute('d', pathEl.getAttribute('d') ?? '');
-    trail.setAttribute('stroke-dasharray', `${trailLen} ${len + trailLen}`);
-    layer.appendChild(trail);
-    this.player.animate(
-      trail,
-      [
-        { strokeDashoffset: len },
-        { strokeDashoffset: -trailLen },
-      ],
-      { durationMs: this.motion.tokenMs, easing: 'linear' },
-    );
+    // trailing dash overlay (FR-F4): same d, dash segment slides with token.
+    // With several sparks the dash would smear the whole line, so it is kept
+    // for the historical single-spark look only.
+    if (count === 1) {
+      const trail = mkEl('path', 'pc-trail');
+      trail.setAttribute('d', pathEl.getAttribute('d') ?? '');
+      trail.setAttribute('stroke-dasharray', `${trailLen} ${len + trailLen}`);
+      layer.appendChild(trail);
+      this.player.animate(
+        trail,
+        [
+          { strokeDashoffset: len },
+          { strokeDashoffset: -trailLen },
+        ],
+        { durationMs, easing: 'linear' },
+      );
+    }
     if (!withToken) return; // trail-fade: the dash is the whole illustration
-    // token: sampled keyframes along the path geometry
+    for (let i = 0; i < count; i++) {
+      this.spark(layer, pathEl, len, link, {
+        durationMs,
+        // deterministic stagger: each spark starts one slot later
+        delayMs: Math.round((durationMs * i) / count),
+      });
+    }
+  }
+
+  /** One spark: samples the path, reversing for flip and for ping-pong. */
+  private spark(
+    layer: SVGGElement,
+    pathEl: Element,
+    len: number,
+    link: BeatLink,
+    timing: { durationMs: number; delayMs: number },
+  ): void {
     const token = mkEl('circle', 'pc-token');
     token.setAttribute('r', String(TOKEN_R));
     layer.appendChild(token);
-    const kf: Keyframe[] = [];
+    const forward: Keyframe[] = [];
     for (let i = 0; i <= SAMPLES; i++) {
       const t = i / SAMPLES;
       const p = this.geometry.pointAt(pathEl, t * len);
       // flip reverses travel: sweep the path from the far end
       const q = link.flipped ? this.geometry.pointAt(pathEl, (1 - t) * len) : p;
-      kf.push({ transform: `translate(${q.x}px, ${q.y}px)` });
+      forward.push({ transform: `translate(${q.x}px, ${q.y}px)` });
     }
-    this.player.animate(token, kf, { durationMs: this.motion.tokenMs, easing: 'linear' });
+    const pingPong = link.bidir === true;
+    const kf: Keyframe[] = pingPong
+      // back to the start point, without repeating the far endpoint frame
+      ? [...forward, ...forward.slice(0, -1).reverse()]
+      : [...forward.slice(0, -1), { ...forward.at(-1)!, opacity: 0 }];
+    this.player.animate(token, kf, {
+      durationMs: timing.durationMs,
+      easing: 'linear',
+      delayMs: timing.delayMs,
+      // bidirectional connectors keep travelling until the beat ends
+      iterations: pingPong ? Infinity : 1,
+    });
   }
 }
+
+/** FLOW-02 bounds: 1..8 sparks, 0.25..4× speed (defensive for bad documents). */
+const clampCount = (n: number | undefined): number =>
+  n === undefined || !Number.isFinite(n) ? 1 : Math.min(8, Math.max(1, Math.round(n)));
+
+const clampSpeed = (n: number | undefined): number =>
+  n === undefined || !Number.isFinite(n) ? 1 : Math.min(4, Math.max(0.25, n));

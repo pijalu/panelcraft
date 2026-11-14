@@ -141,6 +141,12 @@ describe('link controls (F-11/F-12)', () => {
     fireEvent.click(screen.getByTestId('link-width-preset-3'));
     fireEvent.click(screen.getByTestId('link-route-curved'));
     fireEvent.click(screen.getByTestId('link-route-orthogonal'));
+    fireEvent.input(screen.getByTestId('link-sparks'), { target: { value: '4' } });
+    fireEvent.input(screen.getByTestId('link-speed'), { target: { value: '2' } });
+    fireEvent.input(screen.getByTestId('link-sparks'), { target: { value: '9' } });
+    fireEvent.input(screen.getByTestId('link-speed'), { target: { value: '0' } });
+    fireEvent.input(screen.getByTestId('link-sparks'), { target: { value: '1' } });
+    fireEvent.input(screen.getByTestId('link-speed'), { target: { value: '1' } });
     expect(patches[0]).toEqual({ bidir: true });
     expect(patches[1]).toEqual({ allowOverlap: true });
     expect(patches[2]).toEqual({ head: 'diamond' });
@@ -148,5 +154,11 @@ describe('link controls (F-11/F-12)', () => {
     expect(patches[4]).toEqual({ width: 3 });
     expect(patches[5]).toEqual({ route: 'curved' });
     expect(patches[6]).toEqual({ route: undefined });
+    // FLOW-02: bounded values are written, out-of-range input is ignored,
+    // and a value equal to the default clears the field.
+    expect(patches[7]).toEqual({ sparks: 4 });
+    expect(patches[8]).toEqual({ speed: 2 });
+    expect(patches[9]).toEqual({ sparks: undefined });
+    expect(patches[10]).toEqual({ speed: undefined });
   });
 });

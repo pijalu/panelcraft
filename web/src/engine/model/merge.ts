@@ -64,6 +64,9 @@ export interface CanvasLinkLike {
   line?: string;
   route?: StyleBlock['route'];
   width?: number;
+  /** FLOW-02 playback sparks: count 1..8, speed multiplier 0.25..4. */
+  sparks?: number;
+  speed?: number;
 }
 
 export interface CanvasStateLike {
@@ -85,7 +88,9 @@ const styleIsEmpty = (s: StyleBlock | undefined): boolean =>
  */
 function withStyleKey(
   style: StyleBlock | undefined,
-  key: 'dashed' | 'head' | 'tail' | 'line' | 'route' | 'width' | 'fill' | 'stroke' | 'text' | 'icon',
+  key:
+    | 'dashed' | 'head' | 'tail' | 'line' | 'route' | 'width' | 'sparks' | 'speed'
+    | 'fill' | 'stroke' | 'text' | 'icon',
   value: string | number | boolean | undefined,
 ): StyleBlock | undefined {
   const next: StyleBlock = { ...(style ?? {}) };
@@ -159,6 +164,8 @@ function mergeLink(existing: Link | undefined, c: CanvasLinkLike): Link {
   style = withStyleKey(style, 'line', c.line);
   style = withStyleKey(style, 'route', c.route);
   style = withStyleKey(style, 'width', c.width);
+  style = withStyleKey(style, 'sparks', c.sparks);
+  style = withStyleKey(style, 'speed', c.speed);
   if (style === undefined) delete l.style;
   else l.style = style;
   return l;

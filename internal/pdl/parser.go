@@ -440,6 +440,29 @@ func (p *parser) linkStyleLine(sb *ir.StyleBlock, seen map[string]bool, t Token)
 		w := p.num(p.expect(TokNumber, ""))
 		sb.Width = &w
 	default:
+		return p.sparkStyleLine(sb, seen, t)
+	}
+	return true
+}
+
+// sparkStyleLine handles the FLOW-02 playback keys; false = not a spark key.
+func (p *parser) sparkStyleLine(sb *ir.StyleBlock, seen map[string]bool, t Token) bool {
+	switch t.Text {
+	case "sparks":
+		p.once(seen, t, "sparks")
+		n := p.num(p.expect(TokNumber, ""))
+		if n != math.Trunc(n) || n < 1 || n > 8 {
+			p.fail(t, ErrUnexpected, "sparks must be an integer between 1 and 8")
+		}
+		sb.Sparks = &n
+	case "speed":
+		p.once(seen, t, "speed")
+		v := p.num(p.expect(TokNumber, ""))
+		if math.IsNaN(v) || v < 0.25 || v > 4 {
+			p.fail(t, ErrUnexpected, "speed must be between 0.25 and 4")
+		}
+		sb.Speed = &v
+	default:
 		return false
 	}
 	return true
@@ -485,7 +508,7 @@ func (p *parser) styleLine(sb *ir.StyleBlock, seen map[string]bool, t Token) boo
 func isEmptyStyle(sb *ir.StyleBlock) bool {
 	return sb.Fill == "" && sb.Stroke == "" && sb.Text == "" && sb.Icon == "" &&
 		sb.Shape == "" && !sb.Dashed && sb.Head == "" && sb.Tail == "" &&
-		sb.Line == "" && sb.Route == "" && sb.Width == nil && len(sb.Raw) == 0
+		sb.Line == "" && sb.Route == "" && sb.Width == nil && sb.Sparks == nil && sb.Speed == nil && len(sb.Raw) == 0
 }
 
 func (p *parser) parseStyleStmt() ir.StyleStmt {

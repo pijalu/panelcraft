@@ -49,6 +49,9 @@ function stylePairs(sb: StyleBlock): string[] {
   });
   if (sb.dashed) out.push('dashed');
   if (sb.width !== undefined) out.push(`width ${jsNum(sb.width)}`);
+  // FLOW-02: playback intensity, printed only when the document carries it.
+  if (sb.sparks !== undefined) out.push(`sparks ${jsNum(sb.sparks)}`);
+  if (sb.speed !== undefined) out.push(`speed ${jsNum(sb.speed)}`);
   return out;
 }
 

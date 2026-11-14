@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — FLOW-02 connector sparks
+
+- Added per-link playback sparks (`sparks 1..8`, `speed 0.25..4` in the link style block, PDL/IR v7 and TS⇄Go parity): deterministic staggering, one-way completion, bidirectional ping-pong until the step ends, `flip` as the initial direction, bounded validation, unchanged step timing, static reduced-motion playback and cleanup on every exit path.
+
 ## 2026-11-14 — FLOW-01 canvas-assisted flow editing
 
 - Flow Steps is an on-demand dockable panel instead of a permanent tab, with visual step cards (kind stripe, title, actor/link summary), canvas-assisted targeting (from/to/target from the selection, message steps seeded only from existing connectors), participant highlighting, and accessible names for the step controls.

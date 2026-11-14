@@ -109,6 +109,9 @@ export interface DiagramLink {
   line?: string;
   route?: 'orthogonal' | 'straight' | 'curved';
   width?: number;
+  /** FLOW-02 playback sparks: count 1..8 and speed multiplier 0.25..4. */
+  sparks?: number;
+  speed?: number;
 }
 
 export interface DiagramState {
@@ -657,7 +660,10 @@ export class CanvasController {
   updateLink(
     id: string,
     patch: Partial<
-      Pick<DiagramLink, 'type' | 'label' | 'dashed' | 'bidir' | 'head' | 'tail' | 'line' | 'route' | 'width' | 'allowOverlap'>
+      Pick<
+        DiagramLink,
+        'type' | 'label' | 'dashed' | 'bidir' | 'head' | 'tail' | 'line' | 'route' | 'width' | 'sparks' | 'speed' | 'allowOverlap'
+      >
     >,
   ): void {
     const before = this.state.links;

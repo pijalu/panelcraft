@@ -50,6 +50,8 @@ function styleBlock(s?: StyleBlock): Entry {
     ['line', s.line],
     ['route', s.route],
     ['width', s.width],
+    ['sparks', s.sparks],
+    ['speed', s.speed],
     rawAttrs(s.raw),
   );
   return ['style', Object.keys(inner).length > 0 ? inner : undefined];

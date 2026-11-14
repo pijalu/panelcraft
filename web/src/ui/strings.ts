@@ -217,6 +217,8 @@ const EN = {
   "None": "None",
   "Width": "Width",
   "Weight": "Weight",
+  "Spark count": "Spark count",
+  "Spark speed": "Spark speed",
   "{n} branches": "{n} branches",
   "{n} lanes": "{n} lanes",
   "From selection": "From selection",

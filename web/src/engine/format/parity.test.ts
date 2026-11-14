@@ -89,6 +89,18 @@ container cart "Cart"
     src: 'pcd 1.0\nsystem a "A" {\n  z 1.5\n}\n',
   },
   {
+    name: 'link-sparks',
+    src: 'pcd 1.0\nperson a "A"\nsystem b "B"\na -requests-> b as L1 {\n  style {\n    sparks 3\n    speed 2\n  }\n}\nb <-> a as L2\n',
+  },
+  {
+    name: 'link-sparks-invalid',
+    src: 'pcd 1.0\na -> b {\n  style {\n    sparks 9\n  }\n}\n',
+  },
+  {
+    name: 'link-speed-invalid',
+    src: 'pcd 1.0\na -> b {\n  style {\n    speed 0\n  }\n}\n',
+  },
+  {
     name: 'link-style-model',
     src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -requests-> b as L1 {\n  style {\n    head diamond\n    tail circle\n    line dotted\n    route curved\n    width 2.5\n  }\n}\n',
   },

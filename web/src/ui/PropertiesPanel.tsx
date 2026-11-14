@@ -350,6 +350,36 @@ function ConnectorStyleControls(props: { link: DiagramLink; onChange: LinkChange
           }}
         />
       </Field>
+      <Field label={s("Spark count")}>
+        <input
+          type="number"
+          min={1}
+          max={8}
+          step={1}
+          data-testid="link-sparks"
+          value={link.sparks ?? 1}
+          onInput={(e) => {
+            const v = Number((e.target as HTMLInputElement).value);
+            if (!Number.isInteger(v) || v < 1 || v > 8) return;
+            onChange(link.id, { sparks: v === 1 ? undefined : v });
+          }}
+        />
+      </Field>
+      <Field label={s("Spark speed")}>
+        <input
+          type="number"
+          min={0.25}
+          max={4}
+          step={0.25}
+          data-testid="link-speed"
+          value={link.speed ?? 1}
+          onInput={(e) => {
+            const v = Number((e.target as HTMLInputElement).value);
+            if (!Number.isFinite(v) || v < 0.25 || v > 4) return;
+            onChange(link.id, { speed: v === 1 ? undefined : v });
+          }}
+        />
+      </Field>
     </>
   );
 }

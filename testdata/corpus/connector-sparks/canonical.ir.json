@@ -1,0 +1,110 @@
+{
+  "irVersion": 7,
+  "formatVersion": "1.0",
+  "objects": [
+    {
+      "kind": "system",
+      "id": "user",
+      "name": "Shopper",
+      "pos": {
+        "line": 3,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "shop",
+      "name": "Webshop",
+      "pos": {
+        "line": 4,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "erp",
+      "name": "ERP",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "L1",
+      "from": "user",
+      "to": "shop",
+      "type": "requests",
+      "style": {
+        "sparks": 3,
+        "speed": 2
+      },
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    },
+    {
+      "id": "L2",
+      "from": "shop",
+      "to": "erp",
+      "pos": {
+        "line": 13,
+        "col": 1
+      }
+    },
+    {
+      "id": "L3",
+      "from": "user",
+      "to": "erp",
+      "style": {
+        "sparks": 2,
+        "speed": 0.5
+      },
+      "pos": {
+        "line": 14,
+        "col": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "title": "Burst",
+      "steps": [
+        {
+          "type": "process",
+          "target": "shop",
+          "pos": {
+            "line": 22,
+            "col": 3
+          }
+        },
+        {
+          "type": "msg",
+          "from": "user",
+          "to": "shop",
+          "label": "browse",
+          "pos": {
+            "line": 23,
+            "col": 3
+          }
+        },
+        {
+          "type": "msg",
+          "from": "shop",
+          "to": "erp",
+          "label": "sync",
+          "pos": {
+            "line": 24,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 21,
+        "col": 1
+      }
+    }
+  ]
+}

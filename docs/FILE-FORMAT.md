@@ -195,6 +195,16 @@ api -publishes-> events as L7 {
   the committed route polylines. Mermaid export declares `overlap overrides`
   as dropped because the target has no equivalent data.
 
+* **Connector sparks (FLOW-02, IR v7)**: `sparks <1..8>` sets how many tokens travel
+  a link during a message step and `speed <0.25..4>` scales their motion, where `1`
+  is the historical single-token default speed. Absent values reproduce the old
+  behaviour exactly and are never printed. Counts are staggered deterministically
+  along the path; a one-way link completes once per step, while a `<->`
+  bidirectional link reverses at the far end and ping-pongs until the step ends.
+  `flip` only chooses the initial direction. Sparks never change flow timing, step
+  dwell or validation, and reduced motion keeps the static emphasis with no
+  moving tokens.
+
 * **Arrow visual model (F-12)** — links accept these `style` keys, all optional:
 
 ```

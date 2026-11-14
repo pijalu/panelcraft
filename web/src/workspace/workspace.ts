@@ -75,6 +75,10 @@ export interface CanvasLink {
   line?: string;
   route?: StyleBlock['route'];
   width?: number;
+  /** Playback spark count 1..8 (FLOW-02). */
+  sparks?: number;
+  /** Playback spark speed multiplier 0.25..4 (FLOW-02). */
+  speed?: number;
 }
 
 export interface CanvasState {
@@ -105,6 +109,8 @@ function linkStyle(l: CanvasLink): StyleBlock | undefined {
     line: l.line,
     route: l.route,
     width: l.width,
+    sparks: l.sparks,
+    speed: l.speed,
   };
   const empty = Object.values(style).every((v) => v === undefined);
   return empty ? undefined : style;
@@ -240,6 +246,45 @@ function docObjectSize(o: Obj): Pick<CanvasObject, 'w' | 'h' | 'size'> {
   };
 }
 
+/** Drop undefined entries so the canvas state stays minimal. */
+function definedOnly<T extends object>(o: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o)) if (v !== undefined) out[k] = v;
+  return out as T;
+}
+
+/** F-12/FLOW-02 link style fields, flattened onto the canvas link. */
+function canvasLinkStyle(style: Doc['links'][number]['style']): Partial<CanvasLink> {
+  return definedOnly({
+    head: style?.head,
+    tail: style?.tail,
+    line: style?.line,
+    route: style?.route,
+    width: style?.width,
+    sparks: style?.sparks,
+    speed: style?.speed,
+  });
+}
+
+/** Canvas link fields from a document link (ids synthesized when unnamed). */
+function canvasLinkOf(l: Doc['links'][number], i: number): CanvasLink {
+  return {
+    id: l.id ?? `${l.from}-${l.to}-${i}`,
+    from: l.from,
+    to: l.to,
+    // F-08: carry the document's semantics — no injected `uses`
+    type: l.type,
+    label: l.label,
+    dashed: l.style?.dashed === true ? true : undefined,
+    bidir: l.bidir === true ? true : undefined,
+    ...canvasLinkStyle(l.style),
+    waypoints: l.waypoints?.map((w) => [w[0], w[1]] as [number, number]),
+    fromAnchor: l.fromAnchor,
+    toAnchor: l.toAnchor,
+    allowOverlap: l.allowOverlap === true ? true : undefined,
+  };
+}
+
 export function docToState(doc: Doc, viewName?: string): CanvasState {
   const positions = viewPositions(doc, viewName);
   // F-06: every kind the palette offers must survive a load (group/note used
@@ -258,25 +303,7 @@ export function docToState(doc: Doc, viewName?: string): CanvasState {
   // next canvas write would delete the user's cross-file links
   const links: CanvasLink[] = doc.links
     .filter((l) => (ids.has(l.from) || isImportRef(l.from)) && (ids.has(l.to) || isImportRef(l.to)))
-    .map((l, i) => ({
-      id: l.id ?? `${l.from}-${l.to}-${i}`,
-      from: l.from,
-      to: l.to,
-      // F-08: carry the document's semantics — no injected `uses`
-      type: l.type,
-      label: l.label,
-      dashed: l.style?.dashed === true ? true : undefined,
-      bidir: l.bidir === true ? true : undefined,
-      head: l.style?.head,
-      tail: l.style?.tail,
-      line: l.style?.line,
-      route: l.style?.route,
-      width: l.style?.width,
-      waypoints: l.waypoints?.map((w) => [w[0], w[1]] as [number, number]),
-      fromAnchor: l.fromAnchor,
-      toAnchor: l.toAnchor,
-      allowOverlap: l.allowOverlap === true ? true : undefined,
-    }));
+    .map(canvasLinkOf);
   return { objects, links };
 }
 

@@ -3,7 +3,7 @@
 // Normative shape: docs/FILE-FORMAT.md §7 + docs/milestones/M1.md decisions.
 // Versioning rule: `irVersion` (int) bumps on any schema change; forward-only.
 
-export const IR_VERSION = 6;
+export const IR_VERSION = 7;
 export const FORMAT_VERSION = '1.0';
 
 /** 1-based source position attached to every statement (FILE-FORMAT §10). */
@@ -70,6 +70,10 @@ export interface StyleBlock {
   route?: 'orthogonal' | 'straight' | 'curved';
   /** Link stroke width in document units (F-12). */
   width?: number;
+  /** Playback spark count 1..8; absent = the historical single token (FLOW-02, IR v7). */
+  sparks?: number;
+  /** Playback spark speed multiplier 0.25..4 where 1 = default (FLOW-02, IR v7). */
+  speed?: number;
   raw?: RawAttr[];
 }
 

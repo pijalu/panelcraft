@@ -388,6 +388,26 @@ class Parser {
         sb.width = this.num(this.expect('number'));
       };
     }
+    if (t.text === 'sparks') {
+      this.once(seen, t, 'sparks');
+      return (sb) => {
+        const n = this.num(this.expect('number'));
+        if (!Number.isInteger(n) || n < 1 || n > 8) {
+          this.fail(t, E.unexpected, 'sparks must be an integer between 1 and 8');
+        }
+        sb.sparks = n;
+      };
+    }
+    if (t.text === 'speed') {
+      this.once(seen, t, 'speed');
+      return (sb) => {
+        const v = this.num(this.expect('number'));
+        if (!Number.isFinite(v) || v < 0.25 || v > 4) {
+          this.fail(t, E.unexpected, 'speed must be between 0.25 and 4');
+        }
+        sb.speed = v;
+      };
+    }
     return undefined;
   }
 

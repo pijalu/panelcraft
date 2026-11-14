@@ -58,6 +58,18 @@ func (p *printer) text() string { return strings.Join(p.out, "\n") + "\n" }
 // lines returns the collected lines (used to decide whether a block has content).
 func (p *printer) lines() []string { return append([]string(nil), p.out...) }
 
+// printStyleNumbers emits the numeric link-style keys in canonical order.
+func printStyleNumbers(sb *ir.StyleBlock, depth int, p *printer) {
+	for _, key := range []struct {
+		name  string
+		value *float64
+	}{{"width", sb.Width}, {"sparks", sb.Sparks}, {"speed", sb.Speed}} {
+		if key.value != nil {
+			p.add(pad(depth) + key.name + " " + jsNum(*key.value))
+		}
+	}
+}
+
 // styleLines prints a style block body (nil = no style, print nothing).
 func styleLines(sb *ir.StyleBlock, depth int, p *printer) {
 	if sb == nil {
@@ -93,9 +105,7 @@ func styleLines(sb *ir.StyleBlock, depth int, p *printer) {
 	if sb.Route != "" {
 		p.add(pad(depth) + "route " + sb.Route)
 	}
-	if sb.Width != nil {
-		p.add(pad(depth) + "width " + jsNum(*sb.Width))
-	}
+	printStyleNumbers(sb, depth, p)
 	for _, r := range sb.Raw {
 		p.add(pad(depth) + r.Raw)
 	}
@@ -104,7 +114,8 @@ func styleLines(sb *ir.StyleBlock, depth int, p *printer) {
 func hasStyle(sb *ir.StyleBlock) bool {
 	return sb != nil && (sb.Fill != "" || sb.Stroke != "" || sb.Text != "" ||
 		sb.Icon != "" || sb.Shape != "" || sb.Dashed || sb.Head != "" ||
-		sb.Tail != "" || sb.Line != "" || sb.Route != "" || sb.Width != nil || len(sb.Raw) > 0)
+		sb.Tail != "" || sb.Line != "" || sb.Route != "" || sb.Width != nil ||
+		sb.Sparks != nil || sb.Speed != nil || len(sb.Raw) > 0)
 }
 
 // arrowFor renders the arrow text: optional type + direction (§4).
