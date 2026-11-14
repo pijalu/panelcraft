@@ -15,8 +15,12 @@ b -> c
 `;
 
 async function seedDoc(page: Page, text: string): Promise<void> {
-  await page.locator('.cm-content').click();
-  await page.keyboard.press('Control+a');
+  const editor = page.locator('.cm-content');
+  // Wait for workspace hydration before selecting; its first write otherwise
+  // can reset the selection and leave the initial PDL header in the buffer.
+  await expect(editor).toContainText('pcd 1.0');
+  await editor.click();
+  await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(text);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,

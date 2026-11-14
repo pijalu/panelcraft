@@ -26,7 +26,10 @@ flow "Checkout" as main {
 
 test('M6-WP7: selected flow exports to .seq.mmd', async ({ page }) => {
   await page.goto('/');
-  await page.locator('.cm-content').click();
+  const editor = page.locator('.cm-content');
+  await expect(editor).toContainText('pcd 1.0');
+  await editor.click();
+  await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
   await page.getByTestId('side-tab-flows').click();

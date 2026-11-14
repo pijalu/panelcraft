@@ -14,7 +14,10 @@ a -> b as L1
 
 async function seed(page: Page): Promise<void> {
   await page.goto('/');
-  await page.locator('.cm-content').click();
+  const editor = page.locator('.cm-content');
+  await expect(editor).toContainText('pcd 1.0');
+  await editor.click();
+  await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
