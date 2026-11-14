@@ -4,6 +4,7 @@
 // kind. Screenshots capture two styles for the visual record.
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -22,6 +23,7 @@ flow "Checkout" as main {
 
 async function seed(page: Page): Promise<void> {
   await page.goto('/');
+  await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();

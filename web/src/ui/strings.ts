@@ -2,6 +2,15 @@
 // N10: every user-facing English UI string has one typed catalog entry.
 // `{name}` placeholders are interpolated by s(); no markup is accepted.
 const EN = {
+  "View": "View",
+  "Workspace panels": "Workspace panels",
+  "Reset workspace layout": "Reset workspace layout",
+  "{label} panel. Drag to move; panel actions provide keyboard docking.": "{label} panel. Drag to move; panel actions provide keyboard docking.",
+  "{label} panel actions": "{label} panel actions",
+  "Dock {dock}": "Dock {dock}",
+  "Resize {label} panel": "Resize {label} panel",
+  "Close {label} panel": "Close {label} panel",
+  "⋮": "⋮",
   "Play from step {n}": "Play from step {n}",
   "Duplicate step {n}": "Duplicate step {n}",
   "Step {n} delay in milliseconds": "Step {n} delay in milliseconds",

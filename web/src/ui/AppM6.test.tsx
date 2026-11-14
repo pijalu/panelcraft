@@ -17,6 +17,7 @@ async function mountReady() {
   await act(async () => {
     await new Promise((r) => setTimeout(r, 0)); // storage fallback macrotask → setReady
   });
+  fireEvent.click(screen.getByTestId('expand-props'));
   const svg = container.querySelector('svg') as SVGSVGElement;
   svg.getBoundingClientRect = () =>
     ({ x: 0, y: 0, left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON: () => ({}) }) as DOMRect;

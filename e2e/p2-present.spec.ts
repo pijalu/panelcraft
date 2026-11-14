@@ -5,6 +5,7 @@
 // reduced-motion path still advances.
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -23,6 +24,7 @@ flow "Checkout" as main {
 
 async function seed(page: Page): Promise<void> {
   await page.goto('/');
+  await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
@@ -37,6 +39,13 @@ async function seed(page: Page): Promise<void> {
 
 test('F-16: presenting hides chrome, advances by click and key, Esc restores', async ({ page }) => {
   await seed(page);
+  await page.getByTestId('panel-menu-code').click();
+  await page.getByTestId('dock-code-float').click();
+  const floatingTitle = (await page.getByTestId('panel-title-code').boundingBox())!;
+  await page.mouse.move(floatingTitle.x + 40, floatingTitle.y + 12);
+  await page.mouse.down();
+  await page.mouse.move(floatingTitle.x + 540, floatingTitle.y + 212, { steps: 6 });
+  await page.mouse.up();
   const shell = page.getByTestId('app-shell');
   const worldBefore =
     (await page.getByTestId('canvas').locator('.pc-world').getAttribute('transform')) ??
@@ -47,6 +56,7 @@ test('F-16: presenting hides chrome, advances by click and key, Esc restores', a
   await expect(shell).toHaveAttribute('data-presenting', 'true');
   // editor chrome is gone, the dock is there
   await expect(page.locator('.sidebar')).toBeHidden();
+  await expect(page.locator('[data-panel="code"]')).toBeHidden();
   await expect(page.getByTestId('present-dock')).toBeVisible();
   await expect(page.getByTestId('present-counter')).toContainText('/');
   await expect(page.getByTestId('present-notes')).not.toBeEmpty();
@@ -72,6 +82,7 @@ test('F-16: presenting hides chrome, advances by click and key, Esc restores', a
   await page.keyboard.press('Escape');
   await expect(shell).toHaveAttribute('data-presenting', 'false');
   await expect(page.locator('.sidebar')).toBeVisible();
+  await expect(page.locator('[data-panel="code"]')).toHaveAttribute('data-dock', 'float');
   await expect(page.getByTestId('canvas').locator('.pc-world')).toHaveAttribute('transform', worldBefore);
 });
 
@@ -95,6 +106,7 @@ flow "Route" as main {
 test('F-16: a chooser waits in present mode, choices advance, R restarts', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
+  await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();

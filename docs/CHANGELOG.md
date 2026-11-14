@@ -4,6 +4,12 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — UX-02 canvas-first workspace
+
+- Made Shapes the only panel open by default and added browser-local close/reopen, left/right/bottom
+  docking, floating panels, resizing, keyboard alternatives, reset, focus transfer, viewport
+  recovery, and reliable layout persistence without changing diagram data.
+
 ## 2026-11-14 — UX-07 diagnostic status
 
 - Removed the stray diagnostic zero with a visually-hidden utility and polite atomic status,

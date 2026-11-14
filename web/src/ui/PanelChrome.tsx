@@ -65,8 +65,9 @@ export function CollapseButton(props: { id: string; label: string; onCollapse: (
 
 export interface SplitterProps {
   id: string;
-  /** Called with the horizontal pointer delta since the drag started. */
-  onResize: (deltaX: number) => void;
+  /** Pointer delta since the previous move; existing callers may ignore Y. */
+  onResize: (deltaX: number, deltaY: number) => void;
+  orientation?: 'horizontal' | 'vertical';
   /** Drag finished — persist now (F-10: a reload right after must keep it). */
   onEnd?: () => void;
   /** Accessible name ("Resize files panel"). */
@@ -78,25 +79,27 @@ export interface SplitterProps {
  * on every move; the caller owns the clamp (uiLayout.setWidth) so a drag can
  * never push a panel outside its limits.
  */
-export function Splitter({ id, onResize, onEnd, label }: SplitterProps) {
-  const start = useRef<number | null>(null);
+export function Splitter({ id, onResize, onEnd, label, orientation = 'vertical' }: SplitterProps) {
+  const start = useRef<{ x: number; y: number } | null>(null);
   return (
     <div
-      class="panel-splitter"
+      class={`panel-splitter ${orientation}`}
       data-testid={`splitter-${id}`}
       role="separator"
-      aria-orientation="vertical"
+      aria-orientation={orientation}
       aria-label={label}
       onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const ev = e as unknown as PointerEvent;
-        start.current = ev.clientX;
+        start.current = { x: ev.clientX, y: ev.clientY };
         (ev.target as Element).setPointerCapture?.(ev.pointerId);
       }}
       onPointerMove={(e) => {
         const ev = e as unknown as PointerEvent;
         if (start.current === null) return;
-        onResize(ev.clientX - start.current);
-        start.current = ev.clientX;
+        onResize(ev.clientX - start.current.x, ev.clientY - start.current.y);
+        start.current = { x: ev.clientX, y: ev.clientY };
       }}
       onPointerUp={() => {
         if (start.current === null) return;
@@ -108,7 +111,7 @@ export function Splitter({ id, onResize, onEnd, label }: SplitterProps) {
         start.current = null;
         onEnd?.();
       }}
-      onDblClick={() => onResize(0)}
+      onDblClick={() => onResize(0, 0)}
     />
   );
 }

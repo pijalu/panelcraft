@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -12,6 +13,7 @@ app -> db : "writes"
 
 async function seed(page: Page, text: string): Promise<void> {
   await page.goto('/');
+  await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
@@ -30,6 +32,7 @@ test.describe('F-25 laws-of-UX affordances', () => {
     await page.getByTestId('template-c4').click();
     await expect(page.getByTestId('empty-state')).toHaveCount(0);
     await expect(page.locator('.pc-obj[data-id="user"]')).toBeVisible();
+    await openWorkspacePanels(page, ['code']);
     // the inserted text is real code, not canvas-only state
     await expect(page.locator('.cm-content')).toContainText('person user');
   });

@@ -5,6 +5,7 @@
 // all agree afterwards.
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -15,6 +16,7 @@ api -> db as L1
 `;
 
 async function seedDoc(page: Page, text: string): Promise<void> {
+  await openWorkspacePanels(page);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
   });

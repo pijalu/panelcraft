@@ -8,11 +8,13 @@
 import { unzipSync } from 'fflate';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+import { openWorkspacePanels } from './lib/panels';
 
 const EXTERNAL = /^https?:\/\/(?!localhost|127\.0\.0\.1)/;
 
 /** Drop two shapes and rename the system via the properties panel. */
 async function buildDiagram(page: Page): Promise<void> {
+  await openWorkspacePanels(page);
   const canvas = page.getByTestId('canvas');
   const box = (await canvas.boundingBox()) ?? { x: 0, y: 0, width: 800, height: 600 };
   const drops = [

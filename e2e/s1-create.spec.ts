@@ -4,9 +4,11 @@
 // renders live. Also captures light/dark screenshots (vision round 1 input).
 import { expect, test } from '@playwright/test';
 import { capture } from './lib/screenshots';
+import { openWorkspacePanels } from './lib/panels';
 
 test('S1: create diagram via palette drop + link + properties', async ({ page }) => {
   await page.goto('/');
+  await openWorkspacePanels(page, ['props']);
   const canvas = page.getByTestId('canvas');
   await expect(canvas).toBeVisible();
 

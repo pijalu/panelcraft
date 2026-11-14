@@ -13,6 +13,7 @@ export interface AutosaveOpts {
 export class Autosaver {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private pending: StoredWorkspace | null = null;
+  private flushing: Promise<void> | null = null;
   private readonly delay: number;
   private readonly save: (ws: StoredWorkspace) => Promise<void>;
   private readonly onQuota?: (err: Error) => void;
@@ -33,22 +34,38 @@ export class Autosaver {
     }, this.delay);
   }
 
-  /** Save the pending state immediately (flush on export/close/visibility). */
+  /** Save pending states in request order; rapid UI writes must not race. */
   async flush(): Promise<void> {
     if (this.timer !== null) {
       clearTimeout(this.timer);
       this.timer = null;
     }
-    const ws = this.pending;
-    if (!ws) return;
-    this.pending = null;
+    if (this.flushing) return this.flushing;
+    const draining = this.drain();
+    this.flushing = draining;
     try {
-      await this.save(ws);
-    } catch (err) {
-      const mapped = mapStoreError(err);
-      this.pending = ws; // keep for a later flush — a failed save must not vanish
-      if (mapped.code === 'quota') this.onQuota?.(mapped);
-      else throw mapped;
+      await draining;
+    } finally {
+      this.flushing = null;
+    }
+  }
+
+  private async drain(): Promise<void> {
+    while (this.pending) {
+      const ws = this.pending;
+      this.pending = null;
+      try {
+        await this.save(ws);
+      } catch (err) {
+        const mapped = mapStoreError(err);
+        // A newer record queued during the failed write remains authoritative.
+        if (this.pending === null) this.pending = ws;
+        if (mapped.code === 'quota') {
+          this.onQuota?.(mapped);
+          return;
+        }
+        throw mapped;
+      }
     }
   }
 
@@ -62,6 +79,6 @@ export class Autosaver {
   }
 
   get hasPending(): boolean {
-    return this.pending !== null || this.timer !== null;
+    return this.pending !== null || this.timer !== null || this.flushing !== null;
   }
 }

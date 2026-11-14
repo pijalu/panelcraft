@@ -2,6 +2,7 @@
 // M6-WP7: the selected flow downloads as a real Mermaid sequenceDiagram.
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 person user "Customer"
@@ -26,6 +27,7 @@ flow "Checkout" as main {
 
 test('M6-WP7: selected flow exports to .seq.mmd', async ({ page }) => {
   await page.goto('/');
+  await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();

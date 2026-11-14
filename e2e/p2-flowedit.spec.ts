@@ -3,6 +3,7 @@
 // per-step delay and play from a chosen step — every change lands in the code
 // view (the file is the source of truth).
 import { expect, test, type Page } from '@playwright/test';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -20,6 +21,7 @@ flow "Checkout" as main {
 
 async function seed(page: Page): Promise<void> {
   await page.goto('/');
+  await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();

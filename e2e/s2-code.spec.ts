@@ -5,12 +5,14 @@
 // type garbage → save blocked → apply/clear).
 import { expect, test } from '@playwright/test';
 import { capture } from './lib/screenshots';
+import { openWorkspacePanels } from './lib/panels';
 
 const MERMAID = 'flowchart TD\n  api[API Server] --> db[(Database)]\n';
 
 test('S2: mermaid paste → canvas → canvas edit → code view updates', async ({ page }) => {
   await page.goto('/');
   const canvas = page.getByTestId('canvas');
+  await openWorkspacePanels(page, ['code']);
   const codePane = page.getByTestId('code-pane');
   await expect(canvas).toBeVisible();
   await expect(codePane).toBeVisible();
@@ -62,6 +64,7 @@ test('S2: mermaid paste → canvas → canvas edit → code view updates', async
 test('S2/WP4: garbage buffer blocks apply; diverged close offers discard', async ({ page }) => {
   await page.goto('/');
   const editor = page.locator('.cm-content');
+  await openWorkspacePanels(page, ['code']);
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
   await editor.press('ControlOrMeta+a');

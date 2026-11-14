@@ -43,7 +43,7 @@ test('SW caches the hashed bundle (assets served cache-first)', async ({ page })
     return !!reg?.active;
   }, undefined, { timeout: 15_000 });
 
-  const cached = await page.evaluate(async () => {
+  const readCache = () => page.evaluate(async () => {
     // pick the app's cache by name, never by index (an empty stale cache can
     // be first), and report what was found for a readable failure
     const names = await caches.keys();
@@ -51,6 +51,8 @@ test('SW caches the hashed bundle (assets served cache-first)', async ({ page })
     const cache = await caches.open(name);
     return { name, keys: (await cache.keys()).length };
   });
-  // index.html + every hashed asset must be precached
-  expect(cached.keys, `cache ${cached.name}`).toBeGreaterThanOrEqual(3);
+  // index.html + every hashed asset must be precached; CacheStorage visibility
+  // is asynchronous in Chromium even after the worker becomes active.
+  await expect.poll(readCache).toMatchObject({ name: 'panelcraft-shell-v1' });
+  await expect.poll(async () => (await readCache()).keys).toBeGreaterThanOrEqual(3);
 });

@@ -3,6 +3,7 @@
 // drag re-routes orthogonally, the new coordinates reach the file and survive a
 // reload (they are document data, not session state).
 import { expect, test, type Page } from '@playwright/test';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -16,6 +17,7 @@ a -> b as L1 {
 
 async function seed(page: Page): Promise<void> {
   await page.goto('/');
+  await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();

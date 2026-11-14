@@ -7,6 +7,7 @@
 // (STYLE-GUIDE §visual).
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -33,8 +34,11 @@ payment -> gateway as pg
 
 /** Paste text into the code view and wait for a clean sync. */
 async function seedDoc(page: Page, text: string): Promise<void> {
-  await page.locator('.cm-content').click();
-  await page.keyboard.press('Control+a');
+  await openWorkspacePanels(page);
+  const editor = page.locator('.cm-content');
+  await expect(editor).toContainText('pcd 1.0');
+  await editor.click();
+  await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(text);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,

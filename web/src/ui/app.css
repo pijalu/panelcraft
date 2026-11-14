@@ -2616,9 +2616,10 @@ marker .pc-arrow[fill='none'] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   gap: 8px;
   padding: 16px;
+  overflow: auto;
   background: color-mix(in srgb, var(--pc-bg) 88%, transparent);
   text-align: center;
 }
@@ -2727,4 +2728,280 @@ marker .pc-arrow[fill='none'] {
 
 [data-presenting='true'] .mini-map-shell {
   display: none;
+}
+
+/* UX-02: dockable canvas-first workspace. */
+.app-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.dock-zone {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.dock-left {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.dock-right {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.dock-bottom {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  max-width: 100vw;
+}
+
+.dock-zone.drag-over {
+  outline: 2px dashed var(--pc-accent);
+  outline-offset: -3px;
+  background: color-mix(in srgb, var(--pc-accent) 10%, transparent);
+}
+
+.dock-left:empty,
+.dock-right:empty {
+  width: 8px;
+}
+
+.dock-bottom:empty {
+  min-height: 6px;
+}
+
+.canvas-col {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+}
+
+.panel-host {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+}
+
+.panel-left,
+.panel-right {
+  height: 100%;
+}
+
+.panel-host[data-panel='sidebar'] {
+  width: var(--pc-sidebar-w);
+}
+
+.panel-host[data-panel='palette'] {
+  width: var(--pc-palette-w);
+}
+
+.panel-host[data-panel='code'] {
+  width: var(--pc-code-w);
+}
+
+.panel-host[data-panel='props'] {
+  width: var(--pc-props-w);
+}
+
+.panel-host-header {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  flex: none;
+  border-bottom: 1px solid var(--pc-border);
+  background: var(--pc-surface);
+}
+
+.panel-host-header .panel-title {
+  flex: 1;
+  min-height: 32px;
+  margin: 0;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--pc-muted);
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+  touch-action: none;
+}
+
+.panel-host-header .panel-title:focus-visible,
+.panel-actions summary:focus-visible,
+.view-menu summary:focus-visible {
+  outline: 2px solid var(--pc-accent);
+  outline-offset: -2px;
+}
+
+.panel-host-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.panel-host-content > .sidebar,
+.panel-host-content > .palette,
+.panel-host-content > .code-pane {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+}
+
+.panel-host-content > .props-panel,
+.panel-host-content > .deps-panel {
+  width: 100%;
+}
+
+.panel-actions,
+.view-menu {
+  position: relative;
+  flex: none;
+}
+
+.panel-actions summary,
+.view-menu summary {
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  cursor: pointer;
+  list-style: none;
+}
+
+.panel-actions summary::-webkit-details-marker,
+.view-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel-actions-popover,
+.view-menu-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 70;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-bg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+.view-menu-popover {
+  left: 0;
+  right: auto;
+}
+
+.panel-actions-popover button,
+.view-menu-popover button {
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  background: transparent;
+  color: var(--pc-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.panel-actions-popover button:hover:not(:disabled),
+.view-menu-popover button:hover:not(:disabled),
+.panel-actions-popover button:focus-visible,
+.view-menu-popover button:focus-visible {
+  border-color: var(--pc-accent);
+  background: var(--pc-surface);
+}
+
+.panel-actions-popover button:disabled,
+.view-menu-popover button:disabled {
+  color: var(--pc-muted);
+  cursor: default;
+}
+
+.panel-bottom-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.panel-bottom-wrap .panel-host {
+  width: 100%;
+  flex: none;
+}
+
+.panel-bottom {
+  max-height: 70vh;
+}
+
+.panel-splitter.horizontal {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  z-index: 2;
+  width: 100%;
+  height: 6px;
+  cursor: row-resize;
+}
+
+.floating-layer {
+  display: contents;
+}
+
+.panel-float {
+  position: fixed;
+  z-index: 45;
+  resize: both;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 24%);
+}
+
+.app-body > .canvas-stale,
+.app-body > .import-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 50;
+  max-width: min(560px, 80%);
+  margin: 0;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border: 1px solid var(--pc-warn);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+}
+
+.app-shell.presenting .dock-zone,
+.app-shell.presenting .floating-layer,
+.app-shell.presenting .view-menu {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .dock-bottom {
+    overflow-x: auto;
+  }
 }

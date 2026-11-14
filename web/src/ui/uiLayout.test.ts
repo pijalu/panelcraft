@@ -5,33 +5,34 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_WIDTHS, NARROW_VIEWPORT, RAIL_WIDTH, chromeWidth, clampWidth, defaultLayout,
-  layoutStyle, normaliseLayout, setWidth, togglePanel, toggleSection, type UiLayout,
+  layoutStyle, normaliseLayout, openPanel, setWidth, togglePanel, toggleSection, type UiLayout,
 } from './uiLayout';
 
 describe('defaultLayout (F-10)', () => {
-  it('opens every panel on a wide viewport', () => {
+  it('opens only Shapes on a fresh wide viewport', () => {
     const l = defaultLayout(1600);
-    expect(Object.values(l.panels)).toEqual(['open', 'open', 'open', 'open']);
+    expect(Object.values(l.panels)).toEqual(['collapsed', 'open', 'collapsed', 'collapsed']);
     expect(l.widths).toEqual(DEFAULT_WIDTHS);
   });
 
-  it('collapses the code pane below 1440 px (canvas-first)', () => {
+  it('keeps the canvas-first default at every viewport', () => {
     expect(defaultLayout(NARROW_VIEWPORT - 1).panels.code).toBe('collapsed');
-    expect(defaultLayout(NARROW_VIEWPORT).panels.code).toBe('open');
+    expect(defaultLayout(NARROW_VIEWPORT).panels.code).toBe('collapsed');
   });
 });
 
 describe('togglePanel', () => {
   it('flips only the target panel', () => {
-    const l = togglePanel(defaultLayout(1600), 'sidebar');
+    const start = openPanel(defaultLayout(1600), 'sidebar');
+    const l = togglePanel(start, 'sidebar');
     expect(l.panels.sidebar).toBe('collapsed');
     expect(l.panels.palette).toBe('open');
-    expect(l.panels.code).toBe('open');
-    expect(l.panels.props).toBe('open');
+    expect(l.panels.code).toBe('collapsed');
+    expect(l.panels.props).toBe('collapsed');
   });
 
   it('is its own inverse', () => {
-    const once = togglePanel(defaultLayout(1600), 'props');
+    const once = togglePanel(openPanel(defaultLayout(1600), 'props'), 'props');
     expect(togglePanel(once, 'props').panels.props).toBe('open');
   });
 });
@@ -65,7 +66,10 @@ describe('toggleSection (F-11 state)', () => {
 
 describe('chromeWidth', () => {
   it('sums open widths plus rails for collapsed panels', () => {
-    const open = defaultLayout(1600);
+    const open = (['sidebar', 'palette', 'code', 'props'] as const).reduce(
+      (layout, panel) => openPanel(layout, panel),
+      defaultLayout(1600),
+    );
     const total = DEFAULT_WIDTHS.sidebar + DEFAULT_WIDTHS.palette + DEFAULT_WIDTHS.code + DEFAULT_WIDTHS.props;
     expect(chromeWidth(open)).toBe(total);
     const collapsed = togglePanel(open, 'props');

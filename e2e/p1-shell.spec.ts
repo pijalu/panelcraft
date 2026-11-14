@@ -4,6 +4,7 @@
 // in the workspace record, splitters resize with clamps, keyboard shortcuts
 // toggle panels, and the canvas gets its space back at 1280 px.
 import { expect, test } from '@playwright/test';
+import { openWorkspacePanels } from './lib/panels';
 
 // Layout assertions read the whole shell; running them concurrently with other
 // specs made the first post-boot click land before the chrome settled. Serial
@@ -14,6 +15,7 @@ test.describe.configure({ mode: 'serial' });
  * which can swallow a click aimed at the very first paint). */
 async function ready(page: import('@playwright/test').Page): Promise<void> {
   await expect(page.getByTestId('canvas')).toBeVisible();
+  await openWorkspacePanels(page);
   // the files panel proves the workspace record was restored; the sync chip is
   // not a reliable signal here (the code pane may start collapsed)
   await expect(page.locator('.sidebar')).toContainText('untitled.pcd');
@@ -40,12 +42,12 @@ test.describe('1280 px viewport', () => {
     await expect(shell).toBeVisible();
     await ready(page);
 
-    // below 1440 px the code pane starts collapsed (canvas-first default)
-    await expect(page.getByTestId('rail-code')).toBeVisible();
-    await expect(page.getByTestId('rail-code')).toContainText('c'); // sync chip
+    // UX-02 starts secondary panels collapsed; ready() explicitly opens the
+    // legacy arrangement so this scenario still exercises collapsing all four.
+    await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
     const before = await canvasWidth(page);
 
-    for (const id of ['sidebar', 'palette', 'props']) {
+    for (const id of ['sidebar', 'palette', 'code', 'props']) {
       await page.getByTestId(`collapse-${id}`).click();
       // state first (deterministic), then the DOM it must produce
       await expect(page.getByTestId('app-shell')).toHaveAttribute(

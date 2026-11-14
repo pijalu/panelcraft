@@ -6,6 +6,7 @@
 // for the vision review round 2 (STYLE-GUIDE §visual).
 import { expect, test, type Locator } from '@playwright/test';
 import { capture } from './lib/screenshots';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -49,6 +50,7 @@ async function expectActorsContained(canvas: Locator, ids: string[]): Promise<vo
 
 test('S3: 6-step flow playback — transport, alt chooser, par concurrency, dim, camera', async ({ page }) => {
   await page.goto('/');
+  await openWorkspacePanels(page);
   const canvas = page.getByTestId('canvas');
   await expect(canvas).toBeVisible();
 

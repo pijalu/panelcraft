@@ -17,6 +17,7 @@ describe('App shell + palette (WP9)', () => {
 
   function mount() {
     const { container } = render(<App />);
+    fireEvent.click(screen.getByTestId('expand-props'));
     const svg = container.querySelector('svg') as SVGSVGElement;
     svg.getBoundingClientRect = () =>
       ({ x: 40, y: 40, left: 40, top: 40, width: 800, height: 600, right: 840, bottom: 640, toJSON: () => ({}) }) as DOMRect;
@@ -88,6 +89,7 @@ describe('properties panel edits (WP7)', () => {
   function mountAndSelect() {
     const svg = (() => {
       const r = render(<App />);
+      fireEvent.click(screen.getByTestId('expand-props'));
       const s = r.container.querySelector('svg') as SVGSVGElement;
       s.getBoundingClientRect = () =>
         ({ x: 0, y: 0, left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON: () => ({}) }) as DOMRect;
@@ -137,6 +139,9 @@ async function mountReady() {
   await act(async () => {
     await new Promise((r) => setTimeout(r, 0)); // storage fallback macrotask → setReady
   });
+  for (const panel of ['sidebar', 'code', 'props']) {
+    fireEvent.click(screen.getByTestId(`expand-${panel}`));
+  }
   const svg = container.querySelector('svg') as SVGSVGElement;
   svg.getBoundingClientRect = () =>
     ({ x: 0, y: 0, left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON: () => ({}) }) as DOMRect;
@@ -255,6 +260,8 @@ describe('workspace chrome (M3)', () => {
     await act(async () => {});
     // workspace reset → welcome file re-bootstrapped, canvas emptied, dialog gone
     expect(screen.queryByTestId('clear-dialog')).toBeNull();
+    const sidebarRail = screen.queryByTestId('expand-sidebar');
+    if (sidebarRail) fireEvent.click(sidebarRail);
     expect(screen.getByTestId('tree-row-untitled.pcd')).not.toBeNull();
     await act(async () => {});
     expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(0);

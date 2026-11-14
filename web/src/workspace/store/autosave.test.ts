@@ -55,6 +55,31 @@ describe('Autosaver (FR-S1 debounce)', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('serializes immediate flushes so an older save cannot overwrite the latest layout', async () => {
+    const written: string[] = [];
+    const resolvers: Array<() => void> = [];
+    const save = vi.fn((ws: StoredWorkspace) => new Promise<void>((resolve) => {
+      resolvers.push(() => {
+        written.push(ws.name);
+        resolve();
+      });
+    }));
+    const a = new Autosaver({ save });
+    a.schedule(rec('old-layout'));
+    const oldFlush = a.flush();
+    a.schedule(rec('new-layout'));
+    const newFlush = a.flush();
+
+    expect(save).toHaveBeenCalledTimes(1);
+    resolvers[0]?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(save).toHaveBeenCalledTimes(2);
+    resolvers[1]?.();
+    await Promise.all([oldFlush, newFlush]);
+    expect(written).toEqual(['old-layout', 'new-layout']);
+  });
+
   it('keeps the payload pending when save fails (no data loss)', async () => {
     const save = vi.fn().mockRejectedValueOnce(new Error('boom'));
     const a = new Autosaver({ save });

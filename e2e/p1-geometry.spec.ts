@@ -3,6 +3,7 @@
 // the active view (debounced), opening/switching never re-positions, and only
 // Auto-layout / Reset layout reorganise — both undoable.
 import { expect, test, type Page } from '@playwright/test';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -15,6 +16,7 @@ b -> c
 `;
 
 async function seedDoc(page: Page, text: string): Promise<void> {
+  await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   // Wait for workspace hydration before selecting; its first write otherwise
   // can reset the selection and leave the initial PDL header in the buffer.

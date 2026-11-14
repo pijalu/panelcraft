@@ -4,6 +4,7 @@
 // Also asserts zero external requests are even attempted.
 import { expect, test } from '@playwright/test';
 import { capture } from './lib/screenshots';
+import { openWorkspacePanels } from './lib/panels';
 
 const EXTERNAL = /^https?:\/\/(?!localhost|127\.0\.0\.1)/;
 
@@ -22,6 +23,7 @@ test('S7: app functions with external requests blocked (N7 runtime proof)', asyn
   // M2 shell: all three regions render and function without any network
   await expect(page.getByTestId('palette')).toBeVisible();
   await expect(page.getByTestId('canvas')).toBeVisible();
+  await openWorkspacePanels(page, ['props']);
   await expect(page.getByTestId('properties')).toBeVisible();
 
   // Self-containment: the app must not even attempt external origins.

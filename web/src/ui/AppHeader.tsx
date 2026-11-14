@@ -8,6 +8,8 @@ import { StatusPill } from './StatusPill';
 import { WorkspaceToolbar } from './WorkspaceToolbar';
 import { useWorkspace } from './useWorkspace';
 import type { WorkspaceManager } from '../workspace/workspace';
+import type { UiLayoutHandle } from './useUiLayout';
+import { ViewMenu } from './WorkspacePanels';
 import { s } from './strings';
 
 function errorToShow(manager: WorkspaceManager, dismissed: string | null, ready: boolean): string | null {
@@ -23,6 +25,7 @@ export function AppHeader(props: {
   onSnapshotsRequest(): void;
   /** F-24: open the unified history affordance. */
   onHistoryRequest(): void;
+  ui: UiLayoutHandle;
   /** F-25: system-status pill. */
   dirty: boolean;
   savedAt: number | null;
@@ -35,6 +38,7 @@ export function AppHeader(props: {
       <header class="app-header">
         <span class="app-title">{s('PanelCraft')}</span>
         <StatusPill dirty={props.dirty} savedAt={props.savedAt} problems={props.problems} />
+        <ViewMenu layout={props.ui.layout} onOpen={props.ui.openPanel} onReset={props.ui.resetLayout} />
         <WorkspaceToolbar
           manager={ws.manager}
           activePath={ws.ready ? ws.manager.activePath : null}

@@ -5,6 +5,7 @@
 // Screenshots of five link styles feed the visual evidence set (light + dark).
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -19,6 +20,7 @@ c -> d as L3
 `;
 
 async function seedDoc(page: Page, text: string): Promise<void> {
+  await openWorkspacePanels(page);
   // quiescence first: let any queued machine→editor render land, otherwise the
   // render can splice into the text typed right after `Ctrl+A`
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {

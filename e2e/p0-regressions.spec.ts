@@ -8,6 +8,7 @@
 //  - `dashed` / `bidir` were dropped by the canvas write,
 //  - untyped arrows gained `uses`.
 import { expect, test, type Page } from '@playwright/test';
+import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 title "Payments"
@@ -37,6 +38,7 @@ view "Default" {
 
 /** Paste text into the code view and wait for a clean sync. */
 async function seedDoc(page: Page, text: string): Promise<void> {
+  await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   // The shell renders before workspace hydration; do not select text until the
   // initial file has reached the editor, or that write can reset the selection.
@@ -132,6 +134,7 @@ test('P0/D2: adding objects to a loaded file never duplicates an id', async ({ p
 test('P0/D5: a group survives a reload with its size (F-06)', async ({ page }) => {
   await page.goto('/');
   const canvas = page.getByTestId('canvas');
+  await openWorkspacePanels(page, ['code']);
   const item = page.getByTestId('palette-group');
   const ib = (await item.boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 };
   await page.mouse.move(ib.x + ib.width / 2, ib.y + ib.height / 2);
