@@ -109,49 +109,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 
 
-## UX-03 Make Files an on-demand workspace browser
-
-**Observed/current behavior**
-
-- Files and Flows share a permanent sidebar tab container.
-- The file tree defaults open even when the user is editing a diagram.
-
-**Expected behavior**
-
-- Remove the permanent Files/Flows container. Files becomes an on-demand panel for opening,
-  organizing, and viewing the browser-local virtual filesystem.
-- Files starts collapsed and opens from the File/View command without covering or destroying
-  the current editing session. It can collapse, close, dock, or float like other panels.
-- Preserve new/open file, folders, rename/delete/move/duplicate, tabs, imports, per-file
-  exports, ZIP import/export, snapshots, unsaved indicators, and storage warnings.
-- Closing the Files panel never closes files or discards edits. Quick search and file tabs
-  remain usable while the panel is closed.
-- This is a view of PanelCraft's virtual FS, not direct access to the host OS filesystem.
-
-**Implementation plan**
-
-1. Separate Files from the shared Files/Flows tab wrapper and register it as an independent
-   dockable panel.
-2. Add explicit File/View entry points and preserve focus/selection when the panel closes.
-3. Move Flow Steps to its own on-demand panel as specified in FLOW-01.
-4. Keep all workspace operations routed through the existing manager and undo/dirty prompts.
-
-**Test approach**
-
-- Component: open/close/reopen, focus return, empty state, dirty file state, and keyboard
-  navigation.
-- E2E: create/organize/open/import/export with Files closed and open; close Files without
-  data loss; reload with Files collapsed; execute the same operations from each dock mode.
-- Visual filmstrip: closed, open, organizing, dirty files, empty workspace, and floating
-  Files panel in both themes.
-
-**Validation steps**
-
-- Run existing workspace E2E scenarios plus the new on-demand Files scenarios.
-- Run the common gate and verify no network request is introduced.
-
----
-
 ## UX-04 Prevent element text from mixing with glyphs and icons
 
 **Observed/current behavior**

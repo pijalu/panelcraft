@@ -11,7 +11,7 @@ import {
 describe('defaultLayout (F-10)', () => {
   it('opens only Shapes on a fresh wide viewport', () => {
     const l = defaultLayout(1600);
-    expect(Object.values(l.panels)).toEqual(['collapsed', 'open', 'collapsed', 'collapsed']);
+    expect(Object.values(l.panels)).toEqual(['collapsed', 'closed', 'open', 'collapsed', 'collapsed']);
     expect(l.widths).toEqual(DEFAULT_WIDTHS);
   });
 
@@ -66,11 +66,12 @@ describe('toggleSection (F-11 state)', () => {
 
 describe('chromeWidth', () => {
   it('sums open widths plus rails for collapsed panels', () => {
-    const open = (['sidebar', 'palette', 'code', 'props'] as const).reduce(
+    const open = (['sidebar', 'flows', 'palette', 'code', 'props'] as const).reduce(
       (layout, panel) => openPanel(layout, panel),
       defaultLayout(1600),
     );
-    const total = DEFAULT_WIDTHS.sidebar + DEFAULT_WIDTHS.palette + DEFAULT_WIDTHS.code + DEFAULT_WIDTHS.props;
+    const total = DEFAULT_WIDTHS.sidebar + DEFAULT_WIDTHS.flows + DEFAULT_WIDTHS.palette
+      + DEFAULT_WIDTHS.code + DEFAULT_WIDTHS.props;
     expect(chromeWidth(open)).toBe(total);
     const collapsed = togglePanel(open, 'props');
     expect(chromeWidth(collapsed)).toBe(total - DEFAULT_WIDTHS.props + RAIL_WIDTH);

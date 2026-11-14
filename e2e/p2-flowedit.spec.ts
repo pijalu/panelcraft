@@ -3,7 +3,7 @@
 // per-step delay and play from a chosen step — every change lands in the code
 // view (the file is the source of truth).
 import { expect, test, type Page } from '@playwright/test';
-import { openWorkspacePanels } from './lib/panels';
+import { openFlowSteps, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -30,7 +30,7 @@ async function seed(page: Page): Promise<void> {
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
   });
-  await page.getByTestId('side-tab-flows').click();
+  await openFlowSteps(page);
   await page.getByTestId('flow-row-main').click();
   await expect(page.getByTestId('step-0')).toBeVisible({ timeout: 5000 });
 }

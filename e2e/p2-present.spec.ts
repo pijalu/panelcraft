@@ -5,7 +5,7 @@
 // reduced-motion path still advances.
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { openFlowSteps, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -33,7 +33,7 @@ async function seed(page: Page): Promise<void> {
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
   });
-  await page.getByTestId('side-tab-flows').click();
+  await openFlowSteps(page);
   await expect(page.getByTestId('flow-row-main')).toBeVisible({ timeout: 5000 });
 }
 
@@ -113,7 +113,7 @@ test('F-16: a chooser waits in present mode, choices advance, R restarts', async
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(CHOICE_DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', { timeout: 5000 });
-  await page.getByTestId('side-tab-flows').click();
+  await openFlowSteps(page);
   await expect(page.getByTestId('flow-row-main')).toBeVisible({ timeout: 5000 });
   await page.getByTestId('flow-play-main').click();
   await page.getByTestId('pb-present').click();

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openWorkspacePanels } from './lib/panels';
+import { openFlowSteps, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -101,7 +101,7 @@ flow "Checkout" as checkout {
   web -> api : "POST /checkout"
 }
 `);
-    await page.getByTestId('side-tab-flows').click();
+    await openFlowSteps(page);
     await page.getByTestId('flow-play-checkout').click();
     await expect(page.getByTestId('playbar')).toBeVisible();
     // let the flow play out, then the closing card appears

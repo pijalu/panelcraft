@@ -6,7 +6,7 @@
 // for the vision review round 2 (STYLE-GUIDE §visual).
 import { expect, test, type Locator } from '@playwright/test';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { openFlowSteps, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -67,7 +67,7 @@ test('S3: 6-step flow playback — transport, alt chooser, par concurrency, dim,
   });
 
   // ---- open the Flows tab and start playback --------------------------------
-  await page.getByTestId('side-tab-flows').click();
+  await openFlowSteps(page);
   await expect(page.getByTestId('flow-row-main')).toBeVisible({ timeout: 5000 });
   await page.getByTestId('flow-play-main').click();
 

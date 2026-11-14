@@ -11,8 +11,12 @@ export const pcTheme = EditorView.theme({
   '&': { height: '100%', fontSize: '13px' },
   '.cm-scroller': { overflow: 'auto', fontFamily: 'monospace' },
   '.cm-gutters': { borderRight: '1px solid var(--pc-border)', background: 'var(--pc-surface)' },
+  '.cm-lineNumbers .cm-gutterElement': { color: 'var(--pc-muted)' },
   '.cm-activeLine': { background: 'color-mix(in srgb, var(--pc-accent) 8%, transparent)' },
-  '.cm-activeLineGutter': { background: 'color-mix(in srgb, var(--pc-accent) 12%, transparent)' },
+  '.cm-activeLineGutter': {
+    background: 'color-mix(in srgb, var(--pc-accent) 12%, transparent)',
+    color: 'var(--pc-fg)',
+  },
 });
 
 /** Token classes; actual colors live in app.css (light/dark CSS variables). */

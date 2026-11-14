@@ -20,6 +20,7 @@ describe('UX-02 workspace layout', () => {
     expect(layout.version).toBe(2);
     expect(layout.panels).toEqual({
       sidebar: 'collapsed',
+      flows: 'closed',
       palette: 'open',
       code: 'collapsed',
       props: 'collapsed',
@@ -37,7 +38,7 @@ describe('UX-02 workspace layout', () => {
 
   it('moves each panel to every dock and opens it without losing its size', () => {
     let layout = defaultLayout(1600);
-    for (const panel of ['sidebar', 'palette', 'code', 'props'] as const) {
+    for (const panel of ['sidebar', 'flows', 'palette', 'code', 'props'] as const) {
       for (const dock of ['left', 'right', 'bottom', 'float'] as const) {
         layout = movePanel(layout, panel, dock);
         expect(layout.docks[panel]).toBe(dock);
@@ -69,13 +70,27 @@ describe('UX-02 workspace layout', () => {
 
     it('collapses horizontal docks as needed to keep a narrow canvas reachable', () => {
       let layout = defaultLayout(1600);
-      for (const panel of ['sidebar', 'palette', 'code', 'props'] as const) {
+      for (const panel of ['sidebar', 'flows', 'palette', 'code', 'props'] as const) {
         layout = openPanel(layout, panel);
       }
       const recovered = recoverLayout(layout, 520, 640);
-      expect(Object.values(recovered.panels)).toEqual(['collapsed', 'collapsed', 'collapsed', 'collapsed']);
+      expect(Object.values(recovered.panels)).toEqual([
+        'collapsed', 'collapsed', 'collapsed', 'collapsed', 'collapsed',
+      ]);
       expect(recovered.docks).toEqual(layout.docks);
     });
+  it('keeps Files independent from an initially closed Flow Steps panel', () => {
+    const start = defaultLayout(1600);
+    expect(start.panels.sidebar).toBe('collapsed');
+    expect(start.panels.flows).toBe('closed');
+
+    const both = openPanel(openPanel(start, 'sidebar'), 'flows');
+    expect(both.panels.sidebar).toBe('open');
+    expect(both.panels.flows).toBe('open');
+    expect(closePanel(both, 'sidebar').panels.flows).toBe('open');
+    expect(normaliseLayout({ panels: { sidebar: 'open' } }, 1600).panels.flows).toBe('closed');
+  });
+
   it('migrates old settings and safely normalises corrupt docking data', () => {
     const old = {
       panels: { sidebar: 'open', palette: 'open', code: 'open', props: 'open' },

@@ -42,12 +42,15 @@ export interface FlowPaneProps {
   onPlayFrom?(flowKey: string, index: number): void;
   /** F-18: the active file's buffer has unapplied changes. */
   dirty?: boolean;
+  /** Optional session-owned selection survives docking and close/reopen remounts. */
+  selection?: FlowSelection | null;
+  onSelection?(selection: FlowSelection): void;
   /** F-17: illustration style for playback ('auto' follows the beat kind). */
   illustration?: IllustrationId | 'auto';
   onIllustration?(id: IllustrationId | 'auto'): void;
 }
 
-interface Sel {
+export interface FlowSelection {
   flow: string; // flow id
   step: number[]; // path into the flow ([] = flow-level, nothing selected)
 }
@@ -367,7 +370,7 @@ function FlowList(props: {
 function StepBar(props: { addKindRef: { current: HTMLSelectElement | null }; onAdd: () => void }) {
   return (
     <div class="flow-stepbar">
-      <select ref={props.addKindRef} data-testid="step-add-kind" defaultValue="msg">
+      <select ref={props.addKindRef} data-testid="step-add-kind" aria-label={s('Step type')} defaultValue="msg">
         {KINDS.map((k) => (
           <option key={k} value={k}>{s(k)}</option>
         ))}
@@ -388,7 +391,7 @@ function ErrorPane({ noFile }: { noFile: boolean }) {
 }
 
 /** Resolve the selected flow + step + flattened rows for the editor. */
-function locate(doc: Doc, sel: Sel | null): { flow: Flow | null; step: FlowStep | null; flat: FlatStep[] } {
+function locate(doc: Doc, sel: FlowSelection | null): { flow: Flow | null; step: FlowStep | null; flat: FlatStep[] } {
   const flow = sel === null ? null : (doc.flows.find((f) => f.id === sel.flow || f.title === sel.flow) ?? null);
   const step = sel !== null && flow !== null && sel.step.length > 0 ? getAt(flow, sel.step) : null;
   const flat = flow === null ? [] : flatSteps(flow);
@@ -397,7 +400,7 @@ function locate(doc: Doc, sel: Sel | null): { flow: Flow | null; step: FlowStep 
 
 /** Build a mutator that patches the selected flow through retext. */
 function mutator(
-  sel: Sel | null,
+  sel: FlowSelection | null,
   apply: (fn: (d: Doc) => void) => void,
 ): (fn: (f: Flow, path: number[]) => void) => void {
   return (fn) => {
@@ -483,7 +486,12 @@ function FlowDetail(props: {
 
 /** Sidebar "Flows" tab: list flows, edit the selected one, play it. */
 export function FlowPane(props: FlowPaneProps) {
-  const [sel, setSel] = useState<Sel | null>(null);
+  const [localSel, setLocalSel] = useState<FlowSelection | null>(null);
+  const sel = props.selection === undefined ? localSel : props.selection;
+  const setSel = (next: FlowSelection): void => {
+    if (props.selection === undefined) setLocalSel(next);
+    props.onSelection?.(next);
+  };
   const addKindRef = useRef<HTMLSelectElement | null>(null);
   const text = props.activePath === null ? null : props.textOf(props.activePath);
   const doc: Doc | null = text === null ? null : parsePDL(text).doc;

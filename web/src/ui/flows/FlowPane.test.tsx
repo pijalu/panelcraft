@@ -180,7 +180,7 @@ describe('FlowPane step editing (M5-WP4)', () => {
   it('adds a step of the chosen kind at the end', () => {
     const { out } = mount();
     fireEvent.click(screen.getByTestId('flow-row-main'));
-    const kindSel = screen.getByTestId('step-add-kind') as HTMLSelectElement;
+    const kindSel = screen.getByRole('combobox', { name: 'Step type' }) as HTMLSelectElement;
     fireEvent.change(kindSel, { target: { value: 'process' } });
     fireEvent.click(screen.getByTestId('step-add'));
     const doc = parsePDL(out()).doc;

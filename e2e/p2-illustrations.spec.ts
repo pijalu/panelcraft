@@ -4,7 +4,7 @@
 // kind. Screenshots capture two styles for the visual record.
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { openFlowSteps, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -32,7 +32,7 @@ async function seed(page: Page): Promise<void> {
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
   });
-  await page.getByTestId('side-tab-flows').click();
+  await openFlowSteps(page);
   await page.getByTestId('flow-row-main').click();
 }
 

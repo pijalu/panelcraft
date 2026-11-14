@@ -10,6 +10,7 @@ import { s } from './strings';
 
 export function panelLabel(panel: PanelId): string {
   if (panel === 'sidebar') return s('Files');
+  if (panel === 'flows') return s('Flow Steps');
   if (panel === 'palette') return s('Shapes');
   if (panel === 'code') return s('Code');
   return s('Properties');

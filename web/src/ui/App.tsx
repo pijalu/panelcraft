@@ -10,7 +10,7 @@ import { labelFor, CanvasController, type Snapshot } from './CanvasController';
 import { FileTree } from './FileTree';
 import { Tabs } from './Tabs';
 import { CodePane } from './CodePane';
-import { FlowPane } from './flows/FlowPane';
+import { FlowPane, type FlowSelection } from './flows/FlowPane';
 import { PlayBar } from './flows/PlayBar';
 import { ViewBar } from './views/ViewBar';
 import { AppHeader } from './AppHeader';
@@ -24,7 +24,7 @@ import { useHistory } from './useHistory';
 import { useViewSession } from './useViewSession';
 import type { HoverInfo } from './hoverInfo';
 import { layoutStyle, PANELS, type DockId, type PanelId } from './uiLayout';
-import { PanelRail, focusRail } from './PanelChrome';
+import { CollapseButton, PanelRail } from './PanelChrome';
 import { CanvasMenu } from './CanvasMenu';
 import { MiniMap } from './MiniMap';
 import { s } from './strings';
@@ -58,71 +58,61 @@ function findLink(snap: Snapshot | null) {
   return snap.links.find((l) => l.id === id) ?? null;
 }
 
-/** Sidebar: Files | Flows tabs — flow editor lives here to keep the row
- * layout unchanged at 1280×720 (no width cost). */
-function SidePane(props: {
-  tab: 'files' | 'flows';
-  onTab: (t: 'files' | 'flows') => void;
+/** Independent browser-local file tree; closing it never touches workspace tabs. */
+function FilesPane(props: {
+  manager: WorkspaceManager;
+  version: number;
+  onCollapse: () => void;
+}) {
+  return (
+    <aside class="sidebar" aria-label={s('Workspace files')}>
+      <div class="panel-head">
+        <h2 class="panel-title">{s('Files')}</h2>
+        <CollapseButton id="sidebar" label={s('files')} onCollapse={props.onCollapse} />
+      </div>
+      <FileTree
+        manager={props.manager}
+        version={props.version}
+        onOpen={(path) => props.manager.openFile(path)}
+      />
+    </aside>
+  );
+}
+
+/** Flow editor hosted separately from Files (FLOW-01 dependency). */
+function FlowStepsPane(props: {
   manager: WorkspaceManager;
   version: number;
   activePath: string | null;
   onText(text: string): void;
   onPlay(flowKey: string): void;
-  onCollapse?: () => void;
-  illustration?: IllustrationId | 'auto';
-  onIllustration?(id: IllustrationId | 'auto'): void;
-  onPlayFrom?(flowKey: string, index: number): void;
-  dirty?: boolean;
+  onCollapse: () => void;
+  illustration: IllustrationId | 'auto';
+  onIllustration(id: IllustrationId | 'auto'): void;
+  onPlayFrom(flowKey: string, index: number): void;
+  dirty: boolean;
+  selection: FlowSelection | null;
+  onSelection(selection: FlowSelection): void;
 }) {
   return (
-    <aside class="sidebar">
-      <div class="sidebar-tabs">
-        <button
-          type="button"
-          data-testid="side-tab-files"
-          class={props.tab === 'files' ? 'active' : ''}
-          onClick={() => props.onTab('files')}
-        >
-          {s('Files')}
-        </button>
-        <button
-          type="button"
-          data-testid="side-tab-flows"
-          class={props.tab === 'flows' ? 'active' : ''}
-          onClick={() => props.onTab('flows')}
-        >
-          {s('Flows')}
-        </button>
-        {props.onCollapse && (
-          <button
-            type="button"
-            class="panel-toggle"
-            data-testid="collapse-sidebar"
-            aria-label={s('Hide files panel')}
-            aria-expanded={true}
-            onClick={() => {
-              props.onCollapse?.();
-              focusRail('sidebar');
-            }}
-          >
-            {s("‹")}{' '}</button>
-        )}
+    <aside class="sidebar" aria-label={s('Flow step editor')}>
+      <div class="panel-head">
+        <h2 class="panel-title">{s('Flow Steps')}</h2>
+        <CollapseButton id="flows" label={s('flow steps')} onCollapse={props.onCollapse} />
       </div>
-      {props.tab === 'files' ? (
-        <FileTree manager={props.manager} version={props.version} onOpen={(p) => props.manager.openFile(p)} />
-      ) : (
-        <FlowPane
-          textOf={(p) => props.manager.text(p)}
-          activePath={props.activePath}
-          version={props.version}
-          onChangeText={props.onText}
-          onPlay={props.onPlay}
-          illustration={props.illustration}
-          onIllustration={props.onIllustration}
-          onPlayFrom={props.onPlayFrom}
-          dirty={props.dirty}
-        />
-      )}
+      <FlowPane
+        textOf={(path) => props.manager.text(path)}
+        activePath={props.activePath}
+        version={props.version}
+        onChangeText={props.onText}
+        onPlay={props.onPlay}
+        illustration={props.illustration}
+        onIllustration={props.onIllustration}
+        onPlayFrom={props.onPlayFrom}
+        dirty={props.dirty}
+        selection={props.selection}
+        onSelection={props.onSelection}
+      />
     </aside>
   );
 }
@@ -183,11 +173,28 @@ function CanvasTopRow(props: {
   );
 }
 
-/** Files/flows sidebar (or its rail) — F-10 collapsible shell. */
+/** Independent Files browser (or its rail). */
 function SidebarSlot(props: {
   ui: ReturnType<typeof useUiLayout>;
-  sideTab: 'files' | 'flows';
-  onTab: (t: 'files' | 'flows') => void;
+  manager: WorkspaceManager;
+  version: number;
+}) {
+  return slot(
+    props.ui.layout.panels.sidebar === 'collapsed',
+    'sidebar',
+    'files',
+    () => props.ui.togglePanel('sidebar'),
+    <FilesPane
+      manager={props.manager}
+      version={props.version}
+      onCollapse={() => props.ui.togglePanel('sidebar')}
+    />,
+  );
+}
+
+/** Independent Flow Steps editor (or its rail). */
+function FlowSlot(props: {
+  ui: ReturnType<typeof useUiLayout>;
   manager: WorkspaceManager;
   version: number;
   activePath: string | null;
@@ -197,25 +204,27 @@ function SidebarSlot(props: {
   onIllustration: (id: IllustrationId | 'auto') => void;
   onPlayFrom: (flowKey: string, index: number) => void;
   dirty: boolean;
+  selection: FlowSelection | null;
+  onSelection: (selection: FlowSelection) => void;
 }) {
   return slot(
-    props.ui.layout.panels.sidebar === 'collapsed',
-    'sidebar',
-    'files',
-    () => props.ui.togglePanel('sidebar'),
-    <SidePane
-      tab={props.sideTab}
-      onTab={props.onTab}
+    props.ui.layout.panels.flows === 'collapsed',
+    'flows',
+    'flow steps',
+    () => props.ui.togglePanel('flows'),
+    <FlowStepsPane
       manager={props.manager}
       version={props.version}
       activePath={props.activePath}
       onText={props.onText}
       onPlay={props.onPlay}
-      onCollapse={() => props.ui.togglePanel('sidebar')}
+      onCollapse={() => props.ui.togglePanel('flows')}
       illustration={props.illustration}
       onIllustration={props.onIllustration}
       onPlayFrom={props.onPlayFrom}
       dirty={props.dirty}
+      selection={props.selection}
+      onSelection={props.onSelection}
     />,
   );
 }
@@ -320,25 +329,23 @@ function AppBody(p: {
   activePath: string | null;
   viewName: string | undefined;
   onView: (n: string | undefined) => void;
-  sideTab: 'files' | 'flows';
-  onSideTab: (t: 'files' | 'flows') => void;
   onPresent: () => void;
   sel: ReturnType<typeof selections>;
   diverged: ReturnType<typeof useDivergedClose>;
   illustration: IllustrationId | 'auto';
   onIllustration: (id: IllustrationId | 'auto') => void;
-  dirty: boolean;
+  dirty: boolean; flowSelection: FlowSelection | null;
+  onFlowSelection: (selection: FlowSelection) => void;
   revealRef: { current: ((id: string) => void) | null };
 }) {
   const { ws, canvas, code, ui, player, activePath, viewName } = p;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const ctrl = canvas.ctrlRef.current;
   const content: Record<PanelId, ComponentChildren> = {
-    sidebar: (
-      <SidebarSlot
+    sidebar: <SidebarSlot ui={ui} manager={ws.manager} version={ws.version} />,
+    flows: (
+      <FlowSlot
         ui={ui}
-        sideTab={p.sideTab}
-        onTab={p.onSideTab}
         manager={ws.manager}
         version={ws.version}
         activePath={activePath}
@@ -350,6 +357,8 @@ function AppBody(p: {
         onIllustration={p.onIllustration}
         onPlayFrom={(flowKey, index) => playFrom(player, activePath, flowKey, index)}
         dirty={p.dirty}
+        selection={p.flowSelection}
+        onSelection={p.onFlowSelection}
       />
     ),
     palette: <PaletteSlot ui={ui} onPlace={(kind) => ctrl?.addObject(kind)} onDragDrop={canvas.onPaletteDrop} />,
@@ -493,7 +502,6 @@ export function App() {
   const { manager } = ws;
   const [clearOpen, setClearOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
-  const [sideTab, setSideTab] = useState<'files' | 'flows'>('files');
   const [snapsOpen, setSnapsOpen] = useState(false);
   const { viewName, setViewName } = view;
   const code = useCodeSync({
@@ -507,6 +515,7 @@ export function App() {
   });
   view.commitDocRef.current = code.commitDoc;
   const [illustration, setIllustration] = useState<IllustrationId | 'auto'>('auto');
+  const [flowSelection, setFlowSelection] = useState<FlowSelection | null>(null);
   const player = useFlowStage({ manager, canvas, activePath, illustration });
   const ui = useUiLayout(manager, ws.ready, ws.version);
   const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null, setFlash);
@@ -550,14 +559,14 @@ export function App() {
         activePath={activePath}
         viewName={viewName}
         onView={setViewName}
-        sideTab={sideTab}
-        onSideTab={setSideTab}
         onPresent={pres.start}
         sel={sel}
         diverged={diverged}
         illustration={illustration}
         onIllustration={setIllustration}
         dirty={code.snapshot.divergedFromSaved}
+        flowSelection={flowSelection}
+        onFlowSelection={setFlowSelection}
         revealRef={revealRef}
       />
       <AppOverlays

@@ -4,6 +4,11 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — UX-03 on-demand workspace browser
+
+- Split Files and Flow Steps into independent dockable panels, retained dirty tabs and flow selection
+  across close/reopen, and covered keyboard-only file operations, persistence, accessibility and both themes.
+
 ## 2026-11-14 — UX-02 canvas-first workspace
 
 - Made Shapes the only panel open by default and added browser-local close/reopen, left/right/bottom

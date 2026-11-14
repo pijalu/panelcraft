@@ -2,7 +2,7 @@
 // Versioned, browser-local workspace layout. Panel arrangement is UI settings,
 // never diagram data. Pure functions keep migration and recovery testable.
 
-export type PanelId = 'sidebar' | 'palette' | 'code' | 'props';
+export type PanelId = 'sidebar' | 'flows' | 'palette' | 'code' | 'props';
 export type PanelMode = 'open' | 'collapsed' | 'closed';
 export type DockId = 'left' | 'right' | 'bottom' | 'float';
 
@@ -13,7 +13,7 @@ export interface FloatingBounds {
   height: number;
 }
 
-export const PANELS: readonly PanelId[] = ['sidebar', 'palette', 'code', 'props'];
+export const PANELS: readonly PanelId[] = ['sidebar', 'flows', 'palette', 'code', 'props'];
 export const DOCKS: readonly DockId[] = ['left', 'right', 'bottom', 'float'];
 
 export interface UiLayout {
@@ -31,6 +31,7 @@ export interface UiLayout {
 
 export const WIDTH_LIMITS: Record<PanelId, { min: number; max: number }> = {
   sidebar: { min: 160, max: 420 },
+  flows: { min: 200, max: 420 },
   palette: { min: 120, max: 320 },
   code: { min: 260, max: 720 },
   props: { min: 200, max: 420 },
@@ -45,6 +46,7 @@ export const MAX_PANEL_HEIGHT = 560;
 
 export const DEFAULT_WIDTHS: Record<PanelId, number> = {
   sidebar: 200,
+  flows: 260,
   palette: 168,
   code: 360,
   props: 232,
@@ -52,6 +54,7 @@ export const DEFAULT_WIDTHS: Record<PanelId, number> = {
 
 export const DEFAULT_HEIGHTS: Record<PanelId, number> = {
   sidebar: 220,
+  flows: 280,
   palette: 240,
   code: 260,
   props: 280,
@@ -66,6 +69,7 @@ export const DEFAULT_SECTIONS: Record<string, boolean> = {
 
 const DEFAULT_DOCKS: Record<PanelId, DockId> = {
   sidebar: 'left',
+  flows: 'left',
   palette: 'left',
   code: 'right',
   props: 'right',
@@ -75,9 +79,9 @@ const DEFAULT_DOCKS: Record<PanelId, DockId> = {
 export function defaultLayout(_viewportWidth = Number.POSITIVE_INFINITY): UiLayout {
   return {
     version: 2,
-    panels: { sidebar: 'collapsed', palette: 'open', code: 'collapsed', props: 'collapsed' },
+    panels: { sidebar: 'collapsed', flows: 'closed', palette: 'open', code: 'collapsed', props: 'collapsed' },
     docks: { ...DEFAULT_DOCKS },
-    order: { sidebar: 0, palette: 1, code: 0, props: 1 },
+    order: { sidebar: 0, flows: 1, palette: 2, code: 0, props: 1 },
     widths: { ...DEFAULT_WIDTHS },
     heights: { ...DEFAULT_HEIGHTS },
     floating: {},
@@ -343,6 +347,7 @@ function normaliseSections(raw: unknown, base: Record<string, boolean>): Record<
 export function layoutStyle(layout: UiLayout): Record<string, string> {
   return {
     '--pc-sidebar-w': `${layout.widths.sidebar}px`,
+    '--pc-flows-w': `${layout.widths.flows}px`,
     '--pc-palette-w': `${layout.widths.palette}px`,
     '--pc-code-w': `${layout.widths.code}px`,
     '--pc-props-w': `${layout.widths.props}px`,

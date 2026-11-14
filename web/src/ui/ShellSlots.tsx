@@ -16,7 +16,7 @@ import { s } from './strings';
 /** Collapsed-rail or panel, chosen from the layout. */
 export function slot(
   collapsed: boolean,
-  id: 'sidebar' | 'palette' | 'props',
+  id: 'sidebar' | 'flows' | 'palette' | 'props',
   label: string,
   onExpand: () => void,
   content: ComponentChildren,

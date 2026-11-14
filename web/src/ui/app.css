@@ -1674,7 +1674,7 @@ marker .pc-arrow[fill='none'] {
 
 /* PDL token colors (light) */
 .pc-tok-kw { color: #2563eb; font-weight: 600; }
-.pc-tok-str { color: #059669; }
+.pc-tok-str { color: var(--pc-info); }
 .pc-tok-num { color: #b45309; }
 .pc-tok-com { color: var(--pc-muted); font-style: italic; }
 .pc-tok-op { color: var(--pc-fg); }
@@ -1701,28 +1701,6 @@ marker .pc-arrow[fill='none'] {
   --pc-dur-med: 200ms;
   --pc-dur-slow: 300ms;
   --pc-ease: cubic-bezier(0.2, 0, 0, 1);
-}
-
-/* Sidebar Files|Flows tabs */
-.sidebar-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--pc-border);
-}
-
-.sidebar-tabs button {
-  flex: 1;
-  padding: 6px 0;
-  font-size: var(--pc-text-sm);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--pc-muted);
-  cursor: pointer;
-}
-
-.sidebar-tabs button.active {
-  color: var(--pc-fg);
-  border-bottom-color: var(--pc-accent);
 }
 
 /* Flow editor pane */
@@ -2798,6 +2776,10 @@ marker .pc-arrow[fill='none'] {
 
 .panel-host[data-panel='sidebar'] {
   width: var(--pc-sidebar-w);
+}
+
+.panel-host[data-panel='flows'] {
+  width: var(--pc-flows-w);
 }
 
 .panel-host[data-panel='palette'] {

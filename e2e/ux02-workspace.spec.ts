@@ -5,9 +5,9 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 
-type Panel = 'sidebar' | 'palette' | 'code' | 'props';
+type Panel = 'sidebar' | 'flows' | 'palette' | 'code' | 'props';
 type Dock = 'left' | 'right' | 'bottom' | 'float';
-const PANELS: readonly Panel[] = ['sidebar', 'palette', 'code', 'props'];
+const PANELS: readonly Panel[] = ['sidebar', 'flows', 'palette', 'code', 'props'];
 
 test.setTimeout(120_000);
 
@@ -62,7 +62,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
     await expect(page.getByTestId('app-shell')).toHaveAttribute(
       'data-panels',
-      'sidebar:collapsed,palette:open,code:collapsed,props:collapsed',
+      'sidebar:collapsed,flows:closed,palette:open,code:collapsed,props:collapsed',
     );
     await expect(page.getByTestId('palette')).toBeVisible();
     for (const panel of ['sidebar', 'code', 'props'] as const) {
@@ -139,7 +139,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.getByTestId('reset-workspace-layout').click();
     await expect(page.getByTestId('app-shell')).toHaveAttribute(
       'data-panels',
-      'sidebar:collapsed,palette:open,code:collapsed,props:collapsed',
+      'sidebar:collapsed,flows:closed,palette:open,code:collapsed,props:collapsed',
     );
     await expect(page.getByTestId('panel-title-palette')).toBeFocused();
     await capture(page, `ux02-reset-${colorScheme}`);

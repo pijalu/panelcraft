@@ -9,7 +9,7 @@ import { s } from './strings';
 
 export interface RailProps {
   /** Panel id — drives the test ids and aria wiring. */
-  id: 'sidebar' | 'palette' | 'code' | 'props';
+  id: 'sidebar' | 'flows' | 'palette' | 'code' | 'props';
   /** Human label used in the accessible name ("Show files panel"). */
   label: string;
   onExpand: () => void;
