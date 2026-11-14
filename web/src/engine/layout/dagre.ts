@@ -48,10 +48,14 @@ export function dagreLayoutGeometry(
   }
 
   const seen = new Set<string>();
+  // CX-05: dagre cannot rank an edge that terminates at a compound parent, so a
+  // link whose endpoint is a group boundary is skipped instead of crashing.
+  const compound = new Set(sorted.map((n) => n.parent).filter((p): p is string => p !== undefined));
   const sortedEdges = [...edges].sort((a, b) =>
     a.from === b.from ? (a.to < b.to ? -1 : a.to > b.to ? 1 : 0) : a.from < b.from ? -1 : 1,
   );
   for (const e of sortedEdges) {
+    if (compound.has(e.from) || compound.has(e.to)) continue;
     const key = `${e.from}\u0000${e.to}`;
     if (seen.has(key)) continue; // parallel edges deduped (first wins)
     seen.add(key);

@@ -289,38 +289,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 ---
 
-## CX-05 Auto-layout crashes when a link uses a group as an endpoint
-
-**Observed/current behavior**
-
-- A document whose link endpoint is a `group` id validates cleanly but cannot be laid out:
-  `panelcraft render` fails with `browser render failed: Cannot set properties of undefined
-  (setting 'rank')`, and the canvas auto-layout path hits the same dagre error.
-- Found while building the CX-03 corpus seed; it reproduces with every `z` removed, so it
-  predates stacking order and is unrelated to it.
-
-**Expected behavior**
-
-- A group endpoint is either laid out like an entity (boundary as the node) or rejected by
-  validation with a clear diagnostic — never a runtime crash.
-
-**Implementation plan**
-
-1. Reproduce in the layout unit tests with a minimal group-endpoint document.
-2. Decide the contract (layout the boundary, or reject with a P-code) and implement it.
-3. Keep canvas, CLI render and validation agreed on that contract.
-
-**Test approach**
-
-- Unit: layout of a group endpoint and of a group referenced only by `contains`.
-- E2E/CLI: render a group-endpoint document without an exception.
-
-**Validation steps**
-
-- Run the layout/render tests, a CLI render smoke, and the common gate.
-
----
-
 ## Recommended execution order and dependencies
 
 1. **Independent foundation:** UX-01. DOC-01 closes with CX-03.

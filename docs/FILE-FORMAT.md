@@ -318,6 +318,10 @@ Canvas units: 1 = 1 px at 100% zoom; origin top-left; y grows downward. Auto-lay
 (dagre) outputs are written back only when the user explicitly commits layout ("apply
 layout to file") — never silently.
 
+Group boundaries are compound layout parents, so a link whose endpoint is a `group`
+is drawn from the boundary's computed rectangle but does not steer auto-layout; the
+ranks come from the entity links only. Such a document stays valid and renderable.
+
 ### 7.3 Style overrides
 
 ```

@@ -98,6 +98,22 @@ describe('dagreLayoutEngine', () => {
     expect(payment.x >= group.x + size.width || payment.y >= group.y + size.height).toBe(true);
   });
 
+  it('a link that touches a group boundary does not break layout (CX-05)', () => {
+    const ns: LayoutNodeInput[] = [
+      { id: 'tray', size: { width: 320, height: 120 } },
+      { id: 'a', size: { ...SZ }, parent: 'tray' },
+      { id: 'b', size: { ...SZ } },
+    ];
+    // Groups are compound parents; dagre cannot rank an edge that terminates
+    // at a parent, so such edges must be ignored instead of crashing.
+    const result = dagreLayoutGeometry(
+      ns,
+      [{ from: 'tray', to: 'b' }, { from: 'a', to: 'b' }],
+      { dir: 'LR' },
+    );
+    for (const id of ['tray', 'a', 'b']) expect(result.positions[id]!).toBeDefined();
+  });
+
   it('empty graph → empty result', () => {
     const eng = dagreLayoutEngine();
     expect(eng.layout([], [], { dir: 'TB' })).toEqual({});

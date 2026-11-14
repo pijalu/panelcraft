@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — CX-05 group-endpoint links no longer crash auto-layout
+
+- Auto-layout skips links whose endpoint is a compound group boundary (dagre cannot rank a parent), so such documents validate, lay out and render instead of throwing; the link still draws from the boundary rectangle.
+
 ## 2026-11-14 — CX-03 object stacking order
 
 - Added per-object **Stacking order** with Auto as the default and an optional integer `z` override (PDL/IR v6, TS⇄Go parity), stable document-order ties, z-aware paint/hit-test/mini-map order shared by canvas, SVG/PNG export and CLI rendering, undoable properties editing, and a clean corpus seed with a declared Mermaid drop.
