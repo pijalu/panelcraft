@@ -185,8 +185,14 @@ const printObject = (o: Obj, p: Printer): void => {
 const linkNeedsBlock = (l: Link): boolean =>
   hasStyle(l.style) ||
   (l.waypoints?.length ?? 0) > 0 ||
+  l.fromAnchor !== undefined || l.toAnchor !== undefined ||
   (l.tags?.length ?? 0) > 0 ||
   (l.attributes?.length ?? 0) > 0;
+
+const printLinkAnchors = (l: Link, p: Printer): void => {
+  if (l.fromAnchor !== undefined) p.add(`${INDENT}anchor from ${jsNum(l.fromAnchor)}`);
+  if (l.toAnchor !== undefined) p.add(`${INDENT}anchor to ${jsNum(l.toAnchor)}`);
+};
 
 const printLink = (l: Link, p: Printer): void => {
   p.comment(l.comments, 0);
@@ -204,6 +210,7 @@ const printLink = (l: Link, p: Printer): void => {
     styleLines(l.style, 2, p);
     p.add(`${INDENT}}`);
   }
+  printLinkAnchors(l, p);
   for (const w of l.waypoints ?? []) p.add(`${INDENT}waypoint (${w[0]}, ${w[1]})`);
   for (const r of l.attributes ?? []) p.add(`${INDENT}${r.raw}`);
   p.add('}');

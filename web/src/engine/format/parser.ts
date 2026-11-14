@@ -458,26 +458,47 @@ class Parser {
     }
   }
 
+  private linkAnchor(l: Link, seen: Set<string>, t: Token): void {
+    const endpoint = this.expect('ident').text;
+    if (endpoint !== 'from' && endpoint !== 'to') this.fail(t, E.unexpected, 'anchor endpoint must be from or to');
+    this.once(seen, t, `anchor ${endpoint}`);
+    const value = this.num(this.expect('number'));
+    if (!Number.isFinite(value) || value < 0 || value >= 1) {
+      this.fail(t, E.unexpected, 'expected 0 <= anchor < 1');
+    }
+    if (endpoint === 'from') l.fromAnchor = value;
+    else l.toAnchor = value;
+  }
+
+  private linkWaypoint(l: Link): void {
+    this.expect('punct', '(');
+    const x = this.num(this.next());
+    this.expect('punct', ',');
+    const y = this.num(this.next());
+    this.expect('punct', ')');
+    (l.waypoints ??= []).push([x, y]);
+  }
+
+  private linkBlockAttribute(l: Link, seen: Set<string>, t: Token, t0: Token): boolean {
+    if (t.text === 'label') l.label = this.expect('string').value;
+    else if (t.text === 'tag') (l.tags ??= []).push(...this.identList());
+    else if (t.text === 'style') l.style = this.parseStyleBlock(t0, 'link');
+    else if (t.text === 'anchor') this.linkAnchor(l, seen, t);
+    else if (t.text === 'waypoint') this.linkWaypoint(l);
+    else return false;
+    return true;
+  }
+
   private linkBlock(l: Link, t0: Token): void {
+    const seen = new Set<string>();
     for (;;) {
       this.skipComments();
       if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed link block');
       if (this.peek().type === 'punct' && this.peek().text === '}') { this.next(); return; }
       const t = this.expect('ident');
-      if (t.text === 'label') l.label = this.expect('string').value;
-      else if (t.text === 'tag') (l.tags ??= []).push(...this.identList());
-      else if (t.text === 'style') l.style = this.parseStyleBlock(t0, 'link');
-      else if (t.text === 'waypoint') {
-        this.expect('punct', '(');
-        const x = this.num(this.next());
-        this.expect('punct', ',');
-        const y = this.num(this.next());
-        this.expect('punct', ')');
-        (l.waypoints ??= []).push([x, y]);
-      } else {
-        const { raw } = this.captureRaw(t);
-        (l.attributes ??= []).push({ raw, pos: tokPos(t) });
-      }
+      if (this.linkBlockAttribute(l, seen, t, t0)) continue;
+      const { raw } = this.captureRaw(t);
+      (l.attributes ??= []).push({ raw, pos: tokPos(t) });
     }
   }
 

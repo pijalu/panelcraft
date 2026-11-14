@@ -543,7 +543,25 @@ func (p *parser) linkModifiers(l *ir.Link) {
 	}
 }
 
+func (p *parser) linkAnchor(l *ir.Link, seen map[string]bool, t Token) {
+	endpoint := p.expect(TokIdent, "").Text
+	if endpoint != "from" && endpoint != "to" {
+		p.fail(t, ErrUnexpected, "anchor endpoint must be from or to")
+	}
+	p.once(seen, t, "anchor "+endpoint)
+	value := p.num(p.expect(TokNumber, ""))
+	if value < 0 || value >= 1 {
+		p.fail(t, ErrUnexpected, "expected 0 <= anchor < 1")
+	}
+	if endpoint == "from" {
+		l.FromAnchor = &value
+	} else {
+		l.ToAnchor = &value
+	}
+}
+
 func (p *parser) linkBlock(l *ir.Link, t0 Token) {
+	seen := map[string]bool{}
 	for {
 		p.skipComments()
 		if p.peek().Type == TokEOF {
@@ -562,6 +580,8 @@ func (p *parser) linkBlock(l *ir.Link, t0 Token) {
 			l.Tags = append(l.Tags, p.identList()...)
 		case "style":
 			l.Style = p.parseStyleBlock(t0, "link")
+		case "anchor":
+			p.linkAnchor(l, seen, t)
 		case "waypoint":
 			p.expect(TokPunct, "(")
 			x := p.num(p.next())

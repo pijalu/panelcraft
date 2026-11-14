@@ -3,7 +3,7 @@
 // Normative shape: docs/FILE-FORMAT.md §7 + docs/milestones/M1.md decisions.
 // Versioning rule: `irVersion` (int) bumps on any schema change; forward-only.
 
-export const IR_VERSION = 3;
+export const IR_VERSION = 4;
 export const FORMAT_VERSION = '1.0';
 
 /** 1-based source position attached to every statement (FILE-FORMAT §10). */
@@ -108,6 +108,9 @@ export interface Link {
   tags?: string[];
   style?: StyleBlock;
   waypoints?: [number, number][];
+  /** Normalized side-quarter perimeter anchors; absent = automatic midpoint (CX-01). */
+  fromAnchor?: number;
+  toAnchor?: number;
   attributes?: RawAttr[];
   comments?: Comments;
   pos: Pos;

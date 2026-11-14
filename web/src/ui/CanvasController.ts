@@ -28,6 +28,7 @@ import {
 } from '../engine/render/viewport';
 import { snapToGrid, computeGuides } from '../engine/render/snap';
 import { resizedRectWithCues, type ResizeCandidate, type ResizeCue } from '../engine/render/resize';
+import { projectPerimeter } from '../engine/render/perimeter';
 import {
   alignObjects,
   copySelection,
@@ -52,6 +53,7 @@ import {
   drawHalos,
   drawResizeHandle,
   drawResizeCues,
+  drawEndpointHandles,
   drawWaypointHandles,
   type HaloSide,
   type ResizeHandle,
@@ -95,6 +97,9 @@ export interface DiagramLink {
   bidir?: boolean;
   /** Explicit routing waypoints (F-19). */
   waypoints?: [number, number][];
+  /** Normalized perimeter endpoint anchors (CX-01, IR v4). */
+  fromAnchor?: number;
+  toAnchor?: number;
   /** Arrow visual model (F-12). */
   head?: string;
   tail?: string;
@@ -150,6 +155,7 @@ type Mode =
   | { t: 'band'; startCanvas: Point; additive: boolean }
   | { t: 'link'; fromId: string; fromSide: Side }
   | { t: 'resize'; id: string; handle: ResizeHandle; startCanvas: Point; before: Rect; original: DiagramObject }
+  | { t: 'endpoint'; linkId: string; end: 'from' | 'to'; before: Pick<DiagramLink, 'fromAnchor' | 'toAnchor'> }
   | { t: 'waypoint'; linkId: string; index: number; before: [number, number][] };
 
 interface PositionRec {
@@ -274,6 +280,13 @@ function arrowDirection(
     ArrowDown: 'down',
   };
   return dirs[key] ?? null;
+}
+
+function endpointTarget(e: Event): { linkId: string; end: 'from' | 'to' } | null {
+  const el = (e.target as Element | null)?.closest('.pc-endpoint');
+  const linkId = el?.getAttribute('data-link');
+  const end = el?.getAttribute('data-end');
+  return linkId && (end === 'from' || end === 'to') ? { linkId, end } : null;
 }
 
 function waypointTarget(e: Event): { linkId: string; index: number } | null {
@@ -923,7 +936,12 @@ export class CanvasController {
       );
       this.routes.set(
         link.id,
-        routeLink({ from, to, obstacles, ...(link.waypoints ? { waypoints: link.waypoints } : {}) }, link.route),
+        routeLink({
+          from, to, obstacles,
+          ...(link.waypoints ? { waypoints: link.waypoints } : {}),
+          ...(link.fromAnchor !== undefined ? { fromAnchor: link.fromAnchor } : {}),
+          ...(link.toAnchor !== undefined ? { toAnchor: link.toAnchor } : {}),
+        }, link.route),
       );
     }
   }
@@ -1005,8 +1023,18 @@ export class CanvasController {
     }
     // F-19: a selected link exposes its explicit waypoints as drag handles
     const link = this.selectedLink();
-    if (link?.waypoints && link.waypoints.length > 0) {
+    if (link) this.drawLinkHandles(link);
+  }
+
+  private drawLinkHandles(link: DiagramLink): void {
+    if (link.waypoints && link.waypoints.length > 0) {
       drawWaypointHandles(this.renderer.overlay, link.waypoints.map(([x, y]) => ({ x, y })), link.id);
+    }
+    const route = this.routes.get(link.id);
+    if (route) {
+      drawEndpointHandles(this.renderer.overlay, route, link.id, {
+        from: s('Drag link start anchor'), to: s('Drag link end anchor'),
+      });
     }
   }
 
@@ -1286,6 +1314,13 @@ export class CanvasController {
           objects: this.state.objects.map((o) => o.id === id ? original : o),
         };
         this.recomputeRoutes();
+      } else if (this.mode.t === 'endpoint') {
+        const { linkId, before } = this.mode;
+        this.state = {
+          ...this.state,
+          links: this.state.links.map((l) => l.id === linkId ? { ...l, ...before } : l),
+        };
+        this.recomputeRoutes();
       }
       this.mode = { t: 'idle' };
       this.selectObjects([]);
@@ -1331,20 +1366,7 @@ export class CanvasController {
       this.mode = { t: 'link', fromId: halo.id, fromSide: halo.side };
       return true;
     }
-    // F-19: dragging a waypoint handle re-routes the selected link
-    const wp = waypointTarget(e);
-    if (wp) {
-      const link = this.state.links.find((l) => l.id === wp.linkId);
-      if (link) {
-        this.mode = {
-          t: 'waypoint',
-          linkId: wp.linkId,
-          index: wp.index,
-          before: (link.waypoints ?? []).map((w) => [w[0], w[1]] as [number, number]),
-        };
-      }
-      return true;
-    }
+    if (this.beginLinkHandle(e)) return true;
     const target = resizeTarget(e);
     if (target) {
       const obj = this.state.objects.find((o) => o.id === target.id);
@@ -1361,6 +1383,33 @@ export class CanvasController {
       return true;
     }
     return false;
+  }
+
+  private beginLinkHandle(e: PointerEvent): boolean {
+    // F-19: dragging a waypoint handle re-routes the selected link.
+    const wp = waypointTarget(e);
+    if (wp) {
+      const link = this.state.links.find((l) => l.id === wp.linkId);
+      if (link) {
+        this.mode = {
+          t: 'waypoint',
+          linkId: wp.linkId,
+          index: wp.index,
+          before: (link.waypoints ?? []).map((w) => [w[0], w[1]] as [number, number]),
+        };
+      }
+      return true;
+    }
+    const endpoint = endpointTarget(e);
+    if (!endpoint) return false;
+    const link = this.state.links.find((l) => l.id === endpoint.linkId);
+    if (link) {
+      this.mode = {
+        t: 'endpoint', linkId: link.id, end: endpoint.end,
+        before: { fromAnchor: link.fromAnchor, toAnchor: link.toAnchor },
+      };
+    }
+    return true;
   }
 
   private selectLink(id: string, additive: boolean): void {
@@ -1411,6 +1460,9 @@ export class CanvasController {
         break;
       case 'resize':
         this.resizeMove(e);
+        break;
+      case 'endpoint':
+        this.endpointMove(e);
         break;
       case 'waypoint':
         this.waypointMove(e);
@@ -1531,6 +1583,50 @@ export class CanvasController {
     else this.svg.removeAttribute('aria-description');
   }
 
+  private endpointMove(e: PointerEvent): void {
+    const m = this.mode;
+    if (m.t !== 'endpoint') return;
+    const link = this.state.links.find((l) => l.id === m.linkId);
+    const objectId = m.end === 'from' ? link?.from : link?.to;
+    const object = this.state.objects.find((o) => o.id === objectId) ?? this.ghosts.find((g) => g.id === objectId);
+    if (!link || !object) return;
+    const { t } = projectPerimeter(object, this.toCanvas(e));
+    this.state = {
+      ...this.state,
+      links: this.state.links.map((l) => l.id === link.id ? { ...l, [`${m.end}Anchor`]: t } : l),
+    };
+    this.recomputeRoutes();
+    this.render(false);
+    clearOverlay(this.renderer.overlay);
+    this.drawLinkHandles(link);
+    this.svg.setAttribute('aria-description', s('Link {endpoint} anchored to {label} perimeter ({value})', {
+      endpoint: m.end, label: object.name || object.id, value: Number(t.toFixed(4)),
+    }));
+  }
+
+  private commitEndpoint(): void {
+    const m = this.mode;
+    if (m.t !== 'endpoint') return;
+    const link = this.state.links.find((l) => l.id === m.linkId);
+    if (!link) return;
+    const after = { fromAnchor: link.fromAnchor, toAnchor: link.toAnchor };
+    if (JSON.stringify(after) === JSON.stringify(m.before)) return;
+    const set = (anchors: Pick<DiagramLink, 'fromAnchor' | 'toAnchor'>): void => {
+      this.state = {
+        ...this.state,
+        links: this.state.links.map((l) => l.id === m.linkId ? { ...l, ...anchors } : l),
+      };
+      this.recomputeRoutes();
+      this.render();
+    };
+    this.undo.push({
+      label: s('move link {endpoint} anchor', { endpoint: m.end }),
+      undo: () => set(m.before),
+      redo: () => set(after),
+      coalesce: () => null,
+    });
+  }
+
   private onPointerUp(e: PointerEvent): void {
     switch (this.mode.t) {
       case 'drag':
@@ -1544,6 +1640,9 @@ export class CanvasController {
         break;
       case 'resize':
         this.commitResize();
+        break;
+      case 'endpoint':
+        this.commitEndpoint();
         break;
       case 'waypoint':
         this.commitWaypoint();

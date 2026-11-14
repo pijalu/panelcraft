@@ -63,6 +63,9 @@ export interface CanvasLink {
   bidir?: boolean;
   /** Explicit routing waypoints (F-19). */
   waypoints?: [number, number][];
+  /** Normalized perimeter endpoint anchors (CX-01, IR v4). */
+  fromAnchor?: number;
+  toAnchor?: number;
   /** Arrow visual model (F-12). */
   head?: string;
   tail?: string;
@@ -144,6 +147,8 @@ export function stateToDoc(state: CanvasState): Doc {
     waypoints: l.waypoints && l.waypoints.length > 0
       ? l.waypoints.map((w) => [w[0], w[1]] as [number, number])
       : undefined,
+    fromAnchor: l.fromAnchor,
+    toAnchor: l.toAnchor,
     pos: { line: 0, col: 0 },
   }));
   return {
@@ -262,6 +267,8 @@ export function docToState(doc: Doc, viewName?: string): CanvasState {
       route: l.style?.route,
       width: l.style?.width,
       waypoints: l.waypoints?.map((w) => [w[0], w[1]] as [number, number]),
+      fromAnchor: l.fromAnchor,
+      toAnchor: l.toAnchor,
     }));
   return { objects, links };
 }

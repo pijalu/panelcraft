@@ -37,8 +37,14 @@ and the CLI's `--theme` option.
   A link's type/label/arrowheads/line/route/width live in the properties panel;
   `Shift+A` cycles the head shape. Route defaults to obstacle-avoiding orthogonal;
   straight draws direct segments and curved draws Bézier geometry. Both retain explicit
-  waypoints. Drag a child link's midpoint to add a waypoint, and drag waypoints to move
-  them. Labels automatically try nearby positions to avoid objects, other routes, and
+  waypoints. Drag a child link's midpoint to add a waypoint. Select a link to reveal its
+  hollow start handle, filled destination handle,
+  and any waypoint handles. Drag either endpoint around its entity, including onto a
+  corner: pointers inside or beyond the object clamp to the nearest perimeter point,
+  so the connector cannot detach. Endpoint positions are stored as normalized
+  `anchor from` / `anchor to` values and retain their side-relative position after
+  resizing and reloads. Intermediate waypoints remain freely draggable. Labels
+  automatically try nearby positions to avoid objects, other routes, and
   other labels; a text halo keeps the least-bad fallback readable in dense diagrams.
 - **Pan / zoom**: Space-drag or wheel/trackpad pans; Ctrl/Cmd+wheel zooms.
   The bottom-right **mini-map** shows the topology and current viewport. Click it

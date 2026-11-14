@@ -332,6 +332,25 @@ describe('link waypoints (F-19)', () => {
   });
 });
 
+describe('link endpoint anchors (CX-01)', () => {
+  it('round-trips and updates normalized anchors through canvas merge', () => {
+    const ws = new WorkspaceManager({ skipWelcome: true });
+    ws.createFileAt('a.pcd', 'pcd 1.0\n\nsystem a "A"\nsystem b "B"\n\na -> b as L1 {\n  anchor from 0.25\n}\n');
+    const st = ws.canvasState('a.pcd');
+    expect(st.links[0]).toMatchObject({ fromAnchor: 0.25 });
+    expect(st.links[0]?.toAnchor).toBeUndefined();
+    ws.saveCanvas('a.pcd', st);
+    expect(ws.text('a.pcd')).toContain('anchor from 0.25');
+    ws.saveCanvas('a.pcd', {
+      objects: st.objects,
+      links: st.links.map((l) => ({ ...l, fromAnchor: 0.5, toAnchor: 0.875 })),
+    });
+    expect(ws.text('a.pcd')).toContain('anchor from 0.5');
+    expect(ws.text('a.pcd')).toContain('anchor to 0.875');
+    expect(ws.canvasState('a.pcd').links[0]).toMatchObject({ fromAnchor: 0.5, toAnchor: 0.875 });
+  });
+});
+
 describe('link route modes', () => {
   it('round-trips route style through canvas state and file merge', () => {
     const ws = new WorkspaceManager({ skipWelcome: true });

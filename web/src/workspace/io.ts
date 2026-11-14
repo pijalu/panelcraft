@@ -153,6 +153,25 @@ export interface PngExport {
   height: number;
 }
 
+async function decodeRasterSource(blob: Blob): Promise<CanvasImageSource> {
+  try {
+    return await createImageBitmap(blob);
+  } catch (bitmapError) {
+    // Some Chromium builds reject every SVG blob in createImageBitmap. An
+    // HTMLImageElement decodes the same local, sanitized source without network.
+    if (typeof Image !== 'function' || typeof URL.createObjectURL !== 'function') throw bitmapError;
+    const url = URL.createObjectURL(blob);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      return image;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+}
+
 /**
  * Rasterize an SVG element to PNG via OffscreenCanvas (FR-W4). Requires
  * `createImageBitmap` + `OffscreenCanvas` (all evergreen browsers; jsdom
@@ -165,9 +184,14 @@ export async function exportPng(svg: SVGSVGElement, scale = 2): Promise<PngExpor
   }
   const width = svg.width.baseVal.value || 800;
   const height = svg.height.baseVal.value || 600;
-  const text = exportSvg(svg);
+  // Raster sources need an intrinsic pixel size; do not rely on the live
+  // canvas' percentage sizing or mutate its SVG serialization.
+  const source = svg.cloneNode(true) as SVGSVGElement;
+  source.setAttribute('width', String(width));
+  source.setAttribute('height', String(height));
+  const text = exportSvg(source);
   const svgBlob = new Blob([text], { type: 'image/svg+xml' });
-  const bitmap = await createImageBitmap(svgBlob);
+  const bitmap = await decodeRasterSource(svgBlob);
   const canvas = new OffscreenCanvas(Math.ceil(width * scale), Math.ceil(height * scale)) as OffscreenCanvas;
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
   if (!ctx) throw new Error('2d context unavailable');

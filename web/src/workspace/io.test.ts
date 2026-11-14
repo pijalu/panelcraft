@@ -186,16 +186,23 @@ describe('png export guard (FR-W4)', () => {
       }
     }
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as unknown as SVGSVGElement;
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
     Object.defineProperty(svg, 'width', { value: { baseVal: { value: 100 } } });
     Object.defineProperty(svg, 'height', { value: { baseVal: { value: 50 } } });
     vi.stubGlobal('OffscreenCanvas', FakeCanvas);
-    vi.stubGlobal('createImageBitmap', async () => ({}));
+    let rasterSource = '';
+    vi.stubGlobal('createImageBitmap', async (blob: Blob) => {
+      rasterSource = await blob.text();
+      return {};
+    });
     const out = await exportPng(svg, 2);
     expect(out.width).toBe(200);
     expect(out.height).toBe(100);
     expect(calls).toContain('canvas 200x100');
     expect(calls).toContain('draw');
     expect(calls).toContain('toblob');
+    expect(rasterSource).toContain('width="100" height="50"');
     expect(out.blob.type).toBe('image/png');
   });
 });

@@ -52,6 +52,9 @@ export interface CanvasLinkLike {
   bidir?: boolean;
   /** Explicit routing waypoints (F-19). */
   waypoints?: [number, number][];
+  /** Normalized perimeter endpoint anchors (CX-01, IR v4). */
+  fromAnchor?: number;
+  toAnchor?: number;
   /** Arrow visual model (F-12). */
   head?: string;
   tail?: string;
@@ -143,6 +146,8 @@ function mergeLink(existing: Link | undefined, c: CanvasLinkLike): Link {
       ? c.waypoints.map((w) => [w[0], w[1]] as [number, number])
       : undefined,
   );
+  setField(l, 'fromAnchor', c.fromAnchor);
+  setField(l, 'toAnchor', c.toAnchor);
   let style = withStyleKey(l.style, 'dashed', c.dashed === true ? true : undefined);
   style = withStyleKey(style, 'head', c.head);
   style = withStyleKey(style, 'tail', c.tail);

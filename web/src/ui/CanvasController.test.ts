@@ -530,6 +530,50 @@ describe('clipboard + alignment (F-19)', () => {
   });
 });
 
+describe('endpoint anchor dragging (CX-01)', () => {
+  beforeEach(() => {
+    ctrl.loadState({
+      objects: [
+        { id: 'a', kind: 'person', x: 0, y: 0, w: 160, h: 60, name: 'A' },
+        { id: 'b', kind: 'datastore', x: 400, y: 200, w: 160, h: 80, name: 'B' },
+      ],
+      links: [{ id: 'L1', from: 'a', to: 'b', waypoints: [[260, 100]] }],
+    });
+    ctrl.setSelection([], ['L1']);
+  });
+
+  it('shows both endpoints alongside waypoints and keeps one undo per drag', () => {
+    expect(svg.querySelectorAll('.pc-endpoint')).toHaveLength(2);
+    expect(svg.querySelectorAll('.pc-waypoint')).toHaveLength(1);
+    const undoBefore = ctrl.undo.size;
+    dragFromEl(svg.querySelector('.pc-endpoint[data-end="from"]')!, { x: 80, y: 20 });
+    expect(ctrl.snapshot.links[0]?.fromAnchor).toBe(0.125);
+    expect(ctrl.undo.size).toBe(undoBefore + 1);
+    dragFromEl(svg.querySelector('.pc-endpoint[data-end="to"]')!, { x: 420, y: 240 });
+    expect(ctrl.snapshot.links[0]?.toAnchor).toBe(0.875);
+    expect(ctrl.undo.size).toBe(undoBefore + 2);
+    const d = svg.querySelector('g.pc-link[data-id="L1"] path.pc-route')!.getAttribute('d');
+    expect(d).toContain('M 80 0');
+    expect(d).toContain('400 240');
+    ctrl.undo.undo();
+    expect(ctrl.snapshot.links[0]?.toAnchor).toBeUndefined();
+    ctrl.undo.undo();
+    expect(ctrl.snapshot.links[0]?.fromAnchor).toBeUndefined();
+    ctrl.undo.redo();
+    expect(ctrl.snapshot.links[0]?.fromAnchor).toBe(0.125);
+  });
+
+  it('clamps an outside drop to a corner and Escape restores the original anchor', () => {
+    const handle = svg.querySelector('.pc-endpoint[data-end="from"]')!;
+    handle.dispatchEvent(ptr('pointerdown', 0, 0));
+    window.dispatchEvent(ptr('pointermove', 200, -40));
+    expect(ctrl.snapshot.links[0]?.fromAnchor).toBe(0.25);
+    window.dispatchEvent(key('keydown', { key: 'Escape' }));
+    expect(ctrl.snapshot.links[0]?.fromAnchor).toBeUndefined();
+    expect(svg.querySelectorAll('.pc-endpoint')).toHaveLength(0);
+  });
+});
+
 describe('waypoint dragging (F-19)', () => {
   beforeEach(() => {
     ctrl.loadState({

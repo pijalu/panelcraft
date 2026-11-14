@@ -85,6 +85,18 @@ container cart "Cart"
     src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -requests-> b as L1 {\n  style {\n    head diamond\n    tail circle\n    line dotted\n    route curved\n    width 2.5\n  }\n}\n',
   },
   {
+    name: 'link-endpoint-anchors',
+    src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -> b as L1 {\n  anchor from 0.25\n  anchor to 0.875\n  waypoint (180, 100)\n}\n',
+  },
+  {
+    name: 'link-endpoint-anchor-partial',
+    src: 'pcd 1.0\na -> b {\n  anchor from 0\n}\n',
+  },
+  {
+    name: 'link-endpoint-anchor-invalid',
+    src: 'pcd 1.0\na -> b {\n  anchor to 1\n}\n',
+  },
+  {
     name: 'link-style-invalid-line',
     src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -> b as L {\n  style {\n    line dashdot\n  }\n}\n',
   },

@@ -91,6 +91,8 @@ const linkStmt = (l: Link): JSONRecord =>
     ['tags', arr(l.tags ?? [])],
     styleBlock(l.style),
     ['waypoints', arr(l.waypoints ?? [])],
+    ['fromAnchor', l.fromAnchor],
+    ['toAnchor', l.toAnchor],
     [
       'attributes',
       l.attributes?.map((r) => obj(['raw', r.raw], ['pos', pos(r.pos)], comments(r.comments))),

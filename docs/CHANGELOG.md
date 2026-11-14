@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — CX-01 perimeter-locked connector endpoints
+
+- Added draggable, normalized start/end anchors with PDL/IR v4 and Go parity, exact routing across all modes, resize-safe persistence, undo/redo, accessible light/dark handles, and consistent SVG/PNG/CLI geometry; PNG export now falls back to local image decoding where Chromium rejects SVG bitmap blobs.
+
 ## 2026-11-14 — UX-06 equal-size resize cues
 
 - Added deterministic equal-width/height snapping with labeled, accessible resize-only cues, transient geometry, cancel cleanup, and one persistent undo command per committed resize.

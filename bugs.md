@@ -109,54 +109,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 
 
-## CX-01 Add draggable connector endpoints locked to entity perimeters
-
-**Observed/current behavior**
-
-- Routing automatically chooses a side for each endpoint and places the anchor at the side
-  midpoint (`web/src/engine/render/router.ts`).
-- Explicit intermediate waypoints exist, but users cannot redefine start/end anchors.
-
-**Expected behavior**
-
-- Selecting a connector reveals its **start handle**, **end handle**, and intermediate
-  position/waypoint handles.
-- Start/end handles can be dragged anywhere along the entity perimeter, including changing
-  sides and moving onto corners. They remain attached to the entity and cannot be dropped
-  inside it, outside it, or detached from it.
-- Intermediate position points remain freely draggable and keep their existing semantics.
-- Persist both endpoint anchors in PDL. Prefer a normalized perimeter parameter so resizing
-  an entity preserves the intended attachment rather than leaving an absolute coordinate
-  behind. Missing anchors retain automatic midpoint behavior.
-- Orthogonal, straight, and curved routes begin/end at the exact selected anchors. Arrowhead
-  orientation, hit-testing, labels, minimap, SVG/PNG export, and CLI rendering use the same
-  geometry.
-
-**Implementation plan**
-
-1. Extend the PDL/IR atomically with optional per-endpoint anchors and backward-compatible
-   defaults.
-2. Add perimeter projection/clamping geometry for supported shapes and a selected-link
-   endpoint drag mode with undo coalescing.
-3. Feed explicit anchors through every router and renderer, then regenerate corpus/parity
-   fixtures and document the grammar.
-
-**Test approach**
-
-- Unit: perimeter projection, corners, side transitions, clamping, resize preservation,
-  arrow tangents, undo/redo, parser/printer round-trip, and invalid anchor diagnostics.
-- Corpus: TS⇄Go parity and canonical round-trip for absent/partial/complete anchors.
-- E2E: drag both endpoints around multiple entity kinds and corners; add/move waypoints;
-  switch route modes; resize entities; reload; export; verify no detachment.
-- Visual filmstrip: selected handles, drag preview, corners, all route modes, and resized
-  entities in both themes.
-
-**Validation steps**
-
-- Run format/render/controller focused tests, corpus parity, CLI render smoke, routing E2E,
-  and the common gate including format-specific checks.
-
----
 
 ## CX-02 Avoid object and connector overlap with a per-link exception
 

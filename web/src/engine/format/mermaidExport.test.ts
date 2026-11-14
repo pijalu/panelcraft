@@ -129,6 +129,7 @@ describe('declared feature drop (FR-M4)', () => {
       '}',
       'u -> s {',
       '  style { dashed }',
+      '  anchor from 0.25',
       '  waypoint (1,2)',
       '}',
       'flow "F" as f {',
@@ -147,7 +148,7 @@ describe('declared feature drop (FR-M4)', () => {
       'title', 'theme', 'level', 'direction (auto-layout)',
       'flows', 'views (positions/layout)', 'descriptions/technology',
       'properties', 'unknown attributes', 'icons', 'note anchors (detach)',
-      'style beyond fill (stroke/text/shape)', 'waypoints',
+      'style beyond fill (stroke/text/shape)', 'endpoint perimeter anchors', 'waypoints',
       'system vs container kind distinction (both export as rect)',
     ]);
     // fill is emitted, stroke is not

@@ -150,6 +150,15 @@ const metaDrops = (doc: Doc): string[] => {
   return d;
 };
 
+const linkDrops = (doc: Doc): string[] => {
+  const d: string[] = [];
+  if (doc.links.some((l) => l.fromAnchor !== undefined || l.toAnchor !== undefined)) {
+    d.push('endpoint perimeter anchors');
+  }
+  if (doc.links.some((l) => l.waypoints?.length)) d.push('waypoints');
+  return d;
+};
+
 const bodyDrops = (doc: Doc): string[] => {
   const d: string[] = [];
   if (doc.flows.length > 0) d.push('flows');
@@ -164,7 +173,7 @@ const bodyDrops = (doc: Doc): string[] => {
   if (doc.objects.some((o) => o.style && styleExtras(o.style)) || doc.styles.some((s) => styleExtras(s.style))) {
     d.push('style beyond fill (stroke/text/shape)');
   }
-  if (doc.links.some((l) => l.waypoints?.length)) d.push('waypoints');
+  d.push(...linkDrops(doc));
   return d;
 };
 

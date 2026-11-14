@@ -81,6 +81,33 @@ export function drawHalos(overlay: SVGGElement, r: Rect, id: string): void {
   }
 }
 
+/** CX-01: selected link endpoints; hollow start and filled end are distinct. */
+export function drawEndpointHandles(
+  overlay: SVGGElement,
+  points: Polyline,
+  linkId: string,
+  labels: { from: string; to: string },
+): void {
+  const endpoints = [
+    { end: 'from', point: points[0] },
+    { end: 'to', point: points.at(-1) },
+  ] as const;
+  for (const endpoint of endpoints) {
+    if (!endpoint.point) continue;
+    const circle = el('circle') as SVGCircleElement;
+    circle.setAttribute('class', 'pc-endpoint');
+    circle.setAttribute('data-link', linkId);
+    circle.setAttribute('data-end', endpoint.end);
+    circle.setAttribute('data-testid', `endpoint-${endpoint.end}`);
+    circle.setAttribute('cx', String(endpoint.point.x));
+    circle.setAttribute('cy', String(endpoint.point.y));
+    circle.setAttribute('r', '5');
+    circle.setAttribute('role', 'button');
+    circle.setAttribute('aria-label', labels[endpoint.end]);
+    overlay.appendChild(circle);
+  }
+}
+
 /** F-19: draggable handles for a link's explicit waypoints. */
 export function drawWaypointHandles(overlay: SVGGElement, points: Polyline, linkId: string): void {
   points.forEach((p, i) => {

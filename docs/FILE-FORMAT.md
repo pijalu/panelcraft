@@ -147,9 +147,24 @@ api -publishes-> events as L7 {
   label "order created v2"
   tag critical async           ← repeatable; merges (M6: tag filter fade)
   style { dashed }
+  anchor from 0.125             ← optional normalized start perimeter anchor (IR v4)
+  anchor to 0.875               ← optional normalized end perimeter anchor (IR v4)
   waypoint (120, 300)          ← 0..n, canvas routing hints, view-independent
 }
 ```
+
+* **Endpoint perimeter anchors (CX-01, IR v4)**: `anchor from <n>` and
+  `anchor to <n>` each accept `0 <= n < 1`; either may be present independently.
+  They select exact points on the entity's rectangular object bounds, including
+  corners. Each side owns a quarter of the normalized range, clockwise from the
+  top-left corner: top `[0, .25)`, right `[.25, .5)`, bottom `[.5, .75)`, and
+  left `[.75, 1)`. Thus `0`, `.25`, `.5`, and `.75` are respectively the
+  top-left, top-right, bottom-right, and bottom-left corners. Within a quarter,
+  the value is a side-relative fraction, so resizing preserves the intended
+  attachment. Missing anchors retain automatic side/midpoint routing.
+  Orthogonal, straight, curved and explicit-waypoint routes all use the same
+  resolved endpoints. Mermaid export declares `endpoint perimeter anchors` as
+  dropped because Mermaid has no equivalent data.
 
 * **Arrow visual model (F-12)** — links accept these `style` keys, all optional:
 
@@ -331,7 +346,8 @@ nested subgraph ids): warning + skipped, never silent.
 
 **Dropped (declared, per SPEC FR-M4):** flows, positions/layout, views, imports
 (exported file is flattened: imported objects inlined and marked via comment `%%
-imported from …`), properties, notes detach, icons, waypoints, custom shapes.
+imported from …`), properties, notes detach, icons, endpoint perimeter anchors,
+waypoints, custom shapes.
 C4 export mode (`--c4`): emits C4Context/Container statements when kinds fit, else
 fallback flowchart.
 
@@ -392,6 +408,7 @@ branch      = string , "{" , { step } , "}" ;
 par         = "par" , [ string ] , "{" , { lane } , "}" ;
 lane        = "{" , { step } , "}" ;
 goto        = "goto" , [ path , "#" ] , ident , [ "return" , ("end"|"here") ] ;
+anchor      = "anchor" , ("from" | "to") , number ;   (* normalized 0 <= n < 1 *)
 view        = "view" , string , [ "as" , ident ] , "{" , { viewline } , "}" ;
 style       = "style" , ident , "{" , { styleline } , "}" ;
 ```

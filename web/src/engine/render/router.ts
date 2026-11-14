@@ -5,6 +5,7 @@
 // stalls — see docs/milestones/M2.md router decision note.
 
 import type { Point, Rect } from './viewport';
+import { perimeterPoint, perimeterSide } from './perimeter';
 
 export type Side = 'top' | 'bottom' | 'left' | 'right';
 export type RouteMode = 'orthogonal' | 'straight' | 'curved';
@@ -25,6 +26,9 @@ export interface RouteInput {
    * stated the intended path.
    */
   waypoints?: [number, number][];
+  /** Optional normalized side-quarter perimeter anchors (CX-01, IR v4). */
+  fromAnchor?: number;
+  toAnchor?: number;
 }
 
 /** Anchor point: center of a rect side. */
@@ -60,12 +64,11 @@ export function pickSides(a: Rect, b: Rect): [Side, Side] {
  * stays readable). Obstacles are deliberately ignored (F-19).
  */
 function routeThroughWaypoints(input: RouteInput): Polyline {
-  const { from, to } = input;
-  const [sideA, sideB] = pickSides(from, to);
+  const { a, b } = routeEndpoints(input);
   const anchors: Point[] = [
-    portPoint(from, sideA),
+    a,
     ...(input.waypoints ?? []).map(([x, y]) => ({ x, y })),
-    portPoint(to, sideB),
+    b,
   ];
   const out: Polyline = [anchors[0]!];
   for (let i = 1; i < anchors.length; i++) {
@@ -114,16 +117,67 @@ export function routeOrtho(input: RouteInput): Polyline {
 /** Route one link using its visual mode; orthogonal remains the default. */
 export function routeLink(input: RouteInput, mode: RouteMode = 'orthogonal'): Polyline {
   if (mode === 'orthogonal') return routeOrtho(input);
-  const [sideA, sideB] = pickSides(input.from, input.to);
+  const { a, b } = routeEndpoints(input);
   return [
-    portPoint(input.from, sideA),
+    a,
     ...(input.waypoints ?? []).map(([x, y]) => ({ x, y })),
-    portPoint(input.to, sideB),
+    b,
   ];
 }
 
-/** Automatic orthogonal route with obstacle detours. */
-function routeAuto(input: RouteInput): Polyline {
+interface RouteEndpoints {
+  a: Point;
+  b: Point;
+  sideA: Side;
+  sideB: Side;
+  explicit: boolean;
+}
+
+const center = (r: Rect): Point => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
+
+function routeEndpoints(input: RouteInput): RouteEndpoints {
+  const [autoA, autoB] = pickSides(input.from, input.to);
+  const a = input.fromAnchor === undefined
+    ? portPoint(input.from, autoA) : perimeterPoint(input.from, input.fromAnchor);
+  const b = input.toAnchor === undefined
+    ? portPoint(input.to, autoB) : perimeterPoint(input.to, input.toAnchor);
+  const sideA = input.fromAnchor === undefined
+    ? autoA : perimeterSide(input.fromAnchor, a, center(input.to));
+  const sideB = input.toAnchor === undefined
+    ? autoB : perimeterSide(input.toAnchor, b, center(input.from));
+  return { a, b, sideA, sideB, explicit: input.fromAnchor !== undefined || input.toAnchor !== undefined };
+}
+
+function outward(side: Side): Point {
+  if (side === 'left') return { x: -1, y: 0 };
+  if (side === 'right') return { x: 1, y: 0 };
+  if (side === 'top') return { x: 0, y: -1 };
+  return { x: 0, y: 1 };
+}
+
+function compact(points: Polyline): Polyline {
+  return points.filter((p, i) => i === 0 || p.x !== points[i - 1]!.x || p.y !== points[i - 1]!.y);
+}
+
+/** Explicit anchors leave their entities outward before joining orthogonal channels. */
+function routeAnchoredAuto(input: RouteInput, ends: RouteEndpoints): Polyline {
+  const clearance = input.clearance ?? ROUTER_CLEARANCE;
+  const normalA = outward(ends.sideA);
+  const normalB = outward(ends.sideB);
+  const outerA = { x: ends.a.x + normalA.x * clearance, y: ends.a.y + normalA.y * clearance };
+  const outerB = { x: ends.b.x + normalB.x * clearance, y: ends.b.y + normalB.y * clearance };
+  const channelX = (outerA.x + outerB.x) / 2;
+  const channelY = (outerA.y + outerB.y) / 2;
+  const horizontalA = ends.sideA === 'left' || ends.sideA === 'right';
+  const horizontalB = ends.sideB === 'left' || ends.sideB === 'right';
+  const elbowA = horizontalA ? { x: outerA.x, y: channelY } : { x: channelX, y: outerA.y };
+  const elbowB = horizontalB ? { x: outerB.x, y: channelY } : { x: channelX, y: outerB.y };
+  const center = { x: channelX, y: channelY };
+  return compact([ends.a, outerA, elbowA, center, elbowB, outerB, ends.b]);
+}
+
+/** Automatic orthogonal route with obstacle detours for automatic endpoints. */
+function routeLegacyAuto(input: RouteInput): Polyline {
   const { from, to } = input;
   const obstacles = input.obstacles ?? [];
   const clearance = input.clearance ?? ROUTER_CLEARANCE;
@@ -161,6 +215,11 @@ function routeAuto(input: RouteInput): Polyline {
     }
   }
   return points;
+}
+
+function routeAuto(input: RouteInput): Polyline {
+  const ends = routeEndpoints(input);
+  return ends.explicit ? routeAnchoredAuto(input, ends) : routeLegacyAuto(input);
 }
 
 /** Index with invariant check — polylines are internal, ≥2 points by contract. */

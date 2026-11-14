@@ -2370,6 +2370,26 @@ marker .pc-arrow[fill='none'] {
   fill: var(--pc-accent);
 }
 
+/* CX-01: explicit link endpoints; hollow start and filled destination. */
+.pc-endpoint {
+  fill: var(--pc-bg);
+  stroke: var(--pc-accent);
+  stroke-width: 2;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.pc-endpoint[data-end="to"],
+.pc-endpoint:hover {
+  fill: var(--pc-accent);
+}
+
+.pc-endpoint:focus {
+  outline: none;
+  stroke: var(--pc-fg);
+  stroke-width: 3;
+}
+
 /* F-20 imported ghosts: dashed, muted, with a badge; click-through opens source */
 .pc-obj.pc-ghost .pc-shape,
 .pc-obj.pc-ghost .pc-glyph {

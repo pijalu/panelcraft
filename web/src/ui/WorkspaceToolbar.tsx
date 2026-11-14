@@ -44,7 +44,9 @@ export function WorkspaceToolbar(props: WorkspaceToolbarProps) {
     if (svg === null || activePath === null) return;
     exportPng(svg)
       .then((out) => downloadBlob(out.blob, `${stem(activePath)}.png`))
-      .catch(props.onFlash);
+      .catch((error: unknown) => {
+        props.onFlash(error instanceof Error ? error.message : String(error));
+      });
   };
 
   const exportZip = (): void => {
