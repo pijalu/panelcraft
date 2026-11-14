@@ -37,7 +37,13 @@ export function ShellBanners(props: ShellBannersProps): ComponentChildren {
   return (
     <>
       <ImportBanner errors={importErrors} />
-      <span class="sr-only" data-testid="diag-count">
+      <span
+        class="sr-only"
+        data-testid="diag-count"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {diag.count}
       </span>
       {diag.stale && (

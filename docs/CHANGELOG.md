@@ -4,6 +4,11 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — UX-07 diagnostic status
+
+- Removed the stray diagnostic zero with a visually-hidden utility and polite atomic status,
+  preserving accessible counts, visible parse-error feedback, and clean recovery.
+
 ## 2026-11-11 — P6: flow-presentation polish
 
 - Added a softer one-beat history fade for previous objects and links while keeping

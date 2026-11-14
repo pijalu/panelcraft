@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { capture } from './lib/screenshots';
 
 const DOC = `pcd 1.0
 
@@ -11,8 +12,9 @@ api -> store
 async function seed(page: Page, text: string): Promise<void> {
   await page.goto('/');
   const editor = page.locator('.cm-content');
+  await expect(editor).toContainText('pcd 1.0');
   await editor.click();
-  await page.keyboard.press('Meta+a');
+  await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(text);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 15_000,
@@ -20,6 +22,69 @@ async function seed(page: Page, text: string): Promise<void> {
 }
 
 test.describe('F-23 diagnostics on canvas', () => {
+  for (const colorScheme of ['light', 'dark'] as const) {
+    test(`UX-07: diagnostic count is visually hidden and recovers accessibly (${colorScheme})`, async ({ page }) => {
+      const count = page.getByTestId('diag-count');
+      const editor = page.locator('.cm-content');
+      const broken = 'pcd 1.0\n\nsystem api "API Gateway" bogusattr\n';
+
+      await page.emulateMedia({ colorScheme });
+      await page.goto('/');
+      await expect(count).toHaveText('0');
+      await capture(page, `ux07-empty-${colorScheme}`);
+
+      // The live region remains in the accessibility tree without participating
+      // in visual layout or painting the diagnostic zero over the canvas.
+      await expect(count).toHaveCSS('position', 'absolute');
+      await expect(count).toHaveCSS('width', '1px');
+      await expect(count).toHaveCSS('height', '1px');
+      await expect(count).toHaveCSS('clip-path', 'inset(50%)');
+      const emptySnapshot = await count.ariaSnapshot();
+      expect(emptySnapshot).toContain('status');
+      expect(emptySnapshot).toContain('0');
+      await test.info().attach(`ux07-empty-${colorScheme}-accessibility`, {
+        body: emptySnapshot,
+        contentType: 'text/plain',
+      });
+
+      await seed(page, DOC);
+      await expect(count).toHaveText('0');
+      await capture(page, `ux07-valid-${colorScheme}`);
+
+      await editor.click();
+      await page.keyboard.press('Meta+a');
+      await page.keyboard.insertText(broken);
+      await expect(page.getByTestId('canvas-stale')).toBeVisible({ timeout: 15_000 });
+      await expect(count).toHaveText('1');
+      const errorSnapshot = await count.ariaSnapshot();
+      expect(errorSnapshot).toContain('status');
+      expect(errorSnapshot).toContain('1');
+      await test.info().attach(`ux07-error-${colorScheme}-accessibility`, {
+        body: errorSnapshot,
+        contentType: 'text/plain',
+      });
+      await expect(page.getByTestId('canvas-stale')).toContainText('fix 1 problem');
+      await capture(page, `ux07-error-${colorScheme}`);
+
+      await editor.click();
+      await page.keyboard.press('Meta+a');
+      await page.keyboard.insertText(DOC);
+      await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
+        timeout: 15_000,
+      });
+      await expect(page.getByTestId('canvas-stale')).toHaveCount(0);
+      await expect(count).toHaveText('0');
+      await expect(count).toHaveCSS('clip-path', 'inset(50%)');
+      const recoveredSnapshot = await count.ariaSnapshot();
+      expect(recoveredSnapshot).toContain('0');
+      await test.info().attach(`ux07-recovered-${colorScheme}-accessibility`, {
+        body: recoveredSnapshot,
+        contentType: 'text/plain',
+      });
+      await capture(page, `ux07-recovered-${colorScheme}`);
+    });
+  }
+
   test('a parse error rings the offending object and banners the stale render', async ({ page }) => {
     await seed(page, DOC);
     await expect(page.locator('[data-id="api"]')).toBeVisible();

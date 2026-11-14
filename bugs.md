@@ -621,41 +621,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 ---
 
-## UX-07 Remove the stray diagnostic `0` below the header
-
-**Observed/current behavior**
-
-- Live browser and existing curated screenshots show a stray `0` at the upper-left below the
-  header.
-- `ShellBanners.tsx` renders diagnostic count inside `span.sr-only`, but no `.sr-only` rule
-  exists in `app.css`, so zero is visible and the span participates in layout.
-
-**Expected behavior**
-
-- No numeric diagnostic artefact appears when there are no problems.
-- The diagnostic count remains available to assistive technology when needed, without
-  affecting visual layout. Do not hide important problem messages from screen readers.
-
-**Implementation plan**
-
-1. Add a standard reusable visually-hidden utility consistent with accessibility practice,
-  or use an equivalent existing accessible status mechanism.
-2. Verify the shell grid/flex layout no longer receives a visible first child for this span.
-3. Add a regression test for both zero and nonzero diagnostic counts.
-
-**Test approach**
-
-- Component/E2E: zero diagnostics produces no visible `0`; parse errors still expose the
-  correct accessible count and visible problem chip/banner; recovery removes the stale state.
-- Visual filmstrip: empty, valid diagram, parse error, and recovered states in both themes.
-
-**Validation steps**
-
-- Run diagnostics/accessibility E2E and inspect the actual accessibility snapshot plus
-  screenshots, then run the common gate.
-
----
-
 ## DOC-01 Reconcile stacking-order documentation with actual commands
 
 **Observed/current behavior**
@@ -692,7 +657,7 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 ## Recommended execution order and dependencies
 
-1. **Independent foundations:** UX-01, UX-07. DOC-01 closes with CX-03.
+1. **Independent foundation:** UX-01. DOC-01 closes with CX-03.
 2. **Shell first:** UX-02, then UX-03. FLOW-01 depends on this panel framework.
 3. **Independent visual work:** UX-04, UX-05, UX-06, CX-04; coordinate shared CSS/property
    panel changes rather than mixing them into one commit.
