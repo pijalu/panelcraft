@@ -51,6 +51,13 @@ describe('wrapLabel (F-13 two-line wrapping)', () => {
     expect(lines).toHaveLength(2);
   });
 
+  it('uses additional lines for an explicitly narrow shape without dropping words', () => {
+    const text = 'Payments Orchestration Service';
+    const lines = wrapLabel(text, tenPx, 130, Number.POSITIVE_INFINITY);
+    expect(lines).toEqual(['Payments', 'Orchestration', 'Service']);
+    expect(lines.every((line) => tenPx.measure(line).w <= 130)).toBe(true);
+  });
+
   it('leaves an unbreakable long word alone', () => {
     const long = 'x'.repeat(40);
     expect(wrapLabel(long, tenPx)).toEqual([long]);
@@ -77,6 +84,16 @@ describe('autoSize', () => {
     expect(fit.w).toBe(MAX_BOX.w);
     expect(fit.w).toBeLessThanOrEqual(MAX_BOX.w);
   });
+
+    it('reserves the same glyph and icon regions used by shape rendering', () => {
+      const plain = autoSize({ text: 'Payments', kind: 'system' }, tenPx);
+      const icon = autoSize({ text: 'Payments', kind: 'system', icon: 'cloud' }, tenPx);
+      const queue = autoSize({ text: 'Payments', kind: 'queue' }, tenPx);
+      const person = autoSize({ text: 'Payments', kind: 'person' }, tenPx);
+      expect(icon.w).toBe(plain.w + 30);
+      expect(queue.w).toBe(plain.w + 16);
+      expect(person.h).toBeGreaterThan(plain.h);
+    });
 
   it('grows in height (not width) when the label wraps', () => {
     const one = autoSize({ text: 'Payments', kind: 'system' }, tenPx);

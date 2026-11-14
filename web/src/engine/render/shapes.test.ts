@@ -46,12 +46,12 @@ describe('shape glyph set (M2-WP5, FR-C3 kinds)', () => {
 
   it('datastore: cylinder body + top-ellipse outline + label', () => {
     expect(tags('datastore')).toEqual(['path', 'path', 'text']);
-    const specs = shapeGlyphs(obj('datastore'));
+    const specs = shapeGlyphs(obj('datastore', { h: 64 }));
     const d = String(specs[0]?.attrs.d);
     // body path: M, top arc (a), V, bottom arc, Z
     expect(d.startsWith('M 0 10')).toBe(true); // ry = min(60*0.2, 10) = 10
     expect(d).toContain('a 60 10 0 0 1 120 0');
-    expect(d).toContain(`V ${60 - 10}`);
+    expect(d).toContain(`V ${64 - 10}`);
     expect(d.endsWith('Z')).toBe(true);
     expect(specs[1]?.attrs.class).toBe('pc-glyph');
   });
@@ -88,6 +88,38 @@ describe('shape glyph set (M2-WP5, FR-C3 kinds)', () => {
   it('name falls back to id', () => {
     const specs = shapeGlyphs(obj('system', { name: undefined }));
     expect(specs[1]?.text).toBe('o1');
+  });
+
+  it('keeps person and datastore labels below/above their glyph regions', () => {
+    for (const labelLines of [['Customer'], ['Preferred', 'Customer']]) {
+      const person = shapeGlyphs(obj('person', { labelLines }));
+      const head = person.find((s) => s.tag === 'circle')!;
+      const shoulder = person.find((s) => s.tag === 'path' && s.attrs.class === 'pc-glyph')!;
+      const first = person.find((s) => s.tag === 'text')!;
+      const shoulderParts = /M \S+ (\S+) a (\S+)/.exec(String(shoulder.attrs.d))!;
+      const glyphBottom = Number(shoulderParts[1]); // arc starts at the bottom-left endpoint
+      expect(Number(first.attrs.y) - 8 - glyphBottom).toBeGreaterThanOrEqual(4 - 1e-9);
+      expect(Number(head.attrs.cy)).toBeLessThan(Number(first.attrs.y));
+
+      const datastore = shapeGlyphs(obj('datastore', { h: 80, labelLines }));
+      const top = datastore[1]!;
+      const label = datastore.find((s) => s.tag === 'text')!;
+      const ry = /a 60 (\S+) 0/.exec(String(top.attrs.d))!;
+      expect(Number(label.attrs.y) - 8).toBeGreaterThanOrEqual(2 * Number(ry[1]) + 4);
+    }
+  });
+
+  it('reserves horizontal regions for queue, note, icons, and imported badges', () => {
+    const cases: Array<[SceneObject['kind'], Partial<SceneObject>, number]> = [
+      ['queue', {}, 16],
+      ['note', {}, 16],
+      ['system', { icon: 'cloud' }, 30],
+      ['system', { ghost: true }, 52],
+    ];
+    for (const [kind, over, reserve] of cases) {
+      const text = shapeGlyphs(obj(kind, over)).find((s) => s.tag === 'text' && s.attrs.class === 'pc-label')!;
+      expect(Number(text.attrs.x)).toBe((120 - reserve) / 2);
+    }
   });
 
   it('theme tokens only: no hard-coded colors in any glyph spec', () => {

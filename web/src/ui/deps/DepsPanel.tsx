@@ -66,7 +66,7 @@ export function DepsPanel(props: DepsPanelProps) {
   const activeObj = doc.objects.find((o) => o.id === props.activeId);
 
   return (
-    <section class="deps-panel" data-testid="deps-panel">
+    <section class="deps-panel" data-testid="deps-panel" tabIndex={0} aria-label={s("dependencies")}>
       <h3 class="deps-title">
         {s("dependencies")}{props.filePath ? ` · ${props.filePath}` : ''}
         {activeObj ? ` · ${activeObj.name ?? activeObj.id}` : ''}

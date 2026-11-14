@@ -292,6 +292,15 @@ describe('properties + grid + resize', () => {
     expect(svg.querySelector('g[data-id="o1"] text')?.textContent).toBe('Payments');
   });
 
+  it('a live custom icon reserves label space without a reload', () => {
+    const before = obj('o1').w;
+    ctrl.updateObject('o1', { style: { icon: 'cloud' } });
+    expect(obj('o1').w).toBeGreaterThanOrEqual(before); // grow-only defaults may already fit
+    expect(svg.querySelector('g[data-id="o1"] .pc-glyph-icon')).not.toBeNull();
+    const label = svg.querySelector('g[data-id="o1"] text.pc-label');
+    expect(Number(label?.getAttribute('x'))).toBeLessThan(obj('o1').w / 2);
+  });
+
   it('grid toggles (FR-C2)', () => {
     expect(ctrl.toggleGrid()).toBe(true);
     expect(ctrl.toggleGrid()).toBe(false);

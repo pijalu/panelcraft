@@ -109,7 +109,10 @@ export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProp
         pcTheme,
         pcHighlightExtension,
         // N5: the editable content region needs an accessible name
-        EditorView.contentAttributes.of({ 'aria-label': s('Diagram source (PDL)') }),
+        EditorView.contentAttributes.of({
+          'aria-label': s('Diagram source (PDL)'),
+          tabindex: '0', // scrollable CodeMirror region retains keyboard access
+        }),
         lintGutter(),
         linter(lintSource),
         EditorView.updateListener.of((u) => onDocChanged(u.state.doc.toString())),

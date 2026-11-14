@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — UX-04 separated shape content
+
+- Reserved distinct label, glyph, icon and imported-badge regions across all shape kinds, with consistent auto-fit, explicit resize and reload geometry plus keyboard/contrast fixes found by accessibility review.
+
 ## 2026-11-14 — UX-03 on-demand workspace browser
 
 - Split Files and Flow Steps into independent dockable panels, retained dirty tabs and flow selection

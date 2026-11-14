@@ -37,12 +37,12 @@ export const isIcon = (name: string): name is IconName => name in ICONS;
 
 export const iconPaths = (name: string): string[] | null => (isIcon(name) ? (ICONS[name] ?? null) : null);
 
-/** Glyph specs for an icon anchored at (x, y) in shape-local coordinates. */
-export function iconGlyphs(name: string, x: number, y: number): IconSpec[] {
+/** Glyph specs for an icon anchored at (x, y), optionally fitted to a smaller box. */
+export function iconGlyphs(name: string, x: number, y: number, size = ICON_BOX): IconSpec[] {
   const paths = iconPaths(name);
   if (paths === null) return [];
   return paths.map((d) => ({
     tag: 'path',
-    attrs: { d, class: 'pc-glyph-icon', transform: `translate(${x} ${y}) scale(${ICON_BOX / ICON_BOX})` },
+    attrs: { d, class: 'pc-glyph-icon', transform: `translate(${x} ${y}) scale(${size / ICON_BOX})` },
   }));
 }

@@ -107,53 +107,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 ---
 
-
-
-## UX-04 Prevent element text from mixing with glyphs and icons
-
-**Observed/current behavior**
-
-- Live C4 template review shows `Customer` overlapping the person shoulder glyph.
-- `TEXT_MID` centers labels at the shape midpoint while person, datastore, and queue glyphs
-  also occupy that region (`web/src/engine/render/shapes.ts`).
-- Optional custom icons are placed at the top-right without reserved text space, so long or
-  wrapped labels can collide with them.
-- Evidence: `test-results/screenshots/review-c4-light.png`.
-
-**Expected behavior**
-
-- Element names, wrapped labels, built-in glyphs, optional icons, and badges occupy distinct,
-  predictable regions with consistent spacing.
-- Fix the shared label layout for every applicable kind, not only the person template.
-- Person, datastore, queue, note, group, rectangular objects, imported ghosts, selected
-  objects, and resized objects remain legible at minimum/default/custom sizes.
-- Optional icons remain visible without reducing labels to unreadable clipping. Auto-fit and
-  explicit resize use the same geometry assumptions.
-
-**Implementation plan**
-
-1. Define per-kind content/glyph regions and icon-aware text constraints.
-2. Update glyph generation, text measurement/wrapping, auto-fit, and resize calculations
-   together so rendering and persisted size agree.
-3. Add regression fixtures for built-in glyphs, custom icons, one/two-line labels, long names,
-   and minimum sizes.
-
-**Test approach**
-
-- Unit: glyph/label bounds do not intersect for all kinds, icon/no-icon variants, wrapping,
-  minimum sizes, and auto-fit.
-- E2E: render every palette kind; add a custom icon; resize narrow/wide and short/tall;
-  reload; verify labels and icons remain separated.
-- Visual filmstrip: all kinds and worst-case labels in both themes, including selected and
-  imported states.
-
-**Validation steps**
-
-- Run render/measure/resize focused tests and geometry E2E.
-- Review screenshots against actual SVG geometry, then run the common gate.
-
----
-
 ## UX-05 Add a persisted System/Light/Dark application selector
 
 **Observed/current behavior**

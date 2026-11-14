@@ -38,7 +38,10 @@ import {
   type Clipboard,
   type DistributeAxis,
 } from './canvasCommands';
-import { autoSize, canvasMeasurer, type TextMeasurer } from '../engine/render/measure';
+import {
+  autoSize, canvasMeasurer, PADDING, WRAP_AT, wrapLabel, type TextMeasurer,
+} from '../engine/render/measure';
+import { rightContentReserve } from '../engine/render/shapes';
 import type { Guide } from '../engine/render/snap';
 import { pick } from '../engine/render/hit-test';
 import {
@@ -131,6 +134,13 @@ export const PALETTE_ORDER: Kind[] = [
 /** F-13: every kind resizes (min 48×32, grid-snapped, one undo per drag). */
 export const MIN_SIZE = { w: 48, h: 32 };
 const DRAG_THRESHOLD = 2;
+const objectIcon = (o: DiagramObject): string | undefined => o.style?.icon ?? o.icon;
+
+function explicitLines(o: DiagramObject, text: string, measure: TextMeasurer, width = o.w): string[] {
+  const reserve = rightContentReserve(o.kind, objectIcon(o));
+  const available = Math.max(24, Math.min(WRAP_AT, width - 2 * PADDING.x - reserve));
+  return wrapLabel(text, measure, available, Number.POSITIVE_INFINITY);
+}
 
 type Mode =
   | { t: 'idle' }
@@ -374,9 +384,9 @@ export class CanvasController {
 
   /** Fit an object to its label unless it carries explicit geometry (F-13). */
   private fitted(o: DiagramObject): DiagramObject {
-    if (o.size !== undefined) return o;
     const text = o.name && o.name.length > 0 ? o.name : o.id;
-    const fit = autoSize({ text, kind: o.kind }, this.measure);
+    if (o.size !== undefined) return { ...o, lines: explicitLines(o, text, this.measure) };
+    const fit = autoSize({ text, kind: o.kind, icon: objectIcon(o) }, this.measure);
     // grow-only: a short label keeps the kind's default box, a long one gets
     // the room it needs (never shrink below what the shape language defines)
     return {
@@ -387,12 +397,13 @@ export class CanvasController {
     };
   }
 
-  /** Apply a properties patch; a rename re-fits the box unless it is explicit. */
+  /** Apply a properties patch; label/icon changes refit unless size is explicit. */
   private patched(o: DiagramObject, patch: Partial<DiagramObject>): DiagramObject {
     const next = { ...o, ...patch };
-    if (patch.name !== undefined) {
-      const fit = autoSize({ text: patch.name.length > 0 ? patch.name : o.id, kind: o.kind }, this.measure);
-      next.lines = fit.lines;
+    if (patch.name !== undefined || patch.style?.icon !== undefined) {
+      const text = next.name && next.name.length > 0 ? next.name : o.id;
+      const fit = autoSize({ text, kind: o.kind, icon: objectIcon(next) }, this.measure);
+      next.lines = o.size === undefined ? fit.lines : explicitLines(next, text, this.measure);
       if (o.size === undefined) {
         // grow-only on rename too: a shorter name must not shrink the box the
         // user is looking at (shrinking is the explicit `Fit` command's job)
@@ -538,7 +549,11 @@ export class CanvasController {
     const before = this.state.objects;
     const after = before.map((o) => {
       if (!this.selObjects.has(o.id)) return o;
-      const fit = autoSize({ text: o.name && o.name.length > 0 ? o.name : o.id, kind: o.kind }, this.measure);
+        const fit = autoSize({
+          text: o.name && o.name.length > 0 ? o.name : o.id,
+          kind: o.kind,
+          icon: objectIcon(o),
+        }, this.measure);
       return { ...o, w: fit.w, h: fit.h, size: { w: fit.w, h: fit.h }, lines: fit.lines };
     });
     if (listEq(before, after)) return;
@@ -934,7 +949,7 @@ export class CanvasController {
           h: o.h,
           name: o.name,
           dashed: o.dashed,
-          icon: o.icon,
+          icon: objectIcon(o),
           labelLines: o.lines,
           style: o.style,
         })),
@@ -1457,11 +1472,20 @@ export class CanvasController {
     const snapped = resizedRect(m.before, m.handle, this.toCanvas(e));
     this.state = {
       ...this.state,
-      objects: this.state.objects.map((o) =>
-        o.id === m.id
-          ? { ...o, x: snapped.x, y: snapped.y, w: snapped.w, h: snapped.h, size: { w: snapped.w, h: snapped.h } }
-          : o,
-      ),
+      objects: this.state.objects.map((o) => {
+        if (o.id !== m.id) return o;
+        const text = o.name && o.name.length > 0 ? o.name : o.id;
+        const lines = explicitLines(o, text, this.measure, snapped.w);
+        return {
+          ...o,
+          x: snapped.x,
+          y: snapped.y,
+          w: snapped.w,
+          h: snapped.h,
+          size: { w: snapped.w, h: snapped.h },
+          lines,
+        };
+      }),
     };
     this.recomputeRoutes();
     this.render();

@@ -24,7 +24,7 @@ export interface SceneObject {
   dashed?: boolean;
   /** inline icon name (M5-WP7, engine/render/icons.ts) */
   icon?: string;
-  /** Pre-wrapped label lines (F-13 fit-to-name; max 2), computed by the caller. */
+  /** Pre-wrapped label lines; auto-fit uses two, explicit narrow shapes may use more. */
   labelLines?: string[];
   /** Style overrides from the property panel (F-11). */
   style?: { fill?: string; stroke?: string; text?: string };
@@ -36,17 +36,43 @@ export const SHAPE_RADIUS = 8;
 /** Person head radius + fold size for notes (shape-language constants). */
 export const HEAD_R = 6;
 export const NOTE_FOLD = 12;
+export const LABEL_LINE_HEIGHT = 16;
+export const ICON_RESERVE = ICON_BOX + 6;
+export const GHOST_RESERVE = 52;
 
-/** Centred label; a wrapped name renders as two stacked lines (F-13). */
+const linesOf = (obj: SceneObject): string[] =>
+  obj.labelLines && obj.labelLines.length > 1 ? obj.labelLines : [obj.name ?? obj.id];
+
+/** Right-side space unavailable to labels, shared by rendering and auto-fit. */
+export function rightContentReserve(kind: Kind, icon?: string, ghost = false): number {
+  let reserve = icon ? ICON_RESERVE : 0;
+  if (kind === 'queue' || kind === 'note') reserve += 16;
+  if (ghost && kind !== 'group') reserve += GHOST_RESERVE;
+  return reserve;
+}
+
+/** Height needed by the shared label/glyph geometry before MIN/MAX clamps. */
+export function contentHeight(kind: Kind, lineCount: number): number {
+  const text = lineCount * LABEL_LINE_HEIGHT;
+  if (kind === 'person') return text + 49; // glyph + gap + bottom padding
+  if (kind === 'datastore') return text + 48; // two ellipses + gaps
+  return text + 20;
+}
+
+/** Centred label inside the region left after built-in and optional adornments. */
 const TEXT_MID = (obj: SceneObject): ElSpec[] => {
-  const lines = obj.labelLines && obj.labelLines.length > 1
-    ? obj.labelLines
-    : [obj.name ?? obj.id];
-  const lineHeight = 16;
-  const firstY = obj.h / 2 - ((lines.length - 1) * lineHeight) / 2;
+  const lines = linesOf(obj);
+  const reserve = rightContentReserve(obj.kind, obj.icon, obj.ghost === true);
+  const compactPerson = obj.kind === 'person' && obj.h < 52;
+  const left = compactPerson ? 28 : 0;
+  const x = Math.max(left + 4, left + (obj.w - left - reserve) / 2);
+  const middle = obj.kind === 'person' && !compactPerson
+    ? obj.h - 8 - ((lines.length - 1) * LABEL_LINE_HEIGHT) / 2
+    : obj.h / 2;
+  const firstY = middle - ((lines.length - 1) * LABEL_LINE_HEIGHT) / 2;
   return lines.map((line, i) => ({
     tag: 'text' as const,
-    attrs: { x: obj.w / 2, y: firstY + i * lineHeight, class: 'pc-label' },
+    attrs: { x, y: firstY + i * LABEL_LINE_HEIGHT, class: 'pc-label' },
     text: line,
   }));
 };
@@ -61,22 +87,30 @@ function bodyRect(obj: SceneObject, rx = SHAPE_RADIUS): ElSpec {
 
 /** Person glyph: head circle + shoulder arc above the body rect. */
 function personGlyph(obj: SceneObject): ElSpec[] {
-  const headCy = Math.min(obj.h * 0.32, 18);
-  const shoulderY = headCy + HEAD_R + 3;
-  const cx = obj.w / 2;
+  const compact = obj.h < 52;
+  const naturalHeadCy = compact ? HEAD_R : Math.min(obj.h * 0.32, 18);
+  const firstLabelY = Number(TEXT_MID(obj)[0]?.attrs.y ?? obj.h / 2);
+  const verticalScale = (firstLabelY - 12) / (naturalHeadCy + 19);
+  const scale = Math.max(0.1, Math.min(1, compact ? (obj.h - 8) / 25 : verticalScale));
+  const headCy = compact ? (obj.h - 25 * scale) / 2 + HEAD_R * scale : naturalHeadCy * scale;
+  const headR = HEAD_R * scale;
+  const shoulderY = headCy + headR + 3 * scale;
+  const shoulderR = 10 * scale;
+  const reserve = rightContentReserve(obj.kind, obj.icon, obj.ghost === true);
+  const cx = compact ? 14 : Math.max(8, (obj.w - reserve) / 2);
   // body first — SVG paints in document order, so glyph details must come
   // after the fill rect or they are painted over (vision review r1 defect D2)
   return [
     bodyRect(obj),
     {
       tag: 'circle',
-      attrs: { cx, cy: headCy, r: HEAD_R, class: 'pc-glyph' },
+      attrs: { cx, cy: headCy, r: headR, class: 'pc-glyph' },
     },
     {
       tag: 'path',
       attrs: {
         // shoulder arc: half circle of r=10 centered below head
-        d: `M ${cx - 10} ${shoulderY + 10} a 10 10 0 0 1 20 0`,
+        d: `M ${cx - shoulderR} ${shoulderY + shoulderR} a ${shoulderR} ${shoulderR} 0 0 1 ${2 * shoulderR} 0`,
         class: 'pc-glyph',
         fill: 'none',
       },
@@ -85,9 +119,14 @@ function personGlyph(obj: SceneObject): ElSpec[] {
   ];
 }
 
+function datastoreRadius(obj: SceneObject): number {
+  const labelHeight = linesOf(obj).length * LABEL_LINE_HEIGHT;
+  return Math.max(2, Math.min(obj.h * 0.2, 10, (obj.h - labelHeight - 8) / 4));
+}
+
 /** Datastore cylinder: elliptical top + body + bottom arc. */
 function cylinderGlyph(obj: SceneObject): ElSpec[] {
-  const ry = Math.min(obj.h * 0.2, 10);
+  const ry = datastoreRadius(obj);
   return [
     {
       tag: 'path',
@@ -137,9 +176,11 @@ function queueGlyph(obj: SceneObject): ElSpec[] {
   ];
 }
 
+const noteFold = (obj: SceneObject): number => Math.min(NOTE_FOLD, obj.w / 3, obj.h / 3);
+
 /** Note: rect with folded top-right corner. */
 function noteGlyph(obj: SceneObject): ElSpec[] {
-  const f = Math.min(NOTE_FOLD, obj.w / 3, obj.h / 3);
+  const f = noteFold(obj);
   return [
     {
       tag: 'path',
@@ -181,11 +222,22 @@ function ghostBadge(obj: SceneObject): ElSpec {
   };
 }
 
-/** Anchor the inline icon at the shape's top-right inset (M5-WP7). */
+/** Keep icons in a kind-specific region that does not cover built-in glyphs. */
 function withIcon(obj: SceneObject, glyphs: ElSpec[]): ElSpec[] {
-  if (obj.icon === undefined) return glyphs;
-  const x = obj.w - ICON_BOX - 6;
-  const specs = iconGlyphs(obj.icon, x, 6) as unknown as ElSpec[];
+  if (!obj.icon) return glyphs;
+  let size = ICON_BOX;
+  let y = 6;
+  if (obj.kind === 'datastore') {
+    const ry = datastoreRadius(obj);
+    size = Math.max(4, Math.min(16, obj.h - 4 * ry - 8));
+    y = 2 * ry + 4;
+  } else if (obj.kind === 'note') {
+    const fold = noteFold(obj);
+    size = Math.max(4, Math.min(ICON_BOX, obj.h - fold - 12));
+    y = fold + 6;
+  }
+  const x = obj.w - size - 6;
+  const specs = iconGlyphs(obj.icon, x, y, size) as unknown as ElSpec[];
   return glyphs.concat(specs);
 }
 
@@ -213,11 +265,11 @@ function baseGlyphs(obj: SceneObject): ElSpec[] {
             class: 'pc-shape pc-shape-boundary',
           },
         },
-        {
-          tag: 'text',
-          attrs: { x: 8, y: 16, class: 'pc-label pc-label-title' },
-          text: obj.name ?? obj.id,
-        },
+        ...linesOf(obj).map((line, i) => ({
+          tag: 'text' as const,
+          attrs: { x: 8, y: 16 + i * 14, class: 'pc-label pc-label-title' },
+          text: line,
+        })),
       ];
     default:
       // system / system_ext / container / component: rounded rect

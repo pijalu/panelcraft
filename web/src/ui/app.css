@@ -2369,7 +2369,7 @@ marker .pc-arrow[fill='none'] {
 
 /* F-22 canvas ↔ code map: highlighted statement lines */
 .pc-code-highlight {
-  background: color-mix(in srgb, var(--pc-accent) 16%, transparent);
+  background: color-mix(in srgb, var(--pc-accent) 8%, transparent);
 }
 
 /* F-23 diagnostics on canvas: ring the offending object, banner the stale render */

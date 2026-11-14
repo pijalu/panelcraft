@@ -8,6 +8,7 @@
 // goldens machine-dependent).
 
 import type { Kind } from '../model/types';
+import { contentHeight, rightContentReserve } from './shapes';
 
 export interface TextMetrics2D {
   w: number;
@@ -83,23 +84,31 @@ function openContext(font: string): CanvasRenderingContext2D | null {
 }
 
 /** Split a label into at most two lines at a word boundary near `WRAP_AT`. */
-export function wrapLabel(text: string, measure: TextMeasurer): string[] {
-  if (measure.measure(text).w <= WRAP_AT) return [text];
+export function wrapLabel(
+  text: string,
+  measure: TextMeasurer,
+  maxWidth = WRAP_AT,
+  maxLines = 2,
+): string[] {
+  if (measure.measure(text).w <= maxWidth) return [text];
   const words = text.split(/\s+/).filter((w) => w.length > 0);
   if (words.length < 2) return [text];
   const lines: string[] = [];
   let current = words[0] ?? '';
   for (const word of words.slice(1)) {
     const candidate = `${current} ${word}`;
-    if (measure.measure(candidate).w <= WRAP_AT || current === '') current = candidate;
+    if (measure.measure(candidate).w <= maxWidth || current === '') current = candidate;
     else {
       lines.push(current);
       current = word;
     }
   }
   lines.push(current);
-  // two lines max: keep every word (no silent truncation) by folding the tail
-  if (lines.length > 2) return [lines[0] ?? '', lines.slice(1).join(' ')];
+  // Auto-fit keeps two lines by folding the tail. Explicit narrow shapes may
+  // request unlimited lines so every word fits instead of overflowing the box.
+  if (lines.length > maxLines && maxLines > 1) {
+    return [...lines.slice(0, maxLines - 1), lines.slice(maxLines - 1).join(' ')];
+  }
   return lines;
 }
 
@@ -107,6 +116,8 @@ export interface AutoSizeInput {
   /** Label the box must fit (falls back to the id). */
   text: string;
   kind: Kind;
+  /** Optional inline icon reserves the same right-side region as the renderer. */
+  icon?: string;
 }
 
 /**
@@ -119,8 +130,9 @@ export function autoSize(
 ): { w: number; h: number; lines: string[] } {
   const lines = wrapLabel(input.text, measure);
   const widest = Math.max(...lines.map((l) => measure.measure(l).w));
-  const w = clamp(Math.round(widest + 2 * PADDING.x), MIN_BOX.w, MAX_BOX.w);
-  const h = clamp(Math.round(lines.length * FONT.lineHeight + 2 * PADDING.y), MIN_BOX.h, MAX_BOX.h);
+  const reserve = rightContentReserve(input.kind, input.icon);
+  const w = clamp(Math.round(widest + 2 * PADDING.x + reserve), MIN_BOX.w, MAX_BOX.w);
+  const h = clamp(contentHeight(input.kind, lines.length), MIN_BOX.h, MAX_BOX.h);
   return { w, h, lines };
 }
 
