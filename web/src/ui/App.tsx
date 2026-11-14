@@ -6,11 +6,11 @@
 // sync wiring live in useWorkspace.ts; panels below are presentational.
 import { useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { labelFor, CanvasController, type Snapshot } from './CanvasController';
+import { labelFor, CanvasController, type DiagramLink, type Snapshot } from './CanvasController';
 import { FileTree } from './FileTree';
 import { Tabs } from './Tabs';
 import { CodePane } from './CodePane';
-import { FlowPane, type FlowSelection } from './flows/FlowPane';
+import { FlowPane, type FlowCanvasContext, type FlowSelection } from './flows/FlowPane';
 import { PlayBar } from './flows/PlayBar';
 import { ViewBar } from './views/ViewBar';
 import { AppHeader } from './AppHeader';
@@ -45,6 +45,36 @@ import type { WorkspaceManager } from '../workspace/workspace';
 /** Single-selection for the properties panel (obj xor link). */
 function selections(snap: Snapshot | null): { obj: ReturnType<typeof findObj>; link: ReturnType<typeof findLink> } {
   return { obj: findObj(snap), link: findLink(snap) };
+}
+
+/** FLOW-01: what the canvas currently offers the flow editor. */
+function canvasContext(snap: Snapshot | null, link: DiagramLink | null): FlowCanvasContext {
+  return {
+    objects: snap?.selection.objects ?? [],
+    link:
+      link === null
+        ? null
+        : { id: link.id, from: link.from, to: link.to, ...(link.label === undefined ? {} : { label: link.label }) },
+  };
+}
+
+/** FLOW-01: fade everything except the selected card's participants. */
+function highlightParticipants(
+  canvas: ReturnType<typeof useCanvasController>,
+  ids: string[] | null,
+): void {
+  const ctrl = canvas.ctrlRef.current;
+  const snap = canvas.snap;
+  if (ctrl === null || snap === null) return;
+  if (ids === null) {
+    ctrl.setFaded([], []);
+    return;
+  }
+  const keep = new Set(ids);
+  ctrl.setFaded(
+    snap.objects.filter((o) => !keep.has(o.id)).map((o) => o.id),
+    snap.links.filter((l) => !keep.has(l.from) || !keep.has(l.to)).map((l) => l.id),
+  );
 }
 
 function findObj(snap: Snapshot | null) {
@@ -94,6 +124,8 @@ function FlowStepsPane(props: {
   dirty: boolean;
   selection: FlowSelection | null;
   onSelection(selection: FlowSelection): void;
+  canvasContext: FlowCanvasContext;
+  onHighlight(ids: string[] | null): void;
 }) {
   return (
     <aside class="sidebar" aria-label={s('Flow step editor')}>
@@ -113,6 +145,8 @@ function FlowStepsPane(props: {
         dirty={props.dirty}
         selection={props.selection}
         onSelection={props.onSelection}
+        canvas={props.canvasContext}
+        onHighlight={props.onHighlight}
       />
     </aside>
   );
@@ -207,6 +241,8 @@ function FlowSlot(props: {
   dirty: boolean;
   selection: FlowSelection | null;
   onSelection: (selection: FlowSelection) => void;
+  canvasContext: FlowCanvasContext;
+  onHighlight: (ids: string[] | null) => void;
 }) {
   return slot(
     props.ui.layout.panels.flows === 'collapsed',
@@ -226,6 +262,8 @@ function FlowSlot(props: {
       dirty={props.dirty}
       selection={props.selection}
       onSelection={props.onSelection}
+      canvasContext={props.canvasContext}
+      onHighlight={props.onHighlight}
     />,
   );
 }
@@ -320,6 +358,45 @@ function statusProps(
   };
 }
 
+/** FLOW-01: Flow Steps panel element, wired to canvas context and playback. */
+function flowsSlot(
+  p: {
+    ui: ReturnType<typeof useUiLayout>;
+    canvas: ReturnType<typeof useCanvasController>;
+    code: CodeSyncHandle;
+    activePath: string | null;
+    sel: ReturnType<typeof selections>;
+    illustration: IllustrationId | 'auto';
+    onIllustration: (id: IllustrationId | 'auto') => void;
+    flowSelection: FlowSelection | null;
+    onFlowSelection: (selection: FlowSelection) => void;
+    manager: WorkspaceManager;
+    version: number;
+    player: FlowPlayerApi;
+  },
+): ComponentChildren {
+  return (
+    <FlowSlot
+      ui={p.ui}
+      manager={p.manager}
+      version={p.version}
+      activePath={p.activePath}
+      onText={(text) => p.code.machine.textChanged(text)}
+      onPlay={(flowKey) => {
+        if (p.activePath !== null) p.player.start(p.activePath, flowKey);
+      }}
+      illustration={p.illustration}
+      onIllustration={p.onIllustration}
+      onPlayFrom={(flowKey, index) => playFrom(p.player, p.activePath, flowKey, index)}
+      dirty={p.code.snapshot.divergedFromSaved}
+      selection={p.flowSelection}
+      onSelection={p.onFlowSelection}
+      canvasContext={canvasContext(p.canvas.snap, p.sel.link)}
+      onHighlight={(ids) => highlightParticipants(p.canvas, ids)}
+    />
+  );
+}
+
 /** Shell body with recoverable left/right/bottom docks and floating panels. */
 function AppBody(p: {
   ws: ReturnType<typeof useWorkspace>;
@@ -344,24 +421,20 @@ function AppBody(p: {
   const ctrl = canvas.ctrlRef.current;
   const content: Record<PanelId, ComponentChildren> = {
     sidebar: <SidebarSlot ui={ui} manager={ws.manager} version={ws.version} />,
-    flows: (
-      <FlowSlot
-        ui={ui}
-        manager={ws.manager}
-        version={ws.version}
-        activePath={activePath}
-        onText={(text) => code.machine.textChanged(text)}
-        onPlay={(flowKey) => {
-          if (activePath !== null) player.start(activePath, flowKey);
-        }}
-        illustration={p.illustration}
-        onIllustration={p.onIllustration}
-        onPlayFrom={(flowKey, index) => playFrom(player, activePath, flowKey, index)}
-        dirty={p.dirty}
-        selection={p.flowSelection}
-        onSelection={p.onFlowSelection}
-      />
-    ),
+    flows: flowsSlot({
+      ui,
+      canvas,
+      code,
+      activePath,
+      sel: p.sel,
+      illustration: p.illustration,
+      onIllustration: p.onIllustration,
+      flowSelection: p.flowSelection,
+      onFlowSelection: p.onFlowSelection,
+      manager: ws.manager,
+      version: ws.version,
+      player,
+    }),
     palette: <PaletteSlot ui={ui} onPlace={(kind) => ctrl?.addObject(kind)} onDragDrop={canvas.onPaletteDrop} />,
     code: (
       <CodeSlot

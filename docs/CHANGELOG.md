@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — FLOW-01 canvas-assisted flow editing
+
+- Flow Steps is an on-demand dockable panel instead of a permanent tab, with visual step cards (kind stripe, title, actor/link summary), canvas-assisted targeting (from/to/target from the selection, message steps seeded only from existing connectors), participant highlighting, and accessible names for the step controls.
+
 ## 2026-11-14 — CX-04 visual connector style pickers
 
 - Replaced the connector dropdowns with accessible preview tiles (inline SVG + text label, check mark and weight for the selection, arrow-key navigation) for route geometry, line texture, common weights and independent head/tail markers, keeping the numeric Width field for custom values.

@@ -114,22 +114,28 @@ and the CLI's `--theme` option.
 
 ## 3. Flows (step-by-step stories)
 
-1. Open the *Flows* side tab and add a flow (`flow "Happy path" as happy { … }`
-   in code, or via the pane).
-2. Each step targets an object/link with optional focus rules; reorder steps
-   by drag.
-3. **Play**: the docked transport steps through the plan — the active step's
+1. Open **View → Flow Steps** (there is no permanent Flows tab): the panel docks, floats,
+   collapses and closes like any other, and it is absent until you ask for it.
+2. Add a flow (`flow "Happy path" as happy { … }` in code, or **+ flow** in the panel) and
+   add steps. Each step is a card with its kind, title and actor/link summary; reorder with
+   drag or the ↑/↓ buttons, and nested `alt`/`par` editing lives in the same card inspector.
+3. **Target from the canvas** instead of typing ids: select an object and press **From
+   selection** / **To selection** / **Target selection**, or select a connector and press
+   **Use connector**. A message step is only ever seeded from an existing link — with no link
+   in the document the panel says so instead of inventing one. Selecting a card highlights
+   its participants on the canvas and fades the rest.
+4. **Play**: the docked transport steps through the plan — the active step's
    elements highlight, the previous step's participants fade lightly, and the rest
    dim; the narration line is an ARIA live region
    (screen readers announce every step). `prefers-reduced-motion` plays without
    transition animation. Each step may carry `delay <ms>`; the flow's
    illustration style (token, pulse, glow, burst, split, trail) is chosen per
-   flow in the Flows pane. When a flow ends, a closing card offers replay,
+   flow in the Flow Steps panel. When a flow ends, a closing card offers replay,
    `Export SVG` and close.
-4. **Present**: `⛶` enters the chrome-free shell — click or press Space/→ to
+5. **Present**: `⛶` enters the chrome-free shell — click or press Space/→ to
    advance, ← to go back, `P` pauses, `R` restarts, `Esc` exits and restores the
    previous chrome and viewport.
-5. **Export a sequence**: select a flow, then choose `.seq.mmd` beside *Steps*.
+6. **Export a sequence**: select a flow, then choose `.seq.mmd` beside *Steps*.
   The download is a Mermaid `sequenceDiagram` with participants, messages,
   alternatives, parallel lanes and notes. `goto` navigation, per-step delays and
   notes in a flow with no participants cannot be represented and are reported by

@@ -7,7 +7,7 @@ import { describe, expect, it, afterEach, vi } from 'vitest';
 import { render, fireEvent, screen, cleanup } from '@testing-library/preact';
 import { useState } from 'preact/hooks';
 import { parsePDL } from '../../engine/format/parser';
-import { FlowPane, type FlowPaneProps } from './FlowPane';
+import { FlowPane, type FlowCanvasContext, type FlowPaneProps } from './FlowPane';
 import { downloadText } from '../download';
 
 vi.mock('../download', () => ({ downloadText: vi.fn() }));
@@ -36,7 +36,7 @@ flow "Main" as main {
 `;
 
 /** Harness: keeps the document text in state, like App does via the machine. */
-function Harness() {
+function Harness({ canvas }: { canvas?: FlowCanvasContext } = {}) {
   const [text, setText] = useState(DOC);
   const played: string[] = [];
   const props: FlowPaneProps = {
@@ -47,6 +47,7 @@ function Harness() {
     onPlay: (k) => {
       played.push(k);
     },
+    ...(canvas === undefined ? {} : { canvas }),
   };
   return (
     <div>
@@ -56,8 +57,8 @@ function Harness() {
   );
 }
 
-function mount() {
-  render(<Harness />);
+function mount(canvas?: FlowCanvasContext) {
+  render(<Harness canvas={canvas} />);
   const out = (): string => screen.getByTestId('text-out').textContent ?? '';
   return { out };
 }
@@ -222,5 +223,83 @@ describe('FlowPane step editing (M5-WP4)', () => {
     fireEvent.click(screen.getByTestId('step-0')); // intro
     fireEvent.change(screen.getByTestId('step-kind'), { target: { value: 'info' } });
     expect(out()).toContain('info "Note"');
+  });
+});
+
+describe('FlowPane canvas-assisted editing (FLOW-01)', () => {
+  const canvas = { objects: ['b'], link: { id: 'ab', from: 'a', to: 'b' } };
+
+  it('targets a message step from the selected connector and objects', () => {
+    const { out } = mount(canvas);
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-1')); // msg a -> b
+    // Start from a wrong pair, then repair it through the canvas controls.
+    fireEvent.input(screen.getByTestId('insp-from'), { target: { value: 'b' } });
+    fireEvent.click(screen.getByTestId('insp-pick-link'));
+    expect(out()).toContain('a -> b : "order"');
+    fireEvent.click(screen.getByTestId('insp-pick-to'));
+    expect(out()).toContain('a -> b : "order"');
+  });
+
+  it('targets a process step from the canvas selection', () => {
+    const { out } = mount(canvas);
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-7')); // process a inside alt branch
+    fireEvent.click(screen.getByTestId('insp-pick-target'));
+    expect(out()).toContain('process b');
+  });
+
+  it('seeds a new message step from an existing link and never invents one', () => {
+    const { out } = mount(canvas);
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.change(screen.getByTestId('step-add-kind'), { target: { value: 'msg' } });
+    fireEvent.click(screen.getByTestId('step-add'));
+    expect(out()).toContain('a -> b');
+    expect(screen.queryByTestId('flow-needs-link')).toBeNull();
+  });
+
+  it('refuses to add a message step when the document has no link', () => {
+    // A pair written without a matching link would be a validation error, so
+    // the editor explains the requirement instead of inventing the link.
+    const noLinks = 'pcd 1.0\nsystem a "A"\nsystem b "B"\nflow "F" as f {\n  intro "x"\n}\n';
+    let text = noLinks;
+    render(
+      <FlowPane
+        textOf={() => text}
+        activePath="main.pcd"
+        version={1}
+        onChangeText={(t) => {
+          text = t;
+        }}
+        onPlay={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('flow-row-f'));
+    fireEvent.change(screen.getByTestId('step-add-kind'), { target: { value: 'msg' } });
+    fireEvent.click(screen.getByTestId('step-add'));
+    expect(screen.getByTestId('flow-needs-link').textContent).toContain('link');
+    expect(text).toBe(noLinks);
+  });
+
+  it('reports card summaries and highlights canvas participants', () => {
+    const highlights: (string[] | null)[] = [];
+    const props: FlowPaneProps = {
+      textOf: () => DOC,
+      activePath: 'main.pcd',
+      version: 1,
+      onChangeText: () => {},
+      onPlay: () => {},
+      canvas,
+      onHighlight: (ids) => highlights.push(ids),
+    };
+    render(<FlowPane {...props} />);
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-1'));
+    expect(screen.getByTestId('step-summary-1').textContent).toContain('a → b');
+    expect(screen.getByTestId('step-1').getAttribute('aria-current')).toBe('true');
+    expect(highlights.at(-1)).toEqual(['a', 'b']);
+    // A block step has no participants, so the highlight clears.
+    fireEvent.click(screen.getByTestId('step-2'));
+    expect(highlights.at(-1)).toBeNull();
   });
 });

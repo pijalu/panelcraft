@@ -1898,6 +1898,74 @@ marker .pc-arrow[fill='none'] {
   font-size: var(--pc-text-xs);
 }
 
+/* FLOW-01: visual step cards — kind stripe, title and actor/link summary */
+.flow-card {
+  border-left: 3px solid var(--pc-border);
+  margin: 2px 0;
+  background: var(--pc-bg);
+}
+
+.flow-card.kind-card-msg {
+  border-left-color: var(--pc-accent);
+}
+
+.flow-card.kind-card-process {
+  border-left-color: var(--pc-info);
+}
+
+.flow-card.kind-card-alt,
+.flow-card.kind-card-par {
+  border-left-color: var(--pc-warn);
+}
+
+.flow-card.kind-card-intro,
+.flow-card.kind-card-conclusion {
+  border-left-color: var(--pc-muted);
+}
+
+.flow-card.kind-card-goto,
+.flow-card.kind-card-info {
+  border-left-color: var(--pc-border);
+}
+
+.flow-card.active {
+  border-left-color: var(--pc-accent);
+}
+
+.flow-step-summary {
+  grid-column: 2;
+  grid-row: 2;
+  display: block;
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flow-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 2px 0 6px;
+}
+
+.flow-picks button {
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  font: inherit;
+  font-size: var(--pc-text-xs);
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.flow-picks button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .flow-stepbar {
   display: flex;
   gap: 4px;
@@ -2371,16 +2439,40 @@ marker .pc-arrow[fill='none'] {
 
 .flow-step {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px;
 }
 
 .flow-step > button:first-child {
-  flex: 1;
+  flex: 1 1 100%;
+  width: auto;
+  min-width: 0;
+  /* FLOW-01 cards: kind stripe label beside a title/summary stack */
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
+  padding: 4px 8px;
+}
+
+.flow-step-kind {
+  grid-column: 1;
+  grid-row: 1 / span 2;
   min-width: 0;
 }
 
-.flow-step-btn {
+.flow-step-title {
+  grid-column: 2;
+  grid-row: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-step > .flow-step-btn {
+  flex: 0 0 auto;
+  width: auto;
   min-width: 26px;
   min-height: 28px;
   border: 1px solid transparent;
@@ -2396,7 +2488,8 @@ marker .pc-arrow[fill='none'] {
   color: var(--pc-accent);
 }
 
-.flow-step-delay {
+.flow-step > .flow-step-delay {
+  flex: 0 0 auto;
   width: 66px;
   min-height: 28px;
   font-size: var(--pc-text-xs);
