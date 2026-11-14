@@ -65,8 +65,13 @@ and the CLI's `--theme` option.
   to Auto. The change is undoable and saved as `z <n>`. Links always paint below
   objects, and the mini-map, SVG/PNG exports and `panelcraft render` use the same
   order.
-- **Context menu** (right-click): copy/paste/duplicate, delete, align,
-  distribute, equalise size, bring to front.
+- **Context menu** (right-click): **Duplicate**, **Copy**, **Paste**, **Delete**,
+  **Align left**, **Align centre (horizontal)**, **Align right**, **Align top**,
+  **Align middle (vertical)**, **Align bottom**, **Distribute horizontally**,
+  **Distribute vertically**, and **Equal size** (the last three need two or three
+  selected objects and stay listed but disabled otherwise). There are no stacking
+  commands in the menu: layering is the **Stacking order** field in properties →
+  Advanced.
 - **History**: Ctrl/Cmd+Z / Shift-Ctrl/Cmd+Z act on the surface that has focus;
   the header's `⟲ History` lists the last actions across canvas and code with
   routed Undo/Redo.

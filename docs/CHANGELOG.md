@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — DOC-01 context-menu documentation
+
+- Corrected the user guide's context-menu list to the shipped commands (duplicate/copy/paste/delete, six align, two distribute, equal size) and removed the unsupported "bring to front" claim, pointing layering at the Stacking order field instead; a light/dark E2E now fails if the guide and the menu drift apart.
+
 ## 2026-11-14 — CX-05 group-endpoint links no longer crash auto-layout
 
 - Auto-layout skips links whose endpoint is a compound group boundary (dagre cannot rank a parent), so such documents validate, lay out and render instead of throwing; the link still draws from the boundary rectangle.

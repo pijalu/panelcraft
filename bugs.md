@@ -255,40 +255,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 ---
 
-## DOC-01 Reconcile stacking-order documentation with actual commands
-
-**Observed/current behavior**
-
-- `docs/USER-GUIDE.md` says the canvas context menu includes “bring to front.”
-- `web/src/ui/CanvasMenu.tsx` currently offers duplicate/copy/paste/delete, alignment,
-  distribution, and equal size, but no bring-to-front command.
-
-**Expected behavior**
-
-- Documentation and shipped UI agree after CX-03 lands.
-- If CX-03 includes context-menu z commands, document their exact labels/behavior. Otherwise
-  remove the unsupported claim and document the actual Auto/integer z control.
-- Do not advertise numeric z, context commands, or persistence until the corresponding
-  behavior is implemented and tested.
-
-**Implementation plan**
-
-1. Update the editing/context-menu section together with the CX-03 UI that ships.
-2. Check related SPEC/status claims and CLI/export documentation for the same mismatch.
-3. Record the corrected behavior in the changelog with CX-03.
-
-**Test approach**
-
-- Manual UI-to-guide comparison of every context-menu entry and z control.
-- Documentation link/PDL fence checks and an E2E assertion for any newly documented command.
-
-**Validation steps**
-
-- Run `bash scripts/check-docs.sh` and the CX-03 E2E scenario, then include the docs diff in
-  the same reviewed commit.
-
----
-
 ## Recommended execution order and dependencies
 
 1. **Independent foundation:** UX-01. DOC-01 closes with CX-03.
