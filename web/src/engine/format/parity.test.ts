@@ -81,6 +81,14 @@ container cart "Cart"
     src: 'pcd 1.0\nsystem a "A" {\n  size 0 10\n}\n',
   },
   {
+    name: 'object-stacking-z',
+    src: 'pcd 1.0\nsystem auto "Auto"\nsystem back "Back" {\n  z -2\n}\nsystem zero "Zero" {\n  z 0\n}\nsystem front "Front" {\n  z 4\n}\n',
+  },
+  {
+    name: 'object-stacking-z-invalid',
+    src: 'pcd 1.0\nsystem a "A" {\n  z 1.5\n}\n',
+  },
+  {
     name: 'link-style-model',
     src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -requests-> b as L1 {\n  style {\n    head diamond\n    tail circle\n    line dotted\n    route curved\n    width 2.5\n  }\n}\n',
   },

@@ -170,6 +170,7 @@ const bodyDrops = (doc: Doc): string[] => {
     d.push('unknown attributes');
   }
   if (doc.objects.some((o) => o.icon)) d.push('icons');
+  if (doc.objects.some((o) => o.z !== undefined)) d.push('object stacking order');
   if (doc.objects.some((o) => o.kind === 'note' && o.attach)) d.push('note anchors (detach)');
   if (doc.objects.some((o) => o.style && styleExtras(o.style)) || doc.styles.some((s) => styleExtras(s.style))) {
     d.push('style beyond fill (stroke/text/shape)');
@@ -212,6 +213,7 @@ export const EXPORT_DROP_CATALOGUE = [
   'properties',
   'unknown attributes',
   'icons',
+  'object stacking order',
   'note anchors (detach)',
   'style beyond fill (stroke/text/shape)',
   'waypoints',

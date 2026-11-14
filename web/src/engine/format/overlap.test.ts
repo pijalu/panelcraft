@@ -17,11 +17,11 @@ a -> b as traffic {
 `;
 
 describe('CX-02 allow overlap PDL', () => {
-  it('parses, prints and serializes the optional true-only override in IR v5', () => {
+  it('parses, prints and serializes the optional true-only override in IR v6', () => {
     const { doc, diagnostics } = parsePDL(source);
     expect(diagnostics).toEqual([]);
     expect(doc?.links[0]).toMatchObject({ allowOverlap: true });
-    expect(IR_VERSION).toBe(5);
+    expect(IR_VERSION).toBe(6);
     expect(printDoc(doc!)).toBe(source);
     expect(serializeDoc(doc!)).toContain('"allowOverlap": true');
   });

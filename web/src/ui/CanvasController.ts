@@ -83,6 +83,8 @@ export interface DiagramObject {
   tags?: string[];
   dashed?: boolean;
   icon?: string;
+  /** Optional integer stacking override; absent = auto/effective z=0 (CX-03). */
+  z?: number;
 }
 
 export interface DiagramLink {
@@ -627,7 +629,7 @@ export class CanvasController {
     patch: Partial<
       Pick<
         DiagramObject,
-        'name' | 'description' | 'technology' | 'tags' | 'dashed' | 'properties' | 'style'
+        'name' | 'description' | 'technology' | 'tags' | 'dashed' | 'properties' | 'style' | 'z'
       >
     >,
   ): void {
@@ -986,6 +988,7 @@ export class CanvasController {
           w: o.w,
           h: o.h,
           name: o.name,
+          z: o.z,
           dashed: o.dashed,
           icon: objectIcon(o),
           labelLines: o.lines,

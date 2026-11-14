@@ -1,0 +1,36 @@
+pcd 1.0
+system auto "Auto"
+system back "Back" {
+  z -2
+}
+system zero "Zero" {
+  z 0
+}
+system front "Front" {
+  z 4
+}
+system tie "Tie" {
+  z 4
+}
+group tray "Tray" {
+  contains auto back
+  z 1
+}
+
+auto -> front as L1
+zero -> back as L2
+tie -> front as L3
+
+flow "Stacking" {
+  process tray
+}
+
+view "Stack" {
+  layout saved
+  position tray (60, 60)
+  position auto (100, 100)
+  position back (130, 130)
+  position zero (160, 160)
+  position front (190, 190)
+  position tie (220, 220)
+}

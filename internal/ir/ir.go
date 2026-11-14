@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 5
+const IRVersion = 6
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -76,6 +76,7 @@ type Obj struct {
 	Attach      string      `json:"attach,omitempty"`
 	Icon        string      `json:"icon,omitempty"`
 	Size        *ObjSize    `json:"size,omitempty"`
+	Z           *float64    `json:"z,omitempty"`
 	Style       *StyleBlock `json:"style,omitempty"`
 	Attributes  []RawAttr   `json:"attributes,omitempty"`
 	Comments    []string    `json:"comments,omitempty"`

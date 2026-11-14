@@ -33,6 +33,8 @@ export interface CanvasObjectLike {
   icon?: string;
   /** Explicit `size <w> <h>` geometry in document units (F-13). */
   size?: { w: number; h: number };
+  /** Optional integer stacking override (CX-03). */
+  z?: number;
   /** Custom key-value properties (F-11). */
   properties?: { key: string; value: string }[];
   /** Style overrides written into the object's `style` block (F-11). */
@@ -109,6 +111,7 @@ function mergeObject(existing: Obj | undefined, c: CanvasObjectLike): Obj {
   setField(o, 'tags', c.tags && c.tags.length > 0 ? [...c.tags] : undefined);
   // explicit geometry (F-13): written only when the canvas knows it
   setField(o, 'size', c.size === undefined ? undefined : { w: c.size.w, h: c.size.h });
+  setField(o, 'z', c.z);
   // custom properties (F-11): an empty list drops the attribute entirely
   setField(
     o,

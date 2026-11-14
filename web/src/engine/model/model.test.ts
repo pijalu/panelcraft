@@ -19,7 +19,7 @@ const sample: Doc = {
       kind: 'system', id: 'shop', name: 'Webshop', description: 'Storefront SPA',
       technology: 'React', tags: ['core', 'shop'],
       properties: [{ key: 'owner', value: 'team-commerce' }],
-      contains: ['api'], attach: 'erp', icon: 'cloud',
+      contains: ['api'], attach: 'erp', icon: 'cloud', z: -2,
       style: { fill: '#2d6cdf', dashed: true, raw: [{ raw: 'custom line', pos: { line: 9, col: 3 } }] },
       attributes: [{ raw: 'experimental "yes"', pos: { line: 10, col: 3 } }],
       comments: ['note'], pos: { line: 7, col: 1 },

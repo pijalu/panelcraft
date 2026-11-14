@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — CX-03 object stacking order
+
+- Added per-object **Stacking order** with Auto as the default and an optional integer `z` override (PDL/IR v6, TS⇄Go parity), stable document-order ties, z-aware paint/hit-test/mini-map order shared by canvas, SVG/PNG export and CLI rendering, undoable properties editing, and a clean corpus seed with a declared Mermaid drop.
+
 ## 2026-11-14 — CX-02 object and connector overlap avoidance
 
 - Added deterministic bounded avoidance across solid objects and earlier connectors, a persisted per-link **Allow overlap** override with PDL/IR v5 and Go parity, authoritative manual waypoints, minimum-conflict fallback, and shared canvas/minimap/SVG/PNG/CLI route geometry.

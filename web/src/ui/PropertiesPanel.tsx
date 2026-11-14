@@ -265,6 +265,26 @@ function ObjectFields(props: {
         <StyleControls obj={obj} onChange={onChange} />
       </Section>
       <Section id="advanced" title={s("Advanced")} open={open('advanced')} onToggle={onToggleSection}>
+        <Field label={s("Stacking order")}>
+          <input
+            type="number"
+            step={1}
+            data-testid="prop-z"
+            placeholder={s("Auto")}
+            value={obj.z === undefined ? '' : String(obj.z)}
+            onInput={(e) => {
+              const raw = (e.target as HTMLInputElement).value.trim();
+              if (raw === '') {
+                onChange(obj.id, { z: undefined });
+                return;
+              }
+              const z = Number(raw);
+              // Blank means Auto; anything but a safe integer is a transient
+              // typo, never a value the caller should have to undo.
+              if (Number.isSafeInteger(z)) onChange(obj.id, { z });
+            }}
+          />
+        </Field>
         <p class="muted" data-testid="prop-id">
           {s("id:")}{' '}{obj.id}
         </p>

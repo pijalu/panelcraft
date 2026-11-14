@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { IDENTITY, type Point, type Size, type Transform } from '../engine/render/viewport';
 import type { Snapshot } from './CanvasController';
+import { stackObjects } from '../engine/render/stacking';
 import { buildMiniMap, miniMapPointToCanvas, type MiniMapLayout } from './miniMapGeometry';
 import { s } from './strings';
 
@@ -25,11 +26,12 @@ function drawOverview(canvas: HTMLCanvasElement, snapshot: Snapshot, layout: Min
   const ink = css.getPropertyValue('--pc-muted').trim() || '#737b87';
   const accent = css.getPropertyValue('--pc-accent').trim() || '#2563eb';
   ctx.clearRect(0, 0, MAP_SIZE.w, MAP_SIZE.h);
+  const objects = stackObjects(snapshot.objects);
   ctx.strokeStyle = ink;
   ctx.globalAlpha = 0.45;
   ctx.lineWidth = 0.7;
   ctx.beginPath();
-  const byId = new Map(snapshot.objects.map((object, index) => [object.id, layout.objects[index]]));
+  const byId = new Map(objects.map((object, index) => [object.id, layout.objects[index]]));
   snapshot.links.forEach((link) => {
     const a = byId.get(link.from);
     const b = byId.get(link.to);
@@ -49,7 +51,7 @@ function drawOverview(canvas: HTMLCanvasElement, snapshot: Snapshot, layout: Min
   });
   ctx.stroke();
   ctx.globalAlpha = 0.8;
-  snapshot.objects.forEach((object, index) => {
+  objects.forEach((object, index) => {
     const rect = layout.objects[index];
     if (!rect) return;
     ctx.fillStyle = object.style?.fill ?? ink;
@@ -95,7 +97,7 @@ export function MiniMap(props: {
   const empty = snapshot === null || snapshot.objects.length === 0;
   const viewSize = canvasElement ? observedSize : props.viewSize;
   const layout = empty ? null : buildMiniMap(
-        snapshot.objects, camera ?? snapshot.viewport ?? IDENTITY, viewSize, MAP_SIZE,
+          stackObjects(snapshot.objects), camera ?? snapshot.viewport ?? IDENTITY, viewSize, MAP_SIZE,
         Object.values(snapshot.routes ?? {}),
       );
   if (layout !== null) layoutRef.current = layout;

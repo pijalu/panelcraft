@@ -101,6 +101,19 @@ describe('object controls (F-11)', () => {
     expect(patches[1]?.patch).toEqual({ style: { fill: '#111111', icon: 'cloud' } });
   });
 
+  it('patches integer stacking and restores Auto without inventing a value', () => {
+    const { patches } = mountObject({ z: -2 });
+    const input = screen.getByTestId('prop-z') as HTMLInputElement;
+    // Preact drives the controlled property; the attribute stays empty.
+    expect(input.value).toBe('-2');
+    expect(input.getAttribute('placeholder')).toBe('Auto');
+    expect(input.step).toBe('1');
+    fireEvent.input(input, { target: { value: '3' } });
+    fireEvent.input(input, { target: { value: '' } });
+    fireEvent.input(input, { target: { value: '1.5' } });
+    expect(patches.map((p) => p.patch)).toEqual([{ z: 3 }, { z: undefined }]);
+  });
+
   it('the dashed checkbox still patches the object', () => {
     const { patches } = mountObject();
     fireEvent.click(screen.getByTestId('prop-dashed'));

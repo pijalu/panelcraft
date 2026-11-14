@@ -136,6 +136,12 @@ const stepText: StepPrinter = (s, depth, p) => {
   STEP_PRINTERS[s.type](s, depth, p);
 };
 
+// F-13/CX-03: explicit geometry, printed only when the document carries it.
+const geometryLines = (o: Obj, p: Printer): void => {
+  if (o.size !== undefined) p.add(`${INDENT}size ${jsNum(o.size.w)} ${jsNum(o.size.h)}`);
+  if (o.z !== undefined) p.add(`${INDENT}z ${jsNum(o.z)}`);
+};
+
 const objectAttrLines = (o: Obj, p: Printer): void => {
   if (o.description !== undefined) p.add(`${INDENT}description ${quote(o.description)}`);
   if (o.technology !== undefined) p.add(`${INDENT}technology ${quote(o.technology)}`);
@@ -144,8 +150,7 @@ const objectAttrLines = (o: Obj, p: Printer): void => {
   if (o.contains?.length) p.add(`${INDENT}contains ${o.contains.join(' ')}`);
   if (o.attach !== undefined) p.add(`${INDENT}attach ${o.attach}`);
   if (o.icon !== undefined) p.add(`${INDENT}icon ${o.icon}`);
-  // F-13: explicit geometry, printed only when the document carries it
-  if (o.size !== undefined) p.add(`${INDENT}size ${jsNum(o.size.w)} ${jsNum(o.size.h)}`);
+  geometryLines(o, p);
 };
 
 /** Print a coordinate/size number the way the Go printer does (int when exact). */

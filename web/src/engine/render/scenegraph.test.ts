@@ -130,6 +130,16 @@ describe('diff-patch (re-render count assertions)', () => {
     expect(order2).toEqual(['c', 'a', 'b']);
   });
 
+  it('sorts explicit z while keeping links in their lower layer', () => {
+    r.render(scene([
+      obj('auto'), obj('front', { z: 2 }), obj('back', { z: -1 }), obj('tied', { z: 2 }),
+    ], [{ id: 'L1', points: poly }]));
+    const order = [...svg.querySelectorAll('.pc-layer-objects .pc-obj')].map((el) => el.getAttribute('data-id'));
+    expect(order).toEqual(['back', 'auto', 'front', 'tied']);
+    const layers = [...svg.querySelector('.pc-world')!.children].map((el) => el.getAttribute('class'));
+    expect(layers.indexOf('pc-layer pc-layer-links')).toBeLessThan(layers.indexOf('pc-layer pc-layer-objects'));
+  });
+
   it('equal scene after move reports no reorder', () => {
     r.render(scene([obj('a'), obj('b')]));
     const stats = r.render(scene([obj('b', { x: 10 }), obj('a')]));

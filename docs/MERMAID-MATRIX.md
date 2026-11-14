@@ -34,6 +34,7 @@ Every string below can appear in `dropped[]`; anything starting with
 - `properties`
 - `unknown attributes`
 - `icons`
+- `object stacking order`
 - `note anchors (detach)`
 - `style beyond fill (stroke/text/shape)`
 - `waypoints`

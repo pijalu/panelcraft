@@ -234,6 +234,10 @@ func objectAttrLines(o ir.Obj, p *printer) {
 	if o.Size != nil {
 		p.add(indent + "size " + jsNum(o.Size.W) + " " + jsNum(o.Size.H))
 	}
+	// CX-03: explicit stacking order, omitted entirely for Auto.
+	if o.Z != nil {
+		p.add(indent + "z " + jsNum(*o.Z))
+	}
 }
 
 func printObject(o ir.Obj, p *printer) {

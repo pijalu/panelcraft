@@ -1,0 +1,196 @@
+{
+  "irVersion": 6,
+  "formatVersion": "1.0",
+  "objects": [
+    {
+      "kind": "system",
+      "id": "auto",
+      "name": "Auto",
+      "pos": {
+        "line": 3,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "back",
+      "name": "Back",
+      "z": -2,
+      "pos": {
+        "line": 4,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "zero",
+      "name": "Zero",
+      "z": 0,
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "front",
+      "name": "Front",
+      "z": 4,
+      "pos": {
+        "line": 10,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "tie",
+      "name": "Tie",
+      "z": 4,
+      "pos": {
+        "line": 13,
+        "col": 1
+      }
+    },
+    {
+      "kind": "group",
+      "id": "tray",
+      "name": "Tray",
+      "contains": [
+        "auto",
+        "back"
+      ],
+      "z": 1,
+      "pos": {
+        "line": 16,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "L1",
+      "from": "auto",
+      "to": "front",
+      "pos": {
+        "line": 21,
+        "col": 1
+      }
+    },
+    {
+      "id": "L2",
+      "from": "zero",
+      "to": "back",
+      "pos": {
+        "line": 22,
+        "col": 1
+      }
+    },
+    {
+      "id": "L3",
+      "from": "tie",
+      "to": "front",
+      "pos": {
+        "line": 23,
+        "col": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "title": "Stacking",
+      "steps": [
+        {
+          "type": "process",
+          "target": "tray",
+          "pos": {
+            "line": 26,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 25,
+        "col": 1
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "Stack",
+      "lines": [
+        {
+          "type": "layout",
+          "mode": "saved",
+          "pos": {
+            "line": 30,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "tray",
+          "x": 60,
+          "y": 60,
+          "pos": {
+            "line": 31,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "auto",
+          "x": 100,
+          "y": 100,
+          "pos": {
+            "line": 32,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "back",
+          "x": 130,
+          "y": 130,
+          "pos": {
+            "line": 33,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "zero",
+          "x": 160,
+          "y": 160,
+          "pos": {
+            "line": 34,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "front",
+          "x": 190,
+          "y": 190,
+          "pos": {
+            "line": 35,
+            "col": 3
+          }
+        },
+        {
+          "type": "position",
+          "id": "tie",
+          "x": 220,
+          "y": 220,
+          "pos": {
+            "line": 36,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 29,
+        "col": 1
+      }
+    }
+  ]
+}

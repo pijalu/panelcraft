@@ -269,6 +269,13 @@ class Parser {
           if (w <= 0 || h <= 0) this.fail(t, E.unexpected, 'size must be positive');
           o.size = { w, h };
         };
+      case 'z':
+        this.once(seen, t, 'z');
+        return (o) => {
+          const z = this.num(this.expect('number'));
+          if (!Number.isSafeInteger(z)) this.fail(t, E.unexpected, 'z must be an integer');
+          o.z = z;
+        };
       case 'style':
         this.once(seen, t, 'style');
         return (o) => { o.style = this.parseStyleBlock(t0, 'object'); };

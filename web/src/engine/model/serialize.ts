@@ -71,6 +71,7 @@ const objectStmt = (o: Obj): JSONRecord =>
     ['attach', o.attach],
     ['icon', o.icon],
     ['size', o.size === undefined ? undefined : { w: o.size.w, h: o.size.h }],
+    ['z', o.z],
     styleBlock(o.style),
     [
       'attributes',

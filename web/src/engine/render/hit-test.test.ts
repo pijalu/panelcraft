@@ -57,6 +57,16 @@ describe('object hits with z-order (FR-C4)', () => {
     expect(hits.map((o) => o.id)).toEqual(['top', 'mid', 'bottom']);
   });
 
+  it('picks the visually top object using negative and positive z', () => {
+    const stacked = [
+      { ...obj('auto', 0, 0) },
+      { ...obj('front', 0, 0), z: 2 },
+      { ...obj('back', 0, 0), z: -1 },
+    ];
+    expect(hitObject(stacked, { x: 20, y: 20 })?.id).toBe('front');
+    expect(hitObjects(stacked, { x: 20, y: 20 }).map((o) => o.id)).toEqual(['front', 'auto', 'back']);
+  });
+
   it('miss returns null / empty', () => {
     expect(hitObject(scene, { x: 500, y: 500 })).toBeNull();
     expect(hitObjects(scene, { x: 500, y: 500 })).toEqual([]);

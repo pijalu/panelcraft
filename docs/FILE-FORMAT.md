@@ -76,6 +76,7 @@ contains id1 id2 …          ← group only: membership (membership is *only* s
 attach id                   ← note only: anchored object id
 icon name                   ← built-in icon id (M5)
 size <w> <h>                ← explicit canvas geometry in document units (IR v2, F-13)
+z <int>                     ← explicit stacking order; absent = auto (IR v6, CX-03)
 ```
 
 * `size` is presentation geometry, not semantics: it is optional, positive, and
@@ -86,6 +87,18 @@ size <w> <h>                ← explicit canvas geometry in document units (IR v
 
 * `group` renders as boundary rectangle around `contains` members (C4 boundary).
 * `note` renders as sticky annotation; `attach` is optional (free-floating otherwise).
+
+* **Stacking order (CX-03, IR v6)**: `z <int>` is an optional safe integer that
+  overrides an object's paint and hit-test order. Absent means *auto*, which
+  behaves as effective `z 0` **and** keeps document order: with every object on
+  auto the document order is reproduced exactly, and equal `z` values keep
+  document order (stable sort). Negative values sink below auto objects,
+  positive values rise above them. Auto is the default and is never printed;
+  an explicit `z 0` is printed because it is a real user choice. `z` applies to
+  every object kind, including `group` boundaries. Links are unaffected and
+  always paint below objects. The same projection drives the canvas, hit-testing,
+  the mini-map, SVG/PNG export and CLI rendering. Mermaid export declares
+  `object stacking order` as dropped.
 
 Example:
 
@@ -363,7 +376,7 @@ nested subgraph ids): warning + skipped, never silent.
 **Dropped (declared, per SPEC FR-M4):** flows, positions/layout, views, imports
 (exported file is flattened: imported objects inlined and marked via comment `%%
 imported from …`), properties, notes detach, icons, endpoint perimeter anchors,
-waypoints, overlap overrides, custom shapes.
+waypoints, overlap overrides, object stacking order, custom shapes.
 C4 export mode (`--c4`): emits C4Context/Container statements when kinds fit, else
 fallback flowchart.
 
@@ -413,7 +426,7 @@ object      = kind ident , [ string ] , [ "{" , { attr } , "}" ] ;
 attr        = ("description" , string) | ("technology" , string) | ("tag" , ident { ident })
             | ("property" , ident , string) | ("contains" , ident { ident })
             | ("attach" , ident) | ("icon" , ident)
-            | ("size" , number , number) ;
+            | ("size" , number , number) | ("z" , number) ;
 link        = ident , arrow , ident , [ ":" , string ] , [ "as" , ident ] , [ linkblock ] ;
 arrow       = [ "<" ] , "-" , [ ident , "-" ] , [ ">" ] ;   (* <-, ->, <->, -type-> *)
 flow        = "flow" , [ string ] , [ "as" , ident ] , "{" , { step } , "}" ;

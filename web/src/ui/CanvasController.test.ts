@@ -610,6 +610,44 @@ describe('waypoint dragging (F-19)', () => {
   });
 });
 
+describe('object stacking (CX-03)', () => {
+  beforeEach(() => {
+    ctrl.loadState({
+      objects: [
+        { id: 'auto', kind: 'system', x: 0, y: 0, w: 100, h: 60 },
+        { id: 'front', kind: 'system', x: 0, y: 0, w: 100, h: 60, z: 2 },
+        { id: 'back', kind: 'system', x: 0, y: 0, w: 100, h: 60, z: -1 },
+      ],
+      links: [],
+    });
+  });
+
+  it('keeps document state order but renders and selects by effective z', () => {
+    expect(ctrl.snapshot.objects.map((o) => o.id)).toEqual(['auto', 'front', 'back']);
+    const order = [...svg.querySelectorAll('.pc-layer-objects .pc-obj')].map((el) => el.getAttribute('data-id'));
+    expect(order).toEqual(['back', 'auto', 'front']);
+    svg.dispatchEvent(ptr('pointerdown', 50, 30));
+    window.dispatchEvent(ptr('pointerup', 50, 30));
+    expect(ctrl.snapshot.selection.objects).toEqual(['front']);
+  });
+
+  it('makes z edits undoable and reorders both rendering and hit-testing', () => {
+    ctrl.updateObject('front', { z: -2 });
+    expect(obj('front').z).toBe(-2);
+    const order = [...svg.querySelectorAll('.pc-layer-objects .pc-obj')].map((el) => el.getAttribute('data-id'));
+    expect(order).toEqual(['front', 'back', 'auto']);
+    svg.dispatchEvent(ptr('pointerdown', 50, 30));
+    window.dispatchEvent(ptr('pointerup', 50, 30));
+    expect(ctrl.snapshot.selection.objects).toEqual(['auto']);
+    ctrl.undo.undo();
+    expect(obj('front').z).toBe(2);
+    ctrl.undo.redo();
+    expect(obj('front').z).toBe(-2);
+    ctrl.updateObject('front', { z: undefined });
+    expect(obj('front').z).toBeUndefined();
+  });
+});
+
 describe('keyboard object navigation (F-22)', () => {
   beforeEach(() => {
     ctrl.loadState({

@@ -45,6 +45,8 @@ export interface CanvasObject {
   icon?: string;
   /** Explicit size from the file (`size <w> <h>`, F-13); absent = default. */
   size?: { w: number; h: number };
+  /** Optional integer stacking override; absent = auto/effective z=0 (CX-03). */
+  z?: number;
   /** Custom key-value properties (F-11). */
   properties?: { key: string; value: string }[];
   /** Style overrides from the `style` block (F-11). */
@@ -126,6 +128,7 @@ export function stateToDoc(state: CanvasState): Doc {
     tags: o.tags?.length ? [...o.tags] : undefined,
     icon: o.icon,
     size: o.size === undefined ? undefined : { w: o.size.w, h: o.size.h },
+    z: o.z,
     properties: o.properties && o.properties.length > 0
       ? o.properties.map((p) => ({ key: p.key, value: p.value }))
       : undefined,
@@ -214,6 +217,7 @@ function docObjectFields(o: Obj): Omit<CanvasObject, 'x' | 'y' | 'w' | 'h'> {
     technology: o.technology,
     tags: o.tags,
     icon: o.icon,
+    z: o.z,
     dashed: o.style?.dashed === true ? true : undefined,
     properties: o.properties?.map((p) => ({ key: p.key, value: p.value })),
     style: {

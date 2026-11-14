@@ -10,6 +10,7 @@ import type { Polyline } from './router';
 import { sampleRoute } from './routePath';
 import type { SceneObject } from './shapes';
 import type { SceneLink } from './scenegraph';
+import { stackObjects } from './stacking';
 
 export interface Pick {
   type: 'object' | 'link';
@@ -32,8 +33,9 @@ export function rectsIntersect(
 /** All objects containing the point, topmost first (FR-C4 z-order). */
 export function hitObjects(objects: SceneObject[], p: { x: number; y: number }): SceneObject[] {
   const hits: SceneObject[] = [];
-  for (let i = objects.length - 1; i >= 0; i--) {
-    const o = objects[i];
+  const stacked = stackObjects(objects);
+  for (let i = stacked.length - 1; i >= 0; i--) {
+    const o = stacked[i];
     if (o && pointInRect(p, o)) hits.push(o);
   }
   return hits;

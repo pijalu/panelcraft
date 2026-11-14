@@ -20,6 +20,8 @@ export interface SceneObject {
   w: number;
   h: number;
   name?: string;
+  /** Optional stacking override; absent = auto/effective z=0 (CX-03). */
+  z?: number;
   /** style-override passthrough (IR style block, FR-C6) */
   dashed?: boolean;
   /** inline icon name (M5-WP7, engine/render/icons.ts) */

@@ -16,6 +16,7 @@ import type { Polyline, RouteMode } from './router';
 import { routeLabelPoint, routeToPath } from './routePath';
 import { layoutLinkLabels } from './labelLayout';
 import { GRID_SIZE } from './snap';
+import { stackObjects } from './stacking';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -305,7 +306,7 @@ export class SceneRenderer {
   render(scene: Scene): PatchStats {
     this.labelPlacements = layoutLinkLabels(scene);
     const stats: PatchStats = { created: 0, updated: 0, removed: 0, reordered: false };
-    this.patchObjects(scene.objects, stats);
+    this.patchObjects(stackObjects(scene.objects), stats);
     this.patchLinks(scene.links, stats);
     this.applyFade(); // rebuilds reset classes — fade state must survive patches
     return stats;

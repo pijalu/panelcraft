@@ -7,6 +7,7 @@ package pdl
 // diagnostics); semantic problems defer to Validate (P-codes).
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -336,6 +337,14 @@ func (p *parser) objectAttr(o *ir.Obj, seen map[string]bool, t0, t Token) bool {
 	case "style":
 		p.once(seen, t, "style")
 		o.Style = p.parseStyleBlock(t0, "object")
+	case "z":
+		p.once(seen, t, "z")
+		z := p.num(p.expect(TokNumber, ""))
+		// CX-03 parity with the TS parser: safe integers only, explicit 0 kept.
+		if z != math.Trunc(z) || math.Abs(z) > 9007199254740991 {
+			p.fail(t, ErrUnexpected, "z must be an integer")
+		}
+		o.Z = &z
 	default:
 		return false
 	}

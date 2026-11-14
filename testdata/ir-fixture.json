@@ -1,5 +1,5 @@
 {
-  "irVersion": 5,
+  "irVersion": 6,
   "formatVersion": "1.0",
   "title": "Checkout",
   "level": "container",
@@ -43,6 +43,7 @@
       ],
       "attach": "erp",
       "icon": "cloud",
+      "z": -2,
       "style": {
         "fill": "#2d6cdf",
         "dashed": true,

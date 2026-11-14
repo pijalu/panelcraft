@@ -188,6 +188,8 @@ const EN = {
   "Advanced": "Advanced",
   "id:": "id:",
   "size:": "size:",
+  "Stacking order": "Stacking order",
+  "Auto": "Auto",
   "Fit to name": "Fit to name",
   "Link": "Link",
   "Type": "Type",

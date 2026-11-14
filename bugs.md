@@ -107,54 +107,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 ---
 
-
-
-
-
-## CX-03 Add automatic and explicit object stacking order
-
-**Observed/current behavior**
-
-- Objects render in document order; links remain in a lower layer.
-- No persisted numeric z property exists.
-- The user guide mentions “bring to front,” but the context menu currently has no such
-  command; DOC-01 tracks that mismatch.
-
-**Expected behavior**
-
-- Support stacking order per object with **auto** as the default and an optional integer z
-  override.
-- With every object on auto, preserve current document order exactly. Only explicit values
-  are serialized.
-- Use stable document order to break equal-z ties. Define auto as effective z=0 for mixed
-  auto/explicit comparisons, so negative overrides sort below auto objects and positive
-  overrides sort above them while preserving auto objects' relative order.
-- Links always remain below objects; z is not added to links. Selection, hit-testing, groups,
-  minimap, exports, and CLI rendering must reflect the same order.
-- Changing z is undoable and survives canvas edits, code edits, reload, import, and export.
-
-**Implementation plan**
-
-1. Add optional object z to PDL/IR with validation and default migration.
-2. Sort a stable render/hit-test projection without unnecessarily rewriting document order.
-3. Add properties UI for Auto/integer and regenerate corpus/parity fixtures.
-
-**Test approach**
-
-- Unit: all-auto compatibility, positive/zero/negative values, equal-z stability, negative
-  hit-testing order, groups, undo, and round-trip.
-- Corpus: TS⇄Go parity and minimal printing for auto.
-- E2E: overlap objects; change z; select the visibly top object; reload; switch views;
-  export SVG/PNG and CLI output.
-- Visual filmstrip: auto, negative, positive, and tied z states in both themes.
-
-**Validation steps**
-
-- Run model/render/format tests, corpus parity, geometry E2E, CLI render smoke, and the
-  common gate.
-
----
-
 ## FLOW-01 Replace the permanent Flows sidebar with canvas-assisted editing
 
 **Observed/current behavior**
@@ -334,6 +286,38 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 - Run `bash scripts/check-docs.sh` and the CX-03 E2E scenario, then include the docs diff in
   the same reviewed commit.
+
+---
+
+## CX-05 Auto-layout crashes when a link uses a group as an endpoint
+
+**Observed/current behavior**
+
+- A document whose link endpoint is a `group` id validates cleanly but cannot be laid out:
+  `panelcraft render` fails with `browser render failed: Cannot set properties of undefined
+  (setting 'rank')`, and the canvas auto-layout path hits the same dagre error.
+- Found while building the CX-03 corpus seed; it reproduces with every `z` removed, so it
+  predates stacking order and is unrelated to it.
+
+**Expected behavior**
+
+- A group endpoint is either laid out like an entity (boundary as the node) or rejected by
+  validation with a clear diagnostic — never a runtime crash.
+
+**Implementation plan**
+
+1. Reproduce in the layout unit tests with a minimal group-endpoint document.
+2. Decide the contract (layout the boundary, or reject with a P-code) and implement it.
+3. Keep canvas, CLI render and validation agreed on that contract.
+
+**Test approach**
+
+- Unit: layout of a group endpoint and of a group referenced only by `contains`.
+- E2E/CLI: render a group-endpoint document without an exception.
+
+**Validation steps**
+
+- Run the layout/render tests, a CLI render smoke, and the common gate.
 
 ---
 

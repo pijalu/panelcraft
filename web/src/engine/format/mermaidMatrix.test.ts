@@ -33,7 +33,7 @@ describe('mermaid matrix (F-21)', () => {
       'pcd 1.0\ntitle "T"\ntheme dark\nlevel container\ndirection LR\n\n' +
         'import i as "./x.pcd"\n\n' +
         'person a "A" {\n  description "d"\n  properties\n}\n' +
-        'system b "B" {\n  technology "Go"\n  property k "v"\n  icon cloud\n  glow "x"\n  style {\n    stroke #fff\n  }\n}\n' +
+        'system b "B" {\n  technology "Go"\n  property k "v"\n  icon cloud\n  glow "x"\n  z 2\n  style {\n    stroke #fff\n  }\n}\n' +
         'datastore c "C"\nqueue d "D"\nsystem_ext e "E"\ncontainer f "F"\ncomponent g "G"\n' +
         'group grp "G" {\n  contains a b\n}\nnote n "memo" {\n  attach a\n}\n\n' +
         'a -> b as L1 {\n  waypoint (1, 2)\n}\n\n' +

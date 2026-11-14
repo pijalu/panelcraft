@@ -58,6 +58,13 @@ and the CLI's `--theme` option.
 - **Hover** an object to see its name, technology, description and tags.
 - **Keyboard**: arrows move the selection, Tab/Shift+Tab move focus between
   objects, Delete removes, Escape deselects or closes the active overlay.
+- **Stacking order**: objects paint and hit-test in document order by default.
+  Properties → Advanced → **Stacking order** takes a whole number, or stays blank
+  for **Auto**: negative values sink below Auto objects, positive values rise above
+  them, equal values keep document order, and clearing the field returns the object
+  to Auto. The change is undoable and saved as `z <n>`. Links always paint below
+  objects, and the mini-map, SVG/PNG exports and `panelcraft render` use the same
+  order.
 - **Context menu** (right-click): copy/paste/duplicate, delete, align,
   distribute, equalise size, bring to front.
 - **History**: Ctrl/Cmd+Z / Shift-Ctrl/Cmd+Z act on the surface that has focus;
