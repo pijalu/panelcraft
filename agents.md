@@ -4,6 +4,11 @@ Agentic development conventions for this repository. **Humans:** this file is al
 you — it is the contributor handbook in condensed form. Full product spec:
 [docs/SPEC.md](docs/SPEC.md). Format spec: [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md).
 
+For UI design, implementation, and screenshot review, load the
+[Laws of UX skill](.agents/skills/laws-of-ux/SKILL.md). Its workflow covers accessibility,
+reduced motion, responsive behavior, privacy, and the style guide; load only the individual
+law references relevant to the interaction under review.
+
 ## Project in one paragraph
 
 Client-only web app for IcePanel-style architecture diagrams (IcePanel = inspiration

@@ -5,6 +5,10 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Added — UX review
+
+- **UX-01** Added a reusable Laws of UX review skill with 30 PanelCraft-specific references.
+
 ### Fixed — review pass 2 (docs/FIX-PLAN.md)
 
 - **F-01** Canvas edits no longer rewrite the file as an objects+links
