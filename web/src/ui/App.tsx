@@ -20,6 +20,7 @@ import { TemplateOverlay } from './EmptyState';
 import type { RenameTarget } from './InlineRename';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useUiLayout } from './useUiLayout';
+import { useAppTheme } from './useAppTheme';
 import { useHistory } from './useHistory';
 import { useViewSession } from './useViewSession';
 import type { HoverInfo } from './hoverInfo';
@@ -518,6 +519,7 @@ export function App() {
   const [flowSelection, setFlowSelection] = useState<FlowSelection | null>(null);
   const player = useFlowStage({ manager, canvas, activePath, illustration });
   const ui = useUiLayout(manager, ws.ready, ws.version);
+  const appTheme = useAppTheme(manager, ws.ready, ws.version);
   const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null, setFlash);
   const [historyOpen, setHistoryOpen] = useState(false);
   const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
@@ -543,6 +545,7 @@ export function App() {
       <AppHeader
         ws={ws}
         ui={ui}
+        theme={appTheme}
         svgRef={canvas.svgRef}
         onFlash={setFlash}
         onClearRequest={() => setClearOpen(true)}

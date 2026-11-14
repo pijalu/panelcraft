@@ -1,8 +1,11 @@
 # PanelCraft — user guide
 
 Everything happens in your browser; nothing is sent anywhere (SPEC FR-S1).
-Screenshots reference the light theme; the dark theme (`prefers-color-scheme`)
-mirrors every feature.
+Screenshots reference the light application theme; the dark theme mirrors every feature.
+Choose **View → Application theme → System / Light / Dark**. System follows live OS changes;
+Light and Dark override it. The choice is stored with browser-local workspace settings and is
+applied before the app paints on reload. It is independent of a document's `theme` directive
+and the CLI's `--theme` option.
 
 ## 1. Workspace basics
 

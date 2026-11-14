@@ -4,6 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PanelCraft</title>
+    <script>
+      // Apply the validated workspace-theme boot hint before the bundle paints.
+      (() => {
+        let preference = 'system';
+        try {
+          const saved = JSON.parse(localStorage.getItem('panelcraft.app-theme') || 'null');
+          if (saved?.version === 1 && ['system', 'light', 'dark'].includes(saved.preference)) {
+            preference = saved.preference;
+          }
+        } catch { /* blocked/corrupt boot hints fall back to System */ }
+        const dark = preference === 'dark' ||
+          (preference === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.documentElement.dataset.themePreference = preference;
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

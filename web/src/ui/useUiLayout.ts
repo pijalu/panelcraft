@@ -79,7 +79,14 @@ function useLayoutRecovery(
   saveTimer: { current: ReturnType<typeof setTimeout> | null },
 ): void {
   useEffect(() => {
-    const recover = () => update((current) => recoverLayout(current, window.innerWidth, window.innerHeight));
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    const recover = () => {
+      if (window.innerWidth === width && window.innerHeight === height) return;
+      width = window.innerWidth;
+      height = window.innerHeight;
+      update((current) => recoverLayout(current, width, height));
+    };
     window.addEventListener('resize', recover);
     return () => {
       window.removeEventListener('resize', recover);

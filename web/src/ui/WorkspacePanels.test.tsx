@@ -47,11 +47,30 @@ describe('UX-02 panel commands', () => {
     const onOpen = vi.fn();
     const onReset = vi.fn();
     const layout = closePanel(defaultLayout(1600), 'sidebar');
-    render(<ViewMenu layout={layout} onOpen={onOpen} onReset={onReset} />);
+    render(<ViewMenu layout={layout} onOpen={onOpen} onReset={onReset} theme="system" onThemeChange={vi.fn()} />);
     fireEvent.click(screen.getByTestId('view-panel-sidebar'));
     fireEvent.click(screen.getByTestId('reset-workspace-layout'));
     expect(onOpen).toHaveBeenCalledWith('sidebar');
     expect(onReset).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('view-panel-palette')).toHaveProperty('disabled', true);
+  });
+
+  it('selects System, Light and Dark application themes from View', () => {
+    const onThemeChange = vi.fn();
+    render(
+      <ViewMenu
+        layout={defaultLayout(1600)}
+        onOpen={vi.fn()}
+        onReset={vi.fn()}
+        theme="system"
+        onThemeChange={onThemeChange}
+      />,
+    );
+    const select = screen.getByRole('combobox', { name: 'Application theme' });
+    expect(Array.from(select.querySelectorAll('option')).map((option) => option.textContent)).toEqual([
+      'System', 'Light', 'Dark',
+    ]);
+    fireEvent.change(select, { target: { value: 'dark' } });
+    expect(onThemeChange).toHaveBeenCalledWith('dark');
   });
 });

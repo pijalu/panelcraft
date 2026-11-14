@@ -107,45 +107,6 @@ one-line changelog entry. Move the closed item and its executed plan to `docs/ar
 
 ---
 
-## UX-05 Add a persisted System/Light/Dark application selector
-
-**Observed/current behavior**
-
-- Application chrome only follows `prefers-color-scheme` (`web/src/ui/app.css`).
-- PDL also supports a document render theme; these are separate concerns.
-
-**Expected behavior**
-
-- Add an application theme selector with **System (default)**, **Light**, and **Dark**.
-- Persist the application preference in workspace UI settings. System follows OS changes;
-  explicit Light/Dark overrides the OS until changed.
-- Apply the preference to all chrome, CodeMirror, dialogs, docked/floating panels, canvas
-  defaults, minimap, guides, and flow visuals without a flash of the wrong theme on reload.
-- Keep the PDL document `theme` directive independent for diagram/CLI rendering. Changing a
-  document theme must not silently change the application preference, and vice versa.
-- Maintain WCAG contrast and reduced-motion behavior in both schemes.
-
-**Implementation plan**
-
-1. Add versioned theme preference state and an early root theme attribute/class.
-2. Replace media-only token selection with System/Light/Dark resolution while retaining OS
-   listener behavior in System mode.
-3. Add the selector to settings/View UI and audit hard-coded colors and canvas export paths.
-
-**Test approach**
-
-- Unit: default, migration, invalid preference, OS changes, explicit override, and document
-  theme independence.
-- E2E: choose each mode; reload; change emulated OS scheme; open every dialog/panel; export
-  current view; verify CLI theme arguments remain deterministic.
-- Visual filmstrip: every major surface and interaction state in both themes.
-
-**Validation steps**
-
-- Run theme/component/E2E tests, accessibility contrast checks, and the common gate.
-- Verify exported SVG/PNG still uses the requested document render theme.
-
----
 
 ## UX-06 Add equal-size cues and snapping during component resize
 

@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-14 — UX-05 application theme preference
+
+- Added a persisted, no-flash System/Light/Dark selector across application surfaces while keeping document and CLI render themes independent, including deterministic light/dark SVG and PNG output.
+
 ## 2026-11-14 — UX-04 separated shape content
 
 - Reserved distinct label, glyph, icon and imported-badge regions across all shape kinds, with consistent auto-fit, explicit resize and reload geometry plus keyboard/contrast fixes found by accessibility review.

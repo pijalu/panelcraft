@@ -11,6 +11,7 @@ import type { WorkspaceManager } from '../workspace/workspace';
 import type { UiLayoutHandle } from './useUiLayout';
 import { ViewMenu } from './WorkspacePanels';
 import { s } from './strings';
+import type { AppThemeHandle } from './useAppTheme';
 
 function errorToShow(manager: WorkspaceManager, dismissed: string | null, ready: boolean): string | null {
   if (!ready || manager.openError === null || manager.openError === dismissed) return null;
@@ -26,6 +27,7 @@ export function AppHeader(props: {
   /** F-24: open the unified history affordance. */
   onHistoryRequest(): void;
   ui: UiLayoutHandle;
+  theme: AppThemeHandle;
   /** F-25: system-status pill. */
   dirty: boolean;
   savedAt: number | null;
@@ -38,7 +40,13 @@ export function AppHeader(props: {
       <header class="app-header">
         <span class="app-title">{s('PanelCraft')}</span>
         <StatusPill dirty={props.dirty} savedAt={props.savedAt} problems={props.problems} />
-        <ViewMenu layout={props.ui.layout} onOpen={props.ui.openPanel} onReset={props.ui.resetLayout} />
+        <ViewMenu
+          layout={props.ui.layout}
+          onOpen={props.ui.openPanel}
+          onReset={props.ui.resetLayout}
+          theme={props.theme.preference}
+          onThemeChange={props.theme.setPreference}
+        />
         <WorkspaceToolbar
           manager={ws.manager}
           activePath={ws.ready ? ws.manager.activePath : null}

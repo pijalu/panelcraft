@@ -1,0 +1,163 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// UX-05: application-only System/Light/Dark preference, persistence, no-flash
+// restoration, document/CLI independence and major-surface accessibility.
+import { expect, test, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { capture } from './lib/screenshots';
+import { openWorkspacePanels } from './lib/panels';
+
+const root = (page: Page) => page.locator('html');
+
+async function chooseTheme(page: Page, preference: 'system' | 'light' | 'dark'): Promise<void> {
+  await page.getByTestId('view-menu').click();
+  await page.getByTestId('app-theme').selectOption(preference);
+  // The selector remains usable without closing the View menu.
+  await page.getByTestId('view-menu').click();
+}
+
+async function axe(page: Page): Promise<void> {
+  const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  const violations = result.violations.flatMap((violation) =>
+    violation.nodes.map((node) => `${violation.id}: ${node.target.join(' ')}`),
+  );
+  expect(violations, violations.join('\n')).toEqual([]);
+}
+
+async function storedTheme(page: Page): Promise<unknown> {
+  return page.evaluate(() => new Promise((resolve) => {
+    const request = indexedDB.open('panelcraft');
+    request.onsuccess = () => {
+      const get = request.result.transaction('workspace', 'readonly').objectStore('workspace').get('current');
+      get.onsuccess = () => {
+        resolve(get.result?.settings?.appTheme);
+        request.result.close();
+      };
+    };
+  }));
+}
+
+async function replaceCode(page: Page, text: string): Promise<void> {
+  const editor = page.locator('.cm-content');
+  await editor.click();
+  await editor.press('ControlOrMeta+a');
+  await page.keyboard.insertText(text);
+  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+}
+
+test('UX-05: System follows OS, explicit choices persist before first paint, and PDL stays independent', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/');
+  await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
+  await expect(root(page)).toHaveAttribute('data-theme-preference', 'system');
+  await expect(root(page)).toHaveAttribute('data-theme', 'light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(root(page)).toHaveAttribute('data-theme', 'dark');
+
+  await chooseTheme(page, 'light');
+  await expect(root(page)).toHaveAttribute('data-theme', 'light');
+  expect(await storedTheme(page)).toEqual({ version: 1, preference: 'light' });
+  await page.reload();
+  await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
+  await expect(root(page)).toHaveAttribute('data-theme', 'light');
+  await expect(root(page)).toHaveAttribute('data-theme-preference', 'light');
+  await expect(page.getByTestId('app-theme')).toHaveValue('light');
+
+  await chooseTheme(page, 'dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(root(page)).toHaveAttribute('data-theme', 'dark');
+  await chooseTheme(page, 'light');
+  await openWorkspacePanels(page, ['code']);
+  await replaceCode(page, 'pcd 1.0\ntheme dark\nsystem api "API"\n');
+  await expect(root(page)).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('.cm-content')).toContainText('theme dark');
+
+  await chooseTheme(page, 'dark');
+  await expect(root(page)).toHaveAttribute('data-theme', 'dark');
+  await replaceCode(page, 'pcd 1.0\ntheme light\nsystem api "API"\n');
+  await expect(root(page)).toHaveAttribute('data-theme', 'dark');
+  await expect(root(page)).toHaveAttribute('data-theme-preference', 'dark');
+  const pending = page.waitForEvent('download');
+  await page.getByTestId('tb-export-svg').click();
+  expect((await pending).suggestedFilename()).toBe('untitled.svg');
+  await expect(root(page)).toHaveAttribute('data-theme', 'dark');
+});
+
+const FLOW_DOC = `pcd 1.0
+theme dark
+person ada "Ada"
+system web "Web"
+ada -> web : "request"
+flow "Checkout" as main {
+  intro "Start"
+  ada -> web : "request"
+  conclusion "Done"
+}
+view "Default" {
+  layout saved
+  position ada (80, 100)
+  position web (360, 100)
+}
+`;
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`UX-05: panels, canvas, mini-map, flow visuals and dialogs (${theme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme === 'light' ? 'dark' : 'light' });
+    await page.addInitScript((preference) => {
+      localStorage.setItem('panelcraft.app-theme', JSON.stringify({ version: 1, preference }));
+    }, theme);
+    await page.goto('/');
+    await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
+    await expect(root(page)).toHaveAttribute('data-theme', theme);
+    await openWorkspacePanels(page, ['sidebar', 'code', 'props', 'flows']);
+    await replaceCode(page, FLOW_DOC);
+    await page.getByTestId('flow-row-main').click();
+    await expect(page.getByTestId('step-0')).toBeVisible();
+    await page.getByTestId('canvas').locator('g.pc-obj[data-id="ada"]').click();
+    await expect(page.getByTestId('mini-map')).toBeVisible();
+    await capture(page, `ux05-major-surfaces-${theme}`);
+    await test.info().attach(`ux05-major-surfaces-${theme}-accessibility`, {
+      body: await page.getByTestId('app-shell').ariaSnapshot(), contentType: 'text/plain',
+    });
+    await axe(page);
+
+    await page.getByTestId('view-menu').click();
+    await expect(page.getByTestId('app-theme')).toBeVisible();
+    await capture(page, `ux05-view-menu-${theme}`);
+    await axe(page);
+    await page.getByTestId('view-menu').click();
+
+    await page.getByTestId('panel-menu-flows').click();
+    await page.getByTestId('dock-flows-float').click();
+    await expect(page.locator('[data-panel="flows"]')).toHaveAttribute('data-dock', 'float');
+    await capture(page, `ux05-floating-${theme}`);
+    await axe(page);
+
+    await page.getByTestId('history-open').click();
+    await expect(page.getByRole('dialog', { name: 'History' })).toBeVisible();
+    await capture(page, `ux05-history-${theme}`);
+    await axe(page);
+    await page.getByTestId('history-close').click();
+
+    await page.getByTestId('tb-snapshots').click();
+    await expect(page.getByTestId('snapshots-overlay')).toBeVisible();
+    await capture(page, `ux05-snapshots-${theme}`);
+    await axe(page);
+    await page.getByTestId('snapshot-close').click();
+
+    await page.getByTestId('tb-clear-data').click();
+    await expect(page.getByRole('dialog', { name: 'Clear stored data' })).toBeVisible();
+    await capture(page, `ux05-clear-dialog-${theme}`);
+    await axe(page);
+    await page.getByRole('button', { name: 'Cancel' }).click();
+
+    await page.keyboard.press('ControlOrMeta+p');
+    await expect(page.getByTestId('search-overlay')).toBeVisible();
+    await capture(page, `ux05-search-${theme}`);
+    await axe(page);
+    await page.keyboard.press('Escape');
+    await page.reload();
+    await expect(root(page)).toHaveAttribute('data-theme', theme);
+    await expect(page.getByTestId('app-theme')).toHaveValue(theme);
+    await expect(page.locator('.cm-content')).toContainText('theme dark');
+  });
+}

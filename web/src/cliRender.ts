@@ -53,7 +53,11 @@ function standaloneSvg(svg: SVGSVGElement, width: number, height: number): strin
   clone.setAttribute('viewBox', `0 0 ${width} ${height}`);
   const computed = getComputedStyle(document.documentElement);
   const vars = THEME_VARS.map((name) => `${name}:${computed.getPropertyValue(name).trim()};`).join('');
-  clone.setAttribute('style', `${vars}width:${width}px;height:${height}px;background:var(--pc-canvas);`);
+  const inlineStyle = `${vars}width:${width}px;height:${height}px;background:var(--pc-canvas);`;
+  clone.setAttribute('style', inlineStyle);
+  // Chrome captures PNG after renderDiagram restores the application root.
+  // Freeze the same explicit CLI palette on the live SVG for that screenshot.
+  svg.setAttribute('style', inlineStyle);
   const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
   style.textContent = embeddedStyles();
   clone.insertBefore(style, clone.firstChild);
@@ -63,6 +67,18 @@ function standaloneSvg(svg: SVGSVGElement, width: number, height: number): strin
 
 /** Render PDL synchronously after the browser bundle has loaded. */
 export function renderDiagram(source: string, options: CliRenderOptions): CliRenderResult {
+  const root = document.documentElement;
+  const previous = root.dataset.theme;
+  root.dataset.theme = options.theme;
+  try {
+    return renderDiagramInTheme(source, options);
+  } finally {
+    if (previous === undefined) delete root.dataset.theme;
+    else root.dataset.theme = previous;
+  }
+}
+
+function renderDiagramInTheme(source: string, options: CliRenderOptions): CliRenderResult {
   const doc = parseSource(source);
   if (options.view !== undefined && findView(doc, options.view) === undefined) {
     throw new Error(`view "${options.view}" not found`);

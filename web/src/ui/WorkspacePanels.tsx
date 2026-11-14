@@ -5,6 +5,7 @@ import { useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { PANELS, type DockId, type FloatingBounds, type PanelId, type UiLayout } from './uiLayout';
 import type { UiLayoutHandle } from './useUiLayout';
+import type { AppThemePreference } from './appTheme';
 import { Splitter } from './PanelChrome';
 import { s } from './strings';
 
@@ -188,10 +189,12 @@ interface ViewMenuProps {
   layout: UiLayout;
   onOpen: (panel: PanelId) => void;
   onReset: () => void;
+  theme: AppThemePreference;
+  onThemeChange: (theme: AppThemePreference) => void;
 }
 
 /** Always-available recovery path for closed/collapsed or unreachable panels. */
-export function ViewMenu({ layout, onOpen, onReset }: ViewMenuProps) {
+export function ViewMenu({ layout, onOpen, onReset, theme, onThemeChange }: ViewMenuProps) {
   const details = useRef<HTMLDetailsElement | null>(null);
   const closeMenu = () => {
     if (details.current) details.current.open = false;
@@ -200,6 +203,18 @@ export function ViewMenu({ layout, onOpen, onReset }: ViewMenuProps) {
     <details class="view-menu" ref={details}>
       <summary data-testid="view-menu">{s('View')}</summary>
       <div class="view-menu-popover" aria-label={s('Workspace panels')}>
+        <label class="theme-picker">
+          {s('Application theme')}
+          <select
+            data-testid="app-theme"
+            value={theme}
+            onChange={(event) => onThemeChange((event.currentTarget as HTMLSelectElement).value as AppThemePreference)}
+          >
+            <option value="system">{s('System')}</option>
+            <option value="light">{s('Light')}</option>
+            <option value="dark">{s('Dark')}</option>
+          </select>
+        </label>
         {PANELS.map((panel) => (
           <button
             type="button"

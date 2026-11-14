@@ -4,6 +4,9 @@
 const EN = {
   "View": "View",
   "Workspace panels": "Workspace panels",
+  "Application theme": "Application theme",
+  "Light": "Light",
+  "Dark": "Dark",
   "Reset workspace layout": "Reset workspace layout",
   "{label} panel. Drag to move; panel actions provide keyboard docking.": "{label} panel. Drag to move; panel actions provide keyboard docking.",
   "{label} panel actions": "{label} panel actions",

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderDiagram } from './cliRender';
+import './ui/app.css';
 
 const SOURCE = `pcd 1.0
 person ada "Ada"
@@ -21,6 +22,7 @@ view "Detail" {
 
 afterEach(() => {
   document.body.textContent = '';
+  vi.restoreAllMocks();
 });
 
 describe('CLI browser renderer (SPEC S6/FR-X)', () => {
@@ -51,6 +53,31 @@ describe('CLI browser renderer (SPEC S6/FR-X)', () => {
     expect(Number(groupRect?.[1])).toBeGreaterThan(120);
     expect(Number(groupRect?.[2])).toBeGreaterThan(60);
     expect(svg).toContain('places order');
+  });
+
+  it('uses the explicit CLI theme instead of the application root preference', () => {
+    const computed = window.getComputedStyle;
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((element, pseudo) => {
+      if (element !== document.documentElement) return computed(element, pseudo);
+      return {
+        getPropertyValue: (name: string) => name === '--pc-bg'
+          ? (document.documentElement.dataset.theme === 'dark' ? '#14161a' : '#ffffff')
+          : '',
+      } as CSSStyleDeclaration;
+    });
+    document.documentElement.dataset.theme = 'dark';
+    const light = renderDiagram(SOURCE, { width: 800, theme: 'light', view: 'Detail' });
+    expect(light.svg).toContain('--pc-bg:#ffffff');
+    expect(light.svg).not.toContain('--pc-bg:#14161a');
+
+    document.documentElement.dataset.theme = 'light';
+    const dark = renderDiagram(SOURCE, { width: 800, theme: 'dark', view: 'Detail' });
+    expect(dark.svg).toContain('--pc-bg:#14161a');
+    // Go captures PNG after this function returns and restores the app root.
+    // The live SVG must retain the explicit CLI palette for that screenshot.
+    expect(document.querySelector('[data-cli-render-root] svg')?.getAttribute('style'))
+      .toContain('--pc-bg:#14161a');
+    expect(document.documentElement.dataset.theme).toBe('light');
   });
 
   it('rejects an unknown view instead of silently rendering another one', () => {

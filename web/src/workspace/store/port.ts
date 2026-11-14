@@ -15,6 +15,8 @@ export const SCHEMA_VERSION = 2;
 export interface WorkspaceSettings {
   /** Opaque to the store — validated by `ui/uiLayout.ts` on read. */
   layout?: unknown;
+  /** Versioned application-only theme; validated by `ui/appTheme.ts`. */
+  appTheme?: unknown;
 }
 
 /** Stored workspace record (object store value). v2 layout. */

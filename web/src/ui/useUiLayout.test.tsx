@@ -34,6 +34,24 @@ describe('useUiLayout (UX-02)', () => {
     }));
   });
 
+  it('ignores redundant resize events so they cannot collapse a settled workspace', async () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
+    const stored = defaultLayout(1440);
+    const { manager } = managerWith(stored);
+    const { result } = renderHook(() => useUiLayout(manager, true, 0));
+    act(() => {
+      for (const panel of ['sidebar', 'flows', 'palette', 'code', 'props'] as const) {
+        result.current.openPanel(panel);
+        result.current.movePanel(panel, 'left');
+      }
+    });
+    expect(Object.values(result.current.layout.panels)).toEqual(['open', 'open', 'open', 'open', 'open']);
+    await act(async () => {});
+    act(() => { window.dispatchEvent(new Event('resize')); });
+    expect(Object.values(result.current.layout.panels)).toEqual(['open', 'open', 'open', 'open', 'open']);
+  });
+
   it('restores an unchanged stored layout and persists dock/close operations at once', () => {
     const stored = openPanel(defaultLayout(1280), 'code');
     const { manager, setSetting } = managerWith(stored);

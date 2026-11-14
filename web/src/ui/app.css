@@ -2,7 +2,7 @@
 /* Design tokens per docs/STYLE-GUIDE.md — single source of truth (M2-WP5:
    shapes/colors reference CSS custom properties only, never hard-coded). */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --pc-bg: #ffffff;
   --pc-surface: #f5f6f8;
   --pc-fg: #1a1d21;
@@ -27,19 +27,18 @@
   animation: none !important;
   transition: none !important;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --pc-bg: #14161a;
-    --pc-surface: #1e2126;
-    --pc-fg: #e5e7eb;
-    /* N5 (M7): 6.36:1 on surface (was #9ca3af — fine on bg, kept ratio headroom) */
-    --pc-muted: #a9b1ba;
-    --pc-accent: #60a5fa;
-    --pc-info: #5eead4;
-    --pc-warn: #fca88a;
-    --pc-border: #374151;
-    --pc-canvas: #111316;
-  }
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --pc-bg: #14161a;
+  --pc-surface: #1e2126;
+  --pc-fg: #e5e7eb;
+  /* N5 (M7): 6.36:1 on surface (was #9ca3af — fine on bg, kept ratio headroom) */
+  --pc-muted: #a9b1ba;
+  --pc-accent: #60a5fa;
+  --pc-info: #5eead4;
+  --pc-warn: #fca88a;
+  --pc-border: #374151;
+  --pc-canvas: #111316;
 }
 
 * {
@@ -855,16 +854,14 @@ marker .pc-arrow[fill='none'] {
   color: #78350f;
 }
 
-@media (prefers-color-scheme: dark) {
-  .banner-error {
-    background: #450a0a;
-    color: #fecaca;
-  }
+:root[data-theme='dark'] .banner-error {
+  background: #450a0a;
+  color: #fecaca;
+}
 
-  .banner-warn {
-    background: #451a03;
-    color: #fde68a;
-  }
+:root[data-theme='dark'] .banner-warn {
+  background: #451a03;
+  color: #fde68a;
 }
 
 /* view bar (M6): views + tag filter chips + layout actions */
@@ -1681,16 +1678,14 @@ marker .pc-arrow[fill='none'] {
 .pc-tok-id { color: var(--pc-fg); }
 .pc-tok-meta { color: #7c3aed; }
 
-@media (prefers-color-scheme: dark) {
-  .problem-error .problem-msg { color: #f87171; }
-  .problem-warning .problem-msg { color: #fbbf24; }
+:root[data-theme='dark'] .problem-error .problem-msg { color: #f87171; }
+:root[data-theme='dark'] .problem-warning .problem-msg { color: #fbbf24; }
 
-  /* PDL token colors (dark) */
-  .pc-tok-kw { color: #60a5fa; }
-  .pc-tok-str { color: #34d399; }
-  .pc-tok-num { color: #fbbf24; }
-  .pc-tok-meta { color: #c4b5fd; }
-}
+/* PDL token colors (dark) */
+:root[data-theme='dark'] .pc-tok-kw { color: #60a5fa; }
+:root[data-theme='dark'] .pc-tok-str { color: #34d399; }
+:root[data-theme='dark'] .pc-tok-num { color: #fbbf24; }
+:root[data-theme='dark'] .pc-tok-meta { color: #c4b5fd; }
 
 /* ===== M5 flows & animation ===== */
 
@@ -2141,6 +2136,13 @@ marker .pc-arrow[fill='none'] {
 .search-row-active .search-path {
   /* N5 (M7): AA on accent — see .search-kind above */
   color: #ffffff;
+}
+
+:root[data-theme='dark'] .search-row-active,
+:root[data-theme='dark'] .search-row-active .search-kind,
+:root[data-theme='dark'] .search-row-active .search-path {
+  /* Dark accent is light blue; dark foreground preserves AA instead of white. */
+  color: #14161a;
 }
 
 .search-empty {
@@ -2893,6 +2895,28 @@ marker .pc-arrow[fill='none'] {
 .view-menu-popover {
   left: 0;
   right: auto;
+  min-width: 240px;
+}
+
+.theme-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+  padding: 0 4px 6px;
+  border-bottom: 1px solid var(--pc-border);
+  color: var(--pc-fg);
+  font-size: var(--pc-text-sm);
+}
+
+.theme-picker select {
+  min-height: 32px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-surface);
+  color: var(--pc-fg);
+  font: inherit;
 }
 
 .panel-actions-popover button,
