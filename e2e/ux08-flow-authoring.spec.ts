@@ -90,8 +90,10 @@ for (const theme of THEMES) {
     await capture(page, `ux08-flow-authoring-shell-${theme}`);
 
     // Keyboard: focus the rail toggle and activate it with the keyboard.
-    await page.getByTestId('expand-flows').focus();
-    await page.keyboard.press('Enter');
+    // `locator.press` re-resolves the element before pressing; a separate
+    // focus() + page.keyboard.press() loses the keystroke when the pane
+    // re-renders in between (the focused node is replaced).
+    await page.getByTestId('expand-flows').press('Enter');
     await expect(page.getByTestId('flow-pane')).toBeVisible();
     await expect(page.getByTestId('flow-empty')).toContainText('guided walkthrough');
     await capture(page, `ux08-flow-authoring-empty-${theme}`);
@@ -99,8 +101,7 @@ for (const theme of THEMES) {
     await seedShapes(page);
 
     // New flow through the primary action, still by keyboard.
-    await page.getByTestId('flow-add').focus();
-    await page.keyboard.press('Enter');
+    await page.getByTestId('flow-add').press('Enter');
     // Each structural action round-trips through the file (write → reparse →
     // re-render), which takes seconds on a 2-core CI runner; the default 5 s
     // assertion timeout is too tight for that, not too tight for a human.
@@ -142,8 +143,7 @@ for (const theme of THEMES) {
     await capture(page, `ux08-flow-authoring-simple-${theme}`);
 
     // Advanced steps stay behind their own disclosure, opened by keyboard.
-    await page.getByTestId('advanced-steps').locator('summary').focus();
-    await page.keyboard.press('Enter');
+    await page.getByTestId('advanced-steps').locator('summary').press('Enter');
     await page.getByTestId('add-alt').click();
     await expect(page.getByTestId('step-2')).toContainText('alt', { timeout: 15_000 });
     await page.getByTestId('step-2').click();
