@@ -281,7 +281,7 @@ function CodeSlot(props: {
 }) {
   if (props.ui.layout.panels.code === 'collapsed') {
     return (
-      <PanelRail id="code" label={s('code')} onExpand={() => props.ui.togglePanel('code')}>
+      <PanelRail id="code" labelKey="code" onExpand={() => props.ui.togglePanel('code')}>
         <span
           class="rail-chip"
           data-testid="sync-state-rail"

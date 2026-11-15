@@ -6,33 +6,36 @@
 import { useRef } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
-import { s } from './strings';
+import { s, type StringKey } from './strings';
 
 export interface RailProps {
   /** Panel id — drives the test ids and aria wiring. */
   id: 'sidebar' | 'flows' | 'palette' | 'code' | 'props';
-  /** Human label used in the accessible name ("Show files panel"). */
-  label: string;
+  /** Catalog key for the human label used in the rail text and accessible name. */
+  labelKey: StringKey;
   onExpand: () => void;
   /** Optional rail content (the code rail shows the sync-state chip). */
   children?: ComponentChildren;
 }
 
 /** Narrow rail that replaces a collapsed panel. */
-export function PanelRail({ id, label, onExpand, children }: RailProps) {
+export function PanelRail({ id, labelKey, onExpand, children }: RailProps) {
   return (
     <div class="panel-rail" data-testid={`rail-${id}`}>
       <button
         type="button"
         class="rail-toggle"
         data-testid={`expand-${id}`}
-        aria-label={s('Show {label} panel', { label })}
+        aria-label={s('Show {label} panel', { label: s(labelKey) })}
         aria-expanded={false}
-        title={s('Show {label} (expand)', { label })}
+        title={s('Show {label} (expand)', { label: s(labelKey) })}
         onClick={onExpand}
       >
         <ChevronRightIcon />
       </button>
+      {/* UX08-WP12: a labelled rail entry, so a collapsed panel is still
+          identifiable at a glance (the chevron alone names nothing). */}
+      <span class="rail-label" aria-hidden="true">{s(labelKey)}</span>
       {children}
     </div>
   );

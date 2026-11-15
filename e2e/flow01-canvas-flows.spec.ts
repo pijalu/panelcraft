@@ -52,6 +52,12 @@ async function openFlows(page: Page): Promise<void> {
   await expect(page.getByTestId('flow-pane')).toBeVisible();
 }
 
+/** Let the parse→apply pipeline land before the next independent edit. */
+async function settle(page: Page): Promise<void> {
+  await expect(page.getByTestId('sync-state-rail')).toHaveAttribute('data-sync-state', 'clean');
+  await page.waitForTimeout(250);
+}
+
 for (const theme of ['light', 'dark'] as const) {
   test(`FLOW-01: canvas-assisted flow editing (${theme})`, async ({ page }) => {
     test.setTimeout(120_000);
@@ -68,33 +74,41 @@ for (const theme of ['light', 'dark'] as const) {
     // Create a flow, then build a message step from the selected connector.
     await page.getByTestId('flow-add').click();
     await expect(page.getByTestId('flow-pane')).toContainText('New flow');
-    await page.getByTestId('step-add-kind').selectOption('msg');
-    await page.getByTestId('step-add').click();
+    // A flow edit reloads the canvas, which clears the connector selection.
+    await settle(page);
+    await page.getByTestId('canvas').locator('g.pc-link[data-id="L2"] path.pc-route').click({ force: true });
+    await expect(page.getByTestId('add-msg')).toBeEnabled();
+    await page.getByTestId('add-msg').click();
     await expect(page.getByTestId('step-0')).toContainText('msg');
+
+    // Cards name the shapes: no id memorisation on the common path.
+    await expect(page.getByTestId('step-summary-0')).toContainText('Webshop → ERP');
 
     // Re-target from the canvas: pick the "to" object, then the connector.
     await page.getByTestId('step-0').click();
+    await settle(page);
     await page.getByTestId('canvas').locator('g.pc-obj[data-id="erp"]').click();
     await page.getByTestId('insp-pick-to').click();
-    await expect(page.getByTestId('step-summary-0')).toContainText('user → erp');
-    await page.getByTestId('canvas').locator('g.pc-link[data-id="L2"] path.pc-route').click({ force: true });
+    await expect(page.getByTestId('step-summary-0')).toContainText('Webshop → ERP');
+    await page.getByTestId('canvas').locator('g.pc-link[data-id="L1"] path.pc-route').click({ force: true });
     await page.getByTestId('insp-pick-link').click();
-    await expect(page.getByTestId('step-summary-0')).toContainText('shop → erp');
+    await expect(page.getByTestId('step-summary-0')).toContainText('Shopper → Webshop');
 
     // Cards summarise actors; selecting one highlights its participants.
     await page.getByTestId('step-0').click();
     await expect(page.getByTestId('step-0')).toHaveAttribute('aria-current', 'true');
     const faded = page.getByTestId('canvas').locator('.pc-obj.pc-faded');
-    await expect(faded).toHaveCount(1); // "user" is not part of the message
-    await expect(faded).toHaveAttribute('data-id', 'user');
+    await expect(faded).toHaveCount(1); // "erp" is not part of the message
+    await expect(faded).toHaveAttribute('data-id', 'erp');
     // Only the connector that the message does not use is faded.
-    await expect(page.getByTestId('canvas').locator('.pc-link.pc-faded')).toHaveAttribute('data-id', 'L1');
+    await expect(page.getByTestId('canvas').locator('.pc-link.pc-faded')).toHaveAttribute('data-id', 'L2');
     await capture(page, `flow01-card-highlight-${theme}`);
     await axe(page);
 
     // A block step clears the highlight and still edits inline.
-    await page.getByTestId('step-add-kind').selectOption('alt');
-    await page.getByTestId('step-add').click();
+    await page.getByTestId('advanced-steps').locator('summary').click();
+    await page.getByTestId('add-alt').click();
+    await expect(page.getByTestId('step-1')).toContainText('alt');
     await page.getByTestId('step-1').click();
     await expect(page.getByTestId('flow-inspector')).toBeVisible();
     await page.getByTestId('insp-alt-label').fill('payment');

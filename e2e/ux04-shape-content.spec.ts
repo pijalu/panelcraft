@@ -138,7 +138,9 @@ test('UX-04: every palette kind separates wrapped labels, glyphs and icons in bo
 
   // Give the visual matrix the whole canvas; the geometry above was also
   // checked with both side panels open and an active dependencies panel.
-  await canvas.click({ position: { x: 400, y: 650 } });
+  // Deselect on empty canvas below the matrix — the mini-map overlay owns the
+  // lower-right corner, so the point stays left of it.
+  await canvas.click({ position: { x: 120, y: 700 } });
   for (const panel of ['code', 'props']) {
     await page.getByTestId(`panel-menu-${panel}`).click();
     await page.getByTestId(`close-${panel}`).click();

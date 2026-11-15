@@ -605,6 +605,16 @@ body {
   border-right: 1px solid var(--pc-panel-border);
 }
 
+/* UX08-WP12: the rail names its panel in a vertical label. */
+.rail-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: var(--pc-text-xs);
+  letter-spacing: 0.02em;
+  color: var(--pc-muted);
+  user-select: none;
+}
+
 .props-col .panel-rail {
   border-right: none;
   border-left: 1px solid var(--pc-border);
@@ -2024,7 +2034,7 @@ marker .pc-arrow[fill='none'] {
 
 .flow-step-summary {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 3;
   display: block;
   font-size: var(--pc-text-xs);
   color: var(--pc-muted);
@@ -2540,13 +2550,13 @@ marker .pc-arrow[fill='none'] {
 
 .flow-step-kind {
   grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-row: 2 / span 3;
   min-width: 0;
 }
 
 .flow-step-title {
   grid-column: 2;
-  grid-row: 1;
+  grid-row: 2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2580,6 +2590,117 @@ marker .pc-arrow[fill='none'] {
 
 .flow-step[draggable='true'] {
   cursor: grab;
+}
+
+/* UX08-WP12 guided authoring: empty state, primary actions, numbered cards */
+.flow-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed var(--pc-input-border);
+  border-radius: var(--pc-radius-md);
+}
+
+.flow-empty p {
+  margin: 0;
+}
+
+.flow-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 2px;
+}
+
+.flow-meta textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-fg);
+  background: var(--pc-input-bg);
+  border: 1px solid var(--pc-input-border);
+  border-radius: var(--pc-radius-sm);
+  padding: 3px 6px;
+}
+
+.flow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.flow-action {
+  flex: 1 1 auto;
+  min-height: 30px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-fg);
+  background: var(--pc-button-bg);
+  border: 1px solid var(--pc-input-border);
+  border-radius: var(--pc-radius-sm);
+  cursor: pointer;
+}
+
+.flow-action.primary {
+  flex: 0 0 auto;
+  border-color: var(--pc-focus-ring);
+  color: var(--pc-focus-ring);
+  font-weight: 600;
+}
+
+.flow-action:hover:enabled {
+  background: var(--pc-button-hover-bg);
+}
+
+.flow-action:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.flow-hint {
+  margin: 0;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+}
+
+.flow-advanced > summary {
+  cursor: pointer;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+  padding: 2px 0;
+}
+
+.flow-advanced .flow-actions {
+  padding-top: 4px;
+}
+
+.flow-step-num {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+}
+
+.flow-step-desc {
+  grid-column: 2;
+  grid-row: 4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+}
+
+.flow-step-warn {
+  flex: 1 1 100%;
+  margin: 2px 0 0;
+  padding: 2px 8px;
+  color: var(--pc-warn);
+  font-size: var(--pc-text-xs);
 }
 
 /* F-19 context menu */

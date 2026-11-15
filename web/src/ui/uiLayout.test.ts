@@ -11,7 +11,7 @@ import {
 describe('defaultLayout (F-10)', () => {
   it('opens only Shapes on a fresh wide viewport', () => {
     const l = defaultLayout(1600);
-    expect(Object.values(l.panels)).toEqual(['collapsed', 'closed', 'open', 'collapsed', 'collapsed']);
+    expect(Object.values(l.panels)).toEqual(['collapsed', 'collapsed', 'open', 'collapsed', 'collapsed']);
     expect(l.widths).toEqual(DEFAULT_WIDTHS);
   });
 

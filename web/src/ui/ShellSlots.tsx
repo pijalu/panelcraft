@@ -11,18 +11,18 @@ import { PALETTE_ORDER, type CanvasController, type DiagramLink, type DiagramObj
 import type { Kind } from '../engine/model/types';
 import type { UiLayoutHandle } from './useUiLayout';
 import type { ImportError } from '../engine/model/imports';
-import { s } from './strings';
+import { s, type StringKey } from './strings';
 
 /** Collapsed-rail or panel, chosen from the layout. */
 export function slot(
   collapsed: boolean,
   id: 'sidebar' | 'flows' | 'palette' | 'props',
-  label: string,
+  label: StringKey,
   onExpand: () => void,
   content: ComponentChildren,
 ): ComponentChildren {
   return collapsed ? (
-    <PanelRail id={id} label={label} onExpand={onExpand} />
+    <PanelRail id={id} labelKey={label} onExpand={onExpand} />
   ) : (
     content
   );

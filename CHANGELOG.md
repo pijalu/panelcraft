@@ -7,6 +7,22 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ### Added — UX-08 application experience
 
+- **UX-08 WP12** Flows are now discoverable and authorable without memorising ids. Every
+  collapsed panel keeps a labelled rail entry, so *flow steps* is visible in the default shell
+  instead of hiding behind the View menu. The pane opens on a short explanation and **New flow**;
+  a flow takes a **name** and a **purpose** (printed as its `description`), and each step is a
+  numbered card with its kind, a readable title, the **actor names**, any step description and a
+  note when it points at a shape the diagram does not define. Steps come from what you selected:
+  **Add message** takes both endpoints from the selected connector, **Add process** needs exactly
+  one selected shape, and **Add note**/**Add introduction**/**Add conclusion** are always there —
+  impossible actions are disabled and say what to select, and no link is ever invented.
+  `alt`/`par`/`goto` moved behind **Advanced step**, reordering works by drag, by the inspector
+  arrows or with `Alt+↑`/`Alt+↓`, and **Present** plays the flow being edited. Four supporting
+  fixes came out of the new end-to-end path: a blank file can now host a flow (it was rejected as
+  a parse error), keyboard Enter activates shell buttons again after canvas interaction, typing in
+  the pane no longer loses characters to the asynchronous file round-trip, and rails show their
+  panel name instead of a bare chevron.
+
 - **UX-08 WP11 (format, IR v8)** Flows and their steps can now document themselves in the file.
   A flow takes a one-line `description`, and any step may carry a `presentation { … }` block with
   a `description`, a `camera` override (`auto`, `hold`, or `focus (x, y) zoom n` in document

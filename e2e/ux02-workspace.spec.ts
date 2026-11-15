@@ -78,10 +78,10 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
     await expect(page.getByTestId('app-shell')).toHaveAttribute(
       'data-panels',
-      'sidebar:collapsed,flows:closed,palette:open,code:collapsed,props:collapsed',
+      'sidebar:collapsed,flows:collapsed,palette:open,code:collapsed,props:collapsed',
     );
     await expect(page.getByTestId('palette')).toBeVisible();
-    for (const panel of ['sidebar', 'code', 'props'] as const) {
+    for (const panel of ['sidebar', 'flows', 'code', 'props'] as const) {
       await expect(page.getByTestId(`rail-${panel}`)).toBeVisible();
     }
     await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
@@ -153,7 +153,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await chooseAppMenu(page, 'reset-workspace-layout');
     await expect(page.getByTestId('app-shell')).toHaveAttribute(
       'data-panels',
-      'sidebar:collapsed,flows:closed,palette:open,code:collapsed,props:collapsed',
+      'sidebar:collapsed,flows:collapsed,palette:open,code:collapsed,props:collapsed',
     );
     await expect(page.getByTestId('panel-title-palette')).toBeFocused();
     await capture(page, `ux02-reset-${colorScheme}`);

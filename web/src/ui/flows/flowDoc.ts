@@ -192,9 +192,22 @@ export function addFlow(doc: Doc, title: string, seq: number): void {
   doc.flows.push({ title, id: `flow${seq}`, steps: [], pos: { line: 0, col: 0 } });
 }
 
-/** Parse → mutate → print. null when the text does not parse (editor blocked). */
+/**
+ * UX08-WP12: flow-level metadata edits. An empty title is ignored (the grammar
+ * needs one) and an empty description removes the line rather than printing `""`.
+ */
+export function patchFlow(flow: Flow, patch: { title?: string; description?: string }): void {
+  if (patch.title !== undefined && patch.title !== '') flow.title = patch.title;
+  if (patch.description === undefined) return;
+  if (patch.description === '') delete flow.description;
+  else flow.description = patch.description;
+}
+
+/** Parse → mutate → print. null when the text does not parse (editor blocked).
+ *  A blank file has no header yet, so it is seeded with one before the first
+ *  edit — otherwise the first authored flow would print into an invalid file. */
 export function retext(text: string, mutate: (doc: Doc) => void): string | null {
-  const { doc } = parsePDL(text);
+  const { doc } = parsePDL(text.trim() === '' ? 'pcd 1.0\n' : text);
   if (doc === null) return null;
   mutate(doc);
   return printDoc(doc);

@@ -178,15 +178,13 @@ describe('FlowPane step editing (M5-WP4)', () => {
     expect(out()).not.toContain('intro "start"');
   });
 
-  it('adds a step of the chosen kind at the end', () => {
+  it('adds a note step at the end', () => {
     const { out } = mount();
     fireEvent.click(screen.getByTestId('flow-row-main'));
-    const kindSel = screen.getByRole('combobox', { name: 'Step type' }) as HTMLSelectElement;
-    fireEvent.change(kindSel, { target: { value: 'process' } });
-    fireEvent.click(screen.getByTestId('step-add'));
+    fireEvent.click(screen.getByTestId('add-note'));
     const doc = parsePDL(out()).doc;
     const steps = doc?.flows[0]?.steps ?? [];
-    expect(steps.at(-1)?.type).toBe('process');
+    expect(steps.at(-1)?.type).toBe('info');
   });
 
   it('appends a branch to an alt step', () => {
@@ -249,16 +247,15 @@ describe('FlowPane canvas-assisted editing (FLOW-01)', () => {
     expect(out()).toContain('process b');
   });
 
-  it('seeds a new message step from an existing link and never invents one', () => {
+  it('seeds a new message step from the selected connector and never invents one', () => {
     const { out } = mount(canvas);
     fireEvent.click(screen.getByTestId('flow-row-main'));
-    fireEvent.change(screen.getByTestId('step-add-kind'), { target: { value: 'msg' } });
-    fireEvent.click(screen.getByTestId('step-add'));
+    fireEvent.click(screen.getByTestId('add-msg'));
     expect(out()).toContain('a -> b');
     expect(screen.queryByTestId('flow-needs-link')).toBeNull();
   });
 
-  it('refuses to add a message step when the document has no link', () => {
+  it('refuses to add a message step when no connector is selected', () => {
     // A pair written without a matching link would be a validation error, so
     // the editor explains the requirement instead of inventing the link.
     const noLinks = 'pcd 1.0\nsystem a "A"\nsystem b "B"\nflow "F" as f {\n  intro "x"\n}\n';
@@ -275,9 +272,8 @@ describe('FlowPane canvas-assisted editing (FLOW-01)', () => {
       />,
     );
     fireEvent.click(screen.getByTestId('flow-row-f'));
-    fireEvent.change(screen.getByTestId('step-add-kind'), { target: { value: 'msg' } });
-    fireEvent.click(screen.getByTestId('step-add'));
-    expect(screen.getByTestId('flow-needs-link').textContent).toContain('link');
+    expect((screen.getByTestId('add-msg') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId('flow-needs-link').textContent).toContain('connector');
     expect(text).toBe(noLinks);
   });
 
@@ -295,11 +291,171 @@ describe('FlowPane canvas-assisted editing (FLOW-01)', () => {
     render(<FlowPane {...props} />);
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-1'));
-    expect(screen.getByTestId('step-summary-1').textContent).toContain('a → b');
+    expect(screen.getByTestId('step-summary-1').textContent).toContain('Ada → Web');
     expect(screen.getByTestId('step-1').getAttribute('aria-current')).toBe('true');
     expect(highlights.at(-1)).toEqual(['a', 'b']);
     // A block step has no participants, so the highlight clears.
     fireEvent.click(screen.getByTestId('step-2'));
     expect(highlights.at(-1)).toBeNull();
+  });
+});
+
+const FRESH = `pcd 1.0
+
+person a "Ada"
+system b "Web"
+
+a -> b as ab
+`;
+
+/** Harness with a caller-supplied document (the WP12 authoring path). */
+function mountDoc(initial: string, canvas?: FlowCanvasContext, played: string[] = []) {
+  let text = initial;
+  let version = 0;
+  function Host() {
+    const [, bump] = useState(0);
+    return (
+      <div>
+        <FlowPane
+          textOf={() => text}
+          activePath="main.pcd"
+          version={version}
+          onChangeText={(t) => {
+            text = t;
+            version += 1;
+            bump(version);
+          }}
+          onPlay={(k) => played.push(k)}
+          {...(canvas === undefined ? {} : { canvas })}
+        />
+        <pre data-testid="text-out">{text}</pre>
+      </div>
+    );
+  }
+  render(<Host />);
+  return { out: () => screen.getByTestId('text-out').textContent ?? '' };
+}
+
+describe('FlowPane guided authoring (UX08-WP12)', () => {
+  it('starts authoring from a blank file (no header yet)', () => {
+    const { out } = mountDoc('');
+    expect(screen.getByTestId('flow-empty')).not.toBeNull();
+    fireEvent.click(screen.getByTestId('flow-add'));
+    expect(out()).toContain('pcd 1.0');
+    expect(out()).toContain('flow "New flow" as flow1');
+  });
+
+  it('explains flows and offers New flow when the document has none', () => {
+    mountDoc(FRESH);
+    expect(screen.getByTestId('flow-empty').textContent).toContain('guided walkthrough');
+    const add = screen.getByTestId('flow-add');
+    expect(add.textContent).toBe('New flow');
+    fireEvent.click(add);
+    expect(screen.queryByTestId('flow-empty')).toBeNull();
+    expect(screen.getByTestId('flow-steps')).not.toBeNull();
+  });
+
+  it('names the flow and records its purpose', () => {
+    const { out } = mountDoc(FRESH);
+    fireEvent.click(screen.getByTestId('flow-add'));
+    fireEvent.input(screen.getByTestId('flow-title'), { target: { value: 'Checkout' } });
+    fireEvent.input(screen.getByTestId('flow-description'), { target: { value: 'Paying for an order' } });
+    expect(out()).toContain('flow "Checkout" as flow1');
+    expect(out()).toContain('description "Paying for an order"');
+  });
+
+  it('adds a process step from the single selected shape', () => {
+    const { out } = mountDoc(FRESH, { objects: ['b'], link: null });
+    fireEvent.click(screen.getByTestId('flow-add'));
+    expect((screen.getByTestId('add-process') as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByTestId('add-process'));
+    expect(out()).toContain('process b');
+    // No connector is selected, so the message action explains itself instead.
+    expect(screen.getByTestId('flow-needs-link').textContent).toContain('connector');
+    expect(screen.queryByTestId('flow-needs-shape')).toBeNull();
+  });
+
+  it('disables the process action until exactly one shape is selected', () => {
+    mountDoc(FRESH, { objects: ['a', 'b'], link: null });
+    fireEvent.click(screen.getByTestId('flow-add'));
+    expect((screen.getByTestId('add-process') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByTestId('flow-needs-shape').textContent).toContain('one shape');
+  });
+
+  it('adds notes, an introduction and a conclusion in one click', () => {
+    const { out } = mountDoc(FRESH);
+    fireEvent.click(screen.getByTestId('flow-add'));
+    fireEvent.click(screen.getByTestId('add-intro'));
+    fireEvent.click(screen.getByTestId('add-note'));
+    fireEvent.click(screen.getByTestId('add-conclusion'));
+    expect(out()).toContain('intro "New intro"');
+    expect(out()).toContain('info "Note"');
+    expect(out()).toContain('conclusion "Summary"');
+  });
+
+  it('keeps block steps behind Advanced step', () => {
+    const { out } = mountDoc(FRESH);
+    fireEvent.click(screen.getByTestId('flow-add'));
+    const advanced = screen.getByTestId('advanced-steps');
+    expect(advanced.querySelector('summary')?.textContent).toContain('Advanced');
+    for (const id of ['add-alt', 'add-par', 'add-goto']) {
+      expect(advanced.querySelector(`[data-testid="${id}"]`)).not.toBeNull();
+    }
+    fireEvent.click(screen.getByTestId('add-par'));
+    expect(out()).toContain('par "In parallel"');
+  });
+});
+
+describe('FlowPane step cards (UX08-WP12)', () => {
+  it('numbers the cards and names the shapes instead of their ids', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    expect(screen.getByTestId('step-number-0').textContent).toBe('1');
+    expect(screen.getByTestId('step-number-1').textContent).toBe('2');
+    expect(screen.getByTestId('step-summary-1').textContent).toContain('Ada → Web');
+  });
+
+  it('describes a step and shows the description on its card', () => {
+    const { out } = mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-1'));
+    fireEvent.input(screen.getByTestId('insp-description'), { target: { value: 'pay by card' } });
+    expect(out()).toContain('description "pay by card"');
+    expect(screen.getByTestId('step-desc-1').textContent).toContain('pay by card');
+  });
+
+  it('explains a step that points at a shape the diagram does not have', () => {
+    const broken = `pcd 1.0
+
+person a "Ada"
+system b "Web"
+
+a -> b as ab
+
+flow "Main" as main {
+  intro "start"
+  a -> ghost : "oops"
+}
+`;
+    mountDoc(broken);
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    expect(screen.getByTestId('step-warn-1').textContent).toContain('ghost');
+    expect(screen.queryByTestId('step-warn-0')).toBeNull();
+  });
+
+  it('presents the edited flow from the pane', () => {
+    const played: string[] = [];
+    mountDoc(DOC, undefined, played);
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('flow-present'));
+    expect(played).toEqual(['main']);
+  });
+
+  it('reorders with the keyboard (Alt+ArrowUp)', () => {
+    const { out } = mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.keyDown(screen.getByTestId('step-1'), { key: 'ArrowUp', altKey: true });
+    const doc = parsePDL(out()).doc;
+    expect(doc?.flows[0]?.steps[0]?.type).toBe('msg');
   });
 });

@@ -938,6 +938,22 @@ describe('properties request (UX08-WP08)', () => {
     c2.destroy();
   });
 
+  it('leaves Enter on a focused shell control to that control (UX08-WP12)', () => {
+    seed();
+    const asked: string[] = [];
+    const c2 = new CanvasController(svg, { onPropertiesRequest: (r) => asked.push(r.id) });
+    c2.loadState(ctrl.snapshot);
+    c2.setSelection([], ['L1']);
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    const ev = key('keydown', { key: 'Enter' });
+    button.dispatchEvent(ev);
+    expect(asked).toEqual([]);
+    expect(ev.defaultPrevented).toBe(false);
+    button.remove();
+    c2.destroy();
+  });
+
   it('openProperties() serves the same path for the context menu', () => {
     seed();
     const asked: Array<{ kind: string; id: string }> = [];

@@ -79,7 +79,9 @@ const DEFAULT_DOCKS: Record<PanelId, DockId> = {
 export function defaultLayout(_viewportWidth = Number.POSITIVE_INFINITY): UiLayout {
   return {
     version: 2,
-    panels: { sidebar: 'collapsed', flows: 'closed', palette: 'open', code: 'collapsed', props: 'collapsed' },
+    // UX08-WP12: Flows keeps a labelled rail entry so authoring is discoverable
+    // from the default shell; a closed panel has no affordance at all.
+    panels: { sidebar: 'collapsed', flows: 'collapsed', palette: 'open', code: 'collapsed', props: 'collapsed' },
     docks: { ...DEFAULT_DOCKS },
     order: { sidebar: 0, flows: 1, palette: 2, code: 0, props: 1 },
     widths: { ...DEFAULT_WIDTHS },

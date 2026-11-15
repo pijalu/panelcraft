@@ -18,9 +18,11 @@ describe('UX-02 workspace layout', () => {
   it('starts canvas-first with only Shapes open', () => {
     const layout = defaultLayout(1600);
     expect(layout.version).toBe(2);
+    // UX08-WP12: Flows keeps a labelled rail (collapsed, not closed) so flow
+    // authoring is discoverable from the default shell.
     expect(layout.panels).toEqual({
       sidebar: 'collapsed',
-      flows: 'closed',
+      flows: 'collapsed',
       palette: 'open',
       code: 'collapsed',
       props: 'collapsed',
@@ -79,16 +81,16 @@ describe('UX-02 workspace layout', () => {
       ]);
       expect(recovered.docks).toEqual(layout.docks);
     });
-  it('keeps Files independent from an initially closed Flow Steps panel', () => {
+  it('keeps Files independent from the Flow Steps rail', () => {
     const start = defaultLayout(1600);
     expect(start.panels.sidebar).toBe('collapsed');
-    expect(start.panels.flows).toBe('closed');
+    expect(start.panels.flows).toBe('collapsed');
 
     const both = openPanel(openPanel(start, 'sidebar'), 'flows');
     expect(both.panels.sidebar).toBe('open');
     expect(both.panels.flows).toBe('open');
     expect(closePanel(both, 'sidebar').panels.flows).toBe('open');
-    expect(normaliseLayout({ panels: { sidebar: 'open' } }, 1600).panels.flows).toBe('closed');
+    expect(normaliseLayout({ panels: { sidebar: 'open' } }, 1600).panels.flows).toBe('collapsed');
   });
 
   it('migrates old settings and safely normalises corrupt docking data', () => {

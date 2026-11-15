@@ -1291,8 +1291,23 @@ export class CanvasController {
     return /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
   }
 
+  /**
+   * UX08-WP12: a focused control (button, link, disclosure) owns Enter/Space
+   * itself. The window-level handler used to swallow Enter for the canvas roving
+   * focus even when the key came from another panel, which broke keyboard
+   * activation of every shell button once the canvas had a focus id. Every other
+   * key (Tab, arrows, shortcuts) stays with the controller.
+   */
+  private ownsActivationKey(e: KeyboardEvent): boolean {
+    if (e.key !== 'Enter' && e.key !== ' ') return false;
+    const el = e.target as HTMLElement | null;
+    if (el === null || typeof el.closest !== 'function') return false;
+    return el.closest('button, a[href], summary, [role="button"], [role="tab"]') !== null;
+  }
+
   private onKeyDown(e: KeyboardEvent): void {
     if (this.inTextEntry(e.target)) return;
+    if (this.ownsActivationKey(e)) return;
     if (this.handleClipboardKeys(e)) return;
     if (e.key === ' ') {
       this.spaceDown = true;

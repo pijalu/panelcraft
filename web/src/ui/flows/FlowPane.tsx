@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// M5-WP4 flow editor (FR-F1): sidebar "Flows" tab. Flow list with per-flow
-// play, step tree (indented flat list), per-type inline inspectors, and
-// structural ops (add/move/remove step, add branch/lane, add flow). All
-// edits round-trip through retext() and surface as onChangeText(newText) —
-// App forwards to code.machine.textChanged so the sync machine stays the
-// single writer (D-M4-6). Takes narrow ports (textOf), no manager import.
-import { useRef, useState } from 'preact/hooks';
+// UX08-WP12 guided flow authoring (FR-F1): Flows pane with an empty state, flow
+// name/purpose editing, numbered step cards that name shapes instead of ids, and
+// selection-based primary actions (message from the selected connector, process
+// from the selected shape, note/intro/conclusion). alt/par/goto stay available
+// under "Advanced step". Every edit still round-trips through retext() and
+// surfaces as onChangeText(newText) — App forwards to code.machine.textChanged so
+// the sync machine stays the single writer (D-M4-6). The pane takes narrow ports
+// (textOf, canvas) and never invents a diagram link.
+import { useState } from 'preact/hooks';
 import { ILLUSTRATION_IDS, type IllustrationId } from '../../engine/anim/illustrations';
 import { parsePDL } from '../../engine/format/parser';
 import { flowToMermaid } from '../../engine/format/mermaidSequenceExport';
@@ -16,14 +18,15 @@ import { s } from '../strings';
 import { ArrowDownIcon, ArrowUpIcon, CloseIcon, CopyIcon, PlayIcon } from '../icons';
 import {
   addBranch,
-  duplicateStep,
   addFlow,
   addLane,
   appendStep,
+  duplicateStep,
   flatSteps,
   getAt,
   moveStep,
   newStep,
+  patchFlow,
   patchStep,
   removeAt,
   retext,
@@ -70,6 +73,9 @@ export interface FlowSelection {
 
 type Patch = (p: Partial<FlowStep>) => void;
 
+/** id → display name, so cards never ask the reader to memorise ids. */
+type Names = Map<string, string>;
+
 interface InspectActions {
   patch: Patch;
   move: (d: -1 | 1) => void;
@@ -87,6 +93,7 @@ const ILLUSTRATION_LABELS = {
   'trail-fade': 'trail fade',
 } as const;
 
+/** Inspector kind conversion order (advanced repair path, not the primary flow). */
 const KINDS: FlowStep['type'][] = [
   'intro',
   'msg',
@@ -98,21 +105,71 @@ const KINDS: FlowStep['type'][] = [
   'conclusion',
 ];
 
+/**
+ * Local draft for a field whose value comes from the file (UX08-WP12). The file
+ * round-trip is asynchronous, so binding the input straight to it made every
+ * keystroke race the previous apply and drop characters. While the user types,
+ * the draft owns the value; elsewhere the file wins (undo, step switch).
+ */
+function useDraft(value: string): {
+  value: string;
+  onInput: (e: Event) => void;
+  onFocus: () => void;
+  onBlur: () => void;
+} {
+  const [draft, setDraft] = useState(value);
+  const [typing, setTyping] = useState(false);
+  if (!typing && draft !== value) setDraft(value);
+  return {
+    value: draft,
+    onInput: (e) => setDraft((e.target as HTMLInputElement).value),
+    onFocus: () => setTyping(true),
+    onBlur: () => setTyping(false),
+  };
+}
+
 function Field(props: { label: string; value: string; onInput: (v: string) => void; testid: string }) {
+  const draft = useDraft(props.value);
   return (
     <label class="flow-field">
       <span class="flow-field-label">{props.label}</span>
       <input
         data-testid={props.testid}
-        value={props.value}
-        onInput={(e) => props.onInput((e.target as HTMLInputElement).value)}
+        value={draft.value}
+        onFocus={draft.onFocus}
+        onBlur={draft.onBlur}
+        onInput={(e) => {
+          draft.onInput(e);
+          props.onInput((e.target as HTMLInputElement).value);
+        }}
+      />
+    </label>
+  );
+}
+
+function TextArea(props: { label: string; value: string; hint: string; onInput: (v: string) => void; testid: string }) {
+  const draft = useDraft(props.value);
+  return (
+    <label class="flow-field">
+      <span class="flow-field-label">{props.label}</span>
+      <textarea
+        data-testid={props.testid}
+        rows={2}
+        placeholder={props.hint}
+        value={draft.value}
+        onFocus={draft.onFocus}
+        onBlur={draft.onBlur}
+        onInput={(e) => {
+          draft.onInput(e);
+          props.onInput((e.target as HTMLTextAreaElement).value);
+        }}
       />
     </label>
   );
 }
 
 function TextFields({ step, patch }: { step: { text: string }; patch: Patch }) {
-  return <Field label={s("Text")} value={step.text} onInput={(v) => patch({ text: v })} testid="insp-text" />;
+  return <Field label={s('Text')} value={step.text} onInput={(v) => patch({ text: v })} testid="insp-text" />;
 }
 
 function MsgFields({
@@ -127,8 +184,8 @@ function MsgFields({
   const picked = canvas?.objects ?? [];
   return (
     <>
-      <Field label={s("From")} value={step.from} onInput={(v) => patch({ from: v })} testid="insp-from" />
-      <Field label={s("To")} value={step.to} onInput={(v) => patch({ to: v })} testid="insp-to" />
+      <Field label={s('From')} value={step.from} onInput={(v) => patch({ from: v })} testid="insp-from" />
+      <Field label={s('To')} value={step.to} onInput={(v) => patch({ to: v })} testid="insp-to" />
       <div class="flow-picks" data-testid="insp-picks">
         <button
           type="button"
@@ -136,7 +193,7 @@ function MsgFields({
           disabled={picked.length !== 1}
           onClick={() => patch({ from: picked[0]! })}
         >
-          {s("From selection")}
+          {s('From selection')}
         </button>
         <button
           type="button"
@@ -144,7 +201,7 @@ function MsgFields({
           disabled={picked.length !== 1}
           onClick={() => patch({ to: picked[0]! })}
         >
-          {s("To selection")}
+          {s('To selection')}
         </button>
         <button
           type="button"
@@ -155,17 +212,17 @@ function MsgFields({
             if (link) patch({ from: link.from, to: link.to });
           }}
         >
-          {s("Use connector")}
+          {s('Use connector')}
         </button>
       </div>
       <Field
-        label={s("Label")}
+        label={s('Label')}
         value={step.label ?? ''}
         onInput={(v) => patch({ label: v === '' ? undefined : v })}
         testid="insp-label"
       />
       <label class="flow-field">
-        <span class="flow-field-label">{s("Flip")}</span>
+        <span class="flow-field-label">{s('Flip')}</span>
         <input
           type="checkbox"
           data-testid="insp-flip"
@@ -189,7 +246,7 @@ function ProcessFields({
   const picked = canvas?.objects ?? [];
   return (
     <>
-      <Field label={s("Target")} value={step.target} onInput={(v) => patch({ target: v })} testid="insp-target" />
+      <Field label={s('Target')} value={step.target} onInput={(v) => patch({ target: v })} testid="insp-target" />
       <div class="flow-picks">
         <button
           type="button"
@@ -197,11 +254,11 @@ function ProcessFields({
           disabled={picked.length !== 1}
           onClick={() => patch({ target: picked[0]! })}
         >
-          {s("Target selection")}
+          {s('Target selection')}
         </button>
       </div>
       <Field
-        label={s("Note")}
+        label={s('Note')}
         value={step.text ?? ''}
         onInput={(v) => patch({ text: v === '' ? undefined : v })}
         testid="insp-process-note"
@@ -213,7 +270,7 @@ function ProcessFields({
 function AltFields({ step, patch, addBranch }: { step: Extract<FlowStep, { type: 'alt' }>; patch: Patch; addBranch: () => void }) {
   return (
     <>
-      <Field label={s("Label")} value={step.label ?? ''} onInput={(v) => patch({ label: v === '' ? undefined : v })} testid="insp-alt-label" />
+      <Field label={s('Label')} value={step.label ?? ''} onInput={(v) => patchLabel(patch, v)} testid="insp-alt-label" />
       {step.branches.map((b: Branch, i) => (
         <Field
           key={i}
@@ -226,7 +283,7 @@ function AltFields({ step, patch, addBranch }: { step: Extract<FlowStep, { type:
           testid={`insp-branch-${i}`}
         />
       ))}
-      <button type="button" data-testid="insp-branch-add" onClick={addBranch}>{s("+ branch")}</button>
+      <button type="button" data-testid="insp-branch-add" onClick={addBranch}>{s('+ branch')}</button>
     </>
   );
 }
@@ -234,10 +291,10 @@ function AltFields({ step, patch, addBranch }: { step: Extract<FlowStep, { type:
 function GotoFields({ step, patch }: { step: Extract<FlowStep, { type: 'goto' }>; patch: Patch }) {
   return (
     <>
-      <Field label={s("File")} value={step.file ?? ''} onInput={(v) => patch({ file: v === '' ? undefined : v })} testid="insp-goto-file" />
-      <Field label={s("Flow")} value={step.flow} onInput={(v) => patch({ flow: v })} testid="insp-goto-flow" />
+      <Field label={s('File')} value={step.file ?? ''} onInput={(v) => patch({ file: v === '' ? undefined : v })} testid="insp-goto-file" />
+      <Field label={s('Flow')} value={step.flow} onInput={(v) => patch({ flow: v })} testid="insp-goto-flow" />
       <label class="flow-field">
-        <span class="flow-field-label">{s("Return here")}</span>
+        <span class="flow-field-label">{s('Return here')}</span>
         <input
           type="checkbox"
           data-testid="insp-goto-here"
@@ -249,6 +306,11 @@ function GotoFields({ step, patch }: { step: Extract<FlowStep, { type: 'goto' }>
   );
 }
 
+function patchLabel(patch: Patch, v: string): void {
+  patch({ label: v === '' ? undefined : v } as Partial<FlowStep>);
+}
+
+/** Per-kind inline inspector for the selected step (advanced repair path). */
 function StepInspector({ step, a, canvas }: { step: FlowStep; a: InspectActions; canvas?: FlowCanvasContext }) {
   return (
     <div class="flow-inspector" data-testid="flow-inspector">
@@ -267,6 +329,12 @@ function StepInspector({ step, a, canvas }: { step: FlowStep; a: InspectActions;
         <button type="button" data-testid="step-down" aria-label={s('Move step down')} onClick={() => a.move(1)}><ArrowDownIcon /></button>
         <button type="button" data-testid="step-remove" aria-label={s('Remove step')} onClick={a.remove}><CloseIcon /></button>
       </div>
+      <Field
+        label={s('Description')}
+        value={step.description ?? ''}
+        onInput={(v) => a.patch({ description: v === '' ? undefined : v })}
+        testid="insp-description"
+      />
       {step.type === 'msg' ? (
         <MsgFields step={step} patch={a.patch} canvas={canvas} />
       ) : step.type === 'process' ? (
@@ -275,8 +343,8 @@ function StepInspector({ step, a, canvas }: { step: FlowStep; a: InspectActions;
         <AltFields step={step} patch={a.patch} addBranch={a.addBranch} />
       ) : step.type === 'par' ? (
         <>
-          <Field label={s("Label")} value={step.label ?? ''} onInput={(v) => patchLabel(a.patch, v)} testid="insp-par-label" />
-          <button type="button" data-testid="insp-lane-add" onClick={a.addLane}>{s("+ lane")}</button>
+          <Field label={s('Label')} value={step.label ?? ''} onInput={(v) => patchLabel(a.patch, v)} testid="insp-par-label" />
+          <button type="button" data-testid="insp-lane-add" onClick={a.addLane}>{s('+ lane')}</button>
         </>
       ) : step.type === 'goto' ? (
         <GotoFields step={step} patch={a.patch} />
@@ -287,28 +355,47 @@ function StepInspector({ step, a, canvas }: { step: FlowStep; a: InspectActions;
   );
 }
 
-function patchLabel(patch: Patch, v: string): void {
-  patch({ label: v === '' ? undefined : v } as Partial<FlowStep>);
+/** id → display name for every shape in the document. */
+function objectNames(doc: Doc): Names {
+  const names: Names = new Map();
+  for (const obj of doc.objects) names.set(obj.id, obj.name ?? obj.id);
+  return names;
 }
 
-function stepTitle(step: FlowStep): string {
+function nameOf(names: Names, id: string): string {
+  return id === '' ? s('no shape') : (names.get(id) ?? id);
+}
+
+function stepTitle(step: FlowStep, names: Names): string {
   // A message card shows its label as the title; the actor summary below
   // already carries "from → to", so an unlabelled message has no title.
   if (step.type === 'msg') return step.label ?? '';
-  if (step.type === 'process') return step.target;
+  if (step.type === 'process') return nameOf(names, step.target);
   if (step.type === 'alt' || step.type === 'par') return step.label ?? s(step.type);
   if (step.type === 'goto') return `→ ${step.file === undefined ? '' : `${step.file}#`}${step.flow}`;
   return step.text;
 }
 
 /** FLOW-01: actor/link summary shown on the card, independent of the title. */
-function stepSummary(step: FlowStep): string {
-  if (step.type === 'msg') return `${step.from} → ${step.to}${step.flip === true ? ' (flipped)' : ''}`;
-  if (step.type === 'process') return step.target;
+function stepSummary(step: FlowStep, names: Names): string {
+  if (step.type === 'msg') {
+    const pair = `${nameOf(names, step.from)} → ${nameOf(names, step.to)}`;
+    return step.flip === true ? `${pair} (flipped)` : pair;
+  }
+  if (step.type === 'process') return nameOf(names, step.target);
   if (step.type === 'alt') return s('{n} branches', { n: step.branches.length });
   if (step.type === 'par') return s('{n} lanes', { n: step.lanes.length });
   if (step.type === 'goto') return step.flow;
   return s(step.type);
+}
+
+/** Shapes the step points at that the diagram does not define (WP12). */
+function stepProblems(step: FlowStep, names: Names): string[] {
+  const ids =
+    step.type === 'msg' ? [step.from, step.to] : step.type === 'process' ? [step.target] : [];
+  return ids
+    .filter((id) => !names.has(id))
+    .map((id) => s('The shape {id} is not in this diagram.', { id: nameOf(names, id) }));
 }
 
 /** FLOW-01: canvas ids a step refers to (used for the highlight). */
@@ -331,91 +418,122 @@ export interface StepOps {
 
 const isBlockStep = (t: FlowStep['type']): boolean => t === 'alt' || t === 'par';
 
-function StepList(props: { steps: FlatStep[]; sel: number[]; ops: StepOps }) {
+function StepCard(props: { row: FlatStep; index: number; selected: boolean; ops: StepOps; names: Names }) {
+  const { row, index, ops, names } = props;
+  const parent = row.path.slice(0, -1).join('.');
+  const problems = stepProblems(row.step, names);
+  const title = stepTitle(row.step, names);
+  const sibling = row.path.at(-1) ?? 0;
+  const drop = (e: DragEvent): void => {
+    const from = e.dataTransfer?.getData('application/x-pc-step') ?? '';
+    if (from === '') return;
+    const path = from.split('.').map(Number);
+    if (path.slice(0, -1).join('.') !== parent) return; // keep nesting intact
+    e.preventDefault();
+    const to = row.path.at(-1);
+    if (to !== undefined) ops.move(path, to);
+  };
+  // Keyboard equivalent of the drag handle (WP12): Alt+↑/↓ reorders siblings.
+  const key = (e: KeyboardEvent): void => {
+    if (!e.altKey) return;
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+    ops.move(row.path, sibling + (e.key === 'ArrowUp' ? -1 : 1));
+  };
+  return (
+    <li
+      class={`flow-step flow-card kind-card-${row.step.type}${props.selected ? ' active' : ''}`}
+      draggable={true}
+      data-testid={`step-row-${index}`}
+      onDragStart={(e) => {
+        (e as DragEvent).dataTransfer?.setData('application/x-pc-step', row.path.join('.'));
+      }}
+      onDragOver={(e) => {
+        // only same-parent reordering is meaningful
+        if (e.dataTransfer?.types.includes('application/x-pc-step')) e.preventDefault();
+      }}
+      onDrop={drop}
+    >
+      <button
+        type="button"
+        data-testid={`step-${index}`}
+        aria-current={props.selected ? 'true' : undefined}
+        style={`padding-left: ${8 + row.depth * 14}px`}
+        onClick={() => ops.select(row.path)}
+        onKeyDown={key}
+      >
+        <span class="flow-step-num" data-testid={`step-number-${index}`}>{index + 1}</span>
+        <span class={`flow-step-kind kind-${row.step.type}`}>{s(row.step.type)}</span>
+        {title !== '' && <span class="flow-step-title">{title}</span>}
+        <span class="flow-step-summary" data-testid={`step-summary-${index}`}>{stepSummary(row.step, names)}</span>
+        {row.step.description !== undefined && (
+          <span class="flow-step-desc" data-testid={`step-desc-${index}`}>{row.step.description}</span>
+        )}
+      </button>
+      <button
+        type="button"
+        class="flow-step-btn"
+        data-testid={`step-play-${index}`}
+        title={s('Play from this step')}
+        aria-label={s('Play from step {n}', { n: index + 1 })}
+        onClick={() => ops.playFrom(index)}
+      >
+        <PlayIcon />
+      </button>
+      <button
+        type="button"
+        class="flow-step-btn"
+        data-testid={`step-dup-${index}`}
+        title={s('Duplicate step')}
+        aria-label={s('Duplicate step {n}', { n: index + 1 })}
+        onClick={() => ops.duplicate(row.path)}
+      >
+        <CopyIcon />
+      </button>
+      {!isBlockStep(row.step.type) && (
+        <input
+          type="number"
+          min={0}
+          step={100}
+          class="flow-step-delay"
+          data-testid={`step-delay-${index}`}
+          aria-label={s('Step {n} delay in milliseconds', { n: index + 1 })}
+          placeholder={s('delay')}
+          value={row.step.delayMs ?? ''}
+          onInput={(e) => {
+            const raw = (e.target as HTMLInputElement).value;
+            ops.delay(row.path, raw === '' ? undefined : Number(raw));
+          }}
+        />
+      )}
+      {problems.length > 0 && (
+        <p class="flow-step-warn" data-testid={`step-warn-${index}`} role="note">
+          {problems.join(' ')}
+        </p>
+      )}
+    </li>
+  );
+}
+
+function StepList(props: { steps: FlatStep[]; sel: number[]; ops: StepOps; names: Names }) {
   return (
     <ol class="flow-steps" data-testid="flow-steps">
-      {props.steps.map((fs, i) => {
-        const active =
-          fs.path.length === props.sel.length && fs.path.every((v, j) => v === props.sel[j]);
-        const parent = fs.path.slice(0, -1).join('.');
-        return (
-          <li
-            key={fs.path.join('.')}
-            class={`flow-step flow-card kind-card-${fs.step.type}${active ? ' active' : ''}`}
-            draggable={true}
-            data-testid={`step-row-${i}`}
-            onDragStart={(e) => {
-              (e as DragEvent).dataTransfer?.setData('text/plain', fs.path.join('.'));
-              e.dataTransfer?.setData('application/x-pc-step', fs.path.join('.'));
-            }}
-            onDragOver={(e) => {
-              // only same-parent reordering is meaningful
-              if (e.dataTransfer?.types.includes('application/x-pc-step')) e.preventDefault();
-            }}
-            onDrop={(e) => {
-              const from = e.dataTransfer?.getData('application/x-pc-step') ?? '';
-              if (from === '') return;
-              const path = from.split('.').map(Number);
-              if (path.slice(0, -1).join('.') !== parent) return; // keep nesting intact
-              e.preventDefault();
-              const to = fs.path.at(-1);
-              if (to !== undefined) props.ops.move(path, to);
-            }}
-          >
-            <button
-              type="button"
-              data-testid={`step-${i}`}
-              aria-current={active ? 'true' : undefined}
-              style={`padding-left: ${8 + fs.depth * 14}px`}
-              onClick={() => props.ops.select(fs.path)}
-            >
-              <span class={`flow-step-kind kind-${fs.step.type}`}>{s(fs.step.type)}</span>
-              {stepTitle(fs.step) !== '' && (
-                <span class="flow-step-title">{stepTitle(fs.step)}</span>
-              )}
-              <span class="flow-step-summary" data-testid={`step-summary-${i}`}>{stepSummary(fs.step)}</span>
-            </button>
-            <button
-              type="button"
-              class="flow-step-btn"
-              data-testid={`step-play-${i}`}
-              title={s("Play from this step")}
-              aria-label={s('Play from step {n}', { n: i + 1 })}
-              onClick={() => props.ops.playFrom(i)}
-            >
-              <PlayIcon />
-            </button>
-            <button
-              type="button"
-              class="flow-step-btn"
-              data-testid={`step-dup-${i}`}
-              title={s("Duplicate step")}
-              aria-label={s('Duplicate step {n}', { n: i + 1 })}
-              onClick={() => props.ops.duplicate(fs.path)}
-            >
-              <CopyIcon />
-            </button>
-            {!isBlockStep(fs.step.type) && (
-              <input
-                type="number"
-                min={0}
-                step={100}
-                class="flow-step-delay"
-                data-testid={`step-delay-${i}`}
-                aria-label={s('Step {n} delay in milliseconds', { n: i + 1 })}
-                placeholder={s("delay")}
-                value={fs.step.delayMs ?? ''}
-                onInput={(e) => {
-                  const raw = (e.target as HTMLInputElement).value;
-                  props.ops.delay(fs.path, raw === '' ? undefined : Number(raw));
-                }}
-              />
-            )}
-          </li>
-        );
-      })}
+      {props.steps.map((fs, i) => (
+        <StepCard
+          key={fs.path.join('.')}
+          row={fs}
+          index={i}
+          selected={samePath(fs.path, props.sel)}
+          ops={props.ops}
+          names={props.names}
+        />
+      ))}
     </ol>
   );
+}
+
+function samePath(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
 function FlowList(props: {
@@ -431,25 +549,25 @@ function FlowList(props: {
       {props.flows.map((f) => {
         const key = f.id ?? f.title ?? '';
         return (
-          <li key={f.id ?? f.title} class={props.selFlow === key ? 'active' : ''}>
+          <li key={key} class={props.selFlow === key ? 'active' : ''}>
             <button type="button" data-testid={`flow-row-${key}`} onClick={() => props.onPick(key)}>
               {f.title ?? f.id}
             </button>
-            <button type="button" title={s("Play")} aria-label={s('Play flow {title}', { title: key })} data-testid={`flow-play-${key}`} onClick={() => props.onPlay(key)}>
+            <button type="button" title={s('Play')} aria-label={s('Play flow {title}', { title: key })} data-testid={`flow-play-${key}`} onClick={() => props.onPlay(key)}>
               <PlayIcon />
             </button>
             {props.onIllustration && props.selFlow === key && (
               <select
                 class="flow-illustration"
                 data-testid="flow-illustration"
-                aria-label={s("Illustration style")}
-                title={s("How this flow is illustrated")}
+                aria-label={s('Illustration style')}
+                title={s('How this flow is illustrated')}
                 value={props.illustration ?? 'auto'}
                 onChange={(e) =>
                   props.onIllustration?.((e.target as HTMLSelectElement).value as IllustrationId | 'auto')
                 }
               >
-                <option value="auto">{s("auto")}</option>
+                <option value="auto">{s('auto')}</option>
                 {ILLUSTRATION_IDS.map((id) => (
                   <option key={id} value={id}>
                     {s(ILLUSTRATION_LABELS[id])}
@@ -464,16 +582,137 @@ function FlowList(props: {
   );
 }
 
-function StepBar(props: { addKindRef: { current: HTMLSelectElement | null }; onAdd: () => void }) {
+/** What the canvas must provide before a message/process step can be added. */
+function canvasReady(canvas: FlowCanvasContext | undefined): { msg: boolean; process: boolean } {
+  const picked = canvas?.objects.length ?? 0;
+  return { msg: canvas?.link != null, process: picked === 1 };
+}
+
+/** Step template seeded from canvas state; null when the action is impossible. */
+function seedFor(kind: FlowStep['type'], canvas: FlowCanvasContext | undefined): FlowStep | null {
+  const step = newStep(kind);
+  if (step.type === 'msg') {
+    const link = canvas?.link ?? null;
+    if (link === null) return null;
+    step.from = link.from;
+    step.to = link.to;
+    if (link.label !== undefined) step.label = link.label;
+    return step;
+  }
+  if (step.type === 'process') {
+    const picked = canvas?.objects ?? [];
+    const target = picked.length === 1 ? picked[0] : undefined;
+    if (target === undefined) return null;
+    step.target = target;
+    return step;
+  }
+  return step;
+}
+
+function ActionButton(props: {
+  testid: string;
+  label: string;
+  hint: string;
+  enabled: boolean;
+  onAdd: () => void;
+}) {
   return (
-    <div class="flow-stepbar">
-      <select ref={props.addKindRef} data-testid="step-add-kind" aria-label={s('Step type')} defaultValue="msg">
-        {KINDS.map((k) => (
-          <option key={k} value={k}>{s(k)}</option>
-        ))}
-      </select>
-      <button type="button" data-testid="step-add" onClick={props.onAdd}>{s("+ step")}</button>
-    </div>
+    <button
+      type="button"
+      class="flow-action"
+      data-testid={props.testid}
+      disabled={!props.enabled}
+      title={props.hint}
+      onClick={props.onAdd}
+    >
+      {props.label}
+    </button>
+  );
+}
+
+/** Primary actions (selection-driven) plus the advanced step types. */
+function ActionBar(props: {
+  ready: { msg: boolean; process: boolean };
+  onAdd(kind: FlowStep['type']): void;
+}) {
+  return (
+    <>
+      <div class="flow-actions" data-testid="flow-actions">
+        <ActionButton
+          testid="add-msg"
+          label={s('Add message')}
+          hint={props.ready.msg ? s("Add a message between the connector's shapes") : s('Select a connector on the canvas to add a message.')}
+          enabled={props.ready.msg}
+          onAdd={() => props.onAdd('msg')}
+        />
+        <ActionButton
+          testid="add-process"
+          label={s('Add process')}
+          hint={props.ready.process ? s('Add a process step for the selected shape') : s('Select one shape on the canvas to add a process step.')}
+          enabled={props.ready.process}
+          onAdd={() => props.onAdd('process')}
+        />
+        <ActionButton testid="add-note" label={s('Add note')} hint={s('Add a note step')} enabled={true} onAdd={() => props.onAdd('info')} />
+        <ActionButton testid="add-intro" label={s('Add introduction')} hint={s('Add an introduction step')} enabled={true} onAdd={() => props.onAdd('intro')} />
+        <ActionButton testid="add-conclusion" label={s('Add conclusion')} hint={s('Add a conclusion step')} enabled={true} onAdd={() => props.onAdd('conclusion')} />
+      </div>
+      {!props.ready.msg && (
+        <p class="flow-hint" data-testid="flow-needs-link">{s('Select a connector on the canvas to add a message.')}</p>
+      )}
+      {!props.ready.process && (
+        <p class="flow-hint" data-testid="flow-needs-shape">{s('Select one shape on the canvas to add a process step.')}</p>
+      )}
+      <details class="flow-advanced" data-testid="advanced-steps">
+        <summary>{s('Advanced step')}</summary>
+        <div class="flow-actions">
+          <ActionButton testid="add-alt" label={s('Add alternative')} hint={s('Add an alternative (alt) step')} enabled={true} onAdd={() => props.onAdd('alt')} />
+          <ActionButton testid="add-par" label={s('Add parallel')} hint={s('Add a parallel (par) step')} enabled={true} onAdd={() => props.onAdd('par')} />
+          <ActionButton testid="add-goto" label={s('Add go to')} hint={s('Add a go to (goto) step')} enabled={true} onAdd={() => props.onAdd('goto')} />
+        </div>
+      </details>
+    </>
+  );
+}
+
+function FlowMeta(props: {
+  flow: Flow;
+  dirty?: boolean;
+  onPatch(patch: { title?: string; description?: string }): void;
+  onPresent(): void;
+  onExport(): void;
+}) {
+  return (
+    <>
+      <div class="flow-detail-head">
+        <span class="panel-title">{s('Steps')}</span>
+        <button type="button" data-testid="flow-present" title={s('Play this flow from the start')} onClick={props.onPresent}>
+          <PlayIcon />{s('Present')}
+        </button>
+        <button type="button" data-testid="flow-export-seq" title={s('Export selected flow as Mermaid sequenceDiagram')} onClick={props.onExport}>
+          {s('.seq.mmd')}{' '}
+        </button>
+        {props.dirty === true && (
+          <span class="chip chip-dirty" data-testid="flow-dirty" title={s('Unapplied code edits')}>
+            {s('unsaved')}{' '}
+          </span>
+        )}
+      </div>
+      <div class="flow-meta">
+        <Field
+          label={s('Flow name')}
+          value={props.flow.title ?? props.flow.id ?? ''}
+          onInput={(v) => props.onPatch({ title: v })}
+          testid="flow-title"
+        />
+        <TextArea
+          label={s('Flow purpose')}
+          hint={s('What this walkthrough explains')}
+          value={props.flow.description ?? ''}
+          onInput={(v) => props.onPatch({ description: v })}
+          testid="flow-description"
+        />
+      </div>
+    </>
   );
 }
 
@@ -527,73 +766,144 @@ function makeActions(
   };
 }
 
-/**
- * Append a step of `kind`. Message steps are seeded from an existing link and
- * process steps from the canvas selection or the first object — the editor
- * never invents a diagram link (FLOW-01).
- */
-function addKindStep(
-  doc: Doc,
-  flowKey: string,
-  addKindRef: { current: HTMLSelectElement | null },
-  canvas: FlowCanvasContext | undefined,
-  apply: (fn: (d: Doc) => void) => void,
-): boolean {
-  const kind = (addKindRef.current?.value ?? 'intro') as FlowStep['type'];
-  const link = canvas?.link ?? doc.links[0];
-  const target = canvas?.objects[0] ?? doc.objects[0]?.id;
-  if (kind === 'msg' && link === undefined) return false;
-  apply((d) => {
-    const f = d.flows.find((x) => x.id === flowKey || x.title === flowKey);
-    if (f === undefined) return;
-    const s = newStep(kind);
-    if (s.type === 'msg' && link !== undefined) {
-      s.from = link.from;
-      s.to = link.to;
-    } else if (s.type === 'process' && target !== undefined) {
-      s.target = target;
-    }
-    appendStep(f, s);
-  });
-  return true;
+/** Flow key used by selection and by every lookup (id first, then title). */
+function flowKey(flow: Flow): string {
+  return flow.id ?? flow.title ?? '';
 }
 
-function FlowDetail(props: {
-  ops: StepOps;
-  dirty?: boolean;
-  flat: FlatStep[];
-  selStep: number[];
-  step: FlowStep | null;
-  actions: InspectActions;
-  canvas?: FlowCanvasContext;
-  addKindRef: { current: HTMLSelectElement | null };
-  onPickStep(p: number[]): void;
-  onAddStep(): void;
-  noLinkHint: boolean;
-  onExport(): void;
-}) {
+/**
+ * Append a step of `kind` seeded from the canvas selection. Impossible actions
+ * (no selected connector/shape) append nothing — the editor never invents links.
+ */
+function addKindStep(
+  apply: (fn: (d: Doc) => void) => void,
+  key: string,
+  kind: FlowStep['type'],
+  canvas: FlowCanvasContext | undefined,
+): void {
+  const step = seedFor(kind, canvas);
+  if (step === null) return;
+  apply((d) => {
+    const f = d.flows.find((x) => flowKey(x) === key);
+    if (f !== undefined) appendStep(f, step);
+  });
+}
+
+/** Canvas ids to highlight for the step at `path` (null clears the fade). */
+function highlightFor(flow: Flow | null, path: number[]): string[] | null {
+  const step = flow === null ? null : getAt(flow, path);
+  if (step === null) return null;
+  const ids = participantsOf(step);
+  return ids.length === 0 ? null : ids;
+}
+
+interface EditorProps {
+  pane: FlowPaneProps;
+  text: string;
+  doc: Doc;
+  sel: FlowSelection | null;
+  setSel(next: FlowSelection): void;
+}
+
+/** The authored half of the pane: one parsed document, one selection. */
+function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
+  const apply = (fn: (d: Doc) => void): void => {
+    const next = retext(text, fn);
+    if (next !== null) pane.onChangeText(next);
+  };
+  const names = objectNames(doc);
+  const first = doc.flows[0];
+  // A fresh panel opens on the first flow: the editor is always ready to edit.
+  const effective: FlowSelection | null = sel ?? (first === undefined ? null : { flow: flowKey(first), step: [] });
+  const { flow, step, flat } = locate(doc, effective);
+  const selKey = effective?.flow ?? '';
+  const selStep = effective?.step ?? [];
+  const ready = canvasReady(pane.canvas);
+  const pick = (key: string): void => setSel({ flow: key, step: [] });
+
+  /** Mutate the selected flow by its key (stable across edits). */
+  const withFlow = (fn: (f: Flow) => void): void => {
+    apply((d) => {
+      const f = d.flows.find((x) => flowKey(x) === selKey);
+      if (f !== undefined) fn(f);
+    });
+  };
+  const actions = makeActions(mutator(effective, apply), step);
+  const ops: StepOps = {
+    select: (p) => {
+      setSel({ flow: selKey, step: p });
+      pane.onHighlight?.(highlightFor(flow, p)); // FLOW-01 canvas highlight
+    },
+    move: (p, to) => withFlow((f) => moveStep(f, p, to)),
+    duplicate: (p) => withFlow((f) => duplicateStep(f, p)),
+    delay: (p, ms) => withFlow((f) => patchStep(f, p, { delayMs: ms })),
+    playFrom: (i) => pane.onPlayFrom?.(selKey, i + 1),
+  };
+
+  const addFlowRow = (): void => {
+    const seq = doc.flows.length + 1;
+    apply((d) => addFlow(d, s('New flow'), seq));
+    pick(`flow${seq}`);
+  };
+  const onPatch = (patch: { title?: string; description?: string }): void => {
+    withFlow((f) => patchFlow(f, patch));
+    // A flow written without `as <id>` is keyed by its title; follow the rename.
+    if (flow !== null && flow.id === undefined && patch.title !== undefined) pick(patch.title);
+  };
+
   return (
-    <>
-      <div class="flow-detail-head">
-        <span class="panel-title">{s("Steps")}</span>
-        <button type="button" data-testid="flow-export-seq" title={s("Export selected flow as Mermaid sequenceDiagram")} onClick={props.onExport}>
-          {s(".seq.mmd")}{' '}</button>
-        {props.dirty === true && (
-          <span class="chip chip-dirty" data-testid="flow-dirty" title={s("Unapplied code edits")}>
-            {s("unsaved")}{' '}</span>
-        )}
-      </div>
-      <StepList steps={props.flat} sel={props.selStep} ops={props.ops} />
-      <StepBar addKindRef={props.addKindRef} onAdd={props.onAddStep} />
-      {props.noLinkHint && (
-        <p class="muted" data-testid="flow-needs-link">{s('Add a link on the canvas first')}</p>
+    <div class="flow-pane" data-testid="flow-pane">
+      {doc.flows.length === 0 ? (
+        <div class="flow-empty" data-testid="flow-empty">
+          <p>{s('A flow is a short guided walkthrough of this diagram.')}</p>
+          <p class="flow-hint">{s('Add one, then build it from the shapes and connectors you select on the canvas.')}</p>
+          <button type="button" class="flow-action primary" data-testid="flow-add" onClick={addFlowRow}>
+            {s('New flow')}
+          </button>
+        </div>
+      ) : (
+        <>
+          <FlowList
+            flows={doc.flows}
+            selFlow={selKey}
+            onPick={pick}
+            onPlay={pane.onPlay}
+            illustration={pane.illustration}
+            onIllustration={pane.onIllustration}
+          />
+          <button type="button" data-testid="flow-add" title={s('Add another flow')} onClick={addFlowRow}>
+            {s('New flow')}
+          </button>
+        </>
       )}
-      {props.step !== null && <StepInspector step={props.step} a={props.actions} canvas={props.canvas} />}
-    </>
+      {flow !== null && (
+        <>
+          <FlowMeta
+            flow={flow}
+            {...(pane.dirty === undefined ? {} : { dirty: pane.dirty })}
+            onPatch={onPatch}
+            onPresent={() => pane.onPlay(selKey)}
+            onExport={() => {
+              if (pane.activePath !== null) {
+                downloadText(flowToMermaid(doc, flow).text, `${stem(pane.activePath)}.seq.mmd`);
+              }
+            }}
+          />
+          <StepList steps={flat} sel={selStep} ops={ops} names={names} />
+          <ActionBar ready={ready} onAdd={(kind) => addKindStep(apply, selKey, kind, pane.canvas)} />
+          {step !== null && <StepInspector step={step} a={actions} canvas={pane.canvas} />}
+        </>
+      )}
+    </div>
   );
 }
 
-/** Sidebar "Flows" tab: list flows, edit the selected one, play it. */
+/** Parse for the editor; a blank file counts as an empty document. */
+function parseForEditor(text: string): Doc | null {
+  return parsePDL(text.trim() === '' ? 'pcd 1.0\n' : text).doc;
+}
+
+/** Sidebar "Flows" tab: create, describe, build and play a flow. */
 export function FlowPane(props: FlowPaneProps) {
   const [localSel, setLocalSel] = useState<FlowSelection | null>(null);
   const sel = props.selection === undefined ? localSel : props.selection;
@@ -601,89 +911,8 @@ export function FlowPane(props: FlowPaneProps) {
     if (props.selection === undefined) setLocalSel(next);
     props.onSelection?.(next);
   };
-  const addKindRef = useRef<HTMLSelectElement | null>(null);
-  const [noLinkHint, setNoLinkHint] = useState(false);
   const text = props.activePath === null ? null : props.textOf(props.activePath);
-  const doc: Doc | null = text === null ? null : parsePDL(text).doc;
-  if (props.activePath === null || doc === null) {
-    return <ErrorPane noFile={props.activePath === null} />;
-  }
-
-  const apply = (fn: (d: Doc) => void): void => {
-    if (text !== null) {
-      const next = retext(text, fn);
-      if (next !== null) props.onChangeText(next);
-    }
-  };
-  const pick = (flowKey: string): void => setSel({ flow: flowKey, step: [] });
-  const { flow, step, flat } = locate(doc, sel);
-  const mutateSel = mutator(sel, apply);
-  const actions = makeActions(mutateSel, step);
-  const selFlow = sel?.flow ?? '';
-  const selStep = sel?.step ?? [];
-  /** Mutate the selected flow by its key (stable across edits). */
-  const withFlow = (fn: (f: Flow) => void): void => {
-    apply((d) => {
-      const f = d.flows.find((x) => (x.id ?? x.title ?? '') === selFlow);
-      if (f !== undefined) fn(f);
-    });
-  };
-  const ops: StepOps = {
-    select: (p) => {
-      setSel({ flow: selFlow, step: p });
-      // FLOW-01: selecting a card highlights its canvas participants.
-      const picked = flow === null ? null : getAt(flow, p);
-      const ids = picked === null ? [] : participantsOf(picked);
-      props.onHighlight?.(ids.length === 0 ? null : ids);
-    },
-    move: (p, to) => withFlow((f) => moveStep(f, p, to)),
-    duplicate: (p) => withFlow((f) => duplicateStep(f, p)),
-    delay: (p, ms) => withFlow((f) => patchStep(f, p, { delayMs: ms })),
-    playFrom: (i) => props.onPlayFrom?.(selFlow, i + 1),
-  };
-
-  const addStep = (): void => {
-    if (sel === null) return;
-    const added = addKindStep(doc, sel.flow, addKindRef, props.canvas, apply);
-    setNoLinkHint(!added);
-  };
-  const addFlowRow = (): void => {
-    const seq = doc.flows.length + 1;
-    apply((d) => addFlow(d, s('New flow'), seq));
-    pick(`flow${seq}`);
-  };
-
-  return (
-    <div class="flow-pane" data-testid="flow-pane">
-      <FlowList
-        flows={doc.flows}
-        selFlow={selFlow}
-        onPick={pick}
-        onPlay={props.onPlay}
-        illustration={props.illustration}
-        onIllustration={props.onIllustration}
-      />
-      <button type="button" data-testid="flow-add" onClick={addFlowRow}>{s("+ flow")}</button>
-      {flow !== null && (
-        <FlowDetail
-          ops={ops}
-          dirty={props.dirty}
-          flat={flat}
-          selStep={selStep}
-          step={step}
-          actions={actions}
-          canvas={props.canvas}
-          addKindRef={addKindRef}
-          onPickStep={(p) => setSel({ flow: selFlow, step: p })}
-          onAddStep={addStep}
-          noLinkHint={noLinkHint}
-          onExport={() => {
-            if (props.activePath !== null) {
-              downloadText(flowToMermaid(doc, flow).text, `${stem(props.activePath)}.seq.mmd`);
-            }
-          }}
-        />
-      )}
-    </div>
-  );
+  const doc = text === null ? null : parseForEditor(text);
+  if (text === null || doc === null) return <ErrorPane noFile={props.activePath === null} />;
+  return <FlowEditor pane={props} text={text} doc={doc} sel={sel} setSel={setSel} />;
 }

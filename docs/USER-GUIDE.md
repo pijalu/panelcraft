@@ -146,28 +146,39 @@ and the CLI's `--theme` option.
 
 ## 3. Flows (step-by-step stories)
 
-1. Open **View → Flow Steps** (there is no permanent Flows tab): the panel docks, floats,
-   collapses and closes like any other, and it is absent until you ask for it.
-2. Add a flow (`flow "Happy path" as happy { … }` in code, or **+ flow** in the panel) and
-   add steps. Each step is a card with its kind, title and actor/link summary; reorder with
-   drag or the ↑/↓ buttons, and nested `alt`/`par` editing lives in the same card inspector.
-3. **Target from the canvas** instead of typing ids: select an object and press **From
-   selection** / **To selection** / **Target selection**, or select a connector and press
-   **Use connector**. A message step is only ever seeded from an existing link — with no link
-   in the document the panel says so instead of inventing one. Selecting a card highlights
-   its participants on the canvas and fades the rest.
-4. **Play**: the docked transport steps through the plan — the active step's
-   elements highlight, the previous step's participants fade lightly, and the rest
+1. **Find Flows** in the left rail — the labelled *flow steps* entry is present from the first
+   load, so you never have to know a menu path. Open it from the rail (or **View → Flow Steps**);
+   it docks, floats, collapses and closes like any other panel.
+2. **Create a flow** and name it: an empty document shows a short explanation and **New flow**.
+   Fill in **Flow name** and **Flow purpose** — the purpose is printed as the flow's
+   `description`, so it travels with the file instead of living in the UI.
+3. **Add steps from what you selected** — no ids to type. **Add message** needs a selected
+   connector and takes both endpoints from it; **Add process** needs exactly one selected shape;
+   **Add note**, **Add introduction** and **Add conclusion** are always available. An impossible
+   action is disabled and says what to select, and the panel never invents a link.
+4. **Read the cards**: each step is numbered and carries its kind, a readable title, the actor
+   names (never raw ids) and any step description. A step that points at a shape the diagram does
+   not define shows the problem on the card; repair it from the inspector (or by selecting the
+   connector again) and the warning disappears.
+5. **Describe and reorder**: the inspector edits every kind (message label, process target, note
+   text, branch/lane labels, `goto` target) plus a **Description** for the step; reorder by drag,
+   with the ↑/↓ buttons, or with `Alt+↑`/`Alt+↓` on a focused card; duplicate or delete per card.
+   Every edit is a normal file edit, so undo/redo and the code view stay in step.
+6. **Advanced step** keeps `alt`, `par` and `goto` one disclosure away, with the same nested
+   editing. Selecting a card highlights its participants on the canvas and fades the rest.
+7. **Play** with a card's ▶ (from that step), the flow's ▶, or **Present** beside the edited
+   flow: the transport steps through the plan — the active step's elements highlight, the
+   previous step's participants fade lightly, and the rest
    dim; the narration line is an ARIA live region
    (screen readers announce every step). `prefers-reduced-motion` plays without
    transition animation. Each step may carry `delay <ms>`; the flow's
    illustration style (token, pulse, glow, burst, split, trail) is chosen per
    flow in the Flow Steps panel. When a flow ends, a closing card offers replay,
    `Export SVG` and close.
-5. **Present**: `⛶` enters the chrome-free shell — click or press Space/→ to
+8. **Present**: `⛶` enters the chrome-free shell — click or press Space/→ to
    advance, ← to go back, `P` pauses, `R` restarts, `Esc` exits and restores the
    previous chrome and viewport.
-6. **Export a sequence**: select a flow, then choose `.seq.mmd` beside *Steps*.
+9. **Export a sequence**: select a flow, then choose `.seq.mmd` beside *Steps*.
   The download is a Mermaid `sequenceDiagram` with participants, messages,
   alternatives, parallel lanes and notes. `goto` navigation, per-step delays and
   notes in a flow with no participants cannot be represented and are reported by
