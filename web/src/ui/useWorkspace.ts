@@ -3,6 +3,7 @@
 // private-mode reminder) and the canvas controller wiring (creation, active
 // file ⇄ canvas sync, palette drop). Extracted to keep App() lean.
 import { useEffect, useRef, useState } from 'preact/hooks';
+import type { GridSettings } from '../engine/render/grid';
 import { CanvasController, type Snapshot } from './CanvasController';
 import type { Kind } from '../engine/model/types';
 import { stateToPcd, WorkspaceManager } from '../workspace/workspace';
@@ -92,6 +93,63 @@ export interface CanvasHandle {
  * via loadingRef), canvas → manager.saveCanvas on every state change (the
  * manager's content-compare turns clean saves into no-ops).
  */
+/**
+ * UX08-WP05: the controller is created once, before the stored grid preference
+ * is known, so both directions go through refs — the latest settings are applied
+ * when the controller appears, and `g` always calls the current toggle.
+ */
+function useGridHandoff(
+  settings: GridSettings | null,
+  onShortcut: () => void,
+  ctrlRef: { current: CanvasController | null },
+): { gridRef: { current: GridSettings | null }; gridShortcutRef: { current: () => void } } {
+  const gridRef = useRef<GridSettings | null>(settings);
+  const gridShortcutRef = useRef<() => void>(onShortcut);
+  useEffect(() => {
+    gridShortcutRef.current = onShortcut;
+  }, [onShortcut]);
+  useEffect(() => {
+    gridRef.current = settings;
+    if (settings !== null) ctrlRef.current?.applyGrid(settings);
+  }, [ctrlRef, settings]);
+  return { gridRef, gridShortcutRef };
+}
+
+/**
+ * F-14: persist drag/resize geometry into the active view (debounced 250 ms).
+ * Only the ids that moved are written; other `position` lines, other views,
+ * flows, styles and imports are untouched (applyLayoutToView replaces just
+ * those ids). Never called for open/switch — only for interaction end.
+ */
+function useGeometryCommit(
+  manager: WorkspaceManager,
+  viewRef: { current: string | undefined },
+  commitDocRef: { current: ((doc: import('../engine/model/types').Doc) => void) | null },
+): (positions: Record<string, { x: number; y: number }>) => void {
+  const geometryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingGeometry = useRef<Record<string, { x: number; y: number }>>({});
+  return (positions: Record<string, { x: number; y: number }>): void => {
+    pendingGeometry.current = { ...pendingGeometry.current, ...positions };
+    if (geometryTimer.current !== null) clearTimeout(geometryTimer.current);
+    geometryTimer.current = setTimeout(() => {
+      geometryTimer.current = null;
+      const moved = pendingGeometry.current;
+      pendingGeometry.current = {};
+      const path = manager.activePath;
+      if (path === null) return;
+      const { doc } = parsePDL(manager.text(path));
+      if (doc === null) return;
+      const { doc: updated, written } = applyLayoutToView(doc, viewRef.current, moved);
+      if (written.length === 0) return;
+      // F-14: go through the sync machine so the code view shows the commit
+      // immediately (a bare file write would leave the buffer stale).
+      const commitDoc = commitDocRef.current;
+      if (commitDoc) commitDoc(updated);
+      else manager.saveText(path, printDoc(updated));
+    }, 250);
+  };
+}
+
 export function useCanvasController(
   manager: WorkspaceManager,
   ready: boolean,
@@ -103,6 +161,9 @@ export function useCanvasController(
   onInlineRename: (id: string) => void = () => {},
   onGhostOpen: (path: string) => void = () => {},
   onHover: (info: import('./hoverInfo').HoverInfo | null) => void = () => {},
+  /** UX08-WP05: grid preference; `null` until the workspace reports one. */
+  gridSettings: GridSettings | null = null,
+  onGridShortcut: () => void = () => {},
 ): CanvasHandle {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const ctrlRef = useRef<CanvasController | null>(null);
@@ -112,6 +173,7 @@ export function useCanvasController(
   const lastCanvasTextRef = useRef<string | null>(null); // last projection persisted via onCtrlState
   const firstRunRef = useRef(true); // adoption only guards the initial load
   const [snap, setSnap] = useState<Snapshot | null>(null);
+  const { gridRef, gridShortcutRef } = useGridHandoff(gridSettings, onGridShortcut, ctrlRef);
   const resync = (): void => {
     lastLoadedRef.current = null;
   };
@@ -158,34 +220,7 @@ export function useCanvasController(
     manager.markClean(path);
   }, [ready, version, manager]);
 
-  /**
-   * F-14: persist drag/resize geometry into the active view (debounced 250 ms).
-   * Only the ids that moved are written; other `position` lines, other views,
-   * flows, styles and imports are untouched (applyLayoutToView replaces just
-   * those ids). Never called for open/switch — only for interaction end.
-   */
-  const geometryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingGeometry = useRef<Record<string, { x: number; y: number }>>({});
-  const commitGeometry = (positions: Record<string, { x: number; y: number }>): void => {
-    pendingGeometry.current = { ...pendingGeometry.current, ...positions };
-    if (geometryTimer.current !== null) clearTimeout(geometryTimer.current);
-    geometryTimer.current = setTimeout(() => {
-      geometryTimer.current = null;
-      const moved = pendingGeometry.current;
-      pendingGeometry.current = {};
-      const path = manager.activePath;
-      if (path === null) return;
-      const { doc } = parsePDL(manager.text(path));
-      if (doc === null) return;
-      const { doc: updated, written } = applyLayoutToView(doc, viewRef.current, moved);
-      if (written.length === 0) return;
-      // F-14: go through the sync machine so the code view shows the commit
-      // immediately (a bare file write would leave the buffer stale).
-      const commitDoc = commitDocRef.current;
-      if (commitDoc) commitDoc(updated);
-      else manager.saveText(path, printDoc(updated));
-    }, 250);
-  };
+  const commitGeometry = useGeometryCommit(manager, viewRef, commitDocRef);
 
   const onCtrlState = (s: Snapshot): void => {
     setSnap(s);
@@ -215,8 +250,11 @@ export function useCanvasController(
       onGhostOpen,
       onGeometry: commitGeometry,
       onHover,
+      // `g` is a preference change: the shell re-applies the stored settings.
+      onGridShortcut: () => gridShortcutRef.current(),
     });
     ctrlRef.current = ctrl;
+    if (gridRef.current !== null) ctrl.applyGrid(gridRef.current);
     return () => {
       ctrl.destroy();
       ctrlRef.current = null;

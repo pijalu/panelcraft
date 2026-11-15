@@ -23,6 +23,10 @@ and the CLI's `--theme` option.
 - **Palette** (left): grouped by C4 level (Context/Container/Component, plus
   Structure for group/note). Click a kind — or press `1`–`9` — then click the
   canvas; dragging a palette row onto the canvas also places it.
+- **Grid**: *Application menu → View* offers **Grid: off / dots / lines** and a separate
+  **Snap to grid** checkbox. The two are independent browser-local preferences (the grid is
+  editor chrome: it is never written into a `.pcd` view and never appears in an SVG/PNG export).
+  `G` toggles visibility and brings back the last visible type.
 - **Select**: click; Shift-click adds to the selection. Drag moves (snaps to
   the grid). **Rename** in place with `F2` or double-click; Enter commits,
   Escape cancels.

@@ -11,7 +11,9 @@ import type { AppThemeHandle } from './useAppTheme';
 import type { AppThemePreference } from './appTheme';
 import { Menu } from './Menu';
 import { MenuIcon } from './icons';
-import { buildAppMenu, type AppMenuInstall, type AppMenuUpdate } from './appMenuEntries';
+import {
+  buildAppMenu, type AppMenuGrid, type AppMenuInstall, type AppMenuUpdate,
+} from './appMenuEntries';
 import { downloadBlob, downloadText, readFileAsBytes, readFileAsText } from './download';
 import { baseName, stem } from './paths';
 import { s } from './strings';
@@ -34,6 +36,8 @@ export interface AppMenuProps {
   install?: AppMenuInstall;
   /** UX08-WP04: waiting update; `restart` is the explicit consent. */
   update?: AppMenuUpdate;
+  /** UX08-WP05: canvas grid preference (absent before the workspace loads). */
+  grid?: AppMenuGrid;
 }
 
 export function AppMenu(props: AppMenuProps): ComponentChildren {
@@ -91,6 +95,7 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
     theme: props.theme.preference,
     privateMode: ready && props.privateMode,
     layout: props.ui.layout,
+    grid: props.grid,
     actions: {
       importFiles: () => filesRef.current?.click(),
       importZip: () => zipRef.current?.click(),

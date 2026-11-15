@@ -16,7 +16,15 @@ import type { Polyline, RouteMode } from './router';
 import { routeLabelPoint, routeToPath } from './routePath';
 import { layoutLinkLabels } from './labelLayout';
 import { GRID_SIZE } from './snap';
+import type { GridType } from './grid';
 import { stackObjects } from './stacking';
+
+/**
+ * Below this zoom an 8 px grid cell is under 4 screen pixels — the pattern
+ * turns into an even texture (moiré) that competes with the shapes, so it is
+ * dropped. The preference is untouched: zooming back in restores the grid.
+ */
+export const MIN_GRID_ZOOM = 0.5;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -110,6 +118,8 @@ export class SceneRenderer {
   /** World wrapper — carries the viewport transform (canvas ⇄ screen). */
   private worldEl: SVGGElement;
   private gridRect: SVGRectElement;
+  private gridType: GridType = 'off';
+  private zoom = 1;
   private objEntries = new Map<string, ObjEntry>();
   private linkEntries = new Map<string, LinkEntry>();
   /** Object id order as of last render — detects z-order changes. */
@@ -140,17 +150,36 @@ export class SceneRenderer {
   /** Apply the viewport transform to the world wrapper (WP1 wiring). */
   setWorldTransform(t: { x: number; y: number; k: number }): void {
     this.worldEl.setAttribute('transform', `translate(${t.x} ${t.y}) scale(${t.k})`);
+    this.zoom = t.k;
+    this.paintGrid();
   }
 
-  /** Grid toggle (FR-C2). The grid lives in world space, so it pans/zooms. */
-  setGrid(on: boolean): void {
-    this.gridRect.setAttribute('display', on ? '' : 'none');
+  /** Grid toggle (FR-C2, UX08-WP05). The grid lives in world space, so it pans/zooms. */
+  setGrid(type: GridType): void {
+    this.gridType = type;
+    this.paintGrid();
   }
 
   private makeGrid(): SVGRectElement {
     const defs = this.svg.querySelector('defs') as SVGDefsElement;
+    defs.appendChild(this.makeDotPattern());
+    defs.appendChild(this.makeLinePattern());
+    const rect = this.el('rect') as SVGRectElement;
+    rect.setAttribute('class', 'pc-grid');
+    rect.setAttribute('x', '-100000');
+    rect.setAttribute('y', '-100000');
+    rect.setAttribute('width', '200000');
+    rect.setAttribute('height', '200000');
+    rect.setAttribute('pointer-events', 'none');
+    rect.setAttribute('display', 'none');
+    this.worldEl.appendChild(rect);
+    return rect;
+  }
+
+  /** Dots: one faint dot per GRID_SIZE cell. */
+  private makeDotPattern(): SVGPatternElement {
     const pattern = this.el('pattern') as SVGPatternElement;
-    pattern.setAttribute('id', 'pc-grid-pattern');
+    pattern.setAttribute('id', 'pc-grid-pattern-dots');
     pattern.setAttribute('width', String(GRID_SIZE));
     pattern.setAttribute('height', String(GRID_SIZE));
     pattern.setAttribute('patternUnits', 'userSpaceOnUse');
@@ -160,17 +189,40 @@ export class SceneRenderer {
     dot.setAttribute('r', '0.5');
     dot.setAttribute('class', 'pc-grid-dot');
     pattern.appendChild(dot);
-    defs.appendChild(pattern);
-    const rect = this.el('rect') as SVGRectElement;
-    rect.setAttribute('class', 'pc-grid');
-    rect.setAttribute('x', '-100000');
-    rect.setAttribute('y', '-100000');
-    rect.setAttribute('width', '200000');
-    rect.setAttribute('height', '200000');
-    rect.setAttribute('fill', 'url(#pc-grid-pattern)');
-    rect.setAttribute('display', 'none');
-    this.worldEl.appendChild(rect);
-    return rect;
+    return pattern;
+  }
+
+  /**
+   * Lines: the top and left cell edges. `non-scaling-stroke` keeps the line a
+   * single screen pixel, so zooming out thins the grid instead of thickening it
+   * into a solid tint.
+   */
+  private makeLinePattern(): SVGPatternElement {
+    const pattern = this.el('pattern') as SVGPatternElement;
+    pattern.setAttribute('id', 'pc-grid-pattern-lines');
+    pattern.setAttribute('width', String(GRID_SIZE));
+    pattern.setAttribute('height', String(GRID_SIZE));
+    pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+    const path = this.el('path') as SVGPathElement;
+    path.setAttribute('d', `M ${GRID_SIZE} 0 H 0 V ${GRID_SIZE}`);
+    path.setAttribute('class', 'pc-grid-line');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-width', '1');
+    path.setAttribute('vector-effect', 'non-scaling-stroke');
+    pattern.appendChild(path);
+    return pattern;
+  }
+
+  /**
+   * One place decides whether the grid is painted: off, or too far zoomed out
+   * (where a 8 px grid degenerates into an even texture — moiré that competes
+   * with the shapes, so it is dropped by zoom rather than by contrast).
+   */
+  private paintGrid(): void {
+    const paint = this.gridType !== 'off' && this.zoom >= MIN_GRID_ZOOM;
+    this.gridRect.setAttribute('display', paint ? '' : 'none');
+    if (!paint) return;
+    this.gridRect.setAttribute('fill', `url(#pc-grid-pattern-${this.gridType})`);
   }
 
   private makeLayer(name: string): SVGGElement {

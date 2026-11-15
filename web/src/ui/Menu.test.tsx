@@ -104,6 +104,18 @@ describe('Menu primitive', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it('dismisses from the trigger, before the popover took focus (UX08-WP05 regression)', () => {
+    // The menu opens on click with focus still on the trigger; the popover's
+    // internal focus move lands a frame later. Escape pressed in that window
+    // must still close: the trigger answers for its own popover.
+    mount();
+    const trigger = screen.getByTestId('app-menu');
+    fireEvent.click(trigger);
+    fireEvent.keyDown(trigger, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it('closes on Tab without trapping focus', () => {
     mount();
     const trigger = screen.getByTestId('app-menu');

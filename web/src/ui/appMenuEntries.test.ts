@@ -183,3 +183,45 @@ describe('application menu install and update entries (UX08-WP04)', () => {
     expect(findOptional(entries, 'app-update-restart')).toBeUndefined();
   });
 });
+
+describe('canvas grid entries (UX08-WP05)', () => {
+  const gridActions = () => ({ setType: vi.fn(), setSnap: vi.fn() });
+
+  it('offers the three grid types as an exclusive radio group', () => {
+    const setType = vi.fn();
+    const entries = buildAppMenu(contextWith({
+      grid: { type: 'dots', snap: true, ...gridActions(), setType },
+    }));
+    for (const type of ['off', 'dots', 'lines'] as const) {
+      const entry = find(entries, `view-grid-${type}`);
+      if (entry.kind !== 'item') throw new Error('expected an item');
+      expect(entry.role).toBe('menuitemradio');
+      expect(entry.checked).toBe(type === 'dots');
+    }
+    const lines = find(entries, 'view-grid-lines');
+    if (lines.kind !== 'item') throw new Error('expected an item');
+    lines.onSelect();
+    expect(setType).toHaveBeenCalledWith('lines');
+  });
+
+  it('keeps snapping as a separate checkbox, not a fourth grid type', () => {
+    const setSnap = vi.fn();
+    const entries = buildAppMenu(contextWith({
+      grid: { type: 'off', snap: true, ...gridActions(), setSnap },
+    }));
+    const entry = find(entries, 'view-grid-snap');
+    if (entry.kind !== 'item') throw new Error('expected an item');
+    expect(entry.role).toBe('menuitemcheckbox');
+    expect(entry.checked).toBe(true);
+    expect(entry.label).toBe('Snap to grid');
+    entry.onSelect();
+    // Toggling the checkbox reports the opposite value.
+    expect(setSnap).toHaveBeenCalledWith(false);
+  });
+
+  it('omits grid entries entirely when the workspace has no preference yet', () => {
+    const entries = buildAppMenu(contextWith({ grid: undefined }));
+    expect(findOptional(entries, 'view-grid-dots')).toBeUndefined();
+    expect(findOptional(entries, 'view-grid-snap')).toBeUndefined();
+  });
+});

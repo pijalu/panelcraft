@@ -21,6 +21,7 @@ import type { RenameTarget } from './InlineRename';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useUiLayout } from './useUiLayout';
 import { useAppTheme } from './useAppTheme';
+import { useCanvasGrid } from './useCanvasGrid';
 import { useHistory } from './useHistory';
 import { useViewSession } from './useViewSession';
 import type { HoverInfo } from './hoverInfo';
@@ -568,6 +569,7 @@ export function App() {
   const view = useViewSession(activePath);
   const [renaming, setRenaming] = useState<string | null>(null); // F-15 inline rename
   const [hover, setHover] = useState<HoverInfo | null>(null);
+  const grid = useCanvasGrid(ws.manager, ws.ready, ws.version);
   const canvas = useCanvasController(
     ws.manager,
     ws.ready,
@@ -579,6 +581,7 @@ export function App() {
     (path) => ws.manager.openFile(path),
     // F-25: hover info card
     (info) => setHover(info),
+    grid.grid, grid.toggle, // UX08-WP05: grid preference + the `g` hand-off
   );
   const { manager } = ws;
   const [clearOpen, setClearOpen] = useState(false);
@@ -635,7 +638,7 @@ export function App() {
         {...statusProps(code.snapshot, ws.ready, manager)}
         onHistoryRequest={() => setHistoryOpen(true)}
         onPresentRequest={pres.start}
-        pwa={pwa}
+        pwa={pwa} grid={grid}
       />
       <AppBody
         ws={ws}

@@ -15,6 +15,10 @@
   --pc-border: #d1d5db;
   --pc-canvas: #fafafa;
   --pc-match: #b91c1c;
+  /* UX08-WP05: editor-only canvas grid — perceptible, never competitive
+     (1.50:1 dots, 1.31:1 lines against the canvas fill). */
+  --pc-grid-dot: #c9cfd7;
+  --pc-grid-line: #d8dde3;
   --pc-text-xs: 11px;
   --pc-text-sm: 12px;
   --pc-text-md: 14px;
@@ -96,6 +100,9 @@
   --pc-border: #374151;
   --pc-canvas: #111316;
   --pc-match: #f87171;
+  /* UX08-WP05: dark grid pairs — 1.80:1 dots, 1.64:1 lines on the canvas. */
+  --pc-grid-dot: #39414b;
+  --pc-grid-line: #333b45;
 
   /* UX08-WP03 chrome tokens — same roles, dark values. */
   --pc-activity-bg: #1b1e23;
@@ -929,7 +936,11 @@ body {
 }
 
 .pc-grid-dot {
-  fill: var(--pc-border);
+  fill: var(--pc-grid-dot);
+}
+
+.pc-grid-line {
+  stroke: var(--pc-grid-line);
 }
 
 .muted {

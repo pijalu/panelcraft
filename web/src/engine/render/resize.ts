@@ -21,16 +21,24 @@ const movesBottom = (h: ResizeHandle): boolean => h === 'sw' || h === 's' || h =
  * Edges that the handle does not own stay put; the dragged edges snap to the
  * grid and stop at the minimum size (no flipping through zero).
  */
-export function resizedRect(before: Rect, handle: ResizeHandle, pointer: Point): Rect {
+export function resizedRect(
+  before: Rect,
+  handle: ResizeHandle,
+  pointer: Point,
+  snap = true,
+): Rect {
+  // UX08-WP05: snapping is a user preference; without it the dragged edge
+  // follows the pointer exactly (the minimum size still applies).
+  const edge = (v: number): number => (snap ? snapToGrid(v) : v);
   let left = before.x;
   let top = before.y;
   let right = before.x + before.w;
   let bottom = before.y + before.h;
 
-  if (movesLeft(handle)) left = Math.min(snapToGrid(pointer.x), right - MIN_SIZE.w);
-  if (movesRight(handle)) right = Math.max(snapToGrid(pointer.x), left + MIN_SIZE.w);
-  if (movesTop(handle)) top = Math.min(snapToGrid(pointer.y), bottom - MIN_SIZE.h);
-  if (movesBottom(handle)) bottom = Math.max(snapToGrid(pointer.y), top + MIN_SIZE.h);
+  if (movesLeft(handle)) left = Math.min(edge(pointer.x), right - MIN_SIZE.w);
+  if (movesRight(handle)) right = Math.max(edge(pointer.x), left + MIN_SIZE.w);
+  if (movesTop(handle)) top = Math.min(edge(pointer.y), bottom - MIN_SIZE.h);
+  if (movesBottom(handle)) bottom = Math.max(edge(pointer.y), top + MIN_SIZE.h);
 
   return { x: left, y: top, w: right - left, h: bottom - top };
 }
@@ -93,8 +101,9 @@ export function resizedRectWithCues(
   pointer: Point,
   candidates: ResizeCandidate[],
   threshold = RESIZE_MATCH_THRESHOLD_PX,
+  snap = true,
 ): ResizeCueResult {
-  const rect = resizedRect(before, handle, pointer);
+  const rect = resizedRect(before, handle, pointer, snap);
   const cues: ResizeCue[] = [];
   if (movesLeft(handle) || movesRight(handle)) {
     const match = nearestDimension(rect.w, 'width', candidates, threshold);

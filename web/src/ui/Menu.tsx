@@ -328,6 +328,12 @@ export function Menu(props: MenuProps): ComponentChildren {
           if (event.key === 'ArrowDown') {
             event.preventDefault();
             setOpenState(true);
+          } else if (event.key === 'Escape' && open) {
+            // The popover's dismissal listener attaches after its first paint,
+            // while focus is still on this trigger — without this branch an
+            // Escape pressed in that frame went nowhere and the menu stayed open.
+            event.preventDefault();
+            close();
           }
         }}
       >

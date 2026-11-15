@@ -301,9 +301,36 @@ describe('properties + grid + resize', () => {
     expect(Number(label?.getAttribute('x'))).toBeLessThan(obj('o1').w / 2);
   });
 
-  it('grid toggles (FR-C2)', () => {
-    expect(ctrl.toggleGrid()).toBe(true);
-    expect(ctrl.toggleGrid()).toBe(false);
+  it('grid draws the chosen type (UX08-WP05, FR-C2)', () => {
+    expect(ctrl.toggleGrid()).toBe('dots');
+    expect(ctrl.toggleGrid()).toBe('off');
+  });
+
+  it('grid visibility and snapping are independent (UX08-WP05)', () => {
+    const noSnap = { version: 1 as const, type: 'lines' as const, snap: false, last: 'lines' as const };
+    const snapped = { version: 1 as const, type: 'off' as const, snap: true, last: 'dots' as const };
+
+    // Snapping off: the object follows the pointer exactly (13 px stays 13 px).
+    ctrl.applyGrid(noSnap);
+    const before = obj('o1').x;
+    drag({ x: 260, y: 220 }, { x: 273, y: 233 });
+    expect(obj('o1').x).toBe(before + 13);
+
+    // Snapping on with the grid hidden: the move lands on the 8 px grid.
+    ctrl.applyGrid(snapped);
+    const moved = obj('o1').x;
+    drag({ x: 273, y: 233 }, { x: 286, y: 246 });
+    expect(obj('o1').x % GRID_SIZE).toBe(0);
+    expect(obj('o1').x).not.toBe(moved + 13);
+  });
+
+  it('remembers the last visible grid type across the toggle', () => {
+    ctrl.applyGrid({ version: 1, type: 'lines', snap: true, last: 'lines' });
+    ctrl.toggleGrid();
+    const off = ctrl.gridSettings();
+    expect(off).toMatchObject({ type: 'off', last: 'lines', snap: true });
+    ctrl.toggleGrid();
+    expect(ctrl.gridSettings()).toMatchObject({ type: 'lines', last: 'lines' });
   });
 
   it('group resize via corner handle snaps far edge, anchors top-left (FR-C4)', () => {

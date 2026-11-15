@@ -7,6 +7,19 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ### Added — UX-08 application experience
 
+- **UX-08 WP05** The canvas grid has three independent states and no longer drags snapping along
+  with it: *Application menu → View* offers **Grid: off / dots / lines** (radio) plus a separate
+  **Snap to grid** checkbox, both stored as browser-local editor preferences and restored on
+  reload. `G` toggles visibility and brings back the last visible type. Line and dot colours are
+  themed tokens with a measured, deliberately low contrast, the line pattern stays one screen
+  pixel at any zoom, and the grid is dropped below 50 % zoom where a cell would blur into an even
+  tint. The grid stays editor chrome: it never reaches `.pcd` views, the minimap, presentation
+  mode or an SVG/PNG/CLI export (sanitising strips it). Existing documents default to grid off
+  with snapping on, so no stored diagram changes appearance or behaviour.
+- **UX-08 WP05 fix** The application menu dismissed on Escape only through a window listener that
+  attaches after the popover's first paint, so an Escape pressed while focus was still on the
+  trigger left the menu open and blocking the canvas. The trigger now closes its own popover.
+
 - **UX-08 WP04** PanelCraft is installable: a base-aware `manifest.webmanifest` with a stable ID,
   relative `start_url`/`scope`, `standalone` display and generated 192/512 px any+maskable icons
   (`scripts/gen-icons.go`, stdlib only). Chromium reports no installability errors. The app menu

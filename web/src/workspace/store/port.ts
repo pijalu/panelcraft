@@ -17,6 +17,11 @@ export interface WorkspaceSettings {
   layout?: unknown;
   /** Versioned application-only theme; validated by `ui/appTheme.ts`. */
   appTheme?: unknown;
+  /**
+   * Canvas grid preference (UX08-WP05); validated by
+   * `engine/render/grid.ts`. Editor-only: never written into a `.pcd` view.
+   */
+  canvasGrid?: unknown;
 }
 
 /** Stored workspace record (object store value). v2 layout. */

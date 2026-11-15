@@ -148,6 +148,30 @@ describe('svg sanitize + export (FR-W4, N6)', () => {
     expect(clean).toContain('<rect');
   });
 
+  it('drops editor-only grid geometry from an export (UX08-WP05)', () => {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    const defs = document.createElementNS(NS, 'defs');
+    const dots = document.createElementNS(NS, 'pattern');
+    dots.setAttribute('id', 'pc-grid-pattern-dots');
+    defs.appendChild(dots);
+    svg.appendChild(defs);
+    const world = document.createElementNS(NS, 'g');
+    const grid = document.createElementNS(NS, 'rect');
+    grid.setAttribute('class', 'pc-grid');
+    world.appendChild(grid);
+    const shape = document.createElementNS(NS, 'g');
+    shape.setAttribute('class', 'pc-obj');
+    world.appendChild(shape);
+    svg.appendChild(world);
+
+    const out = exportSvg(svg as unknown as SVGSVGElement);
+    // The grid is an editor preference, not document content.
+    expect(out).not.toContain('pc-grid');
+    expect(out).not.toContain('pc-grid-pattern');
+    expect(out).toContain('pc-obj');
+  });
+
   it('exportSvg serializes a clean svg unchanged', () => {
     const doc = typeof document !== 'undefined';
     expect(doc).toBe(true); // jsdom present

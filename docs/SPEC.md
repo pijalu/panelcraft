@@ -100,7 +100,9 @@ play mode, exports PNG/SVG for docs.
 
 * **FR-C1** Pan (space-drag / wheel-drag / trackpad), zoom (wheel/pinch, 10%–400%),
   fit-to-selection, fit-to-diagram, zoom controls, mini-map (M6).
-* **FR-C2** Grid + snap-to-grid (toggleable); alignment guides when dragging.
+* **FR-C2** Grid + snap-to-grid (toggleable); alignment guides when dragging. Grid type
+  (off/dots/lines) and snapping are independent browser-local editor preferences; the grid is
+  editor chrome only (absent from presentation, minimap and SVG/PNG/CLI output).
 * **FR-C3** Stencil palette (C4 types): Person, Software System, External System,
   Container, Component, Data Store, Queue/Topic, Group/Boundary, Note.
   Drag-drop or click-to-place.
@@ -400,7 +402,8 @@ the CI regression net; vision review catches *quality* issues diffing can't.)
 toggle · `Ctrl/Cmd+P` quick search · `Ctrl/Cmd+K` command palette (M6) · `Tab/Shift+Tab`
 cycle objects · arrows nudge (grid step; `Shift` = 1 px) · `Enter` properties ·
 `Ctrl/Cmd+D` duplicate · `Del` delete · `1..9` palette quick-add · `L` then click
-target = link mode · `F` fit · `+/-/0` zoom in/out/reset.
+target = link mode · `F` fit · `+/-/0` zoom in/out/reset · `G` grid visibility (turning it back
+on restores the last visible grid type; snapping is a separate setting).
 
 ---
 

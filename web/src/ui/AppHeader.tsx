@@ -12,6 +12,7 @@ import type { UiLayoutHandle } from './useUiLayout';
 import { s } from './strings';
 import type { AppThemeHandle } from './useAppTheme';
 import type { PwaHandle } from './usePwa';
+import type { CanvasGridHandle } from './useCanvasGrid';
 
 function errorToShow(manager: WorkspaceManager, dismissed: string | null, ready: boolean): string | null {
   if (!ready || manager.openError === null || manager.openError === dismissed) return null;
@@ -36,6 +37,8 @@ export function AppHeader(props: {
   problems: number;
   /** UX08-WP04: install + update lifecycle owned by the shell. */
   pwa: PwaHandle;
+  /** UX08-WP05: canvas grid preference. */
+  grid: CanvasGridHandle;
 }) {
   const { ws } = props;
   const [dismissedError, setDismissedError] = useState<string | null>(null);
@@ -70,6 +73,13 @@ export function AppHeader(props: {
             state: props.pwa.update,
             unapplied: props.pwa.unapplied,
             restart: () => void props.pwa.restart(),
+          }}
+          grid={{
+            // The menu only needs the value + setters, not the hook handle.
+            type: props.grid.grid.type,
+            snap: props.grid.grid.snap,
+            setType: props.grid.setType,
+            setSnap: props.grid.setSnap,
           }}
         />
       </header>

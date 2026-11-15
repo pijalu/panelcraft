@@ -20,6 +20,8 @@ const CHROME_TOKENS = [
   'focus-ring', 'disabled-fg',
   'scrollbar-thumb', 'scrollbar-thumb-hover', 'scrollbar-track',
   'danger-fg', 'danger-bg', 'danger-bg-fg', 'warn-bg', 'warn-bg-fg', 'warn-fg', 'ok',
+  // UX08-WP05: the canvas grid is an editor-only preference with its own pair.
+  'grid-dot', 'grid-line',
 ] as const;
 
 type Tokens = Map<string, string>;
@@ -70,6 +72,19 @@ describe('application chrome tokens (UX08-WP03)', () => {
     for (const [theme, tokens] of [['light', light], ['dark', dark]] as const) {
       const missing = CHROME_TOKENS.filter((token) => !tokens.has(token));
       expect(missing, `${theme} theme missing tokens`).toEqual([]);
+    }
+  });
+
+  it('keeps the canvas grid subtle in both themes (UX08-WP05)', () => {
+    // Perceptible but never competitive: above the noise floor of a flat fill,
+    // well below the 3:1 required for a control boundary, so the grid cannot
+    // out-shout shapes or labels.
+    for (const [theme, tokens] of [['light', light], ['dark', dark]] as const) {
+      for (const token of ['grid-dot', 'grid-line']) {
+        const ratio = contrast(tokens.get(token) ?? '', tokens.get('canvas') ?? '');
+        expect(ratio, `${theme} ${token} vs canvas`).toBeGreaterThan(1.1);
+        expect(ratio, `${theme} ${token} vs canvas`).toBeLessThan(2.2);
+      }
     }
   });
 

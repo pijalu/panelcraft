@@ -54,12 +54,41 @@ describe('renderer scaffolding', () => {
     expect(world.getAttribute('transform')).toBe('translate(12 -4) scale(1.5)');
   });
 
-  it('grid toggles visibility (FR-C2)', () => {
+  it('grid draws dots, lines or nothing (UX08-WP05)', () => {
     const grid = svg.querySelector('.pc-grid') as SVGRectElement;
     expect(grid.getAttribute('display')).toBe('none');
-    r.setGrid(true);
+
+    r.setGrid('dots');
     expect(grid.getAttribute('display')).toBe('');
-    expect(svg.querySelector('#pc-grid-pattern')).not.toBeNull();
+    expect(grid.getAttribute('fill')).toBe('url(#pc-grid-pattern-dots)');
+
+    r.setGrid('lines');
+    expect(grid.getAttribute('display')).toBe('');
+    expect(grid.getAttribute('fill')).toBe('url(#pc-grid-pattern-lines)');
+
+    r.setGrid('off');
+    expect(grid.getAttribute('display')).toBe('none');
+  });
+
+  it('both grid patterns exist once, whichever type is active', () => {
+    r.setGrid('lines');
+    expect(svg.querySelectorAll('#pc-grid-pattern-dots').length).toBe(1);
+    expect(svg.querySelectorAll('#pc-grid-pattern-lines').length).toBe(1);
+    const lines = svg.querySelector('#pc-grid-pattern-lines') as SVGPatternElement;
+    expect(lines.getAttribute('width')).toBe(String(8));
+    // A non-scaling stroke keeps the line one screen pixel at any zoom.
+    const path = lines.querySelector('path');
+    expect(path?.getAttribute('vector-effect')).toBe('non-scaling-stroke');
+  });
+
+  it('hides the grid when zoomed far out, to avoid a moiré texture', () => {
+    const grid = svg.querySelector('.pc-grid') as SVGRectElement;
+    r.setGrid('dots');
+    r.setWorldTransform({ x: 0, y: 0, k: 0.2 });
+    expect(grid.getAttribute('display')).toBe('none');
+    // Zooming back in restores it without touching the preference.
+    r.setWorldTransform({ x: 0, y: 0, k: 1 });
+    expect(grid.getAttribute('display')).toBe('');
   });
 
   it('creates the shared arrowhead marker def', () => {

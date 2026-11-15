@@ -5,6 +5,7 @@ import type { MenuEntry } from './Menu';
 import { PANELS, type PanelId, type UiLayout } from './uiLayout';
 import { panelLabel } from './WorkspacePanels';
 import type { AppThemePreference } from './appTheme';
+import type { GridType } from '../engine/render/grid';
 import { s } from './strings';
 
 export interface AppMenuActions {
@@ -44,9 +45,18 @@ export interface AppMenuContext {
   theme: AppThemePreference;
   privateMode: boolean;
   layout: UiLayout;
+  grid?: AppMenuGrid;
   actions: AppMenuActions;
   install?: AppMenuInstall;
   update?: AppMenuUpdate;
+}
+
+/** UX08-WP05: the two independent canvas grid preferences. */
+export interface AppMenuGrid {
+  type: GridType;
+  snap: boolean;
+  setType: (type: GridType) => void;
+  setSnap: (snap: boolean) => void;
 }
 
 const THEMES: readonly { id: AppThemePreference; label: string }[] = [
@@ -96,6 +106,34 @@ function fileEntries(ctx: AppMenuContext): MenuEntry[] {
   ];
 }
 
+function gridEntries(ctx: AppMenuContext): MenuEntry[] {
+  const grid = ctx.grid;
+  if (grid === undefined) return [];
+  return [
+    {
+      kind: 'item', id: 'grid-off', label: s('Grid: off'), testId: 'view-grid-off',
+      role: 'menuitemradio', checked: grid.type === 'off', onSelect: () => grid.setType('off'),
+    },
+    {
+      kind: 'item', id: 'grid-dots', label: s('Grid: dots'), testId: 'view-grid-dots',
+      role: 'menuitemradio', checked: grid.type === 'dots', onSelect: () => grid.setType('dots'),
+    },
+    {
+      kind: 'item', id: 'grid-lines', label: s('Grid: lines'), testId: 'view-grid-lines',
+      role: 'menuitemradio', checked: grid.type === 'lines', onSelect: () => grid.setType('lines'),
+    },
+    {
+      kind: 'item',
+      id: 'grid-snap',
+      label: s('Snap to grid'),
+      testId: 'view-grid-snap',
+      role: 'menuitemcheckbox',
+      checked: grid.snap,
+      onSelect: () => grid.setSnap(!grid.snap),
+    },
+  ];
+}
+
 function viewEntries(ctx: AppMenuContext): MenuEntry[] {
   return [
     ...THEMES.map((theme) => ({
@@ -116,6 +154,8 @@ function viewEntries(ctx: AppMenuContext): MenuEntry[] {
       disabled: ctx.layout.panels[panel] === 'open',
       onSelect: () => ctx.actions.openPanel(panel),
     })),
+    { kind: 'separator', id: 'view-grid-sep' },
+    ...gridEntries(ctx),
     { kind: 'separator', id: 'view-sep-2' },
     {
       kind: 'item',

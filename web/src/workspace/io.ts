@@ -104,6 +104,9 @@ export function exportSvg(svg: SVGSVGElement): string {
 const UNSAFE_TAG = /<\s*(script|foreignObject|iframe)\b[\s\S]*?<\/\s*\1\s*>/gi;
 const UNSAFE_ATTR = /\s(on[a-z]+|srcdoc|(?:[a-z]+:)?href\s*=\s*["']?\s*javascript:)[^ >/]*/gi;
 const ACTIVE_TAG = /^(script|foreignobject|iframe)$/;
+/** Editor-only grid geometry (UX08-WP05) — never part of an export. */
+const GRID_PATTERN_TAG = /<pattern\b[^>]*pc-grid[^>]*>[\s\S]*?<\/pattern\s*>/gi;
+const GRID_RECT_TAG = /<rect\b[^>]*pc-grid[^>]*\/>/gi;
 
 /**
  * Remove scripts/foreignObject/iframes and script-URL/event attributes from
@@ -122,10 +125,26 @@ export function sanitizeSvg(svgText: string): string {
     root.tagName.toLowerCase() !== 'svg' ||
     root.getElementsByTagName('parsererror').length > 0;
   if (broken) {
-    return svgText.replace(UNSAFE_TAG, '').replace(UNSAFE_ATTR, '');
+    return svgText
+      .replace(UNSAFE_TAG, '')
+      .replace(UNSAFE_ATTR, '')
+      .replace(GRID_PATTERN_TAG, '')
+      .replace(GRID_RECT_TAG, '');
   }
   pruneActive(root);
+  pruneEditorChrome(root);
   return new XMLSerializer().serializeToString(root);
+}
+
+/**
+ * UX08-WP05: editor-only geometry must never leave the application. The canvas
+ * grid (and its patterns) are a viewer preference — an exported SVG/PNG with a
+ * grid baked in would claim the grid is part of the diagram.
+ */
+function pruneEditorChrome(root: Element): void {
+  for (const el of Array.from(root.querySelectorAll('.pc-grid, #pc-grid-pattern-dots, #pc-grid-pattern-lines'))) {
+    el.remove();
+  }
 }
 
 /** Walk the tree: drop active elements, strip event/script-URL attributes. */

@@ -27,6 +27,9 @@ import {
   type Transform,
 } from '../engine/render/viewport';
 import { snapToGrid, computeGuides } from '../engine/render/snap';
+import {
+  defaultGrid, toggleGridVisibility, type GridSettings, type GridType,
+} from '../engine/render/grid';
 import { resizedRectWithCues, type ResizeCandidate, type ResizeCue } from '../engine/render/resize';
 import { projectPerimeter } from '../engine/render/perimeter';
 import {
@@ -197,6 +200,12 @@ export interface ControllerOptions {
   onHistory?: (label: string, mergeKey?: string) => void;
   /** F-25: hover info card data (null = nothing hovered). */
   onHover?: (info: import('./hoverInfo').HoverInfo | null) => void;
+  /**
+   * UX08-WP05: the `g` shortcut is a preference change, so the shell owns it —
+   * otherwise the canvas would flip its own grid and the stored setting would
+   * drift out of sync.
+   */
+  onGridShortcut?: () => void;
 }
 
 const KIND_LABELS = {
@@ -322,7 +331,7 @@ export class CanvasController {
   private mode: Mode = { t: 'idle' };
   private selObjects = new Set<string>();
   private selLinks = new Set<string>();
-  private gridOn = false;
+  private grid: GridSettings = defaultGrid();
   private spaceDown = false;
   private routes = new Map<string, Polyline>();
   private seq = 0;
@@ -336,6 +345,7 @@ export class CanvasController {
   private readonly onHistory?: (label: string, mergeKey?: string) => void;
   private readonly onHover?: (info: import('./hoverInfo').HoverInfo | null) => void;
   private readonly onGhostOpen?: (path: string) => void;
+  private readonly onGridShortcut?: () => void;
   /** F-20: read-only imported objects (never part of `state`). */
   private ghosts: Array<DiagramObject & { path: string }> = [];
   /** F-22: roving focus (keyboard navigation across scene objects). */
@@ -357,6 +367,7 @@ export class CanvasController {
     this.onHover = opts.onHover;
     this.undo.setObserver((cmd) => this.onHistory?.(cmd.label, cmd.coalesceKey));
     this.onGhostOpen = opts.onGhostOpen;
+    this.onGridShortcut = opts.onGridShortcut;
     this.renderer = new SceneRenderer(svg);
     this.attach();
     this.render();
@@ -399,8 +410,8 @@ export class CanvasController {
   addObject(kind: Kind, at?: Point): string {
     const size = DEFAULT_SHAPE[kind];
     const p = at ?? this.centerOfView();
-    const x = at ? Math.round(p.x - size.w / 2) : snapToGrid(p.x - size.w / 2);
-    const y = at ? Math.round(p.y - size.h / 2) : snapToGrid(p.y - size.h / 2);
+    const x = at ? Math.round(p.x - size.w / 2) : this.snapped(p.x - size.w / 2);
+    const y = at ? Math.round(p.y - size.h / 2) : this.snapped(p.y - size.h / 2);
     // F-02: probe for a free id — never reuse an id loaded from the file
     const id = uniqueId(this.takenObjectIds(), 'o', ++this.seq);
     this.seq = Math.max(this.seq, seqOf(id, 'o'));
@@ -716,10 +727,34 @@ export class CanvasController {
     this.render();
   }
 
-  toggleGrid(): boolean {
-    this.gridOn = !this.gridOn;
-    this.renderer.setGrid(this.gridOn);
-    return this.gridOn;
+  /**
+   * `g` (and the old grid button): the shell owns the preference, so it is told
+   * to toggle and re-applies the stored settings through applyGrid().
+   */
+  private gridToggleRequested(): void {
+    if (this.onGridShortcut) this.onGridShortcut();
+    else this.toggleGrid();
+  }
+
+  toggleGrid(): GridType {
+    this.applyGrid(toggleGridVisibility(this.grid));
+    return this.grid.type;
+  }
+
+  /** UX08-WP05: apply the stored grid preferences (drawing + snapping). */
+  applyGrid(settings: GridSettings): void {
+    this.grid = settings;
+    this.renderer.setGrid(settings.type);
+  }
+
+  /** Current grid preferences (the shell persists these). */
+  gridSettings(): GridSettings {
+    return { ...this.grid };
+  }
+
+  /** UX08-WP05: snapping is a preference; every snap site goes through here. */
+  private snapped(v: number): number {
+    return this.grid.snap ? snapToGrid(v) : v;
   }
 
   fitDiagram(): void {
@@ -1319,7 +1354,7 @@ export class CanvasController {
     if (action === 'zoom-out') return void this.setTransform(zoomAt(this.t, center, 1 / ZOOM_STEP));
     if (action === 'zoom-reset') return void this.setTransform({ x: 0, y: 0, k: 1 });
     if (action === 'fit-diagram') return void this.fitDiagram();
-    if (action === 'grid-toggle') return void this.toggleGrid();
+    if (action === 'grid-toggle') return void this.gridToggleRequested();
     if (action === 'delete') return void this.deleteSelection();
     if (action === 'escape') {
       if (this.mode.t === 'resize') {
@@ -1516,7 +1551,7 @@ export class CanvasController {
       if (!rec) return o;
       return guided
         ? { ...o, x: rec.x + dx + gx, y: rec.y + dy + gy }
-        : { ...o, x: snapToGrid(rec.x + dx), y: snapToGrid(rec.y + dy) };
+        : { ...o, x: this.snapped(rec.x + dx), y: this.snapped(rec.y + dy) };
     });
     this.state = { ...this.state, objects: next };
     this.recomputeRoutes();
@@ -1569,6 +1604,8 @@ export class CanvasController {
       m.handle,
       this.toCanvas(e),
       candidates,
+      undefined,
+      this.grid.snap,
     );
     this.state = {
       ...this.state,
@@ -1677,7 +1714,7 @@ export class CanvasController {
     const m = this.mode;
     if (m.t !== 'waypoint') return;
     const p = this.toCanvas(e);
-    const next: [number, number] = [snapToGrid(p.x), snapToGrid(p.y)];
+    const next: [number, number] = [this.snapped(p.x), this.snapped(p.y)];
     this.state = {
       ...this.state,
       links: this.state.links.map((l) => {
