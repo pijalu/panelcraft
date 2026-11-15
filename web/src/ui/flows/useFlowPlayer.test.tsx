@@ -57,10 +57,14 @@ const mkAnimator = () => {
 
 const mkCamera = () => {
   const focused: number[][] = [];
+  const intents: Array<Record<string, unknown>> = [];
   let saved = 0;
   let restored = 0;
   const cam = {
-    focus: (_rects: unknown[], _current: unknown) => focused.length,
+    focus: (_rects: unknown[], _current: unknown, intent?: Record<string, unknown>) => {
+      intents.push(intent ?? {});
+      return focused.length;
+    },
     save: () => {
       saved += 1;
     },
@@ -69,7 +73,12 @@ const mkCamera = () => {
     },
     snapTo: () => {},
   };
-  return { cam: cam as unknown as CameraController, saved: () => saved, restored: () => restored };
+  return {
+    cam: cam as unknown as CameraController,
+    saved: () => saved,
+    restored: () => restored,
+    intents,
+  };
 };
 
 /** Manual timer bank: tests advance the clock by hand. */
@@ -245,5 +254,99 @@ describe('useFlowPlayer transport (M5-WP5)', () => {
     expect(h.result.current.state.breadcrumb).toEqual([]);
     expect(h.result.current.state.narration).toBe('done');
     expect(h.result.current.state.progress).toEqual({ index: 6, total: 6 });
+  });
+});
+
+// UX08-WP13 — the runner hands the plan's camera intent to the camera port and
+// publishes the step description next to the narration title.
+const DOC_C = `pcd 1.0
+
+person a "Ada"
+system b "Web"
+
+a -> b as ab
+
+flow "Walk" as walk {
+  intro "start"
+  a -> b : "order" presentation {
+    description "the order reaches the shop"
+    camera focus (420, 180) zoom 1.5 duration 0
+  }
+  info "hold here" presentation {
+    camera hold
+  }
+}
+`;
+
+const setupWalk = () => {
+  const files = new Map<string, string>([['walk.pcd', DOC_C]]);
+  const animator = mkAnimator();
+  const camera = mkCamera();
+  const clk = mkClock();
+  const { result } = renderHook(() =>
+    useFlowPlayer({
+      textOf: (path) => files.get(path) ?? null,
+      openFile: () => {},
+      animator: animator.anim,
+      camera: camera.cam,
+      clock: clk.clock,
+      currentViewport: () => ({ x: 0, y: 0, k: 1 }),
+    }),
+  );
+  act(() => {
+    result.current.start('walk.pcd', 'walk');
+  });
+  return { result, animator, camera, clk };
+};
+
+describe('presentation camera + description (UX08-WP13)', () => {
+  it('publishes the step description beside the narration title', () => {
+    const h = setupWalk();
+    expect(h.result.current.state.narration).toBe('start');
+    expect(h.result.current.state.description).toBe('');
+    act(() => {
+      h.result.current.stepTo(2);
+    });
+    expect(h.result.current.state.narration).toBe('order');
+    expect(h.result.current.state.description).toBe('the order reaches the shop');
+    act(() => {
+      h.result.current.stepTo(3);
+    });
+    expect(h.result.current.state.description).toBe(''); // step without prose
+  });
+
+  it('hands each beat its resolved camera intent', () => {
+    const h = setupWalk();
+    expect(h.camera.intents[0]).toEqual({ mode: 'overview' });
+    act(() => {
+      h.result.current.stepTo(2);
+    });
+    expect(h.camera.intents.at(-1)).toEqual({
+      mode: 'focus',
+      x: 420,
+      y: 180,
+      zoom: 1.5,
+      durationMs: 0,
+    });
+    act(() => {
+      h.result.current.stepTo(3);
+    });
+    expect(h.camera.intents.at(-1)).toEqual({ mode: 'hold' });
+  });
+
+  it('restart re-applies the first beat camera; exit restores the viewport', () => {
+    const h = setupWalk();
+    act(() => {
+      h.result.current.stepTo(3);
+    });
+    act(() => {
+      h.result.current.restart();
+    });
+    expect(h.camera.intents.at(-1)).toEqual({ mode: 'overview' });
+    act(() => {
+      h.result.current.exit();
+    });
+    expect(h.camera.restored()).toBe(1);
+    expect(h.result.current.state.description).toBe('');
   });
 });

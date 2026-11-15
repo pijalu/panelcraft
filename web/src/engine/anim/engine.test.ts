@@ -73,6 +73,8 @@ const beatOf = (partial: Partial<Beat> & Pick<Beat, 'index' | 'kind'>): Beat => 
   links: [],
   dim: [],
   delayMs: MOTION.stepDelayMs,
+  camera: { mode: 'hold' },
+  cameraIds: [],
   ...partial,
 });
 
@@ -208,8 +210,8 @@ describe('FlowAnimator tokens, rings, badges (FR-F4)', () => {
         actors: ['a', 'b'],
         dim: ['c', 'bc'],
         lanes: [
-          [{ index: 5, kind: 'msg', title: '', actors: ['a', 'b'], links: [{ linkId: 'ab', from: 'a', to: 'b', flipped: false }], dim: [], delayMs: 0 }],
-          [{ index: 5, kind: 'process', title: '', actors: ['b'], links: [], dim: [], delayMs: 0 }],
+          [{ index: 5, kind: 'msg', title: '', actors: ['a', 'b'], links: [{ linkId: 'ab', from: 'a', to: 'b', flipped: false }], dim: [], delayMs: 0, camera: { mode: 'hold' }, cameraIds: [] }],
+          [{ index: 5, kind: 'process', title: '', actors: ['b'], links: [], dim: [], delayMs: 0, camera: { mode: 'hold' }, cameraIds: [] }],
         ],
       }), ctx);
     const tokenCalls = fx.calls.filter((c) => c.el.classList.contains('pc-token'));

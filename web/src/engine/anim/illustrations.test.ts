@@ -65,6 +65,8 @@ const beatOf = (partial: Partial<Beat> & Pick<Beat, 'index' | 'kind'>): Beat => 
   links: [],
   dim: [],
   delayMs: MOTION.stepDelayMs,
+  camera: { mode: 'hold' },
+  cameraIds: [],
   ...partial,
 });
 

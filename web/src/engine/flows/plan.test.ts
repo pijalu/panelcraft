@@ -260,3 +260,158 @@ describe('canvasLinkId', () => {
     expect(canvasLinkId({ from: 'a', to: 'b' }, 3)).toBe('a-b-3');
   });
 });
+
+// UX08-WP13 — presentation camera intents, narration description and duration
+// estimate. The locked table lives in docs/milestones/ux08/WP13-flow-presentation.md;
+// the plan resolves every step to an explicit intent so the camera port stays dumb.
+const CAM_FIXTURE = `pcd 1.0
+person a "Ada"
+system b "Web"
+container c "API"
+a -> b : "uses" as ab
+b -> c as bc
+a -> c
+flow "Buy" as buy {
+  intro "start"
+  a -> b : "order"
+  process c "compile"
+  par "fan out" {
+    { a -> b : "notify" flip }
+    { process b }
+  }
+  alt "express?" {
+    "yes" { a -> c : "rush" }
+    "no" { b -> c flip }
+  }
+  info "be kind"
+  goto refunds
+  conclusion "done"
+}
+`;
+
+const camDoc = parse(CAM_FIXTURE);
+const camFlow = firstFlow(camDoc);
+const camBeats = (): Beat[] => buildPlan({ doc: camDoc, flow: camFlow }).beats;
+const byKind = (beats: Beat[], kind: Beat['kind']): Beat => {
+  const b = beats.find((x) => x.kind === kind);
+  if (b === undefined) throw new Error(`no ${kind} beat`);
+  return b;
+};
+
+describe('presentation camera intents (UX08-WP13)', () => {
+  it('intro and conclusion fit the whole diagram (overview)', () => {
+    const beats = camBeats();
+    const intro = byKind(beats, 'intro');
+    expect(intro.camera.mode).toBe('overview');
+    expect(intro.cameraIds).toEqual(['a', 'b', 'c', 'ab', 'bc', 'a-c-2']);
+    expect(byKind(beats, 'conclusion').camera.mode).toBe('overview');
+  });
+
+  it('msg fits both actors together with the connector', () => {
+    const msg = byKind(camBeats(), 'msg');
+    expect(msg.camera).toEqual({ mode: 'auto' });
+    expect(msg.cameraIds).toEqual(['a', 'b', 'ab']);
+  });
+
+  it('process fits only its target shape', () => {
+    const proc = byKind(camBeats(), 'process');
+    expect(proc.camera.mode).toBe('auto');
+    expect(proc.cameraIds).toEqual(['c']);
+  });
+
+  it('par fits the union of its concurrent participants', () => {
+    const par = byKind(camBeats(), 'par');
+    expect(par.camera.mode).toBe('auto');
+    expect(par.cameraIds).toEqual(['a', 'b', 'ab']);
+  });
+
+  it('alt holds at the chooser, info holds, goto holds', () => {
+    const beats = camBeats();
+    expect(byKind(beats, 'alt').camera.mode).toBe('hold');
+    expect(byKind(beats, 'alt').cameraIds).toEqual([]);
+    expect(byKind(beats, 'info').camera.mode).toBe('hold');
+    expect(byKind(beats, 'goto').camera.mode).toBe('hold');
+  });
+
+  it('a chosen alt branch step computes its own camera', () => {
+    const plan = buildPlan({ doc: camDoc, flow: camFlow, choices: { '5': 0 } });
+    const branch = plan.beats.find((b) => b.kind === 'msg' && b.title === 'rush');
+    expect(branch?.camera.mode).toBe('auto');
+    expect(branch?.cameraIds).toEqual(['a', 'c', 'a-c-2']);
+  });
+});
+
+describe('presentation overrides + narration (UX08-WP13)', () => {
+  const withPresentation = (body: string): Beat[] => {
+    const d = parse(`pcd 1.0
+person a "Ada"
+system b "Web"
+a -> b as ab
+flow "F" as f {
+  a -> b : "order" presentation {
+${body}
+  }
+}
+`);
+    return buildPlan({ doc: d, flow: firstFlow(d) }).beats;
+  };
+
+  it('description becomes the beat description, narration stays the title', () => {
+    const b = beat(withPresentation('    description "the order leaves the shop"'), 0);
+    expect(b.description).toBe('the order leaves the shop');
+    expect(b.title).toBe('order');
+  });
+
+  it('camera auto keeps the computed participants and adds an explicit duration', () => {
+    expect(beat(withPresentation('    camera auto\n    duration 120'), 0).camera).toEqual({
+      mode: 'auto',
+      durationMs: 120,
+    });
+  });
+
+  it('camera hold drops the participants (no camera work for the beat)', () => {
+    const b = beat(withPresentation('    camera hold'), 0);
+    expect(b.camera).toEqual({ mode: 'hold' });
+    expect(b.cameraIds).toEqual([]);
+  });
+
+  it('camera focus carries the canvas point, zoom and duration', () => {
+    expect(beat(withPresentation('    camera focus (420, 180) zoom 1.25 duration 0'), 0).camera).toEqual({
+      mode: 'focus',
+      x: 420,
+      y: 180,
+      zoom: 1.25,
+      durationMs: 0,
+    });
+  });
+});
+
+describe('flow duration estimate (UX08-WP13)', () => {
+  it('sums dwell plus camera transit for every beat', () => {
+    const plan = buildPlan({ doc: camDoc, flow: camFlow });
+    const camMs = MOTION.cameraMs;
+    // 10 beats: intro overview, msg, process, par, alt hold, branch msg, info
+    // hold, goto hold, conclusion overview … camera time only where the mode moves
+    const moving = plan.beats.filter((b) => b.camera.mode !== 'hold').length;
+    const dwelling = plan.beats.length * MOTION.stepDelayMs;
+    expect(plan.estimatedMs).toBe(dwelling + moving * camMs);
+    expect(moving).toBeGreaterThan(0);
+  });
+
+  it('honours per-step dwell and camera overrides', () => {
+    const d = parse(`pcd 1.0
+person a "Ada"
+system b "Web"
+a -> b as ab
+flow "F" as f {
+  a -> b : "order" delay 500 presentation {
+    camera auto
+    duration 100
+  }
+  intro "bye"
+}
+`);
+    const plan = buildPlan({ doc: d, flow: firstFlow(d) });
+    expect(plan.estimatedMs).toBe(500 + 100 + MOTION.stepDelayMs + MOTION.cameraMs);
+  });
+});

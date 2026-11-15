@@ -75,6 +75,8 @@ const beatOf = (link: BeatLink): Beat => ({
   links: [link],
   dim: [],
   delayMs: MOTION.stepDelayMs,
+  camera: { mode: 'hold' },
+  cameraIds: [],
 });
 
 const tokens = (svg: SVGSVGElement): Element[] => [...svg.querySelectorAll('.pc-token')];

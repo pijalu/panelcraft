@@ -10,6 +10,7 @@ import {
   buildPlan,
   type AltInfo,
   type Beat,
+  type BeatCamera,
   type FlowResolver,
   type PlaybackPlan,
 } from '../../engine/flows/plan';
@@ -32,7 +33,7 @@ export interface BeatPlayer {
 
 /** Narrow camera port — the real CameraController satisfies it. */
 export interface CameraCam {
-  focus(rects: Rect[], current: Transform): void;
+  focus(rects: Rect[], current: Transform, intent?: BeatCamera): void;
   save(t: Transform): void;
   restoreSaved(current: Transform): void;
 }
@@ -40,6 +41,8 @@ export interface CameraCam {
 export interface FlowPlayerState {
   status: 'idle' | 'playing' | 'paused' | 'ended';
   narration: string;
+  /** one-line prose of the current step (UX08-WP13; '' when none) */
+  description: string;
   breadcrumb: string[]; // titles of the frames above the current one
   awaitingChoice: AltInfo | null;
   progress: { index: number; total: number } | null;
@@ -49,6 +52,7 @@ export interface FlowPlayerState {
 export const FRESH: FlowPlayerState = {
   status: 'idle',
   narration: '',
+  description: '',
   breadcrumb: [],
   awaitingChoice: null,
   progress: null,
@@ -120,14 +124,15 @@ export class FlowRunner {
     const beat = f.plan.beats[f.index];
     if (beat === undefined) return;
     this.io.animator.play(beat, this.rects);
+    // UX08-WP13: the plan resolved the camera intent; the port only executes it
     this.io.camera.focus(
-      beat.actors
-        .map((id) => this.rects.rectOf(id))
-        .filter((r): r is Rect => r !== null),
+      beat.cameraIds.map((id) => this.rects.rectOf(id)).filter((r): r is Rect => r !== null),
       this.io.currentViewport(),
+      beat.camera,
     );
     this.io.publish({
       narration: beat.title,
+      description: beat.description ?? '',
       progress: { index: f.index + 1, total: f.plan.beats.length },
       awaitingChoice: null,
     });
@@ -208,6 +213,7 @@ export class FlowRunner {
       this.io.publish({
         status: 'ended',
         narration: done === undefined ? '' : done.plan.flowTitle,
+        description: done?.plan.flowDescription ?? '',
         breadcrumb: [],
         progress: done === undefined ? null : { index: total, total },
       });

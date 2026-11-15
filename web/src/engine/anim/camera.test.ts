@@ -14,7 +14,7 @@ interface CamCall {
   durationMs: number;
 }
 
-const mkDeps = (view: { w: number; h: number } = { w: 800, h: 600 }) => {
+const mkDeps = (view: { w: number; h: number } = { w: 800, h: 600 }, reducedMotion = false) => {
   const calls: CamCall[] = [];
   let cancelled = 0;
   const player: AnimPlayer = {
@@ -48,7 +48,7 @@ const mkDeps = (view: { w: number; h: number } = { w: 800, h: 600 }) => {
   };
   const current = (): Transform => applied.at(-1) ?? { x: 0, y: 0, k: 1 };
   const el = {} as Element;
-  const cam = new CameraController({ el, apply, view: () => view, player, clock });
+  const cam = new CameraController({ el, apply, view: () => view, player, clock, reducedMotion });
   return { cam, calls, applied, tick, cancelled: () => cancelled, current };
 };
 
@@ -121,5 +121,67 @@ describe('CameraController (M5-WP3)', () => {
     const fx = mkDeps();
     fx.cam.restoreSaved({ x: 5, y: 5, k: 2 });
     expect(fx.applied.length).toBe(0);
+  });
+});
+
+// UX08-WP13 — presentation camera intents. The plan resolves each beat to an
+// intent (auto/hold/focus/overview); the controller only executes it.
+describe('CameraController presentation intents (UX08-WP13)', () => {
+  it('hold leaves the viewport untouched (no glide, no commit)', () => {
+    const fx = mkDeps();
+    fx.cam.focus([R_A, R_B], { x: 0, y: 0, k: 1 }, { mode: 'hold' });
+    expect(fx.calls.length).toBe(0);
+    fx.tick(MOTION.cameraMs);
+    expect(fx.applied.length).toBe(0);
+  });
+
+  it('overview fits the supplied rects like auto', () => {
+    const fx = mkDeps();
+    fx.cam.focus([R_A, R_B], { x: 0, y: 0, k: 1 }, { mode: 'overview' });
+    fx.tick(MOTION.cameraMs);
+    const u = unionRects([R_A, R_B]) as NonNullable<ReturnType<typeof unionRects>>;
+    const sr = applyRect(fx.current(), u);
+    expect(sr.x + sr.w).toBeLessThanOrEqual(800.1);
+    expect(sr.y + sr.h).toBeLessThanOrEqual(600.1);
+  });
+
+  it('focus centres the named canvas point at the requested zoom', () => {
+    const fx = mkDeps();
+    fx.cam.focus([], { x: 0, y: 0, k: 1 }, { mode: 'focus', x: 400, y: 300, zoom: 2 });
+    fx.tick(MOTION.cameraMs);
+    expect(fx.current()).toEqual({ x: 400 - 400 * 2, y: 300 - 300 * 2, k: 2 });
+  });
+
+  it('focus clamps out-of-range zoom and falls back to the current zoom', () => {
+    const fx = mkDeps();
+    fx.cam.focus([], { x: 0, y: 0, k: 1 }, { mode: 'focus', x: 10, y: 10, zoom: 99 });
+    fx.tick(MOTION.cameraMs);
+    expect(fx.current().k).toBe(4);
+    const kept = mkDeps();
+    kept.cam.focus([], { x: 0, y: 0, k: 1.5 }, { mode: 'focus', x: 0, y: 0 });
+    kept.tick(MOTION.cameraMs);
+    expect(kept.current().k).toBe(1.5);
+  });
+
+  it('a duration override sets the glide length; zero applies immediately', () => {
+    const fx = mkDeps();
+    fx.cam.focus([R_A], { x: 0, y: 0, k: 1 }, { mode: 'auto', durationMs: 120 });
+    expect(fx.calls[0]?.durationMs).toBe(120);
+    fx.tick(120);
+    expect(fx.applied.length).toBe(1);
+    const instant = mkDeps();
+    instant.cam.focus([R_B], { x: 0, y: 0, k: 1 }, { mode: 'auto', durationMs: 0 });
+    expect(instant.calls.length).toBe(0);
+    expect(instant.applied.length).toBe(1);
+  });
+
+  it('reduced motion applies the same target with no glide', () => {
+    const fx = mkDeps({ w: 800, h: 600 }, true);
+    fx.cam.focus([R_A, R_B], { x: 0, y: 0, k: 1 }, { mode: 'auto' });
+    expect(fx.calls.length).toBe(0);
+    expect(fx.applied.length).toBe(1);
+    const u = unionRects([R_A, R_B]) as NonNullable<ReturnType<typeof unionRects>>;
+    const sr = applyRect(fx.current(), u);
+    expect(sr.x + sr.w).toBeLessThanOrEqual(800.1);
   });
 });
