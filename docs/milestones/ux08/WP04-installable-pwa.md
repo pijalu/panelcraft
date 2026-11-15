@@ -4,7 +4,7 @@
 
 **Severity:** Medium — offline reliability and application identity
 
-**Status:** Implemented (see Evidence)  
+**Status:** Implemented and verified (2026-11-15)  
 **Requirement:** added application/PWA scope  
 **Depends on:** WP01 for the install action and WP03 for final shell styling  
 **Branch:** `feat/ux08-installable-pwa`

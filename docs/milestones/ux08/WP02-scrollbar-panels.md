@@ -4,7 +4,7 @@
 
 **Severity:** High — property visibility and functional reachability
 
-**Status:** Implemented (see Evidence)
+**Status:** Implemented and verified (2026-11-15)
 **Requirement:** 7 — panels, including Properties, are partially blocked by scrollbars  
 **Depends on:** nothing  
 **Branch:** `feat/ux08-scrollbar-panels`

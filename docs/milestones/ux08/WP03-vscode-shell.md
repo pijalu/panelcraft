@@ -4,7 +4,7 @@
 
 **Severity:** Medium — shell consistency and information hierarchy
 
-**Status:** Implemented (see Evidence)  
+**Status:** Implemented and verified (2026-11-15)  
 **Requirement:** 9 — application should match VS Code component style  
 **Depends on:** WP01 and WP02, so theme work does not conflict with menu/layout repairs  
 **Branch:** `feat/ux08-vscode-shell`

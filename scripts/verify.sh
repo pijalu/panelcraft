@@ -10,6 +10,9 @@
 # Milestones:
 #   m0  scaffolding gate: web check+test+build, go vet/staticcheck/gocyclo/test,
 #       asset-origin scan, e2e no-network smoke.
+#   ux08  application-experience gate: the UX-08 unit suites, performance budgets
+#       and 300-object baseline, accessibility, offline/PWA, every UX-08 e2e
+#       scenario, the full e2e suite and repo hygiene.
 # Later milestones extend STAGES below (docs/IMPLEMENTATION-PLAN.md).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -101,6 +104,33 @@ snapshots() { run npx vitest run web/src/workspace/store/; }
 # smoke, search jump; M6-WP8).
 e2e_m6() { run npm run e2e -- --project=chromium; }
 
+# ---- ux08 stages (application experience & flow storytelling) ---------------
+# ux08_unit: the UX-08 unit suites grouped by requirement — menu/shell/panels
+# (UX08 WP01–WP03, WP07), grid + resize cues (WP05–WP06), link properties,
+# route geometry and labels (WP08–WP10), flow authoring/presentation/doc export
+# (WP11–WP14) and the PWA lifecycle (WP04).
+ux08_unit() {
+  run npx vitest run \
+    web/src/ui/Menu.test.tsx web/src/ui/appMenuEntries.test.ts \
+    web/src/ui/uiLayout.test.ts web/src/ui/workspaceLayout.test.ts \
+    web/src/ui/appTokens.test.ts web/src/engine/render/grid.test.ts \
+    web/src/engine/render/sizeHints.test.ts web/src/engine/render/routeEditing.test.ts \
+    web/src/engine/render/labelLayout.test.ts web/src/ui/CanvasController.route.test.ts \
+    web/src/engine/flows/ web/src/engine/anim/ web/src/ui/flows/ \
+    web/src/engine/format/flowMarkdown.test.ts web/src/engine/format/docsExamples.test.ts \
+    web/src/pwa/
+}
+# perf_baseline: 300-object pan/zoom/drag baseline (N1) as an e2e measurement —
+# the overlay/label changes in UX-08 must not raise these numbers.
+perf_baseline() { run npm run e2e -- --project=chromium e2e/perf-baseline.spec.ts; }
+# e2e_ux08: the delivered UX-08 scenarios end to end — shell/menu/panels, grid
+# and resize cues, connection editing/labels, flow authoring/presentation and
+# documentation downloads.
+e2e_ux08() { run npm run e2e -- --project=chromium e2e/ux08-*.spec.ts e2e/flow01-canvas-flows.spec.ts; }
+# e2e_full: every spec, including the a11y/offline stages above and the
+# pre-existing milestones.
+e2e_full() { run npm run e2e -- --project=chromium; }
+
 # ---- repo hygiene (F-09): no generated artefact tracked, e2e leaves no diff ---
 # repo_clean: `git ls-files dist`/screenshots empty; with --worktree (default
 # here) the worktree must be clean after the e2e stages ran.
@@ -161,8 +191,11 @@ case "$MILESTONE" in
   m7)
     STAGES=(web_check web_test perf_smoke perf_nfr workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots svg_fuzz cli_traversal web_build render_cli go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links selfcontained a11y_e2e offline_e2e e2e_m7 repo_clean release_dry)
     ;;
+  ux08)
+    STAGES=(web_check web_test ux08_unit perf_smoke perf_nfr web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links selfcontained a11y_e2e offline_e2e perf_baseline e2e_ux08 e2e_full repo_clean)
+    ;;
   *)
-    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4, m5, m6, m7)" >&2
+    echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4, m5, m6, m7, ux08)" >&2
     exit 2
     ;;
 esac

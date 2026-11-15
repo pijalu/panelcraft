@@ -4,6 +4,10 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-15 — UX08-WP15 integrated verification gate
+
+- Added the `ux08` milestone to `scripts/verify.sh` (22 stages) so the whole application-experience milestone is one reproducible command: the UX-08 unit suites grouped by requirement, the performance budgets and the 300-object pan/zoom/drag baseline, axe accessibility in both themes, the network-blocked offline/PWA checks, every UX-08 end-to-end scenario, the full Playwright suite and repo hygiene. No behaviour changed; the gate proves the behaviour the WP01–WP14 briefs claim, and the milestone's residual limitations are recorded rather than descoped.
+
 ## 2026-11-15 — UX08-WP14 flow documentation for people and agents
 
 - Flows now export as deterministic Markdown: `.md` beside *Steps* documents the selected flow and **All flows (.md)** documents every flow in one file, generated from the parsed document (never playback beats) and downloaded offline through the existing adapter — flow title and purpose, numbered steps with nested alt branches and par lanes, readable names plus stable ids, link label and direction, per-step description, dwell, camera mode/focus/zoom/transition and `goto` targets, with unresolved references kept and marked instead of silently dropped.
