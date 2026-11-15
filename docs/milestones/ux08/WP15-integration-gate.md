@@ -146,6 +146,16 @@ at 520 px; no outstanding defect is filed.
 5. The Markdown documentation export is one-way — there is no Markdown import, and PDL stays the
    single normative source.
 
+**One flake, fixed at the root.** The first full run of this gate went red on
+`e2e/ux08-flow-presentation.spec.ts` “reduced motion presents the same steps without a camera
+glide” — `expect(first).not.toBe(before)`. Running the whole suite directly after the UX-08 stage
+reproduced it: the test read the “before” transform *after* clicking **Present**, so when the
+present-mode refit won the race both reads were the same transform and it failed for the wrong
+reason. It now captures the editor framing before the launcher opens and compares against that, so
+the assertion means what the brief says; the stable-framing check stays. Verified with
+`--repeat-each=5` (25 passed) and by re-running the gate sequence (155 passed). No retry or skip was
+added.
+
 **Worktree.** After the full e2e run `git status --porcelain` showed only the intended
 `scripts/verify.sh` change (this WP), and `bash scripts/check-repo-clean.sh --worktree` passes on
 the committed tree; no generated artefact or refreshed golden was left behind.
