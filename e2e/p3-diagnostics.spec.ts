@@ -55,7 +55,7 @@ test.describe('F-23 diagnostics on canvas', () => {
       await capture(page, `ux07-valid-${colorScheme}`);
 
       await editor.click();
-      await page.keyboard.press('Meta+a');
+      await page.keyboard.press('ControlOrMeta+a');
       await page.keyboard.insertText(broken);
       await expect(page.getByTestId('canvas-stale')).toBeVisible({ timeout: 15_000 });
       await expect(count).toHaveText('1');
@@ -70,7 +70,7 @@ test.describe('F-23 diagnostics on canvas', () => {
       await capture(page, `ux07-error-${colorScheme}`);
 
       await editor.click();
-      await page.keyboard.press('Meta+a');
+      await page.keyboard.press('ControlOrMeta+a');
       await page.keyboard.insertText(DOC);
       await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
         timeout: 15_000,
@@ -94,7 +94,7 @@ test.describe('F-23 diagnostics on canvas', () => {
     await expect(page.getByTestId('canvas-stale')).toHaveCount(0);
 
     await page.locator('.cm-content').click();
-    await page.keyboard.press('Meta+a');
+    await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.insertText(`pcd 1.0
 
 system api "API Gateway" bogusattr
@@ -115,11 +115,11 @@ api -> store
   test('fixing the error clears the ring and the banner', async ({ page }) => {
     await seed(page, DOC);
     await page.locator('.cm-content').click();
-    await page.keyboard.press('Meta+a');
+    await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.insertText('pcd 1.0\n\nsystem api "oops" bogusattr\n');
     await expect(page.getByTestId('canvas-stale')).toBeVisible({ timeout: 15_000 });
 
-    await page.keyboard.press('Meta+a');
+    await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.insertText(DOC);
     await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
       timeout: 15_000,

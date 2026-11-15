@@ -66,7 +66,7 @@ test.describe('F-25 laws-of-UX affordances', () => {
 
     // a broken statement raises the problem chip
     await page.locator('.cm-content').click();
-    await page.keyboard.press('Meta+a');
+    await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.insertText('pcd 1.0\n\nsystem app "Shop" bogusattr\n');
     await expect(page.getByTestId('problem-chip')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('problem-chip')).toContainText('problem');
@@ -78,14 +78,14 @@ test.describe('F-25 laws-of-UX affordances', () => {
 
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.locator('.cm-content').click();
-    await page.keyboard.press('Meta+a');
+    await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.insertText(DOC.replace('technology "Go" ', ''));
     await expect(page.getByTestId('status-pill')).toBeVisible();
     await page.screenshot({ path: 'test-results/f25-dirty-dark.png' });
 
     await page.emulateMedia({ colorScheme: 'light' });
     await page.locator('.cm-content').click();
-    await page.keyboard.press('Meta+a');
+    await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.insertText('pcd 1.0\n\nsystem app "Shop" bogusattr\n');
     await expect(page.getByTestId('canvas-stale')).toBeVisible({ timeout: 15_000 });
     await page.screenshot({ path: 'test-results/f25-error-light.png' });

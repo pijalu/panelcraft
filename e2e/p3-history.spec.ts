@@ -51,7 +51,7 @@ test.describe('F-24 unified undo & history', () => {
 
     // 2. code action
     await page.locator('.cm-content').click();
-    await page.keyboard.press('Meta+End');
+    await page.keyboard.press('ControlOrMeta+End');
     await page.keyboard.insertText('// a comment line\n');
     // '// ...' is a comment in PDL: the machine applies it and goes back to clean,
     // but the journal still records the typing burst.
