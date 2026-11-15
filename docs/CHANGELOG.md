@@ -4,6 +4,12 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-15 — Review fixes for the flow editor and Markdown documentation
+
+- Process step cards showed the shape name twice and hid the authored text; the title now carries what the step does and the summary keeps the shape name, like message cards. Long flow names are readable on hover.
+- The flow outline can no longer be corrupted by a line break in a title, description, label or step text (prose collapses to one line), a blank title falls back to the flow id instead of an empty heading, `goto "#flow"` no longer prints a dangling `#`, and an undefined shape is named once (`"ghost" (not in this diagram)`) instead of twice.
+- The *Steps* header keeps its label and its three actions on one row at the default panel width — the sequence action is labelled `.seq` (the download is still `.seq.mmd`) — and the e2e now asserts that instead of relying on screenshot review.
+
 ## 2026-11-15 — UX08-WP15 integrated verification gate
 
 - Added the `ux08` milestone to `scripts/verify.sh` (22 stages) so the whole application-experience milestone is one reproducible command: the UX-08 unit suites grouped by requirement, the performance budgets and the 300-object pan/zoom/drag baseline, axe accessibility in both themes, the network-blocked offline/PWA checks, every UX-08 end-to-end scenario, the full Playwright suite and repo hygiene. No behaviour changed; the gate proves the behaviour the WP01–WP14 briefs claim, and the milestone's residual limitations are recorded rather than descoped.

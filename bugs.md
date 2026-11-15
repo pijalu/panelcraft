@@ -12,15 +12,15 @@
 - `gocognit -over 15 .`
 - `gocyclo -over 12 .`
 - `go test -count=1 -race -cover ./...`
-Fix any issues.
-! For cognitive and cyclomatic complexity, Pre-existing warnings are acceptable only if they are unrelated to the change and explicitly noted !
+ Fix any issues.
+ ! For cognitive and cyclomatic complexity, Pre-existing warnings are acceptable only if they are unrelated to the change and explicitly noted !
 
-At the end of the session - the bug list should be empty, change committed and this file should only contain the guidelines for bug reporting.
-If new items are added, restart the process.
+ At the end of the session - the bug list should be empty, change committed and this file should only contain the guidelines for bug reporting.
+ If new items are added, restart the process.
 
-Use goals to execute the fix plan - focus on micro tasks goals with new contextto lower context usage - use todos for micro tasks that should share context
+ Use goals to execute the fix plan - focus on micro tasks goals with new contextto lower context usage - use todos for micro tasks that should share context
 
-Commit at the end of each fix with a clear and descriptive commit message
+ Commit at the end of each fix with a clear and descriptive commit message
 
 ## Report format
 Describe the bug or feature request under `# To fix` below. Keep one section
@@ -29,3 +29,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 # To fix
 
 _No queued items._
+
+Last session: seven issues found reviewing UX-08 WP14/WP15 were fixed and
+archived in `docs/archive/bugs-ux08-wp14-wp15-review.md`.

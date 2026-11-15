@@ -159,3 +159,29 @@ added.
 **Worktree.** After the full e2e run `git status --porcelain` showed only the intended
 `scripts/verify.sh` change (this WP), and `bash scripts/check-repo-clean.sh --worktree` passes on
 the committed tree; no generated artefact or refreshed golden was left behind.
+
+## Post-gate review (2026-11-15)
+
+A critical review of the delivered work (adversarial read of the new code plus a
+screenshot check of the documentation export in both themes) found seven defects,
+all reproduced before fixing and archived in
+`docs/archive/bugs-ux08-wp14-wp15-review.md`:
+
+- **Wrong information in the editor.** Process step cards printed the shape name
+  in both the title and the summary and never showed the authored text; they now
+  show the text as the title and the shape as the summary.
+- **Markdown outline could be corrupted.** A line break in any IR prose value
+  injected a real heading or a fake list item (unreachable from `.pcd`, reachable
+  from importers). Prose now collapses to one line; goldens unchanged.
+- **Formatting edges.** A blank flow title produced an empty `# ` heading, a
+  `goto "#flow"` printed a dangling `#`, and an undefined id printed its token
+  twice.
+- **Steps header wrapped** (70 px tall, last button clipped in the narrow panel);
+  compact actions plus the shorter `.seq` label keep it on one row, now asserted
+  by the e2e in both themes instead of judged from a screenshot.
+- **A truncated flow name had no tooltip.**
+
+Verification after the fixes: `npm run check` clean, `npx vitest run` 119 files /
+1304 tests, `npm run build` ✓, `npx playwright test` 155 passed, `go vet` and
+`staticcheck` clean, `go test -count=1 -race -cover ./...` ok, `check-docs` OK,
+screenshots `ux08-documentation-actions-{light,dark}.png` re-shot and reviewed.
