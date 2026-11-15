@@ -1123,15 +1123,43 @@ marker .pc-arrow[fill='none'] {
 }
 
 .pc-link-label {
-  fill: var(--pc-muted);
-  stroke: var(--pc-bg);
-  stroke-width: 3px;
-  paint-order: stroke fill;
+  fill: var(--pc-fg);
   font-size: var(--pc-text-xs);
   text-anchor: middle;
-  dominant-baseline: hanging;
   pointer-events: none;
   font-family: inherit;
+}
+
+/* UX08-WP10: labels own a backing box in a layer above the objects, so a
+   displaced label stays readable over shapes instead of being buried. */
+.pc-link-label-group {
+  pointer-events: none;
+}
+
+.pc-link-label-bg {
+  fill: var(--pc-panel-bg);
+  stroke: var(--pc-border);
+  stroke-width: 1;
+  opacity: 0.92;
+}
+
+.pc-link-leader {
+  stroke: var(--pc-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  opacity: 0.7;
+}
+
+.pc-link-label-group.pc-faded {
+  opacity: 0.35;
+}
+
+.pc-link-label-group.pc-link-selected .pc-link-label-bg {
+  stroke: var(--pc-accent);
+}
+
+.pc-link-label-group.pc-link-selected .pc-link-label {
+  fill: var(--pc-accent);
 }
 
 /* hit slop: invisible widened stroke for link hit-testing (hit-test.ts) */

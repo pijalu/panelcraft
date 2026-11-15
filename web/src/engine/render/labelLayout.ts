@@ -4,14 +4,46 @@
 
 import type { Polyline } from './router';
 import { routeLabelPoint, sampleRoute } from './routePath';
+import { stubMeasurer, wrapLabel, type TextMeasurer } from './measure';
 import type { Point, Rect } from './viewport';
 import type { SceneLink } from './scenegraph';
 import type { SceneObject } from './shapes';
 
+/**
+ * UX08-WP10: one placed label. `rect` is the box used for *both* collision
+ * scoring and paint, so what was scored is exactly what a reader sees.
+ */
 export interface LabelPlacement {
+  /** Box centre (paint position). */
   point: Point;
+  /** Box used for collision scoring and paint. */
   rect: Rect;
+  /** Wrapped lines, bounded in width and count. */
+  lines: string[];
+  /** Full content — assistive tech and exports never lose text. */
+  text: string;
+  /** Route point this label belongs to (leader target). */
+  anchor: Point;
+  /** True when displacement is large enough that ownership needs a leader. */
+  leader: boolean;
 }
+
+export interface LabelLayoutOptions {
+  measure?: TextMeasurer;
+  /** Wrapping bound for one label box, in canvas units. */
+  maxWidth?: number;
+  maxLines?: number;
+}
+
+export const LABEL_MAX_WIDTH = 180;
+export const LABEL_MAX_LINES = 3;
+export const LABEL_LINE_HEIGHT = 14;
+export const LABEL_PAD_X = 6;
+export const LABEL_PAD_Y = 2;
+/** Distance from the route line to the label box; reads as "belongs to it". */
+const NORMAL_GAP = 12;
+/** Displacement (canvas units) beyond which a leader is drawn. */
+const LEADER_MIN = 20;
 
 interface LabelScene {
   objects: SceneObject[];
@@ -74,6 +106,16 @@ function boundsOf(points: Polyline): Rect {
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
+/** Smallest rectangle containing every given rectangle (empty → zero size). */
+function unionOf(rects: Rect[]): Rect {
+  if (rects.length === 0) return { x: 0, y: 0, w: 0, h: 0 };
+  const x = Math.min(...rects.map((r) => r.x));
+  const y = Math.min(...rects.map((r) => r.y));
+  const right = Math.max(...rects.map((r) => r.x + r.w));
+  const bottom = Math.max(...rects.map((r) => r.y + r.h));
+  return { x, y, w: right - x, h: bottom - y };
+}
+
 function segmentHitsRect(a: Point, b: Point, rect: Rect): boolean {
   const bounds = {
     x: Math.min(a.x, b.x), y: Math.min(a.y, b.y),
@@ -87,31 +129,141 @@ function routeHitsRect(route: RouteRecord, rect: Rect): boolean {
   return route.points.slice(1).some((p, i) => segmentHitsRect(route.points[i]!, p, rect));
 }
 
-function labelRect(point: Point, text: string): Rect {
-  const w = Math.min(240, Math.max(24, text.length * 6 + 8));
-  return { x: point.x - w / 2, y: point.y - 2, w, h: 14 };
+/** Wrapped box for one label: bounded width and line count, measured text. */
+interface LabelBox {
+  lines: string[];
+  w: number;
+  h: number;
 }
 
-function candidates(base: Point, points: Polyline, text: string): Point[] {
-  const width = labelRect(base, text).w;
-  const shift = width / 2 + 24;
-  const first = points[0]!;
-  const next = points[1] ?? first;
-  const horizontal = Math.abs(next.x - first.x) >= Math.abs(next.y - first.y);
-  const offsets: [number, number][] = [
-    [0, 0], [0, -18], [0, 18], [-shift, 0], [shift, 0],
-    [-shift, -18], [shift, -18], [-shift, 18], [shift, 18], [0, -36], [0, 36],
-  ];
-  return offsets.map(([a, b]) => ({
-    x: base.x + (horizontal ? a : b),
-    y: base.y + (horizontal ? b : a),
-  }));
+function wrapBox(
+  text: string,
+  measure: TextMeasurer,
+  maxWidth: number,
+  maxLines: number,
+): LabelBox {
+  const lines = wrapLabel(text, measure, maxWidth, maxLines);
+  const widest = Math.max(24, ...lines.map((line) => measure.measure(line).w));
+  return {
+    lines,
+    w: Math.min(maxWidth, widest) + 2 * LABEL_PAD_X,
+    h: lines.length * LABEL_LINE_HEIGHT + 2 * LABEL_PAD_Y,
+  };
+}
+
+function boxRect(point: Point, box: LabelBox): Rect {
+  return { x: point.x - box.w / 2, y: point.y - box.h / 2, w: box.w, h: box.h };
+}
+
+/** A paint position plus the route point it is associated with. */
+interface Candidate {
+  point: Point;
+  anchor: Point;
+}
+
+/** An axis-aligned run of the route a label may slide along. */
+interface Run {
+  start: Point;
+  /** Unit vector along the run. */
+  dir: Point;
+  /** Unit normal, canonicalised so side `-1` always means the same way. */
+  normal: Point;
+  /** Half the box measured along the run (support function of the box). */
+  halfAlong: number;
+  /** Half the box measured across the run. */
+  halfAcross: number;
+  /** Distances from `start` where the whole box still fits inside the run. */
+  positions: number[];
+}
+
+const ALONG_FRACTIONS = [0.5, 0.15, 0.85, 0.05, 0.95];
+const MIN_RUN = 0.5;
+/** Sampled curves can carry dozens of sub-segments; cap the work per label. */
+const MAX_RUNS = 24;
+
+/** Canonical normal: horizontal runs offset downwards, vertical ones rightwards. */
+function normalOf(dir: Point): Point {
+  const normal = { x: -dir.y, y: dir.x };
+  const flip = normal.y < 0 || (normal.y === 0 && normal.x < 0);
+  return flip ? { x: -normal.x, y: -normal.y } : normal;
+}
+
+/**
+ * Positions are sampled from the span where the whole box still fits inside the
+ * run, so a wide label slides along its own route instead of hanging over the
+ * neighbours. A run shorter than the box only offers its midpoint.
+ */
+function runOf(a: Point, b: Point, box: LabelBox): Run | null {
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
+  if (length < MIN_RUN) return null;
+  const dir = { x: (b.x - a.x) / length, y: (b.y - a.y) / length };
+  const normal = normalOf(dir);
+  const halfAlong = (Math.abs(dir.x) * box.w + Math.abs(dir.y) * box.h) / 2;
+  const halfAcross = (Math.abs(normal.x) * box.w + Math.abs(normal.y) * box.h) / 2;
+  const room = length - 2 * halfAlong;
+  return {
+    start: a,
+    dir,
+    normal,
+    halfAlong,
+    halfAcross,
+    positions: room > 0
+      ? ALONG_FRACTIONS.map((f) => halfAlong + room * f)
+      : [length / 2],
+  };
+}
+
+/**
+ * Offsets escalate: a blocker sitting on the route forces the label further out
+ * until it clears the band, instead of settling for an overlap. Slide along the
+ * run before moving further away: a label that can clear a conflict sideways
+ * stays on its own route line.
+ */
+function runCandidates(run: Run): Candidate[] {
+  const out: Candidate[] = [];
+  const gap = run.halfAcross + NORMAL_GAP;
+  for (const step of [1, 2, 3]) {
+    for (const along of run.positions) {
+      for (const side of [-1, 1]) {
+        const anchor = {
+          x: run.start.x + run.dir.x * along,
+          y: run.start.y + run.dir.y * along,
+        };
+        const offset = side * gap * step;
+        out.push({
+          point: { x: anchor.x + run.normal.x * offset, y: anchor.y + run.normal.y * offset },
+          anchor,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * UX08-WP10 candidates: the stable route anchor first (so an unobstructed label
+ * never moves), then positions *along* each run of the route with a normal
+ * offset on both sides. Sampling the whole route is what rescues a label from a
+ * blocker that swallows every near-midpoint offset; working in run-local
+ * coordinates keeps straight, orthogonal and sampled-curve routes identical.
+ */
+function candidates(base: Point, points: Polyline, box: LabelBox): Candidate[] {
+  const out: Candidate[] = [{ point: base, anchor: base }];
+  const runs = points.length - 1;
+  const stride = runs > MAX_RUNS ? Math.ceil(runs / MAX_RUNS) : 1;
+  for (let i = 1; i < points.length; i += stride) {
+    const run = runOf(points[i - 1]!, points[i]!, box);
+    if (run) out.push(...runCandidates(run));
+  }
+  return out;
 }
 
 interface CollisionContext {
   objects: SpatialIndex<Rect>;
   routes: SpatialIndex<RouteRecord>;
   labels: SpatialIndex<Rect>;
+  /** Bounds of everything the diagram contains: objects plus routes. */
+  frame: Rect;
 }
 
 function collisionCount(rect: Rect, own: string, context: CollisionContext): number {
@@ -122,43 +274,95 @@ function collisionCount(rect: Rect, own: string, context: CollisionContext): num
   return count;
 }
 
-function placeLabel(link: SceneLink, context: CollisionContext): LabelPlacement {
+/**
+ * Distance the box sticks out of the diagram frame, or 0 when it fits. A label
+ * that hangs outside the drawn content is the one case fit-to-view cannot help
+ * with, so the placement prefers the inward side of an edge-hugging route.
+ */
+function overshoot(rect: Rect, frame: Rect): number {
+  const left = frame.x - rect.x;
+  const top = frame.y - rect.y;
+  const right = rect.x + rect.w - (frame.x + frame.w);
+  const bottom = rect.y + rect.h - (frame.y + frame.h);
+  return Math.max(0, left) + Math.max(0, top) + Math.max(0, right) + Math.max(0, bottom);
+}
+
+function placeLabel(
+  link: SceneLink,
+  context: CollisionContext,
+  options: Required<LabelLayoutOptions>,
+): LabelPlacement {
+  const text = link.label ?? '';
   const points = sampleRoute(link.points, link.route);
   const base = routeLabelPoint(link.points, link.route);
-  let best: LabelPlacement = { point: base, rect: labelRect(base, link.label ?? '') };
+  const box = wrapBox(text, options.measure, options.maxWidth, options.maxLines);
+  const make = (candidate: Candidate): LabelPlacement => {
+    const distance = Math.hypot(candidate.point.x - candidate.anchor.x, candidate.point.y - candidate.anchor.y);
+    return {
+      point: candidate.point,
+      rect: boxRect(candidate.point, box),
+      lines: box.lines,
+      text,
+      anchor: candidate.anchor,
+      leader: distance > LEADER_MIN,
+    };
+  };
+  let best = make({ point: base, anchor: base });
   let bestScore = Infinity;
-  for (const point of candidates(base, points, link.label ?? '')) {
-    const rect = labelRect(point, link.label ?? '');
-    const collisions = collisionCount(rect, link.id, context);
-    const distance = Math.hypot(point.x - base.x, point.y - base.y);
-    const score = collisions * 100000 + distance;
+  for (const candidate of candidates(base, points, box)) {
+    const placement = make(candidate);
+    const collisions = collisionCount(placement.rect, link.id, context);
+    const distance = Math.hypot(
+      candidate.point.x - candidate.anchor.x,
+      candidate.point.y - candidate.anchor.y,
+    );
+    // Deterministic and strictly ordered: objects overwhelm everything, then
+    // staying inside the drawn frame, and only then the distance from the
+    // route, which keeps an unobstructed label on its stable anchor.
+    const escape = overshoot(placement.rect, context.frame) > 0 ? 100000 : 0;
+    const score = collisions * 1000000 + escape + distance;
     if (score < bestScore) {
-      best = { point, rect };
+      best = placement;
       bestScore = score;
     }
-    if (collisions === 0) break;
+    if (collisions === 0 && escape === 0) break;
   }
   return best;
 }
 
 /** Place all labels without unrelated routes, solid objects, or prior labels. */
-export function layoutLinkLabels(scene: LabelScene): Map<string, LabelPlacement> {
+export function layoutLinkLabels(
+  scene: LabelScene,
+  options: LabelLayoutOptions = {},
+): Map<string, LabelPlacement> {
+  const resolved: Required<LabelLayoutOptions> = {
+    measure: options.measure ?? stubMeasurer,
+    maxWidth: options.maxWidth ?? LABEL_MAX_WIDTH,
+    maxLines: options.maxLines ?? LABEL_MAX_LINES,
+  };
   const context: CollisionContext = {
     objects: new SpatialIndex<Rect>(),
     routes: new SpatialIndex<RouteRecord>(),
     labels: new SpatialIndex<Rect>(),
+    frame: { x: 0, y: 0, w: 0, h: 0 },
   };
+  const boxes: Rect[] = [];
   for (const object of scene.objects) {
-    if (object.kind !== 'group') context.objects.add(object, object);
+    if (object.kind === 'group') continue;
+    context.objects.add(object, object);
+    boxes.push(object);
   }
   for (const link of scene.links) {
     const points = sampleRoute(link.points, link.route);
-    context.routes.add({ id: link.id, points, bounds: boundsOf(points) }, boundsOf(points));
+    const bounds = boundsOf(points);
+    context.routes.add({ id: link.id, points, bounds }, bounds);
+    boxes.push(bounds);
   }
+  context.frame = unionOf(boxes);
   const placed = new Map<string, LabelPlacement>();
   for (const link of scene.links) {
     if (!link.label) continue;
-    const placement = placeLabel(link, context);
+    const placement = placeLabel(link, context, resolved);
     placed.set(link.id, placement);
     context.labels.add(placement.rect, placement.rect);
   }

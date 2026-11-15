@@ -35,7 +35,7 @@ beforeEach(() => {
 const poly = [{ x: 120, y: 30 }, { x: 200, y: 30 }];
 
 describe('renderer scaffolding', () => {
-  it('creates defs + world wrapper + three layers in order', () => {
+  it('creates defs + world wrapper + four layers in paint order', () => {
     const classes = [...svg.children].map((c) => c.getAttribute('class'));
     expect(classes).toEqual([null, 'pc-world']); // defs, world
     const world = svg.querySelector('.pc-world') as SVGGElement;
@@ -44,6 +44,8 @@ describe('renderer scaffolding', () => {
       'pc-grid', // hidden by default
       'pc-layer pc-layer-links',
       'pc-layer pc-layer-objects',
+      // UX08-WP10: labels paint above objects, routes stay below them
+      'pc-layer pc-layer-labels',
       'pc-layer pc-layer-overlay',
     ]);
   });
@@ -101,7 +103,7 @@ describe('renderer scaffolding', () => {
     const other = document.createElementNS(SVG_NS, 'svg') as SVGSVGElement;
     other.appendChild(document.createElementNS(SVG_NS, 'g'));
     new SceneRenderer(other);
-    expect(other.querySelectorAll('g.pc-layer')).toHaveLength(3);
+    expect(other.querySelectorAll('g.pc-layer')).toHaveLength(4);
   });
 });
 
@@ -192,8 +194,10 @@ describe('links', () => {
     expect(path?.getAttribute('marker-end')).toBe('url(#pc-marker-arrow)');
     const label = svg.querySelector('.pc-link-label');
     expect(label?.textContent).toBe('uses');
-    // label anchored at longest-segment midpoint
-    expect(label?.getAttribute('x')).toBe('160');
+    // label box centred on the longest-segment midpoint
+    const box = svg.querySelector('.pc-link-label-bg');
+    const centre = Number(box?.getAttribute('x')) + Number(box?.getAttribute('width')) / 2;
+    expect(centre).toBe(160);
   });
 
   it('route change updates d in place (same node)', () => {
@@ -223,6 +227,50 @@ describe('links', () => {
     const stats = r.render(scene([], [{ id: 'l1', points: poly, label: 'x' }]));
     expect(stats.updated).toBe(1);
     expect(svg.querySelector('.pc-link-label')?.textContent).toBe('x');
+  });
+
+  it('paints labels in their own layer above objects (UX08-WP10)', () => {
+    r.render(scene([obj('a')], [{ id: 'l1', points: poly, label: 'uses' }]));
+    const layers = [...svg.querySelectorAll('g.pc-layer')].map((l) => l.getAttribute('class'));
+    const labels = layers.findIndex((c) => c?.includes('pc-layer-labels'));
+    const objects = layers.findIndex((c) => c?.includes('pc-layer-objects'));
+    expect(labels).toBeGreaterThan(objects);
+    const label = svg.querySelector('.pc-link-label');
+    expect(label?.closest('g.pc-layer-labels')).not.toBeNull();
+    // The route itself stays below the objects it must not cover.
+    expect(svg.querySelector('.pc-route')?.closest('g.pc-layer-links')).not.toBeNull();
+  });
+
+  it('keeps the full label text for assistive tech even when wrapped', () => {
+    const long = 'Subscribes to order events and republishes fulfilment updates';
+    r.render(scene([], [{ id: 'l1', points: poly, label: long }]));
+    const label = svg.querySelector('.pc-link-label');
+    // Wrapped into tspans, but the accessible/export text stays complete.
+    const tspans = [...label!.querySelectorAll('tspan')].map((t) => t.textContent);
+    expect(tspans.length).toBeGreaterThan(1);
+    // Full text stays available to assistive tech and export…
+    expect(label?.getAttribute('aria-label')).toBe(long);
+    // …and no word is dropped by the wrap.
+    expect(tspans.join(' ')).toBe(long);
+  });
+
+  it('gives every label a backing box so it stays readable over objects', () => {
+    r.render(scene([], [{ id: 'l1', points: poly, label: 'uses' }]));
+    const bg = svg.querySelector('.pc-link-label-bg');
+    expect(bg).not.toBeNull();
+    expect(Number(bg?.getAttribute('width'))).toBeGreaterThan(0);
+    expect(Number(bg?.getAttribute('height'))).toBeGreaterThan(0);
+  });
+
+  it('keeps the full label text on the route for hover', () => {
+    const long = 'Subscribes to order events and republishes fulfilment updates';
+    r.render(scene([], [{ id: 'l1', points: poly, label: long }]));
+    // The label group floats above objects and is pointer-transparent (CSS), so
+    // the route carries the untruncated text for hover.
+    expect(svg.querySelector('g.pc-link path.pc-route title')?.textContent).toContain(long);
+    // An unlabelled route still names itself rather than showing nothing.
+    r.render(scene([], [{ id: 'l2', points: poly }]));
+    expect(svg.querySelector('g.pc-link path.pc-route title')?.textContent).toContain('l2');
   });
 
   it('dashed flag toggles class without rebuild', () => {

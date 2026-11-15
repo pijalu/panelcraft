@@ -13,8 +13,11 @@
 
 import { shapeGlyphs, type ElSpec, type SceneObject } from './shapes';
 import type { Polyline, RouteMode } from './router';
-import { routeLabelPoint, routeToPath } from './routePath';
-import { layoutLinkLabels } from './labelLayout';
+import { routeToPath } from './routePath';
+import {
+  LABEL_LINE_HEIGHT, LABEL_PAD_Y, layoutLinkLabels, type LabelPlacement,
+} from './labelLayout';
+import { stubMeasurer, type TextMeasurer } from './measure';
 import { GRID_SIZE } from './snap';
 import type { GridType } from './grid';
 import { stackObjects } from './stacking';
@@ -79,8 +82,20 @@ interface ObjEntry {
 interface LinkEntry {
   el: SVGGElement;
   path: SVGPathElement;
-  label: SVGTextElement | null;
+  title: SVGTitleElement;
   link: SceneLink;
+}
+
+/**
+ * UX08-WP10: a link label is its own paint unit in a layer above the objects,
+ * so a fallback placement can never be buried under a shape. `bg` is the box
+ * the layout scored — the same rect is painted.
+ */
+interface LabelEntry {
+  g: SVGGElement;
+  bg: SVGRectElement;
+  text: SVGTextElement;
+  leader: SVGLineElement;
 }
 
 export function structuralKey(o: SceneObject): string {
@@ -114,6 +129,7 @@ export class SceneRenderer {
   private svg: SVGSVGElement;
   private objectsLayer: SVGGElement;
   private linksLayer: SVGGElement;
+  private labelsLayer: SVGGElement;
   private overlayLayer: SVGGElement;
   /** World wrapper — carries the viewport transform (canvas ⇄ screen). */
   private worldEl: SVGGElement;
@@ -128,9 +144,13 @@ export class SceneRenderer {
   private selectedIds = new Set<string>();
   private selectedLinkIds = new Set<string>();
   private labelPlacements: ReturnType<typeof layoutLinkLabels> = new Map();
+  private labelEntries = new Map<string, LabelEntry>();
+  private measure: TextMeasurer = stubMeasurer;
 
-  constructor(svg: SVGSVGElement) {
+  constructor(svg: SVGSVGElement, options: { measure?: TextMeasurer } = {}) {
     this.svg = svg;
+    // Labels wrap on measured text, not a character count (UX08-WP10).
+    this.measure = options.measure ?? stubMeasurer;
     this.svg.textContent = '';
     this.svg.appendChild(this.makeDefs());
     this.worldEl = this.el('g') as SVGGElement;
@@ -139,6 +159,8 @@ export class SceneRenderer {
     this.gridRect = this.makeGrid();
     this.linksLayer = this.makeLayer('pc-layer-links');
     this.objectsLayer = this.makeLayer('pc-layer-objects');
+    // UX08-WP10: labels sit above the objects; the routes stay below them.
+    this.labelsLayer = this.makeLayer('pc-layer-labels');
     this.overlayLayer = this.makeLayer('pc-layer-overlay');
   }
 
@@ -319,16 +341,13 @@ export class SceneRenderer {
     g.setAttribute('data-id', link.id);
     const path = this.el('path') as SVGPathElement;
     path.setAttribute('class', 'pc-route');
+    // UX08-WP10: the label group is pointer-transparent so clicks reach the
+    // objects underneath, so the route carries the full text for hover instead.
+    const title = this.el('title') as SVGTitleElement;
+    path.appendChild(title);
     g.appendChild(path);
-    let label: SVGTextElement | null = null;
-    if (link.label) {
-      label = this.el('text') as SVGTextElement;
-      label.setAttribute('class', 'pc-link-label');
-      label.textContent = link.label;
-      g.appendChild(label);
-    }
     this.linksLayer.appendChild(g);
-    const entry: LinkEntry = { el: g, path, label, link };
+    const entry: LinkEntry = { el: g, path, link, title };
     this.updateLink(entry, link);
     return entry;
   }
@@ -345,10 +364,72 @@ export class SceneRenderer {
     if (link.width !== undefined) entry.path.setAttribute('stroke-width', String(link.width));
     else entry.path.removeAttribute('stroke-width');
     entry.path.setAttribute('d', pointsToPath(link.points, link.route));
-    if (entry.label) {
-      const mid = this.labelPlacements.get(link.id)?.point ?? routeLabelPoint(link.points, link.route);
-      entry.label.setAttribute('x', String(mid.x));
-      entry.label.setAttribute('y', String(mid.y));
+    entry.title.textContent = link.label ? `${link.label} (${link.id})` : link.id;
+  }
+
+  // ---- UX08-WP10 link labels ---------------------------------------------
+
+  /** Create or update the label paint unit for one link. */
+  private syncLabel(link: SceneLink, placement: LabelPlacement): LabelEntry {
+    let entry = this.labelEntries.get(link.id);
+    if (!entry) {
+      const g = this.el('g') as SVGGElement;
+      g.setAttribute('class', 'pc-link-label-group');
+      g.setAttribute('data-id', link.id);
+      const leader = this.el('line') as SVGLineElement;
+      leader.setAttribute('class', 'pc-link-leader');
+      const bg = this.el('rect') as SVGRectElement;
+      bg.setAttribute('class', 'pc-link-label-bg');
+      bg.setAttribute('rx', '3');
+      const text = this.el('text') as SVGTextElement;
+      text.setAttribute('class', 'pc-link-label');
+      g.appendChild(leader);
+      g.appendChild(bg);
+      g.appendChild(text);
+      this.labelsLayer.appendChild(g);
+      entry = { g, bg, text, leader };
+      this.labelEntries.set(link.id, entry);
+    }
+    const { rect } = placement;
+    entry.bg.setAttribute('x', String(rect.x));
+    entry.bg.setAttribute('y', String(rect.y));
+    entry.bg.setAttribute('width', String(rect.w));
+    entry.bg.setAttribute('height', String(rect.h));
+    // The full text always reaches assistive tech and exports, even when the
+    // painted form is wrapped.
+    entry.text.setAttribute('aria-label', placement.text);
+    const centreX = rect.x + rect.w / 2;
+    const firstBaseline = rect.y + LABEL_PAD_Y + LABEL_LINE_HEIGHT - 3;
+    const lines = placement.lines.map((line, i) => {
+      const tspan = this.el('tspan') as SVGTSpanElement;
+      tspan.setAttribute('x', String(centreX));
+      tspan.setAttribute('y', String(firstBaseline + i * LABEL_LINE_HEIGHT));
+      tspan.textContent = line;
+      return tspan;
+    });
+    entry.text.replaceChildren(...lines);
+    // A leader appears only when the label was pushed far enough from its route
+    // that ownership would otherwise be ambiguous.
+    entry.leader.setAttribute('display', placement.leader ? 'inline' : 'none');
+    if (placement.leader) {
+      const x = Math.max(rect.x, Math.min(placement.anchor.x, rect.x + rect.w));
+      const y = Math.max(rect.y, Math.min(placement.anchor.y, rect.y + rect.h));
+      entry.leader.setAttribute('x1', String(x));
+      entry.leader.setAttribute('y1', String(y));
+      entry.leader.setAttribute('x2', String(placement.anchor.x));
+      entry.leader.setAttribute('y2', String(placement.anchor.y));
+    }
+    entry.g.classList.toggle('pc-faded', this.fadedLinks.has(link.id));
+    entry.g.classList.toggle('pc-link-selected', this.selectedLinkIds.has(link.id));
+    return entry;
+  }
+
+  /** Drop label units for links that no longer carry a label. */
+  private pruneLabels(keep: Set<string>): void {
+    for (const [id, entry] of this.labelEntries) {
+      if (keep.has(id)) continue;
+      entry.g.remove();
+      this.labelEntries.delete(id);
     }
   }
 
@@ -356,10 +437,18 @@ export class SceneRenderer {
    * Diff-patch the scene. Returns operation counts for perf/test assertions.
    */
   render(scene: Scene): PatchStats {
-    this.labelPlacements = layoutLinkLabels(scene);
+    this.labelPlacements = layoutLinkLabels(scene, { measure: this.measure });
     const stats: PatchStats = { created: 0, updated: 0, removed: 0, reordered: false };
     this.patchObjects(stackObjects(scene.objects), stats);
     this.patchLinks(scene.links, stats);
+    const labelled = new Set<string>();
+    for (const link of scene.links) {
+      const placement = this.labelPlacements.get(link.id);
+      if (!placement) continue;
+      this.syncLabel(link, placement);
+      labelled.add(link.id);
+    }
+    this.pruneLabels(labelled);
     this.applyFade(); // rebuilds reset classes — fade state must survive patches
     return stats;
   }
@@ -489,6 +578,11 @@ export class SceneRenderer {
     for (const [id, entry] of this.linkEntries) {
       entry.el.classList.toggle('pc-faded', this.fadedLinks.has(id));
     }
+    // UX08-WP10: a faded/selected link takes its label with it, so the label
+    // never contradicts the route's state.
+    for (const [id, entry] of this.labelEntries) {
+      entry.g.classList.toggle('pc-faded', this.fadedLinks.has(id));
+    }
   }
 
   private applySelection(): void {
@@ -497,6 +591,9 @@ export class SceneRenderer {
     }
     for (const [id, entry] of this.linkEntries) {
       entry.el.classList.toggle('pc-link-selected', this.selectedLinkIds.has(id));
+    }
+    for (const [id, entry] of this.labelEntries) {
+      entry.g.classList.toggle('pc-link-selected', this.selectedLinkIds.has(id));
     }
   }
 

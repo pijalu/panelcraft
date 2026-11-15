@@ -63,8 +63,10 @@ and the CLI's `--theme` option.
   `anchor from` / `anchor to` values and retain their side-relative position after
   resizing and reloads. Intermediate waypoints remain freely draggable and always
   override automatic avoidance, including when **Allow overlap** is off. Labels
-  automatically try nearby positions to avoid objects, other routes, and
-  other labels; a text halo keeps the least-bad fallback readable in dense diagrams.
+  automatically try nearby positions to avoid objects, other routes, other labels and
+  the edge of the drawing; they wrap to a readable box on their own backing, paint above
+  the shapes, and show a leader when they had to move away from their route. The whole
+  label stays available to screen readers and on hover even when it wraps.
 - **Reshape**: a selected link exposes three kinds of handle. Drag a **channel** chip (the
   small square on a slidable run) to slide that orthogonal segment sideways — both ends of
   the run move together and the semantic endpoints stay pinned to their entities. Drag a

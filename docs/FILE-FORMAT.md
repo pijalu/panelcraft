@@ -224,7 +224,10 @@ style {
   obstacle detours; two-point curves use endpoint tangents and waypoint curves use
   Catmull-Rom-derived cubic Bézier segments. Curves are sampled for hit-testing and
   deterministic link-label placement. Labels prefer their route midpoint, then stable
-  nearby candidates that avoid solid objects, unrelated routes, and earlier labels.
+  nearby candidates that avoid solid objects, unrelated routes, and earlier labels, and that
+  stay inside the drawn frame; they paint above shapes (with a backing box, bounded wrapping
+  and a leader when displaced) while the routes stay below them. Labels never hold the
+  pointer. Placement is view-independent, so a given document always labels the same way.
   `head`/`tail`/`line`/`route`/`width` are link-only; the object style block rejects neither
   (they round-trip) but the renderer ignores them there.
 

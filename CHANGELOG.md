@@ -7,6 +7,18 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ### Added — UX-08 application experience
 
+- **UX-08 WP10** Connection labels are now readable on dense diagrams instead of being covered by
+  shapes. Routes still paint below the objects; labels moved into their own layer *above* them
+  (and are `pointer-events: none`, so a label floating over a shape never steals its click). Text
+  is measured and wrapped to a bounded box (180 units wide, at most three lines) that is used for
+  both collision scoring and paint, so what was scored is exactly what a reader sees. Placement
+  slides along the route — in run-local coordinates, so orthogonal, straight and curved routes
+  share one algorithm — with escalating offsets, scoring object, unrelated-route and earlier-label
+  collisions first, then whether the box would hang outside the drawn frame, and distance only as
+  a tie-break; route order keeps it deterministic. Displaced labels get a subtle dashed leader,
+  faded/selected/playback states carry through, the full text stays in `aria-label` and in the
+  route's hover text, and no label is ever dropped for length alone.
+
 - **UX-08 WP09** A selected connector's geometry is now editable, not just its endpoints. Slidable
   runs show a channel grip: dragging it slides the whole orthogonal segment sideways while the
   semantic `anchor from`/`anchor to` endpoints stay pinned to their entities. Bends are draggable,

@@ -467,7 +467,8 @@ export class CanvasController {
     this.undo.setObserver((cmd) => this.onHistory?.(cmd.label, cmd.coalesceKey));
     this.onGhostOpen = opts.onGhostOpen;
     this.onGridShortcut = opts.onGridShortcut;
-    this.renderer = new SceneRenderer(svg);
+    // UX08-WP10: labels wrap on measured text, so the renderer gets the port.
+    this.renderer = new SceneRenderer(svg, { measure: this.measure });
     this.attach();
     this.render();
   }
