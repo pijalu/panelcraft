@@ -368,9 +368,12 @@ the CI regression net; vision review catches *quality* issues diffing can't.)
 
 ### 8.5 CI (GitHub Actions)
 
-* `ci.yml`: lint+staticcheck+gocyclo → unit tests (Go matrix + Node) → coverage gate
-  → corpus parity → build web → **asset-origin scan** (§8.6) → e2e (Playwright,
-  chromium, network-blocked) → visual diff.
+* `ci.yml`: build web → lint+staticcheck+gocyclo → unit tests (Go matrix + Node) →
+  coverage gate → corpus parity → build go → **asset-origin scan** (§8.6) → e2e
+  (Playwright, chromium, network-blocked) → visual diff. The bundle is built
+  first because `internal/*` and `cmd/panelcraft` embed `web/dist`: `go vet`,
+  `staticcheck` and `go test` cannot compile those packages without it (same
+  order as `scripts/verify.sh`).
 * `release.yml`: tag → cross-compile binaries (matrix GOOS/GOARCH, CGO off) →
   checksums → GitHub Release.
 * `pages.yml`: deploy built SPA to GitHub Pages on main.
