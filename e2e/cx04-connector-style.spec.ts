@@ -114,8 +114,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect.poll(() => checked(page, 'link-width-preset'), { timeout: 15_000 }).toEqual([]);
 
     // Keyboard: a radio group moves with arrow keys and commits on change.
-    await page.getByTestId('link-line-solid').getByRole('radio').focus();
-    await page.keyboard.press('ArrowRight');
+    await page.getByTestId('link-line-solid').getByRole('radio').press('ArrowRight');
     await expect.poll(() => checked(page, 'link-line'), { timeout: 15_000 }).toEqual(['dashed']);
     await expect(page.getByTestId('canvas').locator('g.pc-link[data-id="L1"]')).toHaveClass(/pc-dashed/);
     // Undo can only pop the style change once that change has been written to the
