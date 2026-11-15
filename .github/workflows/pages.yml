@@ -6,7 +6,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ['web/**', 'vite.config.ts', 'package-lock.json']
+    paths: ['web/**', 'vite.config.ts', 'package-lock.json', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -28,7 +28,18 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run build
+      # Pages serves a project site at /<repo>/, so the bundle must be built with
+      # that base: the default base emits `/assets/...`, which resolves to the
+      # domain root and 404s (blank page). Everything else in the bundle is
+      # already relative, including the service-worker scope (`baseURI`).
+      - name: build for the project sub-path
+        run: npm run build -- --base=/${{ github.event.repository.name }}/
+      - name: the bundle must not point at the domain root
+        run: |
+          if grep -qE '(src|href)="/assets/' web/dist/index.html; then
+            echo '::error::index.html references /assets — Pages serves /<repo>/ and would 404'
+            exit 1
+          fi
       - name: asset-origin scan (self-containment holds on Pages too)
         run: bash scripts/check-selfcontained.sh web/dist
       - uses: actions/upload-pages-artifact@v5

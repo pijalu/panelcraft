@@ -360,3 +360,23 @@ describe('real timers integration (vi.useFakeTimers light check)', () => {
     vi.useRealTimers();
   });
 });
+
+describe('undo interleaved with a queued canvas render (BUG-08 probe)', () => {
+  const LINKED = 'pcd 1.0\n\nsystem a "A"\nsystem b "B"\n\na -requests-> b as L1\n';
+  const DASHED = 'pcd 1.0\n\nsystem a "A"\nsystem b "B"\n\na -requests-> b as L1 {\n  line dashed\n}\n';
+
+  it('a render queued before undo cannot resurrect the undone text', () => {
+    const { sched, machine } = rig(LINKED);
+    const dashed = parsePDL(DASHED).doc;
+    const solid = parsePDL(LINKED).doc;
+    expect(dashed).not.toBeNull();
+    expect(solid).not.toBeNull();
+
+    machine.canvasChanged(dashed!); // style edit queued for the code view
+    expect(machine.snapshot().state).toBe('clean');
+    machine.canvasChanged(solid!); // undo reverts it before the debounce fires
+    sched.flush();
+
+    expect(machine.snapshot().codeText).toBe(printDoc(solid!));
+  });
+});
