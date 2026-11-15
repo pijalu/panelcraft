@@ -1395,6 +1395,7 @@ export class CanvasController {
     const label = this.undo.undo();
     if (label === null) return false;
     this.applyState(this.state);
+    this.emit();
     this.onHistory?.(s('undo {label}', { label }));
     return true;
   }
@@ -1404,6 +1405,7 @@ export class CanvasController {
     const label = this.undo.redo();
     if (label === null) return false;
     this.applyState(this.state);
+    this.emit();
     this.onHistory?.(s('redo {label}', { label }));
     return true;
   }

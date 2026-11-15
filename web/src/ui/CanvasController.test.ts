@@ -808,6 +808,34 @@ describe('state notifications', () => {
     expect(spy).toHaveBeenCalled();
     c2.destroy();
   });
+
+  // BUG-08: undo/redo repaint the canvas but must also publish a snapshot, or
+  // every panel that reads the selected object/link from `onState` keeps showing
+  // the pre-undo values (the properties radio group did exactly that).
+  it('onState fires when a command is undone and re-applied, with the new values', () => {
+    const spy = vi.fn();
+    const c2 = new CanvasController(svg, { onState: spy });
+    c2.loadState({
+      objects: [
+        { id: 'a', kind: 'system', name: 'A', x: 100, y: 100, w: 120, h: 60 },
+        { id: 'b', kind: 'system', name: 'B', x: 400, y: 100, w: 120, h: 60 },
+      ],
+      links: [{ id: 'L1', from: 'a', to: 'b' }],
+    });
+    c2.updateLink('L1', { line: 'dashed' });
+    expect(c2.snapshot.links[0]?.line).toBe('dashed');
+
+    spy.mockClear();
+    expect(c2.undoCommand()).toBe(true);
+    expect(spy).toHaveBeenCalled();
+    expect(spy.mock.calls.at(-1)?.[0].links[0]?.line).toBeUndefined();
+
+    spy.mockClear();
+    expect(c2.redoCommand()).toBe(true);
+    expect(spy).toHaveBeenCalled();
+    expect(spy.mock.calls.at(-1)?.[0].links[0]?.line).toBe('dashed');
+    c2.destroy();
+  });
 });
 
 describe('M6 session fade + positions (FR-V1/V2/V3)', () => {
