@@ -41,6 +41,11 @@ async function checked(page: Page, id: string): Promise<string[]> {
   return group.locator('input:checked').evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
 }
 
+async function settle(page: Page): Promise<void> {
+  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await page.waitForTimeout(250);
+}
+
 async function axe(page: Page): Promise<void> {
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   const violations = result.violations.flatMap((violation) =>
@@ -113,6 +118,13 @@ for (const theme of ['light', 'dark'] as const) {
     await page.keyboard.press('ArrowRight');
     await expect.poll(() => checked(page, 'link-line'), { timeout: 15_000 }).toEqual(['dashed']);
     await expect(page.getByTestId('canvas').locator('g.pc-link[data-id="L1"]')).toHaveClass(/pc-dashed/);
+    // Undo can only pop the style change once that change has been written to the
+    // file and the editor is idle again; otherwise a slow runner undoes the
+    // previous command (width 2.5) and the pending canvas write re-applies the
+    // style afterwards, leaving `dashed` forever (CI runs 43753098455/
+    // 43753849347, dark only — light and dark run in parallel workers).
+    await expect(page.locator('.cm-content')).toContainText('line dashed', { timeout: 15_000 });
+    await settle(page);
 
     // Undo restores the previous style, redo reapplies it.
     await chooseAppMenu(page, 'history-open');
