@@ -128,20 +128,22 @@ test.describe('UX08-WP13 flow presentation', () => {
   test('reduced motion presents the same steps without a camera glide', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
     await seedFlow(page);
+    const world = page.locator('.pc-world');
+    // Editor framing, read before the shell hands the stage to present mode: the
+    // beat re-fits to the wider canvas, so the two must differ. Reading it after
+    // the click raced the refit and made the comparison meaningless.
+    const editorFrame = await world.getAttribute('transform');
     await page.getByTestId('present-open').click();
     await page.getByTestId('launcher-flow-flow1').click();
     const dock = page.getByTestId('present-dock');
     await expect(dock).toBeVisible();
     // the framing is applied at once (no in-flight glide): after the present
-    // layout settles the transform stops changing, and it differs from the
-    // editor-time framing because the beat re-fit to the wider canvas.
-    const world = page.locator('.pc-world');
-    const before = await world.getAttribute('transform');
+    // layout settles the transform stops changing.
     await page.waitForTimeout(250);
     const first = await world.getAttribute('transform');
     await page.waitForTimeout(80);
     expect(await world.getAttribute('transform')).toBe(first);
-    expect(first).not.toBe(before);
+    expect(first).not.toBe(editorFrame);
     await expect(page.getByTestId('present-counter')).toHaveText('1 / 1');
     await expect(page.getByTestId('present-notes')).not.toBeEmpty();
     await capture(page, 'ux08-presentation-reduced-motion-light');
