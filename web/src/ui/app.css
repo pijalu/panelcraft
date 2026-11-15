@@ -2660,7 +2660,7 @@ marker .pc-arrow[fill='none'] {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 4px 8px;
+  gap: 4px;
   padding: 2px 4px;
   background: var(--pc-panel-header-bg);
 }
@@ -2672,6 +2672,28 @@ marker .pc-arrow[fill='none'] {
   align-items: center;
   gap: 4px;
   margin-left: auto;
+  flex: 0 0 auto;
+}
+
+/* BUG-06: the section label shrinks (and truncates) before the actions may wrap,
+   so the header keeps one row at the default width and in longer translations. */
+.flow-detail-head .panel-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* BUG-06: three actions plus the section label must fit one row at the default
+   250 px panel width, so they are compact rather than padded like body buttons. */
+.flow-head-actions button {
+  padding: 2px 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .chip-dirty {

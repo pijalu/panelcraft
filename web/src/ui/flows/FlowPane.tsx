@@ -479,7 +479,7 @@ function stepTitle(step: FlowStep, names: Names): string {
   // A message card shows its label as the title; the actor summary below
   // already carries "from → to", so an unlabelled message has no title.
   if (step.type === 'msg') return step.label ?? '';
-  if (step.type === 'process') return nameOf(names, step.target);
+  if (step.type === 'process') return step.text ?? nameOf(names, step.target);
   if (step.type === 'alt' || step.type === 'par') return step.label ?? s(step.type);
   if (step.type === 'goto') return `→ ${step.file === undefined ? '' : `${step.file}#`}${step.flow}`;
   return step.text;
@@ -573,7 +573,7 @@ function StepCard(props: { row: FlatStep; index: number; selected: boolean; ops:
       >
         <span class="flow-step-num" data-testid={`step-number-${index}`}>{index + 1}</span>
         <span class={`flow-step-kind kind-${row.step.type}`}>{s(row.step.type)}</span>
-        {title !== '' && <span class="flow-step-title">{title}</span>}
+        {title !== '' && <span class="flow-step-title" data-testid={`step-title-${index}`}>{title}</span>}
         <span class="flow-step-summary" data-testid={`step-summary-${index}`}>{stepSummary(row.step, names)}</span>
         {row.step.description !== undefined && (
           <span class="flow-step-desc" data-testid={`step-desc-${index}`}>{row.step.description}</span>
@@ -659,7 +659,7 @@ function FlowList(props: {
         const key = f.id ?? f.title ?? '';
         return (
           <li key={key} class={props.selFlow === key ? 'active' : ''}>
-            <button type="button" data-testid={`flow-row-${key}`} onClick={() => props.onPick(key)}>
+            <button type="button" data-testid={`flow-row-${key}`} title={f.title ?? f.id} onClick={() => props.onPick(key)}>
               {f.title ?? f.id}
             </button>
             <button type="button" title={s('Play')} aria-label={s('Play flow {title}', { title: key })} data-testid={`flow-play-${key}`} onClick={() => props.onPlay(key)}>
@@ -800,10 +800,10 @@ function FlowMeta(props: {
             <PlayIcon />{s('Present')}
           </button>
           <button type="button" data-testid="flow-export-seq" title={s('Export selected flow as Mermaid sequenceDiagram')} onClick={props.onExport}>
-            {s('.seq.mmd')}{' '}
+            {s('.seq')}
           </button>
           <button type="button" data-testid="flow-export-doc" title={s('Export selected flow as Markdown documentation')} onClick={props.onExportDoc}>
-            {s('.md')}{' '}
+            {s('.md')}
           </button>
         </div>
         {props.dirty === true && (

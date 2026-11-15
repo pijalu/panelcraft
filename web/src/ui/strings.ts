@@ -91,7 +91,7 @@ const EN = {
   ".mmd": ".mmd",
   ".svg": ".svg",
   ".png": ".png",
-  ".seq.mmd": ".seq.mmd",
+  ".seq": ".seq",
   ".md": ".md",
   "All flows (.md)": "All flows (.md)",
   "ZIP": "ZIP",

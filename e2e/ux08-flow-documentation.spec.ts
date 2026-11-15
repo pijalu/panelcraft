@@ -70,6 +70,9 @@ test('UX08-WP14: export actions are visible in both themes', async ({ page }) =>
     const doc = await page.getByTestId('flow-export-doc').boundingBox();
     const panel = await page.getByTestId('flow-pane').boundingBox();
     expect(doc!.x + doc!.width).toBeLessThanOrEqual(panel!.x + panel!.width);
+    // BUG-06: the label and its three actions share one row at the default width.
+    const headHeight = await head.evaluate((el) => el.getBoundingClientRect().height);
+    expect(headHeight, `steps header wraps (${headHeight}px tall)`).toBeLessThanOrEqual(30);
     await capture(page, `ux08-documentation-actions-${theme}`);
   }
 });

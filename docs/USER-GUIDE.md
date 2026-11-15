@@ -190,11 +190,12 @@ and the CLI's `--theme` option.
    (the default framing), **Hold** (keep the previous view) or **Use current
    view**, which records the canvas point in the middle of the screen and the
    current zoom (then **Zoom** and **Transition (ms)**, 0–300, refine it).
-9. **Export a sequence**: select a flow, then choose `.seq.mmd` beside *Steps*.
-  The download is a Mermaid `sequenceDiagram` with participants, messages,
-  alternatives, parallel lanes and notes. `goto` navigation, per-step delays and
-  notes in a flow with no participants cannot be represented and are reported by
-  the converter's `dropped[]` result; sequence import still warns on block syntax.
+9. **Export a sequence**: select a flow, then choose `.seq` beside *Steps*.
+  The download (`.seq.mmd`) is a Mermaid `sequenceDiagram` with participants,
+  messages, alternatives, parallel lanes and notes. `goto` navigation, per-step
+  delays and notes in a flow with no participants cannot be represented and are
+  reported by the converter's `dropped[]` result; sequence import still warns on
+  block syntax.
 10. **Export documentation**: `.md` beside *Steps* downloads the selected flow as
   a Markdown outline; **All flows (.md)** under the flow list downloads every flow
   in one document. The outline is generated from the parsed file, not from
@@ -211,7 +212,7 @@ and the CLI's `--theme` option.
 | Action | How | Notes |
 |---|---|---|
 | Export single file | toolbar → *Export* | `.pcd` (canonical), `.mmd` (flowchart), `.svg` (sanitized), `.png` (2×) |
-| Export selected flow | *Flows* → select flow → `.seq.mmd` | Mermaid `sequenceDiagram`; one flow per download |
+| Export selected flow | *Flows* → select flow → `.seq` | Mermaid `sequenceDiagram` saved as `.seq.mmd`; one flow per download |
 | Export flow documentation | *Flows* → select flow → `.md`, or **All flows (.md)** | Markdown outline of the parsed document: steps, names + ids, descriptions, dwell, camera; one file per flow or one for all |
 | Import mermaid | toolbar → *Import* | best-effort converter; result lands in the code view for review |
 | Workspace round-trip | *Export ZIP* / *Import ZIP* | includes all files; snapshots stay local |

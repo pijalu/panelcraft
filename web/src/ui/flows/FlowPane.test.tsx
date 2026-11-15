@@ -127,6 +127,8 @@ describe('FlowPane flow list (M5-WP4)', () => {
       />,
     );
     expect(screen.getByTestId('flow-row-main').textContent).toContain('Main');
+    // BUG-07: a truncated title must still be readable on hover/focus.
+    expect(screen.getByTestId('flow-row-main').getAttribute('title')).toBe('Main');
     fireEvent.click(screen.getByTestId('flow-play-main'));
     expect(played).toEqual(['main']);
   });
@@ -486,6 +488,27 @@ flow "Main" as main {
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('flow-present'));
     expect(played).toEqual(['main']);
+  });
+
+  // BUG-01: a process card must show what the step does, not just which shape it
+  // touches — the shape name already has its own line in the summary.
+  it('shows the process text on the card and the shape name once', () => {
+    mountDoc(`pcd 1.0
+
+person a "Ada"
+system b "API core"
+
+a -> b as ab
+
+flow "Main" as main {
+  process b "settles"
+}
+`);
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    expect(screen.getByTestId('step-title-0').textContent).toBe('settles');
+    expect(screen.getByTestId('step-summary-0').textContent).toBe('API core');
+    const card = screen.getByTestId('step-row-0').textContent ?? '';
+    expect(card.match(/API core/g)?.length ?? 0).toBe(1);
   });
 
   it('reorders with the keyboard (Alt+ArrowUp)', () => {
