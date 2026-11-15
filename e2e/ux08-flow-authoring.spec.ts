@@ -101,7 +101,10 @@ for (const theme of THEMES) {
     // New flow through the primary action, still by keyboard.
     await page.getByTestId('flow-add').focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByTestId('flow-row-flow1')).toBeVisible();
+    // Each structural action round-trips through the file (write → reparse →
+    // re-render), which takes seconds on a 2-core CI runner; the default 5 s
+    // assertion timeout is too tight for that, not too tight for a human.
+    await expect(page.getByTestId('flow-row-flow1')).toBeVisible({ timeout: 15_000 });
     await settle(page);
     await page.getByTestId('flow-title').focus();
     await page.keyboard.press('ControlOrMeta+a');
@@ -116,7 +119,7 @@ for (const theme of THEMES) {
     await page.getByTestId('add-msg').click();
 
     // Cards number the steps and name the shapes instead of their ids.
-    await expect(page.getByTestId('step-0')).toContainText('msg');
+    await expect(page.getByTestId('step-0')).toContainText('msg', { timeout: 15_000 });
     await expect(page.getByTestId('step-number-0')).toHaveText('1');
     const ids = await shapeIds(page);
     const summary = page.getByTestId('step-summary-0');
@@ -127,14 +130,14 @@ for (const theme of THEMES) {
     await page.getByTestId('step-0').click();
     await page.getByTestId('insp-description').focus();
     await page.keyboard.type('Order placed');
-    await expect(page.getByTestId('step-desc-0')).toContainText('Order placed');
+    await expect(page.getByTestId('step-desc-0')).toContainText('Order placed', { timeout: 15_000 });
     await settle(page);
 
     // A process step comes from the selected shape.
     await page.getByTestId('canvas').locator('g.pc-obj[data-id="o2"]').click();
     await expect(page.getByTestId('add-process')).toBeEnabled();
     await page.getByTestId('add-process').click();
-    await expect(page.getByTestId('step-summary-1')).not.toContainText('→');
+    await expect(page.getByTestId('step-summary-1')).not.toContainText('→', { timeout: 15_000 });
     await settle(page);
     await capture(page, `ux08-flow-authoring-simple-${theme}`);
 
@@ -142,21 +145,21 @@ for (const theme of THEMES) {
     await page.getByTestId('advanced-steps').locator('summary').focus();
     await page.keyboard.press('Enter');
     await page.getByTestId('add-alt').click();
-    await expect(page.getByTestId('step-2')).toContainText('alt');
+    await expect(page.getByTestId('step-2')).toContainText('alt', { timeout: 15_000 });
     await page.getByTestId('step-2').click();
     await page.getByTestId('insp-branch-add').click();
-    await expect(page.getByTestId('step-summary-2')).toContainText('branches');
+    await expect(page.getByTestId('step-summary-2')).toContainText('branches', { timeout: 15_000 });
     await settle(page);
     await capture(page, `ux08-flow-authoring-nested-${theme}`);
 
     // An invalid reference is explained beside the step, then repairable.
     await page.getByTestId('step-0').click();
     await page.getByTestId('insp-to').fill('ghost');
-    await expect(page.getByTestId('step-warn-0')).toContainText('ghost');
+    await expect(page.getByTestId('step-warn-0')).toContainText('ghost', { timeout: 15_000 });
     await capture(page, `ux08-flow-authoring-invalid-${theme}`);
     await page.getByTestId('canvas').locator('g.pc-obj[data-id="o2"]').click();
     await page.getByTestId('insp-pick-to').click();
-    await expect(page.getByTestId('step-warn-0')).toHaveCount(0);
+    await expect(page.getByTestId('step-warn-0')).toHaveCount(0, { timeout: 15_000 });
 
     // Reorder with the inspector arrows (keyboard-reachable buttons).
     await page.getByTestId('step-1').click();
@@ -172,6 +175,6 @@ for (const theme of THEMES) {
     await axe(page);
 
     // The document is the single writer: the pane's edits are in the file.
-    await expect(page.getByTestId('flow-row-flow1')).toContainText('Checkout');
+    await expect(page.getByTestId('flow-row-flow1')).toContainText('Checkout', { timeout: 15_000 });
   });
 }
