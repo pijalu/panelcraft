@@ -60,7 +60,9 @@ npm run check && npx vitest run && npx playwright test && go test ./...
 npm ci                       # install (lockfile committed)
 npm run dev                  # vite dev server :5173
 npm run check                # tsc + eslint (CI gate)
-npm test                     # vitest run + coverage thresholds
+npm test                     # vitest run + coverage thresholds (perf files
+                             # excluded: budgets are measured uninstrumented)
+npm run test:perf            # N1–N4 perf budgets, no coverage instrumentation
 npm run e2e                  # playwright (build first: npm run build — the
                              # webServer runs `npm run preview` on the EXISTING
                              # dist, so a stale bundle silently tests old code)

@@ -82,7 +82,10 @@ describe('N2 — open time: 100-object file → interactive < 300 ms', () => {
 });
 
 describe('N1 — 2000 objects usable (render upper bound)', () => {
-  it('initial render of 2000 objects + 1000 links completes under CI budget', () => {
+  // The budget below is a time assertion, so the test timeout must sit above it:
+  // otherwise a slow CI runner kills the test at 5 s (vitest default) and the
+  // report says "timed out" instead of the measured number (CI run 43750673509).
+  it('initial render of 2000 objects + 1000 links completes under CI budget', { timeout: 120_000 }, () => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg') as SVGSVGElement;
     const r = new SceneRenderer(svg);
     const src = syntheticPdl(2000);

@@ -67,6 +67,13 @@ jobs:
       - name: test-web (vitest + coverage thresholds 80/60)
         run: npm test
 
+      # ---- perf (SPEC §5, N1–N4) ----
+      # Uninstrumented on purpose: `npm test` runs with V8 coverage, and a budget
+      # measured under the instrumenter is not the budget (`scripts/verify.sh`
+      # keeps perf_smoke/perf_nfr separate from web_test for the same reason).
+      - name: perf gates (N1–N4, no coverage)
+        run: npm run test:perf
+
       # ---- build go ----
       - name: build go (embeds web/dist)
         run: go build ./...
