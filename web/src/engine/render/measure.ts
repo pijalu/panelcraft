@@ -130,9 +130,10 @@ export function autoSize(
 ): { w: number; h: number; lines: string[] } {
   const lines = wrapLabel(input.text, measure);
   const widest = Math.max(...lines.map((l) => measure.measure(l).w));
-  const reserve = rightContentReserve(input.kind, input.icon);
+  const reserve = rightContentReserve(input.kind);
   const w = clamp(Math.round(widest + 2 * PADDING.x + reserve), MIN_BOX.w, MAX_BOX.w);
-  const h = clamp(contentHeight(input.kind, lines.length), MIN_BOX.h, MAX_BOX.h);
+  // UX08-WP07: the icon has its own top band, so it grows the box's height.
+  const h = clamp(contentHeight(input.kind, lines.length, input.icon !== undefined), MIN_BOX.h, MAX_BOX.h);
   return { w, h, lines };
 }
 

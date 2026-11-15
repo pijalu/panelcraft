@@ -90,7 +90,10 @@ describe('autoSize', () => {
       const icon = autoSize({ text: 'Payments', kind: 'system', icon: 'cloud' }, tenPx);
       const queue = autoSize({ text: 'Payments', kind: 'queue' }, tenPx);
       const person = autoSize({ text: 'Payments', kind: 'person' }, tenPx);
-      expect(icon.w).toBe(plain.w + 30);
+      // UX08-WP07: the icon sits in its own top band, so it reserves height (not
+      // width) and no longer narrows the label.
+      expect(icon.w).toBe(plain.w);
+      expect(icon.h).toBeGreaterThan(plain.h);
       expect(queue.w).toBe(plain.w + 16);
       expect(person.h).toBeGreaterThan(plain.h);
     });

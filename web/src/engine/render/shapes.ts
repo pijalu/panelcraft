@@ -42,39 +42,165 @@ export const LABEL_LINE_HEIGHT = 16;
 export const ICON_RESERVE = ICON_BOX + 6;
 export const GHOST_RESERVE = 52;
 
+/** UX08-WP07: the one content-box geometry shared by glyphs, labels and auto-fit. */
+export const CONTENT_PAD = { top: 6, bottom: 8, x: 8 } as const;
+/** Space between the icon band and the label block. */
+export const ICON_LABEL_GAP = 8;
+
+export interface ContentBox {
+  /** Square icon at the shape's top center (`null` without an icon). */
+  icon: { x: number; y: number; size: number } | null;
+  /** Label region; the wrapped block is centred in it, horizontally and vertically. */
+  label: { left: number; right: number; top: number; bottom: number };
+  /** Top of a built-in top band (person glyph, datastore cap). */
+  glyphTop: number;
+  /** Height of that band (0 when the kind has none). */
+  glyphHeight: number;
+}
+
 const linesOf = (obj: SceneObject): string[] =>
   obj.labelLines && obj.labelLines.length > 1 ? obj.labelLines : [obj.name ?? obj.id];
 
-/** Right-side space unavailable to labels, shared by rendering and auto-fit. */
-export function rightContentReserve(kind: Kind, icon?: string, ghost = false): number {
-  let reserve = icon ? ICON_RESERVE : 0;
+/** Icon edge for a shape: never taller than a third of the box. */
+export function iconSize(obj: SceneObject): number {
+  return Math.max(4, Math.min(ICON_BOX, obj.h / 3));
+}
+
+/** Top band occupied by a kind's own glyph (person head/shoulders, datastore cap). */
+function glyphBand(obj: SceneObject): { height: number } {
+  // A compact person puts the glyph beside the label, not above it.
+  if (obj.kind === 'person') {
+    return obj.h < 52 ? { height: 0 } : { height: Math.max(10, Math.min(28, obj.h * 0.4)) };
+  }
+  if (obj.kind === 'datastore') return { height: 2 * datastoreRadius(obj) };
+  return { height: 0 };
+}
+
+/** Where the icon goes: stacked in a top band, or inline when the box is short. */
+function iconPlacement(obj: SceneObject, inline: boolean, size: number): ContentBox['icon'] {
+  if (!obj.icon) return null;
+  if (inline) return { x: CONTENT_PAD.x, y: (obj.h - size) / 2, size };
+  return { x: (obj.w - size) / 2, y: CONTENT_PAD.top, size };
+}
+
+/**
+ * Height the built-in glyph band may use. It yields to the icon and the label
+ * rather than pushing them out of the box (a person keeps its head, a smaller one).
+ */
+function glyphBandHeight(obj: SceneObject, iconBand: number, text: number): number {
+  const room = obj.h - CONTENT_PAD.top - iconBand - text - CONTENT_PAD.bottom - 4;
+  return Math.max(0, Math.min(glyphBand(obj).height, room));
+}
+
+/** Vertical bands of a content box, in canvas units. */
+interface Bands {
+  icon: ContentBox['icon'];
+  glyphTop: number;
+  glyphHeight: number;
+  labelTop: number;
+  inline: boolean;
+}
+
+/** A box too short for a usable stacked glyph band puts the icon beside the label. */
+function iconIsInline(obj: SceneObject, glyphHeight: number): boolean {
+  if (!obj.icon) return false;
+  if (obj.h < 44) return true;
+  return glyphBand(obj).height > 0 && glyphHeight < 10;
+}
+
+/** Top of the built-in glyph band: below a stacked icon, else under the padding. */
+function glyphTopFor(obj: SceneObject, icon: ContentBox['icon'], inline: boolean): number {
+  const vertical = obj.kind === 'person' || obj.kind === 'datastore';
+  if (!vertical) return CONTENT_PAD.top;
+  return icon !== null && !inline ? icon.y + icon.size + 4 : CONTENT_PAD.top + 2;
+}
+
+/** First row the label block may use, below whatever band came before it. */
+function labelTopFor(icon: ContentBox['icon'], inline: boolean, glyphTop: number, glyphHeight: number): number {
+  const stacked = icon !== null && !inline;
+  if (glyphHeight > 0) return Math.max(glyphTop + glyphHeight + 4, CONTENT_PAD.top + 6);
+  return stacked ? Math.max(icon.y + icon.size + ICON_LABEL_GAP, CONTENT_PAD.top + 6) : CONTENT_PAD.top + 6;
+}
+
+/** Icon placement plus the bands it leaves below it. */
+function verticalBands(obj: SceneObject): Bands {
+  const size = obj.icon ? iconSize(obj) : 0;
+  const text = linesOf(obj).length * LABEL_LINE_HEIGHT;
+  const glyphHeight = glyphBandHeight(obj, obj.icon ? size + 4 : 0, text);
+  const inline = iconIsInline(obj, glyphHeight);
+  const icon = iconPlacement(obj, inline, size);
+  const glyphTop = glyphTopFor(obj, icon, inline);
+  return {
+    icon,
+    glyphTop,
+    glyphHeight,
+    labelTop: labelTopFor(icon, inline, glyphTop, glyphHeight),
+    inline,
+  };
+}
+
+/**
+ * The single content layout: icon band, built-in glyph band and the label
+ * region. Rendering, wrapping and auto-fit all read this instead of keeping
+ * their own offsets (UX08-WP07).
+ */
+export function contentBox(obj: SceneObject): ContentBox {
+  const bands = verticalBands(obj);
+  const ghost = obj.ghost === true;
+  const compactPerson = obj.kind === 'person' && obj.h < 52;
+  const { icon } = bands;
+  const left = compactPerson ? 28 : icon !== null && bands.inline ? icon.x + icon.size + 6 : CONTENT_PAD.x;
+  return {
+    icon,
+    glyphTop: bands.glyphTop,
+    glyphHeight: bands.glyphHeight,
+    label: {
+      left,
+      right: obj.w - CONTENT_PAD.x - rightContentReserve(obj.kind, ghost),
+      top: bands.labelTop,
+      // The imported badge occupies the bottom-right corner; keep clear of it.
+      bottom: obj.h - CONTENT_PAD.bottom - (ghost && obj.kind !== 'group' ? 10 : 0),
+    },
+  };
+}
+
+/**
+ * Right-side space unavailable to labels, shared by rendering and auto-fit
+ * (queue band, note fold, imported badge). The icon no longer lives on the
+ * right: it sits in its own top band, so it reserves height, not width.
+ */
+export function rightContentReserve(kind: Kind, ghost = false): number {
+  let reserve = 0;
   if (kind === 'queue' || kind === 'note') reserve += 16;
   if (ghost && kind !== 'group') reserve += GHOST_RESERVE;
   return reserve;
 }
 
 /** Height needed by the shared label/glyph geometry before MIN/MAX clamps. */
-export function contentHeight(kind: Kind, lineCount: number): number {
+export function contentHeight(kind: Kind, lineCount: number, hasIcon = false): number {
   const text = lineCount * LABEL_LINE_HEIGHT;
-  if (kind === 'person') return text + 49; // glyph + gap + bottom padding
-  if (kind === 'datastore') return text + 48; // two ellipses + gaps
-  return text + 20;
+  const icon = hasIcon ? iconSize({ kind, h: 96, x: 0, y: 0, w: 0 } as SceneObject) + ICON_LABEL_GAP : 0;
+  if (kind === 'person') return text + 49 + icon; // glyph + gap + bottom padding
+  if (kind === 'datastore') return text + 48 + icon; // two ellipses + gaps
+  return text + 20 + icon;
 }
 
-/** Centred label inside the region left after built-in and optional adornments. */
+/** Baseline offset inside one 16 px line box (share of the token line height). */
+export const LABEL_ASCENT = 12;
+
+/** Centred label inside the content box (UX08-WP07). */
 const TEXT_MID = (obj: SceneObject): ElSpec[] => {
   const lines = linesOf(obj);
-  const reserve = rightContentReserve(obj.kind, obj.icon, obj.ghost === true);
-  const compactPerson = obj.kind === 'person' && obj.h < 52;
-  const left = compactPerson ? 28 : 0;
-  const x = Math.max(left + 4, left + (obj.w - left - reserve) / 2);
-  const middle = obj.kind === 'person' && !compactPerson
-    ? obj.h - 8 - ((lines.length - 1) * LABEL_LINE_HEIGHT) / 2
-    : obj.h / 2;
-  const firstY = middle - ((lines.length - 1) * LABEL_LINE_HEIGHT) / 2;
+  const box = contentBox(obj);
+  const { label } = box;
+  const x = Math.max(label.left + 4, (label.left + label.right) / 2);
+  // Centre the *text box*, not the baselines: a two-line block must keep equal
+  // air above and below, otherwise it reads bottom-heavy.
+  const middle = (label.top + label.bottom) / 2;
+  const top = middle - (lines.length * LABEL_LINE_HEIGHT) / 2;
   return lines.map((line, i) => ({
     tag: 'text' as const,
-    attrs: { x, y: firstY + i * LABEL_LINE_HEIGHT, class: 'pc-label' },
+    attrs: { x, y: top + LABEL_ASCENT + i * LABEL_LINE_HEIGHT, class: 'pc-label' },
     text: line,
   }));
 };
@@ -87,18 +213,19 @@ function bodyRect(obj: SceneObject, rx = SHAPE_RADIUS): ElSpec {
   };
 }
 
-/** Person glyph: head circle + shoulder arc above the body rect. */
+/** Person glyph: head circle + shoulder arc inside the content box's top band. */
 function personGlyph(obj: SceneObject): ElSpec[] {
   const compact = obj.h < 52;
-  const naturalHeadCy = compact ? HEAD_R : Math.min(obj.h * 0.32, 18);
-  const firstLabelY = Number(TEXT_MID(obj)[0]?.attrs.y ?? obj.h / 2);
-  const verticalScale = (firstLabelY - 12) / (naturalHeadCy + 19);
-  const scale = Math.max(0.1, Math.min(1, compact ? (obj.h - 8) / 25 : verticalScale));
-  const headCy = compact ? (obj.h - 25 * scale) / 2 + HEAD_R * scale : naturalHeadCy * scale;
-  const headR = HEAD_R * scale;
-  const shoulderY = headCy + headR + 3 * scale;
-  const shoulderR = 10 * scale;
-  const reserve = rightContentReserve(obj.kind, obj.icon, obj.ghost === true);
+  const box = contentBox(obj);
+  const headR = compact ? HEAD_R : Math.max(4, Math.min(HEAD_R, box.glyphHeight / 4));
+  const headCy = compact
+    ? (obj.h - 25) / 2 + HEAD_R
+    : box.glyphTop + headR;
+  // The shoulder half-circle hangs below the head and must stay inside the band
+  // (UX08-WP07): a glyph that grows past its region would eat the label's space.
+  const shoulderY = headCy + headR + 2;
+  const shoulderR = Math.max(3, Math.min(10, box.glyphTop + box.glyphHeight - shoulderY));
+  const reserve = rightContentReserve(obj.kind, obj.ghost === true);
   const cx = compact ? 14 : Math.max(8, (obj.w - reserve) / 2);
   // body first — SVG paints in document order, so glyph details must come
   // after the fill rect or they are painted over (vision review r1 defect D2)
@@ -111,10 +238,11 @@ function personGlyph(obj: SceneObject): ElSpec[] {
     {
       tag: 'path',
       attrs: {
-        // shoulder arc: half circle of r=10 centered below head
+        // shoulder arc: half circle of r=shoulderR centered below head. Filled,
+        // like the head, so the pair reads as one silhouette; `pc-glyph-outline`
+        // here would leave a hairline arc under a solid head.
         d: `M ${cx - shoulderR} ${shoulderY + shoulderR} a ${shoulderR} ${shoulderR} 0 0 1 ${2 * shoulderR} 0`,
         class: 'pc-glyph',
-        fill: 'none',
       },
     },
     ...TEXT_MID(obj),
@@ -126,9 +254,13 @@ function datastoreRadius(obj: SceneObject): number {
   return Math.max(2, Math.min(obj.h * 0.2, 10, (obj.h - labelHeight - 8) / 4));
 }
 
-/** Datastore cylinder: elliptical top + body + bottom arc. */
+/** Datastore cylinder: elliptical top + body + bottom arc, inside its content band. */
 function cylinderGlyph(obj: SceneObject): ElSpec[] {
   const ry = datastoreRadius(obj);
+  const top = contentBox(obj).glyphTop;
+  // The rim owns the band below the icon: drawing from y=0 would put the cap on
+  // top of a top-center icon (UX08-WP07).
+  const body = { transform: `translate(0 ${top})` };
   return [
     {
       tag: 'path',
@@ -136,11 +268,12 @@ function cylinderGlyph(obj: SceneObject): ElSpec[] {
         d: [
           `M 0 ${ry}`,
           `a ${obj.w / 2} ${ry} 0 0 1 ${obj.w} 0`,
-          `V ${obj.h - ry}`,
+          `V ${obj.h - top - ry}`,
           `a ${obj.w / 2} ${ry} 0 0 1 ${-obj.w} 0`,
           'Z',
         ].join(' '),
         class: 'pc-shape',
+        ...body,
       },
     },
     {
@@ -148,8 +281,8 @@ function cylinderGlyph(obj: SceneObject): ElSpec[] {
       attrs: {
         // top ellipse outline
         d: `M 0 ${ry} a ${obj.w / 2} ${ry} 0 0 1 ${obj.w} 0 a ${obj.w / 2} ${ry} 0 0 1 ${-obj.w} 0`,
-        class: 'pc-glyph',
-        fill: 'none',
+        class: 'pc-glyph pc-glyph-outline',
+        ...body,
       },
     },
     ...TEXT_MID(obj),
@@ -196,8 +329,7 @@ function noteGlyph(obj: SceneObject): ElSpec[] {
       tag: 'path',
       attrs: {
         d: `M ${obj.w - f} 0 V ${f} H ${obj.w}`,
-        class: 'pc-glyph',
-        fill: 'none',
+        class: 'pc-glyph pc-glyph-outline',
       },
     },
     ...TEXT_MID(obj),
@@ -224,22 +356,11 @@ function ghostBadge(obj: SceneObject): ElSpec {
   };
 }
 
-/** Keep icons in a kind-specific region that does not cover built-in glyphs. */
+/** Keep the icon in the shared top-center band (UX08-WP07). */
 function withIcon(obj: SceneObject, glyphs: ElSpec[]): ElSpec[] {
-  if (!obj.icon) return glyphs;
-  let size = ICON_BOX;
-  let y = 6;
-  if (obj.kind === 'datastore') {
-    const ry = datastoreRadius(obj);
-    size = Math.max(4, Math.min(16, obj.h - 4 * ry - 8));
-    y = 2 * ry + 4;
-  } else if (obj.kind === 'note') {
-    const fold = noteFold(obj);
-    size = Math.max(4, Math.min(ICON_BOX, obj.h - fold - 12));
-    y = fold + 6;
-  }
-  const x = obj.w - size - 6;
-  const specs = iconGlyphs(obj.icon, x, y, size) as unknown as ElSpec[];
+  const box = contentBox(obj);
+  if (box.icon === null) return glyphs;
+  const specs = iconGlyphs(obj.icon ?? '', box.icon.x, box.icon.y, box.icon.size) as unknown as ElSpec[];
   return glyphs.concat(specs);
 }
 

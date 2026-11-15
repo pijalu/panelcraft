@@ -179,7 +179,7 @@ test('UX-04: live icons and explicit resize retain content regions across reload
   await page.mouse.up();
   await expectSeparated(page);
   await expect(page.locator('.cm-content')).toContainText('size ');
-  await capture(page, 'ux04-wide-short-dark');
+  await capture(page, 'ux04-wide-short-light');
   await page.reload();
   await expect(canvas.locator('g.pc-obj[data-id="api"] .pc-glyph-icon')).not.toHaveCount(0);
   await expectSeparated(page);
@@ -209,4 +209,66 @@ api -> shared.psp as importedLink
   await page.emulateMedia({ colorScheme: 'dark' });
   await expectSeparated(page);
   await capture(page, 'ux04-minimum-imported-dark');
+});
+
+// UX08-WP07: the icon band, the built-in glyph band and the label block come from
+// one content box, so the icon is centred and the label block is centred in what
+// is left between the icon and the bottom padding.
+test('UX08-WP07: icons sit top-center and label blocks centre in the remaining region', async ({ page }) => {
+  await page.goto('/');
+  await seedDoc(page, ALL_KINDS);
+  await page.getByTestId('view-select').selectOption('UX04');
+  const canvas = page.getByTestId('canvas');
+  await expect(canvas.locator('g.pc-obj')).toHaveCount(9);
+
+  const measurements = await canvas.locator('g.pc-obj').evaluateAll((groups) => {
+    const out: Array<{ id: string; iconCenterX: number; shapeCenterX: number; labelGapTop: number; labelGapBottom: number }> = [];
+    for (const group of groups) {
+      const id = group.getAttribute('data-id') ?? '';
+      if (id === 'boundary') continue; // groups keep their top-left title
+      const shape = group.querySelector('.pc-shape')?.getBoundingClientRect();
+      const icon = group.querySelector('.pc-glyph-icon')?.getBoundingClientRect();
+      const labels = [...group.querySelectorAll('text.pc-label:not(.pc-ghost-badge)')];
+      if (!shape || !icon || labels.length === 0) continue;
+      const boxes = labels.map((l) => l.getBoundingClientRect());
+      const top = Math.min(...boxes.map((b) => b.top));
+      const bottom = Math.max(...boxes.map((b) => b.bottom));
+      out.push({
+        id,
+        iconCenterX: icon.x + icon.width / 2,
+        shapeCenterX: shape.x + shape.width / 2,
+        labelGapTop: top - (icon.y + icon.height),
+        labelGapBottom: shape.y + shape.height - bottom,
+      });
+    }
+    return out;
+  });
+
+  expect(measurements.map((m) => m.id).sort()).toEqual(
+    ['checkout', 'customer', 'jobs', 'memo', 'partner', 'records', 'shop', 'web'],
+  );
+  for (const m of measurements) {
+    // Nothing escapes the shape in either layout.
+    expect(m.labelGapBottom, `${m.id} label→bottom gap`).toBeGreaterThanOrEqual(0);
+    expect(m.labelGapBottom, `${m.id} label not bottom-heavy`).toBeLessThan(40);
+    // A stacked icon is centred on the shape's content axis (≤1 px rounding) and
+    // the label block is balanced between it and the bottom padding. A box too
+    // short to stack puts the icon beside the label (documented fallback), where
+    // the vertical comparison does not apply.
+    if (m.labelGapTop >= 0) {
+      expect(Math.abs(m.iconCenterX - m.shapeCenterX), `${m.id} icon center`).toBeLessThanOrEqual(1.5);
+      // person/datastore keep their own glyph band between icon and label, so the
+      // air above the block includes that band; the other kinds are pure stacks.
+      if (!['customer', 'records'].includes(m.id)) {
+        expect(Math.abs(m.labelGapTop - m.labelGapBottom), `${m.id} vertical balance`).toBeLessThanOrEqual(20);
+      }
+    } else {
+      expect(m.iconCenterX, `${m.id} inline icon starts at the padding`).toBeLessThan(m.shapeCenterX);
+    }
+  }
+
+  await capture(page, 'ux08-icon-text-light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expectSeparated(page);
+  await capture(page, 'ux08-icon-text-dark');
 });

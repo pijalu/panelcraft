@@ -157,7 +157,7 @@ const DRAG_THRESHOLD = 2;
 const objectIcon = (o: DiagramObject): string | undefined => o.style?.icon ?? o.icon;
 
 function explicitLines(o: DiagramObject, text: string, measure: TextMeasurer, width = o.w): string[] {
-  const reserve = rightContentReserve(o.kind, objectIcon(o));
+  const reserve = rightContentReserve(o.kind);
   const available = Math.max(24, Math.min(WRAP_AT, width - 2 * PADDING.x - reserve));
   return wrapLabel(text, measure, available, Number.POSITIVE_INFINITY);
 }

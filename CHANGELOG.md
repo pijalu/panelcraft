@@ -7,6 +7,22 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ### Added — UX-08 application experience
 
+- **UX-08 WP07** A shape's icon now sits at the top centre and the whole wrapped label block is
+  centred in the space the icon leaves, so icon and text read as one unit instead of a label
+  pinned to the shape's bottom edge with an icon stranded in the top-right corner. Rendering,
+  text wrapping and auto-fit read one content box (icon band, built-in glyph band, label region,
+  reserved queue/note/imported bands), so a person's head, a datastore's cap, a queue's arrow
+  band and a note's fold can no longer collide with either. A box too short to stack the icon
+  moves it beside the label rather than cropping it, explicit geometry in the document is never
+  rewritten, and a group keeps its top-left title with a centred icon.
+- **UX-08 WP07 fix** Unfilled glyph strokes were drawn as filled blobs: a `fill="none"`
+  presentation attribute loses to the stylesheet's `.pc-glyph` fill, so the datastore lid and a
+  note's folded corner rendered in the muted glyph colour (a light lid on a dark body in the dark
+  theme). They opt out by class now, and a unit test refuses any `fill` attribute on glyph specs.
+- **UX-08 WP07 fix** The `ux04-wide-short-dark` capture was taken in the light theme (pixel
+  check: canvas `250,250,250`); it is `ux04-wide-short-light` now, so a screenshot name no longer
+  claims a theme it did not render.
+
 - **UX-08 WP06** A resize now always states its size: a badge beside the dragged handle shows the
   live `W × H`, and every other selected object keeps a badge with its own unchanged size — so a
   multi-selection drag reads at a glance which object is changing. Equal-size matches keep their

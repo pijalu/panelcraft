@@ -1006,6 +1006,13 @@ body {
   stroke-width: 1;
 }
 
+/* Glyph strokes that must stay unfilled (person shoulders, datastore lid, note
+   fold). A presentation `fill="none"` attribute loses to `.pc-glyph` above, so
+   the fill is switched off by class instead (UX08-WP07 vision review). */
+.pc-glyph-outline {
+  fill: none;
+}
+
 .pc-label {
   fill: var(--pc-label-fill, var(--pc-fg));
   font-size: var(--pc-text-sm);
