@@ -7,7 +7,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { chooseAppMenu, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -115,7 +115,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.getByTestId('canvas').locator('g.pc-link[data-id="L1"]')).toHaveClass(/pc-dashed/);
 
     // Undo restores the previous style, redo reapplies it.
-    await page.getByTestId('history-open').click();
+    await chooseAppMenu(page, 'history-open');
     await page.getByTestId('history-undo').click();
     expect(await checked(page, 'link-line')).toEqual(['solid']);
     await page.getByTestId('history-redo').click();

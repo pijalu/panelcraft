@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { chooseAppMenu, chooseExport, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -92,12 +92,12 @@ for (const theme of ['light', 'dark'] as const) {
 
     // SVG and PNG use the exact same committed route geometry as the canvas.
     const svgDownload = page.waitForEvent('download');
-    await page.getByTestId('tb-export-svg').click();
+    await chooseExport(page, 'svg');
     const svgPath = await (await svgDownload).path();
     if (!svgPath) throw new Error('SVG download has no path');
     expect(await readFile(svgPath, 'utf8')).toContain(`d="${second}"`);
     const pngDownload = page.waitForEvent('download');
-    await page.getByTestId('tb-export-png').click();
+    await chooseExport(page, 'png');
     const pngPath = await (await pngDownload).path();
     if (!pngPath) throw new Error('PNG download has no path');
     expect((await readFile(pngPath)).subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
@@ -108,7 +108,7 @@ for (const theme of ['light', 'dark'] as const) {
     await capture(page, `cx02-allowed-${theme}`);
     await axe(page);
 
-    await page.getByTestId('history-open').click();
+    await chooseAppMenu(page, 'history-open');
     await page.getByTestId('history-undo').click();
     await expect(page.locator('.cm-content')).not.toContainText('allow overlap');
     await expect(route(page, 'L2')).toHaveAttribute('d', second!);

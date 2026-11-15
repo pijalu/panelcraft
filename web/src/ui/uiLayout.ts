@@ -228,6 +228,15 @@ export function toggleSection(layout: UiLayout, section: string): UiLayout {
   return { ...layout, sections: { ...layout.sections, [section]: !open } };
 }
 
+/** WP02: first expanded side panel — the one a narrow viewport shows as a drawer. */
+export function drawerPanel(layout: UiLayout): PanelId | null {
+  for (const panel of PANELS) {
+    const dock = layout.docks[panel];
+    if ((dock === 'left' || dock === 'right') && layout.panels[panel] === 'open') return panel;
+  }
+  return null;
+}
+
 /** Closed/floating/bottom panels consume no horizontal canvas chrome. */
 export function chromeWidth(layout: UiLayout): number {
   return PANELS.reduce((sum, panel) => {

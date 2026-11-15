@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { chooseAppMenu, chooseExport, openWorkspacePanels } from './lib/panels';
 
 // Five equal-size objects stacked on the same spot: one Auto, one explicit zero,
 // one negative, one positive and one tie with the positive value. Document order
@@ -155,7 +155,7 @@ for (const theme of ['light', 'dark'] as const) {
 
     // SVG and PNG exports carry the same order as the canvas.
     const svgDownload = page.waitForEvent('download');
-    await page.getByTestId('tb-export-svg').click();
+    await chooseExport(page, 'svg');
     const svgPath = await (await svgDownload).path();
     if (!svgPath) throw new Error('SVG download has no path');
     const svg = await readFile(svgPath, 'utf8');
@@ -164,7 +164,7 @@ for (const theme of ['light', 'dark'] as const) {
     const svgOrder = [...svg.matchAll(/<g class="pc-obj[^"]*"[^>]*data-id="([^"]+)"/g)].map((m) => m[1]);
     expect(svgOrder).toEqual(['back', 'auto', 'zero', 'front', 'tie']);
     const pngDownload = page.waitForEvent('download');
-    await page.getByTestId('tb-export-png').click();
+    await chooseExport(page, 'png');
     const pngPath = await (await pngDownload).path();
     if (!pngPath) throw new Error('PNG download has no path');
     expect((await readFile(pngPath)).subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
@@ -183,7 +183,7 @@ for (const theme of ['light', 'dark'] as const) {
     await axe(page);
 
     // Undo/redo of a z edit is a normal, reversible controller change.
-    await page.getByTestId('history-open').click();
+    await chooseAppMenu(page, 'history-open');
     await page.getByTestId('history-undo').click();
     await expect(content).not.toContainText('z 9');
     await expectPaintOrder(page, ['back', 'auto', 'zero', 'front', 'tie']);

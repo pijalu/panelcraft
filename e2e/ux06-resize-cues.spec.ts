@@ -4,7 +4,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { chooseAppMenu, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 system target "Target" {
@@ -155,7 +155,7 @@ test('UX-06: snapped dimensions persist and remain one undoable resize', async (
   await expect(page.locator('.cm-content')).toContainText('size 208 104');
   await expect(page.locator('.pc-resize-cue')).toHaveCount(0);
 
-  await page.getByTestId('history-open').click();
+  await chooseAppMenu(page, 'history-open');
   await page.getByTestId('history-undo').click();
   await expect(page.locator('.cm-content')).toContainText('size 120 60');
   await expectTargetSize(page, 120, 60);

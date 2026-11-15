@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_WIDTHS, NARROW_VIEWPORT, RAIL_WIDTH, chromeWidth, clampWidth, defaultLayout,
-  layoutStyle, normaliseLayout, openPanel, setWidth, togglePanel, toggleSection, type UiLayout,
+  drawerPanel, layoutStyle, normaliseLayout, openPanel, setWidth, togglePanel, toggleSection, type UiLayout,
 } from './uiLayout';
 
 describe('defaultLayout (F-10)', () => {
@@ -106,6 +106,22 @@ describe('normaliseLayout', () => {
   it('survives a round-trip through JSON', () => {
     const l: UiLayout = togglePanel(setWidth(defaultLayout(1600), 'sidebar', 300), 'code');
     expect(normaliseLayout(JSON.parse(JSON.stringify(l)), 1600)).toEqual(l);
+  });
+});
+
+describe('drawerPanel (UX08-WP02)', () => {
+  it('picks the first expanded side-docked panel', () => {
+    expect(drawerPanel(defaultLayout(1600))).toBe('palette');
+    const onlyProps = openPanel(togglePanel(defaultLayout(1600), 'palette'), 'props');
+    expect(drawerPanel(onlyProps)).toBe('props');
+  });
+
+  it('ignores collapsed, closed, floating and bottom panels', () => {
+    const collapsed = togglePanel(defaultLayout(1600), 'palette');
+    expect(collapsed.panels.palette).toBe('collapsed');
+    expect(drawerPanel(collapsed)).toBeNull();
+    expect(drawerPanel({ ...collapsed, docks: { ...collapsed.docks, palette: 'bottom' } })).toBeNull();
+    expect(drawerPanel({ ...collapsed, docks: { ...collapsed.docks, palette: 'float' } })).toBeNull();
   });
 });
 

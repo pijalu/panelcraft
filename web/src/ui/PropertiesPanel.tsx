@@ -190,11 +190,12 @@ function ObjectFields(props: {
   const { obj, onChange, sections, onToggleSection } = props;
   const open = (id: string): boolean => sections[id] !== false;
   return (
-    <aside class="properties" data-testid="properties">
-      <div class="panel-head">
-        <h2 class="panel-title">{s("Properties")}</h2>
-        {props.onCollapse && <CollapseButton id="props" label={s("properties")} onCollapse={props.onCollapse} />}
-      </div>
+    <aside class="properties" data-testid="properties" aria-label={s("Properties")}>
+      {props.onCollapse && (
+        <div class="panel-head">
+          <CollapseButton id="props" label={s("properties")} onCollapse={props.onCollapse} />
+        </div>
+      )}
       <Section id="identity" title={s("Identity")} open={open('identity')} onToggle={onToggleSection}>
         <Field label={s("Name")}>
           <input
@@ -468,11 +469,12 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
   }
   if (link) return <LinkFields link={link} onChange={onChangeLink} />;
   return (
-    <aside class="properties" data-testid="properties">
-      <div class="panel-head">
-        <h2 class="panel-title">{s("Properties")}</h2>
-        {onCollapse && <CollapseButton id="props" label={s("properties")} onCollapse={onCollapse} />}
-      </div>
+    <aside class="properties" data-testid="properties" aria-label={s("Properties")}>
+      {onCollapse && (
+        <div class="panel-head">
+          <CollapseButton id="props" label={s("properties")} onCollapse={onCollapse} />
+        </div>
+      )}
       <p class="muted panel-empty">{s("Select an object or link to edit its properties.")}</p>
     </aside>
   );

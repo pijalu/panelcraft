@@ -38,6 +38,7 @@ import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
 import { useCodeSync } from './useCodeSync';
 import { useDivergedClose } from './useDivergedClose';
 import { useFlowStage } from './useFlowStage';
+import { useDrawer } from './useDrawer';
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
 import type { CodeSyncHandle } from './useCodeSync';
 import type { WorkspaceManager } from '../workspace/workspace';
@@ -97,8 +98,8 @@ function FilesPane(props: {
 }) {
   return (
     <aside class="sidebar" aria-label={s('Workspace files')}>
+      {/* WP02: the host header already names the panel; keep only the collapse control. */}
       <div class="panel-head">
-        <h2 class="panel-title">{s('Files')}</h2>
         <CollapseButton id="sidebar" label={s('files')} onCollapse={props.onCollapse} />
       </div>
       <FileTree
@@ -129,8 +130,8 @@ function FlowStepsPane(props: {
 }) {
   return (
     <aside class="sidebar" aria-label={s('Flow step editor')}>
+      {/* WP02: host header owns the title; no duplicate heading here. */}
       <div class="panel-head">
-        <h2 class="panel-title">{s('Flow Steps')}</h2>
         <CollapseButton id="flows" label={s('flow steps')} onCollapse={props.onCollapse} />
       </div>
       <FlowPane
@@ -419,6 +420,7 @@ function AppBody(p: {
   const { ws, canvas, code, ui, player, activePath, viewName } = p;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const ctrl = canvas.ctrlRef.current;
+  const { drawer, dismiss } = useDrawer(ui);
   const content: Record<PanelId, ComponentChildren> = {
     sidebar: <SidebarSlot ui={ui} manager={ws.manager} version={ws.version} />,
     flows: flowsSlot({
@@ -474,7 +476,10 @@ function AppBody(p: {
         </HostedPanel>
       ));
   return (
-    <div class="app-body">
+    <div class="app-body" data-drawer={drawer === null ? undefined : 'open'}>
+      {drawer !== null && (
+        <div class="drawer-backdrop" data-testid="drawer-backdrop" onClick={dismiss} />
+      )}
       <ShellBanners
         snapshot={code.snapshot}
         ctrlRef={canvas.ctrlRef}
@@ -625,6 +630,7 @@ export function App() {
         onSnapshotsRequest={() => setSnapsOpen(true)}
         {...statusProps(code.snapshot, ws.ready, manager)}
         onHistoryRequest={() => setHistoryOpen(true)}
+        onPresentRequest={pres.start}
       />
       <AppBody
         ws={ws}

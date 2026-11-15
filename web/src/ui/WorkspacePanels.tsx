@@ -3,10 +3,10 @@
 
 import { useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { PANELS, type DockId, type FloatingBounds, type PanelId, type UiLayout } from './uiLayout';
+import { PANELS, type DockId, type FloatingBounds, type PanelId } from './uiLayout';
 import type { UiLayoutHandle } from './useUiLayout';
-import type { AppThemePreference } from './appTheme';
 import { Splitter } from './PanelChrome';
+import { Menu } from './Menu';
 import { s } from './strings';
 
 export function panelLabel(panel: PanelId): string {
@@ -119,27 +119,31 @@ export function PanelHost(props: PanelHostProps) {
         >
           {panelLabel(props.id)}
         </button>
-        <details class="panel-actions">
-          <summary data-testid={`panel-menu-${props.id}`} aria-label={s('{label} panel actions', { label: panelLabel(props.id) })}>
-            {s('⋮')}
-          </summary>
-          <div class="panel-actions-popover">
-            {(['left', 'right', 'bottom', 'float'] as const).map((dock) => (
-              <button
-                type="button"
-                key={dock}
-                data-testid={`dock-${props.id}-${dock}`}
-                disabled={props.dock === dock}
-                onClick={() => props.onMove(props.id, dock)}
-              >
-                {s('Dock {dock}', { dock })}
-              </button>
-            ))}
-            <button type="button" data-testid={`close-${props.id}`} onClick={() => props.onClose(props.id)}>
-              {s('Close {label} panel', { label: panelLabel(props.id) })}
-            </button>
-          </div>
-        </details>
+        <Menu
+          id={`panel-actions-${props.id}`}
+          class="panel-actions"
+          label={s('{label} panel actions', { label: panelLabel(props.id) })}
+          testId={`panel-menu-${props.id}`}
+          trigger={s('⋮')}
+          items={[
+            ...(['left', 'right', 'bottom', 'float'] as const).map((dock) => ({
+              kind: 'item' as const,
+              id: `dock-${dock}`,
+              label: s('Dock {dock}', { dock }),
+              testId: `dock-${props.id}-${dock}`,
+              disabled: props.dock === dock,
+              onSelect: () => props.onMove(props.id, dock),
+            })),
+            { kind: 'separator' as const, id: 'panel-actions-sep' },
+            {
+              kind: 'item' as const,
+              id: 'close',
+              label: s('Close {label} panel', { label: panelLabel(props.id) }),
+              testId: `close-${props.id}`,
+              onSelect: () => props.onClose(props.id),
+            },
+          ]}
+        />
       </div>
       <div class="panel-host-content">{props.children}</div>
     </section>
@@ -183,63 +187,4 @@ export function HostedPanel(props: { id: PanelId; ui: UiLayoutHandle; children: 
     return <div class="panel-bottom-wrap">{host}{splitter}</div>;
   }
   return <>{host}{splitter}</>;
-}
-
-interface ViewMenuProps {
-  layout: UiLayout;
-  onOpen: (panel: PanelId) => void;
-  onReset: () => void;
-  theme: AppThemePreference;
-  onThemeChange: (theme: AppThemePreference) => void;
-}
-
-/** Always-available recovery path for closed/collapsed or unreachable panels. */
-export function ViewMenu({ layout, onOpen, onReset, theme, onThemeChange }: ViewMenuProps) {
-  const details = useRef<HTMLDetailsElement | null>(null);
-  const closeMenu = () => {
-    if (details.current) details.current.open = false;
-  };
-  return (
-    <details class="view-menu" ref={details}>
-      <summary data-testid="view-menu">{s('View')}</summary>
-      <div class="view-menu-popover" aria-label={s('Workspace panels')}>
-        <label class="theme-picker">
-          {s('Application theme')}
-          <select
-            data-testid="app-theme"
-            value={theme}
-            onChange={(event) => onThemeChange((event.currentTarget as HTMLSelectElement).value as AppThemePreference)}
-          >
-            <option value="system">{s('System')}</option>
-            <option value="light">{s('Light')}</option>
-            <option value="dark">{s('Dark')}</option>
-          </select>
-        </label>
-        {PANELS.map((panel) => (
-          <button
-            type="button"
-            key={panel}
-            data-testid={`view-panel-${panel}`}
-            disabled={layout.panels[panel] === 'open'}
-            onClick={() => {
-              onOpen(panel);
-              closeMenu();
-            }}
-          >
-            {s('Show {label} panel', { label: panelLabel(panel) })}
-          </button>
-        ))}
-        <button
-          type="button"
-          data-testid="reset-workspace-layout"
-          onClick={() => {
-            onReset();
-            closeMenu();
-          }}
-        >
-          {s('Reset workspace layout')}
-        </button>
-      </div>
-    </details>
-  );
 }

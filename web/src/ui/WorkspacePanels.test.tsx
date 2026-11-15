@@ -3,11 +3,14 @@
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DropZone, PanelHost, ViewMenu } from './WorkspacePanels';
+import { DropZone, PanelHost } from './WorkspacePanels';
 import { Splitter } from './PanelChrome';
-import { closePanel, defaultLayout } from './uiLayout';
 
 afterEach(cleanup);
+
+function openPanelMenu(): void {
+  fireEvent.click(screen.getByTestId('panel-menu-code'));
+}
 
 describe('UX-02 panel commands', () => {
   it('provides named keyboard docking alternatives and a distinct close command', () => {
@@ -19,12 +22,29 @@ describe('UX-02 panel commands', () => {
       </PanelHost>,
     );
     expect(screen.getByRole('button', { name: /Code panel\. Drag to move/ })).toBeTruthy();
+    const trigger = screen.getByTestId('panel-menu-code');
+    expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
+    openPanelMenu();
     expect(screen.getByTestId('dock-code-right')).toHaveProperty('disabled', true);
     fireEvent.click(screen.getByTestId('dock-code-bottom'));
     expect(onMove).toHaveBeenCalledWith('code', 'bottom');
+    openPanelMenu();
     fireEvent.click(screen.getByTestId('close-code'));
     expect(onClose).toHaveBeenCalledWith('code');
     expect(onClose).not.toHaveBeenCalledWith('code', 'collapsed');
+  });
+
+  it('closes the panel menu on Escape and returns focus to its trigger', () => {
+    render(
+      <PanelHost id="code" dock="right" onMove={vi.fn()} onClose={vi.fn()} onBounds={vi.fn()}>
+        <p>Editor</p>
+      </PanelHost>,
+    );
+    const trigger = screen.getByTestId('panel-menu-code');
+    openPanelMenu();
+    fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' });
+    expect(screen.queryByTestId('dock-code-bottom')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
   });
 
   it('drops a dragged panel into the target dock', () => {
@@ -41,36 +61,5 @@ describe('UX-02 panel commands', () => {
     const event = new MouseEvent('pointerdown', { bubbles: true, cancelable: true });
     screen.getByTestId('splitter-code').dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
-  });
-
-  it('reopens closed panels and resets layout from View', () => {
-    const onOpen = vi.fn();
-    const onReset = vi.fn();
-    const layout = closePanel(defaultLayout(1600), 'sidebar');
-    render(<ViewMenu layout={layout} onOpen={onOpen} onReset={onReset} theme="system" onThemeChange={vi.fn()} />);
-    fireEvent.click(screen.getByTestId('view-panel-sidebar'));
-    fireEvent.click(screen.getByTestId('reset-workspace-layout'));
-    expect(onOpen).toHaveBeenCalledWith('sidebar');
-    expect(onReset).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('view-panel-palette')).toHaveProperty('disabled', true);
-  });
-
-  it('selects System, Light and Dark application themes from View', () => {
-    const onThemeChange = vi.fn();
-    render(
-      <ViewMenu
-        layout={defaultLayout(1600)}
-        onOpen={vi.fn()}
-        onReset={vi.fn()}
-        theme="system"
-        onThemeChange={onThemeChange}
-      />,
-    );
-    const select = screen.getByRole('combobox', { name: 'Application theme' });
-    expect(Array.from(select.querySelectorAll('option')).map((option) => option.textContent)).toEqual([
-      'System', 'Light', 'Dark',
-    ]);
-    fireEvent.change(select, { target: { value: 'dark' } });
-    expect(onThemeChange).toHaveBeenCalledWith('dark');
   });
 });

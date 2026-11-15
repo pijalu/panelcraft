@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openWorkspacePanels } from './lib/panels';
+import { chooseAppMenu, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -60,7 +60,7 @@ test.describe('F-24 unified undo & history', () => {
     });
 
     // 3. the journal lists both, newest first
-    await page.getByTestId('history-open').click();
+    await chooseAppMenu(page, 'history-open');
     const list = page.getByTestId('history-list');
     await expect(list).toBeVisible();
     await expect(list.locator('.history-row').first()).toHaveAttribute('data-surface', 'code');
@@ -84,7 +84,7 @@ test.describe('F-24 unified undo & history', () => {
 
   test('the affordance records the seeding edit and closes cleanly', async ({ page }) => {
     await seed(page);
-    await page.getByTestId('history-open').click();
+    await chooseAppMenu(page, 'history-open');
     // Typing the document is one code action, so the journal is not empty.
     await expect(page.getByTestId('history-list').locator('.history-row')).toHaveCount(1);
     await expect(page.getByTestId('history-empty')).toHaveCount(0);

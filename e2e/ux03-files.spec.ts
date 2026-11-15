@@ -4,7 +4,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { chooseAppMenu, choosePanelMenu, openWorkspacePanels } from './lib/panels';
 
 const FLOW_DOC = `pcd 1.0
 person ada "Ada"
@@ -23,8 +23,7 @@ async function ready(page: Page): Promise<void> {
 }
 
 async function show(page: Page, panel: 'sidebar' | 'flows' | 'code'): Promise<void> {
-  await page.getByTestId('view-menu').click();
-  await page.getByTestId(`view-panel-${panel}`).click();
+  await chooseAppMenu(page, `view-panel-${panel}`);
   await expect(page.getByTestId(`panel-title-${panel}`)).toBeFocused();
 }
 
@@ -71,16 +70,14 @@ for (const colorScheme of ['light', 'dark'] as const) {
     });
     await axe(page);
 
-    await page.getByTestId('panel-menu-flows').click();
-    await page.getByTestId('dock-flows-right').click();
+    await choosePanelMenu(page, 'flows', 'dock-flows-right');
     await expect(page.locator('[data-panel="flows"]')).toHaveAttribute('data-dock', 'right');
     await expect(page.getByTestId('step-0')).toBeVisible();
     await expect(page.getByTestId('file-tree')).toBeVisible();
     await capture(page, `ux03-docked-${colorScheme}`);
 
-    await page.getByTestId('panel-menu-sidebar').click();
-    await page.getByTestId('close-sidebar').click();
-    await expect(page.getByTestId('view-menu')).toBeFocused();
+    await choosePanelMenu(page, 'sidebar', 'close-sidebar');
+    await expect(page.getByTestId('app-menu')).toBeFocused();
     await expect(page.getByTestId('file-tree')).toHaveCount(0);
     await expect(page.getByTestId('flow-pane')).toBeVisible();
     await expect(page.getByTestId('tab-untitled.pcd')).toHaveAttribute('data-active', 'true');
@@ -113,8 +110,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.getByTestId('tree-create-input').press('Enter');
     await expect(page.getByTestId('tree-row-diagrams')).toBeVisible();
     await capture(page, `ux03-organizing-${colorScheme}`);
-    await page.getByTestId('panel-menu-sidebar').click();
-    await page.getByTestId('dock-sidebar-float').click();
+    await choosePanelMenu(page, 'sidebar', 'dock-sidebar-float');
     await expect(page.locator('[data-panel="sidebar"]')).toHaveAttribute('data-dock', 'float');
     await capture(page, `ux03-floating-${colorScheme}`);
 
@@ -146,17 +142,19 @@ test('UX-03: keyboard close preserves dirty tabs, code, search and toolbar comma
   await page.keyboard.press('Enter');
   await page.getByTestId('close-sidebar').focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('view-menu')).toBeFocused();
+  await expect(page.getByTestId('app-menu')).toBeFocused();
   await expect(page.getByTestId('file-tree')).toHaveCount(0);
   await expect(page.getByTestId('tab-arch.pcd')).toHaveAttribute('data-active', 'true');
   await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
   expect(await page.locator('.cm-content').innerText()).toBe(dirty);
   await expect(page.getByTestId('diverged-dialog')).toHaveCount(0);
+  await page.getByTestId('app-menu').click();
+  await page.getByTestId('menu-export-current').click();
   await expect(page.getByTestId('tb-export-pcd')).toBeEnabled();
   const pendingDownload = page.waitForEvent('download');
   await page.getByTestId('tb-export-pcd').click();
   expect((await pendingDownload).suggestedFilename()).toBe('arch.pcd');
-  await page.getByTestId('tb-snapshots').click();
+  await chooseAppMenu(page, 'tb-snapshots');
   await expect(page.getByTestId('snapshots-overlay')).toBeVisible();
   await page.getByTestId('snapshot-close').click();
   await expect(page.getByTestId('snapshots-overlay')).toHaveCount(0);
@@ -165,7 +163,7 @@ test('UX-03: keyboard close preserves dirty tabs, code, search and toolbar comma
   await expect(page.getByTestId('search-overlay')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('search-overlay')).toHaveCount(0);
-  await page.getByTestId('view-menu').focus();
+  await page.getByTestId('app-menu').focus();
   await page.keyboard.press('Enter');
   await page.getByTestId('view-panel-sidebar').focus();
   await page.keyboard.press('Enter');
@@ -178,8 +176,7 @@ test('UX-03: create, open, close and reopen Files in every dock', async ({ page 
   await show(page, 'sidebar');
   for (const dock of ['left', 'right', 'bottom', 'float'] as const) {
     if (dock !== 'left') {
-      await page.getByTestId('panel-menu-sidebar').click();
-      await page.getByTestId(`dock-sidebar-${dock}`).click();
+      await choosePanelMenu(page, 'sidebar', `dock-sidebar-${dock}`);
     }
     await expect(page.locator('[data-panel="sidebar"]')).toHaveAttribute('data-dock', dock);
     await expect(page.getByTestId('file-tree')).toBeVisible();
@@ -191,8 +188,7 @@ test('UX-03: create, open, close and reopen Files in every dock', async ({ page 
     await page.getByTestId('tree-row-untitled.pcd').locator('.tree-name').click();
     await expect(page.getByTestId('tab-untitled.pcd')).toHaveAttribute('data-active', 'true');
 
-    await page.getByTestId('panel-menu-sidebar').click();
-    await page.getByTestId('close-sidebar').click();
+    await choosePanelMenu(page, 'sidebar', 'close-sidebar');
     await expect(page.locator('[data-panel="sidebar"]')).toHaveCount(0);
     await expect(page.getByTestId('tab-untitled.pcd')).toHaveAttribute('data-active', 'true');
     if (dock !== 'float') await show(page, 'sidebar');

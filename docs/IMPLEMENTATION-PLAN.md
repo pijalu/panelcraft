@@ -207,3 +207,13 @@ unit-complete. **Grammar freeze** at end of M1 (post-freeze changes = errata pro
 | Sync state machine bugs (M4-WP2) | code/canvas divergence reports | test-first mandate; property tests; if >2 fixes on same transition → redesign transition table |
 | Vision loop cost | reviews skipped under pressure | fixed screenshot set, calendar-boxed rounds, findings are merge-blocking at round gates |
 | Storage data loss reports | users lose workspace | export reminders (FR-S2) land with M3, not deferred; snapshots (M6-WP6) |
+
+---
+
+## 12. Post-v1 UX-08 — application experience and storytelling
+
+The goal-level index and **15 standalone, single-task work-package briefs** live in
+[milestones/UX08.md](milestones/UX08.md). UX-08 is **proposed, not implemented**. Assign one
+brief per agent/PR; the brief contains its requirement, evidence, implementation steps,
+dependencies, focused checks and acceptance criteria. Do not replace the briefs with a monolithic
+shell/canvas/flow change.

@@ -8,7 +8,7 @@
 import { unzipSync } from 'fflate';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { openWorkspacePanels } from './lib/panels';
+import { chooseAppMenu, openWorkspacePanels } from './lib/panels';
 
 const EXTERNAL = /^https?:\/\/(?!localhost|127\.0\.0\.1)/;
 
@@ -47,7 +47,7 @@ async function openInTree(page: Page, name: string): Promise<void> {
 async function exportZip(page: Page): Promise<Uint8Array> {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByTestId('tb-export-zip').click(),
+    chooseAppMenu(page, 'tb-export-zip'),
   ]);
   const path = await download.path();
   return new Uint8Array(readFileSync(path!));
@@ -89,7 +89,7 @@ test('S4: zip export → clear storage → import → identical workspace', asyn
   expect(new TextDecoder().decode(entries1['untitled.pcd']!)).toContain('Payment API');
 
   // ---- clear stored data with typed confirm (FR-S4) --------------------
-  await page.getByTestId('tb-clear-data').click();
+  await chooseAppMenu(page, 'tb-clear-data');
   await expect(page.getByTestId('clear-confirm-btn')).toBeDisabled();
   await page.getByTestId('clear-confirm-input').fill('DELETE');
   await page.getByTestId('clear-confirm-btn').click();
@@ -217,20 +217,21 @@ test('S4: quota failure degrades to in-memory session with banner (FR-S3)', asyn
   // autosave hits the quota wall → session degrades, banner + private on
   await expect(page.getByTestId('banner-quota')).toBeVisible({ timeout: 5000 });
   await expect(canvas.locator('g.pc-obj')).toHaveCount(1); // work kept in memory
-  await expect(page.getByTestId('tb-ephemeral').locator('input')).toBeChecked();
+  await page.getByTestId('app-menu').click();
+  await expect(page.getByTestId('tb-ephemeral')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('banner-ephemeral')).toHaveCount(0); // quota banner replaces the badge
 });
 
 test('S4: private mode toggle shows the ephemeral banner (FR-S2)', async ({ page }) => {
   await page.goto('/');
-  const toggle = page.getByTestId('tb-ephemeral').locator('input');
-  await expect(toggle).not.toBeChecked();
+  await page.getByTestId('app-menu').click();
+  await expect(page.getByTestId('tb-ephemeral')).toHaveAttribute('aria-checked', 'false');
   await expect(page.getByTestId('banner-ephemeral')).toHaveCount(0);
-
-  await toggle.check();
+  await page.getByTestId('tb-ephemeral').click();
   await expect(page.getByTestId('banner-ephemeral')).toBeVisible();
   await expect(page.getByTestId('banner-ephemeral')).toContainText('Private mode');
 
-  await toggle.uncheck();
+  await chooseAppMenu(page, 'tb-ephemeral');
   await expect(page.getByTestId('banner-ephemeral')).toHaveCount(0);
 });

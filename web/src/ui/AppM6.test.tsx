@@ -9,6 +9,7 @@ import { render, fireEvent, cleanup, screen } from '@testing-library/preact';
 import { act } from 'preact/test-utils';
 import { IDBFactory } from 'fake-indexeddb';
 import { App } from './App';
+import { chooseAppMenu } from '../test/menu';
 
 /** Mount App and settle the async init chain (storage → init → ready). */
 async function mountReady() {
@@ -62,7 +63,7 @@ describe('M6 chrome: quick search + snapshots (M6-WP5/6)', () => {
 
   it('Snapshots toolbar button opens the dialog; close dismisses (FR-W7)', async () => {
     await mountReady();
-    fireEvent.click(screen.getByTestId('tb-snapshots'));
+    chooseAppMenu('tb-snapshots');
     await act(async () => {});
     expect(screen.getByTestId('snapshots-overlay')).not.toBeNull();
     fireEvent.click(screen.getByTestId('snapshot-close'));

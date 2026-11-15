@@ -4,6 +4,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
+import { chooseAppMenu, choosePanelMenu } from './lib/panels';
 
 type Panel = 'sidebar' | 'flows' | 'palette' | 'code' | 'props';
 type Dock = 'left' | 'right' | 'bottom' | 'float';
@@ -18,16 +19,14 @@ async function ready(page: Page): Promise<void> {
 
 async function show(page: Page, panel: Panel): Promise<void> {
   if (await page.locator(`[data-panel="${panel}"]`).count()) return;
-  await page.getByTestId('view-menu').click();
-  await page.getByTestId(`view-panel-${panel}`).click();
+  await chooseAppMenu(page, `view-panel-${panel}`);
   await expect(page.getByTestId(`panel-title-${panel}`)).toBeFocused();
 }
 
 async function dock(page: Page, panel: Panel, target: Dock): Promise<void> {
   await show(page, panel);
   if (await page.locator(`[data-panel="${panel}"][data-dock="${target}"]`).count()) return;
-  await page.getByTestId(`panel-menu-${panel}`).click();
-  await page.getByTestId(`dock-${panel}-${target}`).click();
+  await choosePanelMenu(page, panel, `dock-${panel}-${target}`);
   await expect(page.locator(`[data-panel="${panel}"]`)).toHaveAttribute('data-dock', target);
   await expect(page.getByTestId(`panel-title-${panel}`)).toBeFocused();
 }
@@ -69,7 +68,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
       await expect(page.getByTestId(`rail-${panel}`)).toBeVisible();
     }
     await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
-    await expect(page.getByTestId('tb-export-pcd')).toBeVisible();
+    await expect(page.getByTestId('app-menu')).toBeVisible();
     await capture(page, `ux02-fresh-${colorScheme}`);
     await test.info().attach(`ux02-fresh-${colorScheme}-accessibility`, {
       body: await page.getByTestId('app-shell').ariaSnapshot(),
@@ -126,17 +125,15 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.getByTestId('expand-code').click();
     await dock(page, 'code', 'left');
 
-    await page.getByTestId('panel-menu-palette').click();
-    await page.getByTestId('close-palette').click();
+    await choosePanelMenu(page, 'palette', 'close-palette');
     await expect(page.locator('[data-panel="palette"]')).toHaveCount(0);
     await expect(page.getByTestId('rail-palette')).toHaveCount(0);
-    await expect(page.getByTestId('view-menu')).toBeFocused();
+    await expect(page.getByTestId('app-menu')).toBeFocused();
     await capture(page, `ux02-closed-${colorScheme}`);
     await show(page, 'palette');
     await capture(page, `ux02-reopened-${colorScheme}`);
 
-    await page.getByTestId('view-menu').click();
-    await page.getByTestId('reset-workspace-layout').click();
+    await chooseAppMenu(page, 'reset-workspace-layout');
     await expect(page.getByTestId('app-shell')).toHaveAttribute(
       'data-panels',
       'sidebar:collapsed,flows:closed,palette:open,code:collapsed,props:collapsed',
@@ -202,8 +199,7 @@ test('UX-02: unapplied code survives docking, floating, close and reopen', async
     await dock(page, 'code', target);
     expect(await page.locator('.cm-content').innerText()).toBe(dirty);
   }
-  await page.getByTestId('panel-menu-code').click();
-  await page.getByTestId('close-code').click();
+  await choosePanelMenu(page, 'code', 'close-code');
   await expect(page.locator('[data-panel="code"]')).toHaveCount(0);
   await show(page, 'code');
   expect(await page.locator('.cm-content').innerText()).toBe(dirty);
@@ -211,7 +207,7 @@ test('UX-02: unapplied code survives docking, floating, close and reopen', async
 
 test('UX-02: keyboard-only open, dock, float, close, reopen and reset', async ({ page }) => {
   await ready(page);
-  await page.getByTestId('view-menu').focus();
+  await page.getByTestId('app-menu').focus();
   await page.keyboard.press('Enter');
   await page.getByTestId('view-panel-code').focus();
   await page.keyboard.press('Enter');
@@ -235,13 +231,13 @@ test('UX-02: keyboard-only open, dock, float, close, reopen and reset', async ({
   await page.keyboard.press('Enter');
   await page.getByTestId('close-code').focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('view-menu')).toBeFocused();
+  await expect(page.getByTestId('app-menu')).toBeFocused();
   await page.keyboard.press('Enter');
   await page.getByTestId('view-panel-code').focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('panel-title-code')).toBeFocused();
 
-  await page.getByTestId('view-menu').focus();
+  await page.getByTestId('app-menu').focus();
   await page.keyboard.press('Enter');
   await page.getByTestId('reset-workspace-layout').focus();
   await page.keyboard.press('Enter');

@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { chooseAppMenu, chooseExport, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -138,7 +138,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expectRouteAtHandles(page);
 
     // One history command restores and reapplies the complete endpoint drag.
-    await page.getByTestId('history-open').click();
+    await chooseAppMenu(page, 'history-open');
     await page.getByTestId('history-undo').click();
     await expect(editor).not.toContainText('anchor to 0.75');
     await page.getByTestId('history-redo').click();
@@ -195,7 +195,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expectRouteAtHandles(page);
 
     const svgDownload = page.waitForEvent('download');
-    await page.getByTestId('tb-export-svg').click();
+    await chooseExport(page, 'svg');
     const svg = await svgDownload;
     const svgPath = await svg.path();
     if (!svgPath) throw new Error('SVG download has no path');
@@ -205,7 +205,7 @@ for (const theme of ['light', 'dark'] as const) {
     expect(exported).toContain('place order');
 
     const pngDownload = page.waitForEvent('download');
-    await page.getByTestId('tb-export-png').click();
+    await chooseExport(page, 'png');
     const png = await pngDownload;
     const pngPath = await png.path();
     if (!pngPath) throw new Error('PNG download has no path');

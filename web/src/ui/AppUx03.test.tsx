@@ -6,6 +6,7 @@ import { act } from 'preact/test-utils';
 import { EditorView } from '@codemirror/view';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App';
+import { chooseAppMenu, choosePanelAction } from '../test/menu';
 
 async function mountReady(): Promise<void> {
   render(<App />);
@@ -36,18 +37,17 @@ describe('UX-03 independent workspace browser panels', () => {
     act(() => {
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: 'pcd 1.0\nsystem' } });
     });
-    fireEvent.click(screen.getByTestId('close-sidebar'));
+    choosePanelAction('sidebar', 'close-sidebar');
     await act(async () => {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     });
     expect(screen.queryByTestId('file-tree')).toBeNull();
     expect(screen.getByTestId('tab-untitled.pcd')).not.toBeNull();
-    expect(document.activeElement).toBe(screen.getByTestId('view-menu'));
+    expect(document.activeElement).toBe(screen.getByTestId('app-menu'));
     expect(view.state.doc.toString()).toBe('pcd 1.0\nsystem');
     expect(screen.queryByTestId('diverged-dialog')).toBeNull();
 
-    fireEvent.click(screen.getByTestId('view-menu'));
-    fireEvent.click(screen.getByTestId('view-panel-sidebar'));
+    chooseAppMenu('view-panel-sidebar');
     expect(screen.getByTestId('file-tree')).not.toBeNull();
     expect(view.state.doc.toString()).toBe('pcd 1.0\nsystem');
   });
@@ -68,19 +68,17 @@ describe('UX-03 independent workspace browser panels', () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
     });
     expect(screen.queryByTestId('flow-pane')).toBeNull();
-    fireEvent.click(screen.getByTestId('view-menu'));
-    fireEvent.click(screen.getByTestId('view-panel-flows'));
+    chooseAppMenu('view-panel-flows');
     fireEvent.click(screen.getByTestId('flow-row-main'));
     expect(screen.getByTestId('flow-steps')).not.toBeNull();
     expect(screen.getByTestId('file-tree')).not.toBeNull();
 
-    fireEvent.click(screen.getByTestId('close-sidebar'));
+    choosePanelAction('sidebar', 'close-sidebar');
     expect(screen.getByTestId('flow-steps')).not.toBeNull();
-    fireEvent.click(screen.getByTestId('dock-flows-right'));
+    choosePanelAction('flows', 'dock-flows-right');
     expect(screen.getByTestId('flow-steps')).not.toBeNull();
-    fireEvent.click(screen.getByTestId('close-flows'));
-    fireEvent.click(screen.getByTestId('view-menu'));
-    fireEvent.click(screen.getByTestId('view-panel-flows'));
+    choosePanelAction('flows', 'close-flows');
+    chooseAppMenu('view-panel-flows');
     expect(screen.getByTestId('flow-steps')).not.toBeNull();
   });
 });

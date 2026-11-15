@@ -5,11 +5,10 @@ import { useState } from 'preact/hooks';
 import type { RefObject } from 'preact';
 import { Banners } from './Banners';
 import { StatusPill } from './StatusPill';
-import { WorkspaceToolbar } from './WorkspaceToolbar';
+import { AppMenu } from './AppMenu';
 import { useWorkspace } from './useWorkspace';
 import type { WorkspaceManager } from '../workspace/workspace';
 import type { UiLayoutHandle } from './useUiLayout';
-import { ViewMenu } from './WorkspacePanels';
 import { s } from './strings';
 import type { AppThemeHandle } from './useAppTheme';
 
@@ -26,6 +25,8 @@ export function AppHeader(props: {
   onSnapshotsRequest(): void;
   /** F-24: open the unified history affordance. */
   onHistoryRequest(): void;
+  /** F-16: enter presentation mode from the application menu. */
+  onPresentRequest(): void;
   ui: UiLayoutHandle;
   theme: AppThemeHandle;
   /** F-25: system-status pill. */
@@ -40,35 +41,24 @@ export function AppHeader(props: {
       <header class="app-header">
         <span class="app-title">{s('PanelCraft')}</span>
         <StatusPill dirty={props.dirty} savedAt={props.savedAt} problems={props.problems} />
-        <ViewMenu
-          layout={props.ui.layout}
-          onOpen={props.ui.openPanel}
-          onReset={props.ui.resetLayout}
-          theme={props.theme.preference}
-          onThemeChange={props.theme.setPreference}
-        />
-        <WorkspaceToolbar
+        <AppMenu
           manager={ws.manager}
-          activePath={ws.ready ? ws.manager.activePath : null}
           ready={ws.ready}
+          activePath={ws.ready ? ws.manager.activePath : null}
           svgRef={props.svgRef}
+          ui={props.ui}
+          theme={props.theme}
+          privateMode={ws.manager.ephemeral}
           onFlash={props.onFlash}
+          onHistoryRequest={props.onHistoryRequest}
+          onPresent={props.onPresentRequest}
+          onSnapshotsRequest={props.onSnapshotsRequest}
+          onClearRequest={props.onClearRequest}
           onToggleEphemeral={(on) => {
             ws.clearReminder();
             void ws.manager.setEphemeral(on);
           }}
-          onClearRequest={props.onClearRequest}
-          onSnapshotsRequest={props.onSnapshotsRequest}
         />
-        <button
-          type="button"
-          class="ghost-btn"
-          data-testid="history-open"
-          aria-label={s('History')}
-          onClick={props.onHistoryRequest}
-        >
-          {s('⟲ History')}
-        </button>
       </header>
       <Banners
         openError={errorToShow(ws.manager, dismissedError, ws.ready)}

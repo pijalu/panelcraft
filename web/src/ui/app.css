@@ -81,7 +81,7 @@ body {
 
 .app-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--pc-border);
@@ -524,10 +524,12 @@ body {
 
 .properties {
   width: 232px;
+  min-width: 0;
   border-left: 1px solid var(--pc-border);
   background: var(--pc-surface);
   padding: 8px;
   overflow-y: auto;
+  overflow-wrap: anywhere;
 }
 
 .field {
@@ -934,6 +936,129 @@ marker .pc-arrow[fill='none'] {
 .tb-danger {
   color: #b91c1c;
   border-color: #b91c1c;
+}
+
+/* UX08-WP01: one menu primitive for the application menu and panel actions. */
+.menu {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.menu-trigger {
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-bg);
+  color: var(--pc-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.menu-trigger:hover,
+.menu-trigger[aria-expanded="true"] {
+  border-color: var(--pc-accent);
+}
+
+.menu-trigger:focus-visible {
+  outline: 2px solid var(--pc-accent);
+  outline-offset: 1px;
+}
+
+.menu-glyph {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.menu-popover {
+  z-index: 80;
+  min-width: 220px;
+  max-height: min(70vh, 640px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-bg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  font-size: var(--pc-text-sm);
+}
+
+.menu-submenu {
+  position: relative;
+}
+
+.menu-submenu-popover {
+  position: absolute;
+  top: -6px;
+  left: calc(100% + 2px);
+  z-index: 81;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-bg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  background: transparent;
+  color: var(--pc-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover:not(:disabled),
+.menu-item:focus-visible {
+  border-color: var(--pc-accent);
+  background: var(--pc-surface);
+  outline: none;
+}
+
+.menu-item:disabled {
+  color: var(--pc-muted);
+  opacity: 0.65;
+  cursor: default;
+}
+
+.menu-item-check {
+  width: 1em;
+  flex: none;
+}
+
+.menu-item-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-item-chevron {
+  margin-left: auto;
+  color: var(--pc-muted);
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--pc-border);
 }
 
 /* banners */
@@ -2949,6 +3074,17 @@ marker .pc-arrow[fill='none'] {
   grid-template-rows: minmax(0, 1fr) auto;
 }
 
+/* WP02: narrow viewports show a side panel as an overlay drawer, not a squeeze. */
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 44;
+  background: rgb(0 0 0 / 45%);
+  border: 0;
+  padding: 0;
+}
+
+
 .dock-zone {
   min-width: 0;
   min-height: 0;
@@ -3064,6 +3200,7 @@ marker .pc-arrow[fill='none'] {
   display: flex;
   flex-direction: column;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .panel-host-content > .sidebar,
@@ -3074,9 +3211,25 @@ marker .pc-arrow[fill='none'] {
   flex: 1;
 }
 
+/* WP02: a hosted panel's head holds only its collapse control — pin it to the
+   trailing edge so it lines up with the host header's actions. */
+.panel-host-content > .properties > .panel-head,
+.panel-host-content > .props-panel > .panel-head,
+.panel-host-content > .palette > .panel-head,
+.panel-host-content > .sidebar > .panel-head {
+  justify-content: flex-end;
+}
+
+/* WP02: the host content is the ONLY scroller for hosted Properties/Dependencies.
+   The panel keeps a fluid width so a narrow dock never causes horizontal overflow. */
+.panel-host-content > .properties,
 .panel-host-content > .props-panel,
 .panel-host-content > .deps-panel {
   width: 100%;
+  min-width: 0;
+  flex: none;
+  border-left: none;
+  overflow: visible;
 }
 
 .panel-actions,
@@ -3240,5 +3393,34 @@ marker .pc-arrow[fill='none'] {
 @media (max-width: 900px) {
   .dock-bottom {
     overflow-x: auto;
+  }
+}
+
+/* WP02: declared last so it wins over the per-panel width rules above. A dock that
+   only holds a collapsed rail keeps its grid slot; a dock with a real panel host
+   becomes an overlay drawer. */
+@media (max-width: 719px) {
+  .dock-left:has(.panel-host),
+  .dock-right:has(.panel-host) {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 45;
+    width: min(88vw, 420px);
+  }
+
+  .dock-left:has(.panel-host) {
+    left: 0;
+  }
+
+  .dock-right:has(.panel-host) {
+    right: 0;
+  }
+
+  .dock-left:has(.panel-host) .panel-host,
+  .dock-right:has(.panel-host) .panel-host {
+    width: 100%;
+    height: 100%;
+    box-shadow: 0 0 24px rgb(0 0 0 / 35%);
   }
 }

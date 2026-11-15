@@ -47,10 +47,12 @@ export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps
 
   return (
     <aside class="palette" data-testid="palette" aria-label={s('Shape palette')}>
-      <div class="panel-head">
-        <h2 class="panel-title">{s('Shapes')}</h2>
-        {onCollapse && <CollapseButton id="palette" label={s('shapes')} onCollapse={onCollapse} />}
-      </div>
+      {/* WP02: the panel host header already names this panel. */}
+      {onCollapse && (
+        <div class="panel-head">
+          <CollapseButton id="palette" label={s('shapes')} onCollapse={onCollapse} />
+        </div>
+      )}
       {groupKinds(kinds).map((group) => (
         <section class="palette-group" data-testid={`palette-group-${group.id}`} key={group.id}>
           <h3 class="palette-group-title">{group.title}</h3>

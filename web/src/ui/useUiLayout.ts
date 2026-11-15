@@ -213,7 +213,7 @@ export function useUiLayout(manager: WorkspaceManager, ready: boolean, version: 
   const closePanel = useCallback(
     (panel: PanelId) => {
       update((l) => closePure(l, panel), true);
-      requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[data-testid="view-menu"]')?.focus());
+      requestAnimationFrame(() => document.querySelector<HTMLButtonElement>('[data-testid="app-menu"]')?.focus());
     },
     [update],
   );

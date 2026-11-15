@@ -7,6 +7,7 @@ import { render, fireEvent, cleanup, screen } from '@testing-library/preact';
 import { act } from 'preact/test-utils';
 import { EditorView } from '@codemirror/view';
 import { App } from './App';
+import { chooseAppMenu } from '../test/menu';
 
 describe('App shell + palette (WP9)', () => {
   beforeEach(() => {
@@ -249,7 +250,7 @@ describe('workspace chrome (M3)', () => {
     fireEvent.click(screen.getByTestId('palette-system'));
     await act(async () => {});
     expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(1);
-    fireEvent.click(screen.getByTestId('tb-clear-data'));
+    chooseAppMenu('tb-clear-data');
     const dialog = screen.getByTestId('clear-dialog');
     expect(dialog).not.toBeNull();
     const btn = screen.getByTestId('clear-confirm-btn') as HTMLButtonElement;

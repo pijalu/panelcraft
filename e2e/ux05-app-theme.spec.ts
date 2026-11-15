@@ -4,15 +4,20 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { chooseAppMenu, chooseExport, choosePanelMenu, openWorkspacePanels, setAppTheme } from './lib/panels';
 
 const root = (page: Page) => page.locator('html');
 
 async function chooseTheme(page: Page, preference: 'system' | 'light' | 'dark'): Promise<void> {
-  await page.getByTestId('view-menu').click();
-  await page.getByTestId('app-theme').selectOption(preference);
-  // The selector remains usable without closing the View menu.
-  await page.getByTestId('view-menu').click();
+  await setAppTheme(page, preference);
+}
+
+/** The active theme is a checked radio item inside the Application menu. */
+async function expectTheme(page: Page, preference: 'system' | 'light' | 'dark'): Promise<void> {
+  const trigger = page.getByTestId('app-menu');
+  if ((await trigger.getAttribute('aria-expanded')) !== 'true') await trigger.click();
+  await expect(page.getByTestId(`app-theme-${preference}`)).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
 }
 
 async function axe(page: Page): Promise<void> {
@@ -60,7 +65,7 @@ test('UX-05: System follows OS, explicit choices persist before first paint, and
   await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
   await expect(root(page)).toHaveAttribute('data-theme', 'light');
   await expect(root(page)).toHaveAttribute('data-theme-preference', 'light');
-  await expect(page.getByTestId('app-theme')).toHaveValue('light');
+  await expectTheme(page, 'light');
 
   await chooseTheme(page, 'dark');
   await page.emulateMedia({ colorScheme: 'light' });
@@ -77,7 +82,7 @@ test('UX-05: System follows OS, explicit choices persist before first paint, and
   await expect(root(page)).toHaveAttribute('data-theme', 'dark');
   await expect(root(page)).toHaveAttribute('data-theme-preference', 'dark');
   const pending = page.waitForEvent('download');
-  await page.getByTestId('tb-export-svg').click();
+  await chooseExport(page, 'svg');
   expect((await pending).suggestedFilename()).toBe('untitled.svg');
   await expect(root(page)).toHaveAttribute('data-theme', 'dark');
 });
@@ -120,31 +125,30 @@ for (const theme of ['light', 'dark'] as const) {
     });
     await axe(page);
 
-    await page.getByTestId('view-menu').click();
-    await expect(page.getByTestId('app-theme')).toBeVisible();
-    await capture(page, `ux05-view-menu-${theme}`);
+    await page.getByTestId('app-menu').click();
+    await expect(page.getByTestId(`app-theme-${theme}`)).toBeVisible();
+    await capture(page, `ux05-app-menu-${theme}`);
     await axe(page);
-    await page.getByTestId('view-menu').click();
+    await page.keyboard.press('Escape');
 
-    await page.getByTestId('panel-menu-flows').click();
-    await page.getByTestId('dock-flows-float').click();
+    await choosePanelMenu(page, 'flows', 'dock-flows-float');
     await expect(page.locator('[data-panel="flows"]')).toHaveAttribute('data-dock', 'float');
     await capture(page, `ux05-floating-${theme}`);
     await axe(page);
 
-    await page.getByTestId('history-open').click();
+    await chooseAppMenu(page, 'history-open');
     await expect(page.getByRole('dialog', { name: 'History' })).toBeVisible();
     await capture(page, `ux05-history-${theme}`);
     await axe(page);
     await page.getByTestId('history-close').click();
 
-    await page.getByTestId('tb-snapshots').click();
+    await chooseAppMenu(page, 'tb-snapshots');
     await expect(page.getByTestId('snapshots-overlay')).toBeVisible();
     await capture(page, `ux05-snapshots-${theme}`);
     await axe(page);
     await page.getByTestId('snapshot-close').click();
 
-    await page.getByTestId('tb-clear-data').click();
+    await chooseAppMenu(page, 'tb-clear-data');
     await expect(page.getByRole('dialog', { name: 'Clear stored data' })).toBeVisible();
     await capture(page, `ux05-clear-dialog-${theme}`);
     await axe(page);
@@ -157,7 +161,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.keyboard.press('Escape');
     await page.reload();
     await expect(root(page)).toHaveAttribute('data-theme', theme);
-    await expect(page.getByTestId('app-theme')).toHaveValue(theme);
+    await expectTheme(page, theme);
     await expect(page.locator('.cm-content')).toContainText('theme dark');
   });
 }
