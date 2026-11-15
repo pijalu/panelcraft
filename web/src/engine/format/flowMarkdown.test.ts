@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { Doc } from '../model/types';
+import type { Doc, FlowStep } from '../model/types';
 import { flowMarkdown, flowsMarkdown, markdownFileName } from './flowMarkdown';
 import { parsePDL } from './parser';
 
@@ -57,7 +57,7 @@ flow "Under_score [draft]" as f {
   it('keeps unresolved references visible instead of dropping the step', () => {
     const doc = parsePDL('pcd 1.0\nflow "Gaps" as g {\n  ghost -> a : "nowhere"\n}').doc!;
     const out = flowMarkdown(doc, doc.flows[0]!);
-    expect(out).toContain('ghost `ghost` (not in this diagram) → a `a` (not in this diagram): nowhere');
+    expect(out).toContain('`ghost` (not in this diagram) → `a` (not in this diagram): nowhere');
     expect(out).toMatch(/^1\. \*\*Message\*\*/m);
   });
 
@@ -121,5 +121,39 @@ flow "Nest" as n {
     expect(markdownFileName(doc.flows[0]!, 'diagram.pcd')).toBe('diagram.cafe-walkthrough.md');
     expect(markdownFileName(doc.flows[1]!, 'notes.txt')).toBe('notes.refunds.md');
     expect(markdownFileName(doc.flows[1]!, null)).toBe('flows.refunds.md');
+  });
+
+  // BUG-02: prose never spans lines. A line break in text, label, description or
+  // title must not inject a heading or a fake list item into the outline
+  // (reachable from importers and hand-built documents, not from .pcd today).
+  it('keeps prose on one line whatever the IR holds', () => {
+    const doc = docFor();
+    const base = doc.flows[0]!;
+    const hostileStep = { ...base.steps[0]!, type: 'info', text: 'a\n# injected\n1. fake', description: 'x\ny' } as FlowStep;
+    const hostile: Doc = {
+      ...doc,
+      flows: [{ ...base, title: 'Line one\n# injected heading', description: 'first\nsecond', steps: [hostileStep] }],
+    };
+    const out = flowMarkdown(hostile, hostile.flows[0]!);
+    expect(out).not.toMatch(/^# injected/m);
+    expect(out).not.toMatch(/^1\. fake/m);
+    expect(out).toContain('# Line one # injected heading');
+    expect(out).toContain('_first second_');
+    expect(out).toContain('1. **Info** — a # injected 1. fake');
+    expect(out).toContain('   _x y_');
+  });
+
+  // BUG-03: a blank title must not produce an empty heading.
+  it('falls back to the id when the title is blank', () => {
+    const doc = parsePDL('pcd 1.0\nflow "   " as blank {\n  info "one"\n}\n').doc!;
+    expect(flowMarkdown(doc, doc.flows[0]!)).toBe('# blank\n\n1. **Info** — one\n');
+  });
+
+  // BUG-04: a goto with no file part must not print a dangling '#'.
+  it('documents goto targets with a file only when there is one', () => {
+    const doc = parsePDL('pcd 1.0\nflow "G" as g {\n  goto "other.pcd#refund" return here\n  goto "#local"\n}\n').doc!;
+    const out = flowMarkdown(doc, doc.flows[0]!);
+    expect(out).toContain('1. **Go to** — other.pcd#refund (returns here)');
+    expect(out).toContain('2. **Go to** — local');
   });
 });

@@ -14,6 +14,14 @@ export function escapeMarkdown(text: string): string {
   return text.replace(ESCAPED, (char) => `\\${char}`);
 }
 
+/**
+ * User prose on exactly one line: line breaks collapse to spaces, so no value
+ * from the IR can inject a heading or a list item into the outline.
+ */
+function prose(text: string): string {
+  return escapeMarkdown(text.replace(/\s+/g, ' '));
+}
+
 const KIND: Record<FlowStep['type'], string> = {
   intro: 'Intro',
   msg: 'Message',
@@ -27,13 +35,13 @@ const KIND: Record<FlowStep['type'], string> = {
 
 /** `Name `id`` — and an explicit marker rather than a silent drop for gaps. */
 function ref(doc: Doc, id: string): string {
-  const name = doc.objects.find((obj) => obj.id === id)?.name ?? id;
-  const gap = doc.objects.some((obj) => obj.id === id) ? '' : ' (not in this diagram)';
-  return `${escapeMarkdown(name)} \`${id}\`${gap}`;
+  const name = doc.objects.find((obj) => obj.id === id)?.name;
+  if (name === undefined) return `\`${id}\` (not in this diagram)`;
+  return `${prose(name)} \`${id}\``;
 }
 
 function quoted(value: string | undefined): string {
-  return value === undefined ? '' : ` "${escapeMarkdown(value)}"`;
+  return value === undefined ? '' : ` "${prose(value)}"`;
 }
 
 function cameraText(camera: CameraSpec): string {
@@ -53,12 +61,12 @@ function metaText(step: FlowStep): string {
 }
 
 function gotoText(step: Extract<FlowStep, { type: 'goto' }>): string {
-  const file = step.file === undefined ? '' : `${step.file}#`;
+  const file = step.file === undefined || step.file === '' ? '' : `${step.file}#`;
   return `${file}${step.flow}${step.ret === 'here' ? ' (returns here)' : ''}`;
 }
 
 function messageText(doc: Doc, step: Extract<FlowStep, { type: 'msg' }>): string {
-  const label = step.label === undefined ? '' : `: ${escapeMarkdown(step.label)}`;
+  const label = step.label === undefined ? '' : `: ${prose(step.label)}`;
   return `${ref(doc, step.from)} → ${ref(doc, step.to)}${label}${step.flip === true ? ', flipped' : ''}`;
 }
 
@@ -68,7 +76,7 @@ function detail(doc: Doc, step: FlowStep): string {
     case 'msg':
       return messageText(doc, step);
     case 'process': {
-      const text = step.text === undefined ? '' : `: ${escapeMarkdown(step.text)}`;
+      const text = step.text === undefined ? '' : `: ${prose(step.text)}`;
       return `${ref(doc, step.target)}${text}`;
     }
     case 'goto':
@@ -77,7 +85,7 @@ function detail(doc: Doc, step: FlowStep): string {
     case 'par':
       return quoted(step.label).trim();
     default:
-      return escapeMarkdown(step.text);
+      return prose(step.text);
   }
 }
 
@@ -89,7 +97,7 @@ function nested(doc: Doc, steps: FlowStep[], depth: number, lines: string[]): vo
     lines.push(`${badge}${label}`);
     const inner = `${pad}${INDENT}`;
     if (step.description !== undefined && step.description !== '') {
-      lines.push(`${inner}_${escapeMarkdown(step.description)}_`);
+      lines.push(`${inner}_${prose(step.description)}_`);
     }
     const meta = metaText(step);
     if (meta !== '') lines.push(`${inner}${meta}`);
@@ -113,12 +121,14 @@ function children(doc: Doc, step: FlowStep, depth: number, inner: string, lines:
 }
 
 function titleOf(doc: Doc, flow: Flow): string {
-  return flow.title ?? flow.id ?? `Flow ${doc.flows.indexOf(flow) + 1}`;
+  if (flow.title !== undefined && flow.title.trim() !== '') return flow.title;
+  if (flow.id !== undefined && flow.id !== '') return flow.id;
+  return `Flow ${doc.flows.indexOf(flow) + 1}`;
 }
 
 function outline(doc: Doc, flow: Flow, lines: string[]): void {
   if (flow.description !== undefined && flow.description !== '') {
-    lines.push('', `_${escapeMarkdown(flow.description)}_`);
+    lines.push('', `_${prose(flow.description)}_`);
   }
   if (flow.steps.length > 0) lines.push('', ...bodies(doc, flow));
 }
@@ -131,7 +141,7 @@ function bodies(doc: Doc, flow: Flow): string[] {
 
 /** One flow as a Markdown outline: heading, purpose, numbered steps. */
 export function flowMarkdown(doc: Doc, flow: Flow): string {
-  const lines = [`# ${escapeMarkdown(titleOf(doc, flow))}`];
+  const lines = [`# ${prose(titleOf(doc, flow))}`];
   outline(doc, flow, lines);
   return `${lines.join('\n')}\n`;
 }
@@ -140,7 +150,7 @@ export function flowMarkdown(doc: Doc, flow: Flow): string {
 export function flowsMarkdown(doc: Doc): string {
   const lines = ['# Flows'];
   for (const flow of doc.flows) {
-    lines.push('', `## ${escapeMarkdown(titleOf(doc, flow))}`);
+    lines.push('', `## ${prose(titleOf(doc, flow))}`);
     outline(doc, flow, lines);
   }
   return `${lines.join('\n')}\n`;
