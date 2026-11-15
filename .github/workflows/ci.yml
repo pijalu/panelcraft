@@ -22,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Full history so the identifier-clarity check can diff against main.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -67,18 +70,29 @@ jobs:
       - name: test-web (vitest + coverage thresholds 80/60)
         run: npm test
 
-      # ---- perf (SPEC §5, N1–N4) ----
+      # ---- perf ----
       # Uninstrumented on purpose: `npm test` runs with V8 coverage, and a budget
       # measured under the instrumenter is not the budget (`scripts/verify.sh`
-      # keeps perf_smoke/perf_nfr separate from web_test for the same reason).
-      - name: perf gates (N1–N4, no coverage)
+      # keeps its perf stages separate from the covered test run for the same
+      # reason).
+      - name: perf budgets (latency, no coverage instrumentation)
         run: npm run test:perf
 
       # ---- build go ----
       - name: build go (embeds web/dist)
         run: go build ./...
 
-      # ---- asset-origin scan (SPEC §8.6, N7/N11) ----
+      # ---- docs + identifier clarity ----
+      # Doc links resolve, and no change adds a bare tag like "N7" where the words
+      # belong (glossary: agents.md).
+      - name: docs links + identifier clarity
+        run: |
+          bash scripts/check-docs.sh
+          git fetch --no-tags origin main:refs/remotes/origin/main || true
+          bash scripts/check-jargon.sh origin/main
+
+      # ---- asset-origin scan ----
+      # Nothing may load from an external origin: no CDN, no webfonts.
       - name: asset-origin scan
         run: bash scripts/check-selfcontained.sh web/dist
 

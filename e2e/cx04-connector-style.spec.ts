@@ -125,13 +125,12 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.locator('.cm-content')).toContainText('line dashed', { timeout: 15_000 });
     await settle(page);
 
-    // Undo restores the previous style, redo reapplies it.
-    await chooseAppMenu(page, 'history-open');
-    await page.getByTestId('history-undo').click();
-    await expect.poll(() => checked(page, 'link-line'), { timeout: 15_000 }).toEqual(['solid']);
-    await page.getByTestId('history-redo').click();
-    await expect.poll(() => checked(page, 'link-line'), { timeout: 15_000 }).toEqual(['dashed']);
-    await page.getByTestId('history-close').click();
+    // Undo/redo of the style choice is asserted after the reload below, on a
+    // session whose canvas journal holds exactly the one command that section
+    // creates. Same-link property edits coalesce inside a 1 s window
+    // (web/src/workspace/undo.ts), so the picks above leave a runner-dependent
+    // number of undo entries — asserting here turned the shared 2-core CI runner
+    // red while staying green locally.
     const flash = page.getByTestId('banner-flash').getByRole('button', { name: 'dismiss' });
     if (await flash.isVisible()) await flash.click();
 
@@ -160,5 +159,19 @@ for (const theme of ['light', 'dark'] as const) {
     await expect.poll(() => checked(page, 'link-head'), { timeout: 15_000 }).toEqual(['none']);
     await expect.poll(() => checked(page, 'link-tail'), { timeout: 15_000 }).toEqual(['circle']);
     await expect(page.locator('.cm-content')).toContainText('width 2.5');
+
+    // Undo/redo: one style change, one journal entry, so the outcome cannot
+    // depend on how the earlier picks coalesced.
+    await page.getByTestId('link-line-solid').click();
+    await expect(page.locator('.cm-content')).not.toContainText('line dashed', { timeout: 15_000 });
+    await settle(page);
+    await chooseAppMenu(page, 'history-open');
+    await page.getByTestId('history-undo').click();
+    await expect.poll(() => checked(page, 'link-line'), { timeout: 15_000 }).toEqual(['dashed']);
+    await expect(page.locator('.cm-content')).toContainText('line dashed', { timeout: 15_000 });
+    await page.getByTestId('history-redo').click();
+    await expect.poll(() => checked(page, 'link-line'), { timeout: 15_000 }).toEqual(['solid']);
+    await expect(page.locator('.cm-content')).not.toContainText('line dashed', { timeout: 15_000 });
+    await page.getByTestId('history-close').click();
   });
 }

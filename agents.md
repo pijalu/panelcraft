@@ -35,7 +35,7 @@ render CLI). License **GPL-3.0-only**.
    enforcement.
 6. **Docs stay human-readable.** agents.md and docs/ are written for people first;
    agent-optimized pointers secondary. No IcePanel URLs in docs (name-as-inspiration
-   only).
+   only). Write the meaning, never just a code — see "Identifiers in this repo" below.
 7. **Architecture docs are written in PanelCraft itself** (SPEC §14): all architecture
    diagrams live as `.pcd` files under `docs/architecture/` — never ASCII/Mermaid art
    in Markdown. They are corpus seeds; keep them grammar-valid (FILE-FORMAT.md) and
@@ -46,6 +46,27 @@ render CLI). License **GPL-3.0-only**.
    Build works offline after one-time `npm ci` + `go mod download`. CI asset-origin
    scan (`scripts/check-selfcontained.sh`) + network-blocked e2e are the gates — a PR
    adding an external URL to a resource load must be rejected.
+
+## Identifiers in this repo
+
+Short tags (`M7`, `WP13`, `F-24`, `FR-K3`, `N7`, `SPEC §8.5`, `CX-04`…) are addresses,
+not explanations. A reader of a commit message, a code comment or a page of docs has
+not memorised `docs/SPEC.md`, so **the sentence must stand on its own and the tag, if it
+helps, comes after it**. Written out, they mean:
+
+| Tag | What it points at |
+|---|---|
+| `M<n>`, `M<n>-WP<n>` | Milestone and one of its work packages — `docs/milestones/` |
+| `WP<n>`, `UX<n>-WP<n>` | Numbered work package inside a milestone brief |
+| `F-<nn>` | Numbered finding/feature item of the implementation plan |
+| `FR-<x><n>` | Functional requirement in `docs/SPEC.md` |
+| `N<nn>` | Non-negotiable constraint in `docs/SPEC.md` |
+| `SPEC §n.m` | Section of `docs/SPEC.md` |
+| `CX-<nn>`, `UX-<nn>`, `FLOW-<nn>`, `DOC-<nn>` | Closed work item, write-up in `docs/archive/` |
+
+Good: "offline-only rule — no runtime network calls besides static assets".
+Bad: "see N7". `bash scripts/check-jargon.sh <base-ref>` fails a change that adds a
+bare tag without the words around it.
 
 ## Commands
 
@@ -106,7 +127,8 @@ panelcraft serve --addr :8080 --open
   via `npm run corpus:accept` / `go run ./internal/corpus -accept` and diff-review.
 * **Tests**: unit-test the failing behavior first (test-first for bugfixes); no test
   weakening to get green; flaky test = fix root cause, no retries/skips.
-* **Commits**: imperative subject ≤72 chars, body explains *why*; reference FR-/SPEC-§.
+* **Commits**: imperative subject ≤72 chars, body explains *why* in plain words. A
+  short pointer to the spec is fine as an addition, never as the explanation.
 * **Branches**: `feat/<milestone>-<slug>`, PRs into `main`; CI must be green before
   merge (no direct pushes to main).
 
