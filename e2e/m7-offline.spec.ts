@@ -53,6 +53,18 @@ test('SW caches the hashed bundle (assets served cache-first)', async ({ page })
   });
   // index.html + every hashed asset must be precached; CacheStorage visibility
   // is asynchronous in Chromium even after the worker becomes active.
-  await expect.poll(readCache).toMatchObject({ name: 'panelcraft-shell-v1' });
+  // UX08-WP04: the cache name carries the build's content hash, so a new build
+  // always lands in a new cache and `activate` drops the previous shell.
+  await expect.poll(async () => (await readCache()).name).toMatch(/^panelcraft-shell-[0-9a-f]{12}$/);
   await expect.poll(async () => (await readCache()).keys).toBeGreaterThanOrEqual(3);
+  // The manifest, the app icons and the shell document travel with the bundle so
+  // an installed app boots offline with its own identity.
+  const cached = await page.evaluate(async () => {
+    const name = (await caches.keys()).find((n) => n.startsWith('panelcraft-shell-')) ?? '';
+    const cache = await caches.open(name);
+    return (await cache.keys()).map((request) => new URL(request.url).pathname);
+  });
+  for (const path of ['/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']) {
+    expect(cached, `precache is missing ${path}`).toContain(path);
+  }
 });

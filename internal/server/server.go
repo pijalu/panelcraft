@@ -83,9 +83,20 @@ func spaHandler(assets fs.FS) http.Handler {
 			_, _ = w.Write(index)
 			return
 		}
-		if name == "index.html" {
+		switch {
+		case name == "index.html":
 			w.Header().Set("Cache-Control", "no-cache")
-		} else if strings.HasPrefix(name, "assets/") {
+		case name == "manifest.webmanifest":
+			// UX08-WP04: installability needs the manifest MIME the browser accepts
+			// (the stdlib table has no .webmanifest entry) and revalidation so a new
+			// manifest is picked up.
+			w.Header().Set("Content-Type", "application/manifest+json")
+			w.Header().Set("Cache-Control", "no-cache")
+		case name == "sw.js":
+			// The worker must never be cached hard: a stale copy would hide updates.
+			w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-cache")
+		case strings.HasPrefix(name, "assets/"):
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		}
 		fileServer.ServeHTTP(w, r)

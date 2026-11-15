@@ -11,7 +11,7 @@ import type { AppThemeHandle } from './useAppTheme';
 import type { AppThemePreference } from './appTheme';
 import { Menu } from './Menu';
 import { MenuIcon } from './icons';
-import { buildAppMenu } from './appMenuEntries';
+import { buildAppMenu, type AppMenuInstall, type AppMenuUpdate } from './appMenuEntries';
 import { downloadBlob, downloadText, readFileAsBytes, readFileAsText } from './download';
 import { baseName, stem } from './paths';
 import { s } from './strings';
@@ -30,6 +30,10 @@ export interface AppMenuProps {
   onSnapshotsRequest: () => void;
   onClearRequest: () => void;
   onToggleEphemeral: (on: boolean) => void;
+  /** UX08-WP04: install affordance (absent in a standalone window). */
+  install?: AppMenuInstall;
+  /** UX08-WP04: waiting update; `restart` is the explicit consent. */
+  update?: AppMenuUpdate;
 }
 
 export function AppMenu(props: AppMenuProps): ComponentChildren {
@@ -101,6 +105,8 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
       clearData: props.onClearRequest,
       setPrivate: props.onToggleEphemeral,
     },
+    install: props.install,
+    update: props.update,
   });
 
   return (

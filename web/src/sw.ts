@@ -1,29 +1,44 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 /**
- * Service worker (M7-WP3, SPEC N8): offline app shell — precaches the whole
- * hashed bundle; user data never touches the SW (IDB stays page-owned).
- * Strategies: hashed assets → cache-first (immutable); index.html →
- * network-first with cache fallback (updates land on next reload);
- * everything else → network only. Update flow: new SW waits → skipWaiting
- * + clients.claim on install; a `version` banner in the app is notified via
- * the `panelcraft:sw-update` message when an update took over.
+ * Service worker (M7-WP3 + UX08-WP04, SPEC N8): offline app shell — precaches the
+ * whole hashed bundle; user data never touches the SW (IDB stays page-owned).
+ * Strategies: hashed assets → cache-first (immutable); navigation → network-first
+ * with the cached shell as fallback; everything else → network only.
  *
- * Generated at build time by the inline vite plugin in vite.config.ts —
- * `__PRECACHE_MANIFEST__` is substituted with the hashed asset list.
+ * Update flow (consented, never silent):
+ *   install → precache, then WAIT (no skipWaiting) so the running editor keeps its
+ *             controller and unsaved buffers;
+ *   page     → sees `registration.waiting`, offers "Update available";
+ *   accept   → page flushes its own state, posts {type:'panelcraft:sw-activate'},
+ *             we skipWaiting + claim, and the page reloads once on
+ *             controllerchange.
+ *
+ * Every URL is resolved against the worker's own scope, so a build under a
+ * sub-path (`--base=/panelcraft/`) precaches and serves the same way as one at /.
+ *
+ * Generated at build time by the inline vite plugin in vite.config.ts: the
+ * precache manifest (scope-relative hashed assets, manifest, icons) and the
+ * cache version (a content hash of that list) are substituted in place of the
+ * ambient declarations below.
  */
 declare const __PRECACHE_MANIFEST__: string[];
+declare const __SHELL_VERSION__: string;
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
-const CACHE = 'panelcraft-shell-v1';
+const CACHE = `panelcraft-shell-${__SHELL_VERSION__}`;
 const PRECACHE: string[] = __PRECACHE_MANIFEST__;
+const SHELL = new URL('index.html', sw.location.href).href;
+
+/** Resolve a manifest entry (scope-relative) to an absolute URL. */
+const abs = (path: string): string => new URL(path, sw.location.href).href;
 
 sw.addEventListener('install', (event: ExtendableEvent) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);
-      await cache.addAll(PRECACHE);
-      await sw.skipWaiting();
+      await cache.addAll(PRECACHE.map(abs));
+      // No skipWaiting: the page decides when to take the update (WP04).
     })(),
   );
 });
@@ -31,24 +46,29 @@ sw.addEventListener('install', (event: ExtendableEvent) => {
 sw.addEventListener('activate', (event: ExtendableEvent) => {
   event.waitUntil(
     (async () => {
-      // drop stale caches from previous shell versions
+      // Drop every shell cache from another build; workspace data is not here.
       for (const name of await caches.keys()) {
-        if (name !== CACHE) await caches.delete(name);
+        if (name.startsWith('panelcraft-shell-') && name !== CACHE) await caches.delete(name);
       }
       await sw.clients.claim();
-      // notify open pages that a new shell took over (update flow, N8)
-      const clients = await sw.clients.matchAll({ type: 'window' });
-      for (const client of clients) client.postMessage('panelcraft:sw-update');
     })(),
   );
+});
+
+sw.addEventListener('message', (event: ExtendableEvent) => {
+  const data = (event as unknown as MessageEvent).data as { type?: string } | undefined;
+  if (data?.type !== 'panelcraft:sw-activate') return;
+  event.waitUntil(sw.skipWaiting());
 });
 
 sw.addEventListener('fetch', (event: FetchEvent) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== sw.location.origin) return;
+  // Anything outside this worker's scope (e.g. /files/*) stays network-only.
+  if (!url.pathname.startsWith(new URL('./', sw.location.href).pathname)) return;
 
   // hashed, immutable asset → cache-first
-  if (url.pathname.startsWith('/assets/')) {
+  if (url.pathname.includes('/assets/')) {
     event.respondWith(
       (async () => {
         const hit = await caches.match(event.request);
@@ -56,7 +76,7 @@ sw.addEventListener('fetch', (event: FetchEvent) => {
         const res = await fetch(event.request);
         if (res.ok) {
           const cache = await caches.open(CACHE);
-          cache.put(event.request, res.clone());
+          void cache.put(event.request, res.clone());
         }
         return res;
       })(),
@@ -64,18 +84,18 @@ sw.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
 
-  // navigation / index → network-first, offline falls back to cached shell
+  // navigation / index → network-first, offline falls back to the cached shell
   event.respondWith(
     (async () => {
       try {
         const res = await fetch(event.request);
-        if (res.ok) {
+        if (res.ok && event.request.mode === 'navigate') {
           const cache = await caches.open(CACHE);
-          cache.put('/index.html', res.clone());
+          void cache.put(SHELL, res.clone());
         }
         return res;
       } catch {
-        const hit = (await caches.match('/index.html')) ?? (await caches.match(event.request));
+        const hit = (await caches.match(SHELL)) ?? (await caches.match(event.request));
         if (hit) return hit;
         throw new Error('offline and no cached shell');
       }

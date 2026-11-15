@@ -1198,13 +1198,28 @@ marker .pc-arrow[fill='none'] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 6px 16px;
+  gap: var(--pc-space-3);
+  padding: var(--pc-space-1) var(--pc-space-4);
   font-size: var(--pc-text-sm);
-  border-bottom: 1px solid var(--pc-border);
+  border-bottom: 1px solid var(--pc-panel-border);
+}
+
+/* UX08-WP04: an available update is information, not an alarm — neutral surface
+   so it never reads as an error, with the two actions on the trailing edge. */
+.banner-update {
+  background: var(--pc-panel-header-bg);
+  color: var(--pc-fg);
+  gap: var(--pc-space-2);
+}
+
+.banner-update > span {
+  flex: 1;
+  min-width: 0;
 }
 
 .banner button {
+  min-height: var(--pc-control-min);
+  padding: 0 var(--pc-space-2);
   font-family: inherit;
   font-size: var(--pc-text-xs);
   border: 1px solid currentColor;
@@ -1212,6 +1227,30 @@ marker .pc-arrow[fill='none'] {
   background: transparent;
   color: inherit;
   cursor: pointer;
+}
+
+/* The update banner is a neutral surface with body text, so a quiet border reads
+   better than full-strength text colour; error/warn banners keep currentColor to
+   stay inside their own contrast pair. */
+.banner-update button {
+  border-color: var(--pc-input-border);
+}
+
+.banner-update button:hover {
+  border-color: var(--pc-focus-ring);
+}
+
+/* UX08-WP04: Restart changes the running shell, Later only defers — the filled
+   treatment keeps that ranking visible instead of offering two equal choices. */
+.banner button.banner-primary {
+  border-color: var(--pc-button-primary-bg);
+  background: var(--pc-button-primary-bg);
+  color: var(--pc-button-primary-fg);
+  font-weight: 600;
+}
+
+.banner button.banner-primary:hover {
+  filter: brightness(1.08);
 }
 
 .banner-error {

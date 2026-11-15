@@ -22,12 +22,31 @@ export interface AppMenuActions {
   setPrivate: (on: boolean) => void;
 }
 
+/** UX08-WP04: install affordance exposed to the menu. */
+export interface AppMenuInstall {
+  availability: 'installed' | 'ready' | 'guidance';
+  /** Chromium: open the browser's install prompt. */
+  promptInstall?: () => void;
+  /** Everything else: explain the browser's own install action. */
+  guide?: () => void;
+}
+
+/** UX08-WP04: a consensual update waiting for an explicit restart. */
+export interface AppMenuUpdate {
+  state: 'idle' | 'available' | 'deferred' | 'applying';
+  restart: () => void;
+  /** Work the restart would discard (an unapplied buffer), if any. */
+  unapplied: string | null;
+}
+
 export interface AppMenuContext {
   activePath: string | null;
   theme: AppThemePreference;
   privateMode: boolean;
   layout: UiLayout;
   actions: AppMenuActions;
+  install?: AppMenuInstall;
+  update?: AppMenuUpdate;
 }
 
 const THEMES: readonly { id: AppThemePreference; label: string }[] = [
@@ -129,6 +148,44 @@ function flowEntries(ctx: AppMenuContext): MenuEntry[] {
   ];
 }
 
+/** Install + update: application lifecycle, not workspace content. */
+function applicationEntries(ctx: AppMenuContext): MenuEntry[] {
+  const entries: MenuEntry[] = [];
+  const install = ctx.install;
+  // An installed (standalone) window is never told to install itself.
+  if (install !== undefined && install.availability === 'ready') {
+    entries.push({
+      kind: 'item',
+      id: 'install-application',
+      label: s('Install application'),
+      testId: 'app-install',
+      onSelect: () => install.promptInstall?.(),
+    });
+  } else if (install !== undefined && install.availability === 'guidance') {
+    entries.push({
+      kind: 'item',
+      id: 'install-application',
+      label: s('Install from browser menu'),
+      testId: 'app-install',
+      onSelect: () => install.guide?.(),
+    });
+  }
+  const update = ctx.update;
+  if (update !== undefined && (update.state === 'available' || update.state === 'deferred')) {
+    entries.push({
+      kind: 'item',
+      id: 'update-restart',
+      label:
+        update.unapplied === null
+          ? s('Restart to update')
+          : s('Restart to update (discards unapplied code)'),
+      testId: 'app-update-restart',
+      onSelect: update.restart,
+    });
+  }
+  return entries.length === 0 ? [] : [...entries, { kind: 'separator', id: 'group-application' }];
+}
+
 function workspaceEntries(ctx: AppMenuContext): MenuEntry[] {
   return [
     {
@@ -175,6 +232,7 @@ export function buildAppMenu(ctx: AppMenuContext): MenuEntry[] {
       onSelect: ctx.actions.history,
     },
     { kind: 'separator', id: 'group-history' },
+    ...applicationEntries(ctx),
     ...workspaceEntries(ctx),
   ];
 }

@@ -14,9 +14,12 @@ import (
 func testOptions(t *testing.T) Options {
 	t.Helper()
 	bundle := fstest.MapFS{
-		"index.html":       {Data: []byte("<!doctype html><html><body>spa</body></html>")},
-		"assets/app.js":    {Data: []byte("console.log('app')")},
-		"assets/style.css": {Data: []byte("body{}")},
+		"index.html":           {Data: []byte("<!doctype html><html><body>spa</body></html>")},
+		"assets/app.js":        {Data: []byte("console.log('app')")},
+		"assets/style.css":     {Data: []byte("body{}")},
+		"manifest.webmanifest": {Data: []byte(`{"name":"PanelCraft"}`)},
+		"sw.js":                {Data: []byte("self.addEventListener('fetch',()=>{})")},
+		"icons/icon-192.png":   {Data: []byte("png")},
 	}
 	return Options{Assets: bundle}
 }
@@ -177,5 +180,34 @@ func TestFilesNoWriteEndpoints(t *testing.T) {
 	}
 	if string(data) != "hi" {
 		t.Fatalf("file mutated by write attempt: %q", data)
+	}
+}
+
+// UX08-WP04: a PWA is only installable when the manifest is served with a JSON
+// MIME type and the worker is revalidated on every load.
+func TestPWAManifestAndWorkerHeaders(t *testing.T) {
+	ts := newTestServer(t, testOptions(t))
+
+	manifest := get(t, ts.URL+"/manifest.webmanifest")
+	if manifest.StatusCode != http.StatusOK {
+		t.Fatalf("GET manifest: status = %d, want 200", manifest.StatusCode)
+	}
+	ct := manifest.Header.Get("Content-Type")
+	if !strings.Contains(ct, "application/manifest+json") {
+		t.Errorf("manifest Content-Type = %q, want application/manifest+json", ct)
+	}
+
+	worker := get(t, ts.URL+"/sw.js")
+	if worker.StatusCode != http.StatusOK {
+		t.Fatalf("GET sw.js: status = %d, want 200", worker.StatusCode)
+	}
+	if ct := worker.Header.Get("Content-Type"); !strings.Contains(ct, "javascript") {
+		t.Errorf("sw.js Content-Type = %q, want a javascript type", ct)
+	}
+	if cc := worker.Header.Get("Cache-Control"); !strings.Contains(cc, "no-cache") {
+		t.Errorf("sw.js Cache-Control = %q, want no-cache (an update must be visible)", cc)
+	}
+	if svc := worker.Header.Get("Service-Worker-Allowed"); svc != "" && svc != "/" {
+		t.Errorf("Service-Worker-Allowed = %q, want empty or /", svc)
 	}
 }

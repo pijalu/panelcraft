@@ -1,0 +1,43 @@
+{
+  "$comment": "SPDX-License-Identifier: GPL-3.0-only — generated icons: scripts/gen-icons.go (checked in, no external asset).",
+  "id": "./",
+  "name": "PanelCraft",
+  "short_name": "PanelCraft",
+  "description": "Offline-first C4 and architecture diagrams: WYSIWYG canvas, PDL code view, flows.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#1a1d21",
+  "categories": ["developer", "productivity", "graphics"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

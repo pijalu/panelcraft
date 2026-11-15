@@ -21,6 +21,10 @@ function actions(): AppMenuActions {
   };
 }
 
+function contextWith(overrides: Partial<AppMenuContext> = {}): AppMenuContext {
+  return context(overrides);
+}
+
 function context(overrides: Partial<AppMenuContext> = {}): AppMenuContext {
   return {
     activePath: 'main.pcd',
@@ -42,6 +46,14 @@ function find(entries: MenuEntry[], testId: string): MenuEntry {
     if (entry.kind === 'submenu') pending.push(...entry.items);
   }
   throw new Error(`menu entry ${testId} not found`);
+}
+
+function findOptional(entries: MenuEntry[], testId: string): MenuEntry | undefined {
+  try {
+    return find(entries, testId);
+  } catch {
+    return undefined;
+  }
 }
 
 function select(entries: MenuEntry[], testId: string): void {
@@ -118,5 +130,56 @@ describe('application menu model', () => {
     select(entries, 'tb-snapshots');
     expect(ctx.actions.history).toHaveBeenCalledTimes(1);
     expect(ctx.actions.snapshots).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('application menu install and update entries (UX08-WP04)', () => {
+  it('offers install only when the browser can, and runs the prompt', () => {
+    const promptInstall = vi.fn(async () => 'accepted' as const);
+    const entries = buildAppMenu(
+      contextWith({ install: { availability: 'ready', promptInstall } }),
+    );
+    const entry = find(entries, 'app-install');
+    expect(entry.kind).toBe('item');
+    if (entry.kind !== 'item') throw new Error('expected an item');
+    expect(entry.disabled).not.toBe(true);
+    entry.onSelect();
+    expect(promptInstall).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows written guidance instead of a dead prompt in browsers without one', () => {
+    const guidance = vi.fn();
+    const entries = buildAppMenu(
+      contextWith({ install: { availability: 'guidance', guide: guidance } }),
+    );
+    const entry = find(entries, 'app-install');
+    if (entry.kind !== 'item') throw new Error('expected an item');
+    expect(entry.label).toContain('browser');
+    entry.onSelect();
+    expect(guidance).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the install entry in an installed (standalone) window', () => {
+    const entries = buildAppMenu(contextWith({ install: { availability: 'installed' } }));
+    expect(findOptional(entries, 'app-install')).toBeUndefined();
+  });
+
+  it('offers the restart once a worker waits, even after Later', () => {
+    for (const state of ['available', 'deferred'] as const) {
+      const restart = vi.fn();
+      const entries = buildAppMenu(
+        contextWith({ update: { state, restart, unapplied: null } }),
+      );
+      const entry = find(entries, 'app-update-restart');
+      if (entry.kind !== 'item') throw new Error('expected an item');
+      expect(entry.disabled).not.toBe(true);
+      entry.onSelect();
+      expect(restart).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('omits the restart while no update is pending', () => {
+    const entries = buildAppMenu(contextWith({ update: { state: 'idle', restart: vi.fn(), unapplied: null } }));
+    expect(findOptional(entries, 'app-update-restart')).toBeUndefined();
   });
 });

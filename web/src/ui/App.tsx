@@ -36,9 +36,11 @@ import { usePresentation } from './usePresentation';
 import type { IllustrationId } from '../engine/anim/illustrations';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
 import { useCodeSync } from './useCodeSync';
-import { useDivergedClose } from './useDivergedClose';
+import { useShellLifecycle } from './useShellLifecycle';
+import type { useDivergedClose } from './useDivergedClose';
 import { useFlowStage } from './useFlowStage';
 import { useDrawer } from './useDrawer';
+
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
 import type { CodeSyncHandle } from './useCodeSync';
 import type { WorkspaceManager } from '../workspace/workspace';
@@ -605,11 +607,13 @@ export function App() {
   const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
   const pres = usePresentation(player);
 
-  const diverged = useDivergedClose({
+  const { diverged, pwa } = useShellLifecycle({
     manager: ws.manager,
     activePath,
     machine: code.machine,
     snapshot: code.snapshot,
+    busy: pres.presenting || player.state.status === 'playing',
+    onFlash: setFlash,
   });
 
   return (
@@ -631,6 +635,7 @@ export function App() {
         {...statusProps(code.snapshot, ws.ready, manager)}
         onHistoryRequest={() => setHistoryOpen(true)}
         onPresentRequest={pres.start}
+        pwa={pwa}
       />
       <AppBody
         ws={ws}

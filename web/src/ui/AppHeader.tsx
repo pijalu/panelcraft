@@ -11,6 +11,7 @@ import type { WorkspaceManager } from '../workspace/workspace';
 import type { UiLayoutHandle } from './useUiLayout';
 import { s } from './strings';
 import type { AppThemeHandle } from './useAppTheme';
+import type { PwaHandle } from './usePwa';
 
 function errorToShow(manager: WorkspaceManager, dismissed: string | null, ready: boolean): string | null {
   if (!ready || manager.openError === null || manager.openError === dismissed) return null;
@@ -33,6 +34,8 @@ export function AppHeader(props: {
   dirty: boolean;
   savedAt: number | null;
   problems: number;
+  /** UX08-WP04: install + update lifecycle owned by the shell. */
+  pwa: PwaHandle;
 }) {
   const { ws } = props;
   const [dismissedError, setDismissedError] = useState<string | null>(null);
@@ -58,6 +61,16 @@ export function AppHeader(props: {
             ws.clearReminder();
             void ws.manager.setEphemeral(on);
           }}
+          install={{
+            availability: props.pwa.install,
+            promptInstall: () => void props.pwa.installPrompt(),
+            guide: () => void props.pwa.installPrompt(),
+          }}
+          update={{
+            state: props.pwa.update,
+            unapplied: props.pwa.unapplied,
+            restart: () => void props.pwa.restart(),
+          }}
         />
       </header>
       <Banners
@@ -67,6 +80,17 @@ export function AppHeader(props: {
         reminder={ws.reminder}
         onDismissError={() => setDismissedError(ws.manager.openError)}
         onDismissReminder={ws.clearReminder}
+        update={
+          props.pwa.updateVisible
+            ? {
+                unapplied: props.pwa.unapplied,
+                // Restart is explicit consent: with unapplied code the banner asks
+                // first, so this confirmed click forces the swap.
+                onRestart: () => void props.pwa.restart({ force: props.pwa.unapplied !== null }),
+                onLater: () => props.pwa.later(),
+              }
+            : null
+        }
       />
     </>
   );

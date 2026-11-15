@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
-import { defineConfig, type Plugin } from 'vite';
+import { createHash } from 'node:crypto';
+import { defineConfig, transformWithOxc, type Plugin } from 'vite';
 import preact from '@preact/preset-vite';
 import { readdirSync, statSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -9,39 +10,57 @@ const webDir = join(dirname(fileURLToPath(import.meta.url)), 'web');
 const distDir = join(webDir, 'dist');
 
 /**
- * M7-WP3 (SPEC N8): emit the hand-rolled service worker with the hashed
- * precache manifest substituted (no vite-plugin-pwa — ADR-0004 stdlib-first:
- * ~40 lines of owned plugin vs a dependency). Runs in `closeBundle`, after
- * dist is final.
+ * M7-WP3 (SPEC N8) + UX08-WP04: emit the hand-rolled service worker with a
+ * scope-relative precache manifest and a content-hash cache identity (no
+ * vite-plugin-pwa — ADR-0004 stdlib-first: ~50 lines of owned plugin).
+ * Runs in `writeBundle`, after dist is final.
  */
 function serviceWorker(): Plugin {
   return {
     name: 'panelcraft-sw',
-    writeBundle() {
-      emitSw();
+    async writeBundle(options) {
+      // Emit beside the bundle that was actually written: `--outDir`/`--base`
+      // overrides (sub-path hosting checks) must not drop the worker into dist.
+      await emitSw(options.dir ?? distDir);
     },
   };
 }
 
-function emitSw(): void {
-  const index = join(distDir, 'index.html');
-  if (!existsSync(index)) return;
-  const assets: string[] = ['/index.html'];
-  const assetsDir = join(distDir, 'assets');
-  if (existsSync(assetsDir)) {
-    for (const f of readdirSync(assetsDir)) {
-      if (statSync(join(assetsDir, f)).isFile()) assets.push(`/assets/${f}`);
+/** Every file the shell needs offline, as scope-relative URLs. */
+function precacheEntries(dist: string): string[] {
+  const entries = ['index.html', 'manifest.webmanifest'];
+  const walk = (dir: string, prefix: string): void => {
+    if (!existsSync(dir)) return;
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) walk(full, `${prefix}${name}/`);
+      else entries.push(`${prefix}${name}`);
     }
-  }
-  const sw = readSwSource()
-    .replace(/^export\s+(default\s+)?/gm, '') // strip module syntax
-    .replace(/^\s*declare\s+const[^\n]*\n/gm, '') // strip TS-only decls
-    .replace(/\s+as\s+unknown\s+as\s+ServiceWorkerGlobalScope/g, '') // strip TS casts
-    .replace(/const PRECACHE: string\[\] =/, 'const PRECACHE =')
-    .replace(/\(event: ExtendableEvent\)/g, '(event)')
-    .replace(/\(event: FetchEvent\)/g, '(event)')
-    .replaceAll('__PRECACHE_MANIFEST__', JSON.stringify(assets)); // LAST: real sites incl. doc comment
-  writeFileSync(join(distDir, 'sw.js'), sw);
+  };
+  walk(join(dist, 'assets'), 'assets/');
+  walk(join(dist, 'icons'), 'icons/');
+  return entries.map((entry) => `./${entry}`);
+}
+
+async function emitSw(dir: string): Promise<void> {
+  const index = join(dir, 'index.html');
+  if (!existsSync(index)) return;
+  const precache = precacheEntries(dir);
+  // Cache identity is derived from the emitted file list, so a new build always
+  // gets a new cache name and `activate` can drop the previous shell.
+  const version = createHash('sha256').update(precache.join('\n')).digest('hex').slice(0, 12);
+  // Transpile instead of pattern-stripping: the worker is TypeScript with real
+  // annotations, and a regex stripper silently emitted invalid JS.
+  const { code } = await transformWithOxc(readSwSource(), 'sw.ts', {
+    lang: 'ts',
+    target: 'es2022',
+  });
+  const sw = code
+    .replaceAll('__PRECACHE_MANIFEST__', JSON.stringify(precache))
+    .replaceAll('__SHELL_VERSION__', JSON.stringify(version));
+  // The worker is emitted at the bundle root, so a sub-path build serves it at
+  // <base>/sw.js and its scope-relative URLs resolve inside that scope.
+  writeFileSync(join(dir, 'sw.js'), sw);
 }
 
 /** Read sw.ts as text — it is emitted as-is (self-contained, no bundler). */

@@ -7,6 +7,19 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ### Added — UX-08 application experience
 
+- **UX-08 WP04** PanelCraft is installable: a base-aware `manifest.webmanifest` with a stable ID,
+  relative `start_url`/`scope`, `standalone` display and generated 192/512 px any+maskable icons
+  (`scripts/gen-icons.go`, stdlib only). Chromium reports no installability errors. The app menu
+  offers **Install application** when the browser can prompt and **Install from browser menu**
+  otherwise; a standalone window shows neither. The service worker now precaches scope-relative
+  URLs, so the same bundle installs and works offline under `/` and under a sub-path.
+- **UX-08 WP04** Updates are user-consented. A new worker waits (no `skipWaiting` on install); the
+  shell shows a non-blocking *Update available* banner with a primary **Restart** and a secondary
+  **Later**, keeps the offer in the app menu after Later, and queues it while a flow plays or a
+  presentation runs instead of stealing focus. Restart flushes the workspace first, asks before
+  discarding unapplied code, then reloads exactly once on `controllerchange`.
+- **UX-08 WP04 fix** A worker that claims the page (`clients.claim()`) no longer triggers a silent
+  reload: only an explicit Restart reloads, so the first visit cannot duplicate canvas state.
 - **UX-08 WP03** The editor shell now runs on one semantic chrome token layer (activity rail,
   panels, tabs, lists, menus, inputs, buttons, focus, disabled, banners, scrollbars) with WCAG AA
   pairs asserted in both themes; chrome controls use the owned 16 px inline SVG icon set instead of
