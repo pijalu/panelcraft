@@ -7,6 +7,21 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ### Added — UX-08 application experience
 
+- **UX-08 WP13** Presenting is now a first-class action: a visible **Present** button (and the
+  application menu) opens a launcher that lists every flow in the file with its purpose, step
+  count and estimated length, derived from the playback plan (dwell plus camera transit). The
+  camera frames each step by itself — introductions and conclusions fit the whole diagram, a
+  message fits both participants with the connector and its label, a process step fits its shape,
+  a parallel step fits all lanes, while a chooser, a note or a `goto` keeps the current view.
+  Selecting a step exposes a **Camera** field — **Automatic**, **Hold**, or **Use current view**
+  (records the viewport centre in canvas coordinates plus the zoom, so the framing survives a
+  different window size), with clamped **Zoom** (0.1–4) and **Transition** (0–300 ms) fields. Step
+  descriptions now surface under the narration line in both the transport and the present dock as
+  part of the ARIA live region. Reduced motion applies each framing instantly with no glide. Two
+  fixes came out of the present-mode screenshots: the tab strip no longer shows through the
+  chrome-free shell, and the beat framing is recomputed for the wider present canvas so the step
+  stays centred.
+
 - **UX-08 WP12** Flows are now discoverable and authorable without memorising ids. Every
   collapsed panel keeps a labelled rail entry, so *flow steps* is visible in the default shell
   instead of hiding behind the View menu. The pane opens on a short explanation and **New flow**;

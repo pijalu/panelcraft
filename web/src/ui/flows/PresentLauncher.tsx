@@ -77,7 +77,7 @@ export function PresentLauncher({ entries, onPresent, onClose }: PresentLauncher
                       </span>
                     )}
                     <span class="launcher-meta" data-testid={`launcher-meta-${entry.key}`}>
-                      {s('{steps} steps, about {length}', {
+                      {s(entry.steps === 1 ? '{steps} step, about {length}' : '{steps} steps, about {length}', {
                         steps: entry.steps,
                         length: formatDuration(entry.estimatedMs),
                       })}

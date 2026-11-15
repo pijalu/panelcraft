@@ -448,6 +448,7 @@ const EN = {
     "No flows in this file yet. Add one in Flow Steps.",
   "Present {title}": "Present {title}",
   "{steps} steps, about {length}": "{steps} steps, about {length}",
+  "{steps} step, about {length}": "{steps} step, about {length}",
   "Camera": "Camera",
   "Automatic": "Automatic",
   "Hold": "Hold",

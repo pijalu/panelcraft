@@ -334,6 +334,27 @@ describe('presentation camera + description (UX08-WP13)', () => {
     expect(h.camera.intents.at(-1)).toEqual({ mode: 'hold' });
   });
 
+  it('refit re-applies the current framing without touching playback state', () => {
+    const h = setupWalk();
+    act(() => {
+      h.result.current.stepTo(2);
+    });
+    const before = h.result.current.state;
+    const calls = h.camera.intents.length;
+    act(() => {
+      h.result.current.refit();
+    });
+    expect(h.camera.intents.length).toBe(calls + 1);
+    expect(h.camera.intents.at(-1)).toEqual({
+      mode: 'focus',
+      x: 420,
+      y: 180,
+      zoom: 1.5,
+      durationMs: 0,
+    });
+    expect(h.result.current.state).toEqual(before);
+  });
+
   it('restart re-applies the first beat camera; exit restores the viewport', () => {
     const h = setupWalk();
     act(() => {

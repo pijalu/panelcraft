@@ -36,6 +36,8 @@ export interface FlowPlayerApi {
   restart(): void;
   stepTo(index1: number): void;
   choose(branchIndex: number): void;
+  /** UX08-WP13: recompute the current beat's framing for the current viewport. */
+  refit(): void;
   setRectProvider(r: FlowRects): void;
   /** F-25 (peak-end): export the current canvas as SVG from the closing card. */
   exportSvg?: () => void;
@@ -74,6 +76,7 @@ export function useFlowPlayer(deps: FlowPlayerDeps): FlowPlayerApi {
     restart: () => runner.restart(),
     stepTo: (index1) => runner.stepTo(index1),
     choose: (branchIndex) => runner.choose(branchIndex),
+    refit: () => runner.refit(),
     setRectProvider: (r) => runner.setRectProvider(r),
   };
 }

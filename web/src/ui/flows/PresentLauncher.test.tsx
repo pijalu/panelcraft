@@ -32,6 +32,20 @@ describe('PresentLauncher (UX08-WP13)', () => {
     expect(screen.getByTestId('launcher-meta-refund').textContent).toBe('2 steps, about 1 min 5 s');
   });
 
+  it('uses the singular for a one-step flow', () => {
+    render(<PresentLauncher entries={[ENTRIES[1]!]} onPresent={() => {}} onClose={() => {}} />);
+    expect(screen.getByTestId('launcher-meta-refund').textContent).toBe('2 steps, about 1 min 5 s');
+    cleanup();
+    render(
+      <PresentLauncher
+        entries={[{ key: 'solo', title: 'Solo', steps: 1, estimatedMs: 4000 }]}
+        onPresent={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByTestId('launcher-meta-solo').textContent).toBe('1 step, about 4 s');
+  });
+
   it('presents the chosen flow', () => {
     const onPresent = vi.fn();
     render(<PresentLauncher entries={ENTRIES} onPresent={onPresent} onClose={() => {}} />);

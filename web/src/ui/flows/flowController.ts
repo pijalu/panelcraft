@@ -231,6 +231,21 @@ export class FlowRunner {
     this.advance(); // resume after the goto step
   }
 
+  /** Re-apply the current beat's camera to the CURRENT viewport (UX08-WP13).
+   * Entering presentation mode resizes the canvas, so the framing computed for
+   * the editor size must be recomputed or the beat drifts off-centre. Playback
+   * state, timer and animation are untouched. */
+  refit(): void {
+    const f = this.stack.at(-1);
+    const beat = f?.plan.beats[f.index];
+    if (beat === undefined) return;
+    this.io.camera.focus(
+      beat.cameraIds.map((id) => this.rects.rectOf(id)).filter((r): r is Rect => r !== null),
+      this.io.currentViewport(),
+      beat.camera,
+    );
+  }
+
   start(file: string, flowKey: string): void {
     this.cancelTimer();
     this.io.animator.stop();

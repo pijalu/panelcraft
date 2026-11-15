@@ -423,6 +423,7 @@ body {
 
 /* F-16: present mode — editor chrome disappears, the diagram owns the viewport */
 .app-shell.presenting .app-header,
+.app-shell.presenting .tab-strip,
 .app-shell.presenting .sidebar,
 .app-shell.presenting .palette,
 .app-shell.presenting .code-pane,

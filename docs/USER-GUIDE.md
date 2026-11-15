@@ -175,9 +175,21 @@ and the CLI's `--theme` option.
    illustration style (token, pulse, glow, burst, split, trail) is chosen per
    flow in the Flow Steps panel. When a flow ends, a closing card offers replay,
    `Export SVG` and close.
-8. **Present**: `⛶` enters the chrome-free shell — click or press Space/→ to
-   advance, ← to go back, `P` pauses, `R` restarts, `Esc` exits and restores the
-   previous chrome and viewport.
+8. **Present**: **Present** in the header (or the application menu) opens the
+   launcher — every flow in the active file with its purpose, step count and
+   estimated length. Picking one starts playback and enters the chrome-free
+   shell: click or press Space/→ to advance, ← to go back, `P` pauses, `R`
+   restarts, `Esc` exits and restores the previous chrome and viewport. The step's
+   **Description** appears under the narration line (an ARIA live region), so a
+   walkthrough can be read without the editor.
+   The camera frames each step by itself: an introduction or conclusion shows the
+   whole diagram, a message shows both participants together with the connector
+   and its label, a process step shows its shape, and a parallel step shows all
+   lanes at once. A chooser, a note and a `goto` keep the current view. To override
+   one step, select it and use the inspector's **Camera** field — **Automatic**
+   (the default framing), **Hold** (keep the previous view) or **Use current
+   view**, which records the canvas point in the middle of the screen and the
+   current zoom (then **Zoom** and **Transition (ms)**, 0–300, refine it).
 9. **Export a sequence**: select a flow, then choose `.seq.mmd` beside *Steps*.
   The download is a Mermaid `sequenceDiagram` with participants, messages,
   alternatives, parallel lanes and notes. `goto` navigation, per-step delays and

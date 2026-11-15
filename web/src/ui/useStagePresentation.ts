@@ -27,6 +27,11 @@ export function useStagePresentation(deps: StagePresentationDeps): StagePresenta
       if (deps.activePath === null) return;
       deps.player.start(deps.activePath, flowKey);
       pres.start();
+      // The present shell widens the canvas, so the beat's framing has to be
+      // recomputed after that layout lands (next frame).
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => deps.player.refit());
+      }
     },
   });
   return { ...pres, launcher };
