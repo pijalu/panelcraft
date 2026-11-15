@@ -5,6 +5,7 @@
 // e2e can assert it and the host can attach aria-live semantics). Purely
 // presentational: all behavior lives in the FlowRunner executor.
 import type { FlowPlayerApi } from './useFlowPlayer';
+import { CloseIcon, FullscreenIcon, PauseIcon, PlayIcon, RestartIcon, StepFirstIcon, StepLastIcon } from '../icons';
 import { s } from '../strings';
 
 export interface PlayBarProps {
@@ -36,7 +37,8 @@ export function PlayBar({ player: p, onPresent }: PlayBarProps) {
           title={s("Present (fullscreen, no editor chrome)")}
           onClick={onPresent}
         >
-          {s("⛶")}{' '}</button>
+          <FullscreenIcon />
+        </button>
       )}
       <button
         type="button"
@@ -44,14 +46,16 @@ export function PlayBar({ player: p, onPresent }: PlayBarProps) {
         title={s("Restart")}
         onClick={() => p.restart()}
       >
-        {s("↺")}{' '}</button>
+        <RestartIcon />
+      </button>
       <button
         type="button"
         data-testid="pb-step-back"
         title={s("Step back")}
         onClick={() => p.stepTo(Math.max(1, (st.progress?.index ?? 1) - 1))}
       >
-        {s("⏮")}{' '}</button>
+        <StepFirstIcon />
+      </button>
       <button
         type="button"
         data-testid="pb-toggle"
@@ -62,7 +66,7 @@ export function PlayBar({ player: p, onPresent }: PlayBarProps) {
           else p.resume();
         }}
       >
-        {st.status === 'playing' ? '⏸' : '▶'}
+        {st.status === 'playing' ? <PauseIcon /> : <PlayIcon />}
       </button>
       <button
         type="button"
@@ -70,9 +74,11 @@ export function PlayBar({ player: p, onPresent }: PlayBarProps) {
         title={s("Step forward")}
         onClick={() => p.stepTo((st.progress?.index ?? 0) + 1)}
       >
-        {s("⏭")}{' '}</button>
+        <StepLastIcon />
+      </button>
       <button type="button" data-testid="pb-exit" title={s("Exit")} onClick={() => p.exit()}>
-        {s("✕")}{' '}</button>
+        <CloseIcon />
+      </button>
       <span class="playbar-progress" data-testid="pb-progress">
         {st.progress === null ? '' : `${st.progress.index}/${st.progress.total}`}
       </span>

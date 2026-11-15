@@ -19,7 +19,9 @@ describe('App shell + palette (WP9)', () => {
   function mount() {
     const { container } = render(<App />);
     fireEvent.click(screen.getByTestId('expand-props'));
-    const svg = container.querySelector('svg') as SVGSVGElement;
+    // UX08-WP03: the chrome carries inline SVG icons now, so the canvas must be
+    // addressed by its test id instead of "the first svg" in the shell.
+    const svg = screen.getByTestId('canvas') as unknown as SVGSVGElement;
     svg.getBoundingClientRect = () =>
       ({ x: 40, y: 40, left: 40, top: 40, width: 800, height: 600, right: 840, bottom: 640, toJSON: () => ({}) }) as DOMRect;
     return { container, svg };
@@ -89,9 +91,9 @@ describe('properties panel edits (WP7)', () => {
 
   function mountAndSelect() {
     const svg = (() => {
-      const r = render(<App />);
+      render(<App />);
       fireEvent.click(screen.getByTestId('expand-props'));
-      const s = r.container.querySelector('svg') as SVGSVGElement;
+      const s = screen.getByTestId('canvas') as unknown as SVGSVGElement;
       s.getBoundingClientRect = () =>
         ({ x: 0, y: 0, left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON: () => ({}) }) as DOMRect;
       return { svg: s };
@@ -143,7 +145,7 @@ async function mountReady() {
   for (const panel of ['sidebar', 'code', 'props']) {
     fireEvent.click(screen.getByTestId(`expand-${panel}`));
   }
-  const svg = container.querySelector('svg') as SVGSVGElement;
+  const svg = container.querySelector('svg[data-testid="canvas"]') as SVGSVGElement;
   svg.getBoundingClientRect = () =>
     ({ x: 0, y: 0, left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON: () => ({}) }) as DOMRect;
   return { container, svg };
@@ -242,6 +244,18 @@ describe('workspace chrome (M3)', () => {
     expect(screen.getByTestId('tab-temp.pcd')).not.toBeNull();
     fireEvent.click(screen.getByTestId('tab-close-temp.pcd'));
     expect(screen.queryByTestId('tab-temp.pcd')).toBeNull();
+  });
+
+  it('clear-data dialog closes on Escape from anywhere and starts on the field', async () => {
+    await mountReady();
+    chooseAppMenu('tb-clear-data');
+    const dialog = screen.getByTestId('clear-dialog');
+    // The confirm field takes focus, so a keyboard user types DELETE without hunting.
+    expect(document.activeElement).toBe(screen.getByTestId('clear-confirm-input'));
+    // Escape reaches the dialog even when focus sits on a sibling button (modal contract).
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    await act(async () => {});
+    expect(screen.queryByTestId('clear-dialog')).toBeNull();
   });
 
   it('clear-data dialog requires typing DELETE (FR-S4)', async () => {

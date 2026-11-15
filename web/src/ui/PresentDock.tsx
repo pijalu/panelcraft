@@ -4,6 +4,7 @@
 // Docked at the bottom so the diagram keeps the whole viewport.
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
 import { progressDots } from './present';
+import { CloseIcon, PauseIcon, PlayIcon, RestartIcon, StepBackIcon, StepForwardIcon } from './icons';
 import { s } from './strings';
 
 export interface PresentDockProps {
@@ -43,14 +44,15 @@ export function PresentDock({ player: p }: PresentDockProps) {
           aria-label={s('Previous step')}
           onClick={() => p.stepTo(Math.max(1, index - 1))}
         >
-          {s("‹")}{' '}</button>
+          <StepBackIcon />
+        </button>
         <button
           type="button"
           data-testid="present-toggle"
           aria-label={st.status === 'playing' ? s('Pause') : s('Play')}
           onClick={() => (st.status === 'playing' ? p.pause() : p.resume())}
         >
-          {st.status === 'playing' ? '⏸' : '▶'}
+          {st.status === 'playing' ? <PauseIcon /> : <PlayIcon />}
         </button>
         <button
           type="button"
@@ -58,14 +60,17 @@ export function PresentDock({ player: p }: PresentDockProps) {
                       aria-label={s('Next step')}
           onClick={() => p.stepTo(index + 1)}
         >
-          {s("›")}{' '}</button>
+          <StepForwardIcon />
+        </button>
         <span class="present-counter" data-testid="present-counter">
           {index} {s("/")}{' '}{total}
         </span>
         <button type="button" data-testid="present-restart" aria-label={s('Restart')} onClick={() => p.restart()}>
-          {s("↺")}{' '}</button>
+          <RestartIcon />
+        </button>
         <button type="button" data-testid="present-exit" aria-label={s('Exit presentation')} onClick={() => p.exit()}>
-          {s("✕")}{' '}</button>
+          <CloseIcon />
+        </button>
       </div>
       <div class="present-dots" data-testid="present-dots">
         {dots.map((d) => (

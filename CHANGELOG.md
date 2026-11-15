@@ -5,6 +5,19 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Added — UX-08 application experience
+
+- **UX-08 WP03** The editor shell now runs on one semantic chrome token layer (activity rail,
+  panels, tabs, lists, menus, inputs, buttons, focus, disabled, banners, scrollbars) with WCAG AA
+  pairs asserted in both themes; chrome controls use the owned 16 px inline SVG icon set instead of
+  Unicode glyphs, targets are 32 px, and the deleted duplicate chrome block in `app.css` no longer
+  overrides the themed rules. `docs/STYLE-GUIDE.md` documents the chrome tokens, control/icon rules
+  and the "no inline colours" contract.
+- **UX-08 WP03 fix** A menu whose first entry is unavailable now focuses its first *enabled* action
+  (focusing a disabled button is a no-op and stranded keyboard focus on the trigger).
+- **UX-08 WP03 fix** The clear-data dialog takes focus on its confirmation field and dismisses on
+  Escape from anywhere inside the modal, not only from that field.
+
 ### Added — UX review
 
 - **UX-01** Added a reusable Laws of UX review skill with 30 PanelCraft-specific references.

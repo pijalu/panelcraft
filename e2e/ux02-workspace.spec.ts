@@ -31,6 +31,23 @@ async function dock(page: Page, panel: Panel, target: Dock): Promise<void> {
   await expect(page.getByTestId(`panel-title-${panel}`)).toBeFocused();
 }
 
+/** Keyboard-only menu activation. The item must be rendered before it can take
+ * focus, otherwise a slow render swallows the Enter and the command silently
+ * never runs (the symptom was "panel-title-code not found" under load). */
+async function pressMenuItem(page: Page, triggerId: string, itemId: string): Promise<void> {
+  await page.getByTestId(triggerId).focus();
+  await page.keyboard.press('Enter');
+  // The menu primitive focuses its first enabled item when it opens. Waiting for
+  // that settled state keeps the following focus() from racing the initial
+  // autofocus (under load the race activated the wrong item).
+  const menu = page.locator('[role="menu"]').first();
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('[role="menuitem"]:focus')).toHaveCount(1);
+  const item = page.getByTestId(itemId);
+  await item.focus();
+  await page.keyboard.press('Enter');
+}
+
 async function axe(page: Page): Promise<void> {
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   const violations = result.violations.flatMap((violation) =>
@@ -207,39 +224,23 @@ test('UX-02: unapplied code survives docking, floating, close and reopen', async
 
 test('UX-02: keyboard-only open, dock, float, close, reopen and reset', async ({ page }) => {
   await ready(page);
-  await page.getByTestId('app-menu').focus();
-  await page.keyboard.press('Enter');
-  await page.getByTestId('view-panel-code').focus();
-  await page.keyboard.press('Enter');
+  await pressMenuItem(page, 'app-menu', 'view-panel-code');
   await expect(page.getByTestId('panel-title-code')).toBeFocused();
 
-  await page.getByTestId('panel-menu-code').focus();
-  await page.keyboard.press('Enter');
-  await page.getByTestId('dock-code-left').focus();
-  await page.keyboard.press('Enter');
+  await pressMenuItem(page, 'panel-menu-code', 'dock-code-left');
   await expect(page.locator('[data-panel="code"]')).toHaveAttribute('data-dock', 'left');
   await expect(page.getByTestId('panel-title-code')).toBeFocused();
 
-  await page.getByTestId('panel-menu-code').focus();
-  await page.keyboard.press('Enter');
-  await page.getByTestId('dock-code-float').focus();
-  await page.keyboard.press('Enter');
+  await pressMenuItem(page, 'panel-menu-code', 'dock-code-float');
   await expect(page.locator('[data-panel="code"]')).toHaveAttribute('data-dock', 'float');
   await expect(page.getByTestId('panel-title-code')).toBeFocused();
 
-  await page.getByTestId('panel-menu-code').focus();
-  await page.keyboard.press('Enter');
-  await page.getByTestId('close-code').focus();
-  await page.keyboard.press('Enter');
+  await pressMenuItem(page, 'panel-menu-code', 'close-code');
   await expect(page.getByTestId('app-menu')).toBeFocused();
-  await page.keyboard.press('Enter');
-  await page.getByTestId('view-panel-code').focus();
-  await page.keyboard.press('Enter');
+
+  await pressMenuItem(page, 'app-menu', 'view-panel-code');
   await expect(page.getByTestId('panel-title-code')).toBeFocused();
 
-  await page.getByTestId('app-menu').focus();
-  await page.keyboard.press('Enter');
-  await page.getByTestId('reset-workspace-layout').focus();
-  await page.keyboard.press('Enter');
+  await pressMenuItem(page, 'app-menu', 'reset-workspace-layout');
   await expect(page.getByTestId('panel-title-palette')).toBeFocused();
 });

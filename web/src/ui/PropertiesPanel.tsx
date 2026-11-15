@@ -13,6 +13,7 @@ import type { DiagramLink, DiagramObject } from './CanvasController';
 import { CollapseButton } from './PanelChrome';
 import { LINE_OPTIONS, MARKER_OPTIONS, ROUTE_OPTIONS, WIDTH_OPTIONS } from './connectorOptions';
 import { VisualPicker } from './VisualPicker';
+import { CloseIcon, DisclosureClosedIcon, DisclosureOpenIcon } from './icons';
 import { s } from './strings';
 
 type ObjectChange = CanvasController['updateObject'];
@@ -68,7 +69,7 @@ function Section(props: {
         aria-controls={`prop-section-body-${props.id}`}
         onClick={() => props.onToggle?.(props.id)}
       >
-        <span aria-hidden="true">{props.open ? '▾' : '▸'}</span>
+        <span aria-hidden="true">{props.open ? <DisclosureOpenIcon /> : <DisclosureClosedIcon />}</span>
         <span>{props.title}</span>
       </button>
       {props.open && (
@@ -119,7 +120,8 @@ function PropertiesEditor(props: { obj: DiagramObject; onChange: ObjectChange })
             aria-label={s('Remove property {n}', { n: i + 1 })}
             onClick={() => update(rows.filter((_, j) => j !== i))}
           >
-            {s("×")}{' '}</button>
+            <CloseIcon />
+          </button>
         </div>
       ))}
       <button

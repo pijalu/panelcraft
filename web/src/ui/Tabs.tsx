@@ -3,6 +3,7 @@
 // pointer-based drag reorder (moveTab reducer owns the invariants).
 import { useRef } from 'preact/hooks';
 import type { Tab } from '../workspace/tabs';
+import { CloseIcon } from './icons';
 import { s } from './strings';
 
 export interface TabsProps {
@@ -54,7 +55,8 @@ export function Tabs({ tabs, active, onSelect, onClose, onReorder }: TabsProps) 
             aria-label={s('Close {path}', { path: t.path })}
             onClick={() => onClose(i)}
           >
-            {s("×")}{' '}</button>
+            <CloseIcon />
+          </button>
         </span>
       ))}
       {tabs.length === 0 && <span class="tab-empty">{s('no open files')}</span>}

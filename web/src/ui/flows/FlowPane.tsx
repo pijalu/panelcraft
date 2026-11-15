@@ -13,6 +13,7 @@ import { downloadText } from '../download';
 import { stem } from '../paths';
 import type { Branch, Doc, Flow, FlowStep } from '../../engine/model/types';
 import { s } from '../strings';
+import { ArrowDownIcon, ArrowUpIcon, CloseIcon, CopyIcon, PlayIcon } from '../icons';
 import {
   addBranch,
   duplicateStep,
@@ -262,9 +263,9 @@ function StepInspector({ step, a, canvas }: { step: FlowStep; a: InspectActions;
             <option key={k} value={k}>{s(k)}</option>
           ))}
         </select>
-        <button type="button" data-testid="step-up" aria-label={s('Move step up')} onClick={() => a.move(-1)}>{s("↑")}</button>
-        <button type="button" data-testid="step-down" aria-label={s('Move step down')} onClick={() => a.move(1)}>{s("↓")}</button>
-        <button type="button" data-testid="step-remove" aria-label={s('Remove step')} onClick={a.remove}>{s("✕")}</button>
+        <button type="button" data-testid="step-up" aria-label={s('Move step up')} onClick={() => a.move(-1)}><ArrowUpIcon /></button>
+        <button type="button" data-testid="step-down" aria-label={s('Move step down')} onClick={() => a.move(1)}><ArrowDownIcon /></button>
+        <button type="button" data-testid="step-remove" aria-label={s('Remove step')} onClick={a.remove}><CloseIcon /></button>
       </div>
       {step.type === 'msg' ? (
         <MsgFields step={step} patch={a.patch} canvas={canvas} />
@@ -382,7 +383,8 @@ function StepList(props: { steps: FlatStep[]; sel: number[]; ops: StepOps }) {
               aria-label={s('Play from step {n}', { n: i + 1 })}
               onClick={() => props.ops.playFrom(i)}
             >
-              {s("▶")}{' '}</button>
+              <PlayIcon />
+            </button>
             <button
               type="button"
               class="flow-step-btn"
@@ -391,7 +393,8 @@ function StepList(props: { steps: FlatStep[]; sel: number[]; ops: StepOps }) {
               aria-label={s('Duplicate step {n}', { n: i + 1 })}
               onClick={() => props.ops.duplicate(fs.path)}
             >
-              {s("⧉")}{' '}</button>
+              <CopyIcon />
+            </button>
             {!isBlockStep(fs.step.type) && (
               <input
                 type="number"
@@ -432,8 +435,9 @@ function FlowList(props: {
             <button type="button" data-testid={`flow-row-${key}`} onClick={() => props.onPick(key)}>
               {f.title ?? f.id}
             </button>
-            <button type="button" title={s("Play")} data-testid={`flow-play-${key}`} onClick={() => props.onPlay(key)}>
-              {s("▶")}{' '}</button>
+            <button type="button" title={s("Play")} aria-label={s('Play flow {title}', { title: key })} data-testid={`flow-play-${key}`} onClick={() => props.onPlay(key)}>
+              <PlayIcon />
+            </button>
             {props.onIllustration && props.selFlow === key && (
               <select
                 class="flow-illustration"

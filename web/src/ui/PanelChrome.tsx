@@ -5,6 +5,7 @@
 // code rail keeps the sync-state chip), and the draggable splitter.
 import { useRef } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
+import { ChevronLeftIcon, ChevronRightIcon } from './icons';
 import { s } from './strings';
 
 export interface RailProps {
@@ -30,7 +31,8 @@ export function PanelRail({ id, label, onExpand, children }: RailProps) {
         title={s('Show {label} (expand)', { label })}
         onClick={onExpand}
       >
-        {s("›")}{' '}</button>
+        <ChevronRightIcon />
+      </button>
       {children}
     </div>
   );
@@ -59,7 +61,8 @@ export function CollapseButton(props: { id: string; label: string; onCollapse: (
         focusRail(props.id);
       }}
     >
-      {s("‹")}{' '}</button>
+      <ChevronLeftIcon />
+    </button>
   );
 }
 

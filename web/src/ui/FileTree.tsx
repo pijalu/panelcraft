@@ -6,6 +6,7 @@
 import { useState } from 'preact/hooks';
 import type { WorkspaceManager } from '../workspace/workspace';
 import { listDir } from '../workspace/fs';
+import { CloseIcon, CopyIcon, DisclosureClosedIcon, DisclosureOpenIcon, PencilIcon } from './icons';
 import { baseName } from './paths';
 import { s } from './strings';
 
@@ -284,24 +285,27 @@ function TreeRow(props: TreeRowProps) {
               if (row.kind === 'file' && e.key === 'F2') props.onStartRename(row.path);
             }}
           >
-            {row.kind === 'folder' ? (props.collapsed ? '▸ ' : '▾ ') : ''}
+            {row.kind === 'folder' && (props.collapsed ? <DisclosureClosedIcon /> : <DisclosureOpenIcon />)}
             {row.name}
           </button>
         </span>
       )}
       <span class="tree-actions" data-no-drag>
         {row.kind === 'file' && (
-          <button type="button" title={s("Duplicate")} data-testid={`tree-dup-${row.path}`} onClick={() => props.onDuplicate(row.path)}>
-            {s("⧉")}{' '}</button>
+          <button type="button" title={s("Duplicate")} aria-label={s('Duplicate {path}', { path: row.path })} data-testid={`tree-dup-${row.path}`} onClick={() => props.onDuplicate(row.path)}>
+            <CopyIcon />
+          </button>
         )}
-        <button type="button" title={s("Rename")} data-testid={`tree-ren-${row.path}`} onClick={() => props.onStartRename(row.path)}>
-          {s("✎")}{' '}</button>
+        <button type="button" title={s("Rename")} aria-label={s('Rename {path}', { path: row.path })} data-testid={`tree-ren-${row.path}`} onClick={() => props.onStartRename(row.path)}>
+          <PencilIcon />
+        </button>
         {props.confirmDelete ? (
           <button type="button" class="tree-danger" title={s("Click again to delete")} data-testid={`tree-del-confirm-${row.path}`} onClick={() => props.onDelete(row.path)}>
             {s("sure?")}{' '}</button>
         ) : (
-          <button type="button" title={s("Delete")} data-testid={`tree-del-${row.path}`} onClick={() => props.onDelete(row.path)}>
-            {s("✕")}{' '}</button>
+          <button type="button" title={s("Delete")} aria-label={s('Delete {path}', { path: row.path })} data-testid={`tree-del-${row.path}`} onClick={() => props.onDelete(row.path)}>
+            <CloseIcon />
+          </button>
         )}
       </span>
     </li>

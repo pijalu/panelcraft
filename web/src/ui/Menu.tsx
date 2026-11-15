@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { clampMenuPosition, edgeIndex, isInside, MENU_MARGIN, rovingIndex } from './menuModel';
-import { s } from './strings';
+import { CheckIcon, SubmenuIcon } from './icons';
 
 export interface MenuActionEntry {
   kind: 'item';
@@ -88,7 +88,13 @@ function MenuList(props: MenuListProps): ComponentChildren {
   const list = (): HTMLDivElement | null => listRef.current ?? localRef.current;
 
   useEffect(() => {
-    if (props.autoFocus) focusAt(list(), 0);
+    if (!props.autoFocus) return;
+    // Land on the first *enabled* action: focusing a disabled button is a no-op
+    // and would leave focus on the trigger (panel menus start with e.g. a
+    // disabled "Dock left").
+    const root = list();
+    const enabled = menuElements(root).map((el) => !(el as HTMLButtonElement).disabled);
+    focusAt(root, edgeIndex(enabled, 'first'));
   }, [props.autoFocus]);
 
   const move = (delta: number): void => {
@@ -205,7 +211,9 @@ function renderSubmenu(entry: MenuSubmenuEntry, ctx: EntryContext): ComponentChi
         onClick={() => ctx.onToggleSub(entry.id)}
       >
         <span class="menu-item-label">{entry.label}</span>
-        <span class="menu-item-chevron" aria-hidden="true">{s('›')}</span>
+        <span class="menu-item-chevron">
+          <SubmenuIcon />
+        </span>
       </button>
       {open && (
         <MenuList
@@ -240,7 +248,7 @@ function renderItem(entry: MenuActionEntry, ctx: EntryContext): ComponentChildre
       }}
     >
       {role === 'menuitem' ? null : (
-        <span class="menu-item-check" aria-hidden="true">{entry.checked === true ? '✓' : ''}</span>
+        <span class="menu-item-check">{entry.checked === true && <CheckIcon />}</span>
       )}
       <span class="menu-item-label">{entry.label}</span>
     </button>

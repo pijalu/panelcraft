@@ -76,6 +76,18 @@ describe('Menu primitive', () => {
     expect(document.activeElement).toBe(screen.getByTestId('item-import'));
   });
 
+  it('skips a disabled first entry when it opens', () => {
+    // A panel menu whose first action is unavailable must still land on something
+    // focusable: focusing a disabled button is a no-op, which stranded keyboard
+    // users on the trigger.
+    mount([
+      { kind: 'item', id: 'left', label: 'Dock left', testId: 'item-left', disabled: true, onSelect: vi.fn() },
+      { kind: 'item', id: 'float', label: 'Float', testId: 'item-float', onSelect: vi.fn() },
+    ]);
+    fireEvent.click(screen.getByTestId('app-menu'));
+    expect(document.activeElement).toBe(screen.getByTestId('item-float'));
+  });
+
   it('closes on outside pointer without touching the trigger', () => {
     mount();
     fireEvent.click(screen.getByTestId('app-menu'));

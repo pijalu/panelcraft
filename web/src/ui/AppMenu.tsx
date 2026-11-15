@@ -10,6 +10,7 @@ import type { UiLayoutHandle } from './useUiLayout';
 import type { AppThemeHandle } from './useAppTheme';
 import type { AppThemePreference } from './appTheme';
 import { Menu } from './Menu';
+import { MenuIcon } from './icons';
 import { buildAppMenu } from './appMenuEntries';
 import { downloadBlob, downloadText, readFileAsBytes, readFileAsText } from './download';
 import { baseName, stem } from './paths';
@@ -109,7 +110,7 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
         label={s('Application menu')}
         testId="app-menu"
         items={items}
-        trigger={<span class="menu-glyph" aria-hidden="true">{s('☰')}</span>}
+        trigger={<MenuIcon />}
       />
       <input
         ref={filesRef}

@@ -3,6 +3,7 @@
 // surface badges and undo/redo routed to the surface that owns the action.
 import type { ComponentChildren } from 'preact';
 import type { HistoryEntry } from './historyFeed';
+import { CloseIcon } from './icons';
 import { s } from './strings';
 
 export interface HistoryMenuProps {
@@ -26,7 +27,8 @@ export function HistoryMenu(props: HistoryMenuProps): ComponentChildren {
           aria-label={s("Close history")}
           onClick={props.onClose}
         >
-          {s("×")}{' '}</button>
+          <CloseIcon />
+        </button>
       </div>
       <div class="history-actions">
         <button
