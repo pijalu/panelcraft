@@ -1,0 +1,41 @@
+pcd 1.0
+title "Markdown golden"
+
+person a "Ada"
+system b "Wéb · Shop"
+container c "API \"core\""
+
+a -> b : "places order" as ab
+b -> c
+a -> c : "falls back"
+
+flow "Café walkthrough ⚡" as order {
+  description "How an order reaches the shop"
+  intro "Welcome" delay 800
+  a -> b : "order" presentation {
+    description "the order leaves the shopper"
+    camera hold
+  }
+  process c "settles" presentation {
+    camera focus (420, 180) zoom 1.5
+  }
+  a -> c : "fallback"
+  alt "express?" {
+    "yes" { a -> c : "rush" }
+    "no" { b -> c flip }
+  }
+  par "fan out" {
+    { a -> b : "notify" flip }
+    { info "by the way" }
+  }
+  info "mild note"
+  goto "other.pcd#refund" return here presentation {
+    camera auto
+    duration 120
+  }
+  conclusion "Done"
+}
+
+flow "Refunds" as refunds {
+  conclusion "Nothing to do"
+}

@@ -4,6 +4,11 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-15 — UX08-WP14 flow documentation for people and agents
+
+- Flows now export as deterministic Markdown: `.md` beside *Steps* documents the selected flow and **All flows (.md)** documents every flow in one file, generated from the parsed document (never playback beats) and downloaded offline through the existing adapter — flow title and purpose, numbered steps with nested alt branches and par lanes, readable names plus stable ids, link label and direction, per-step description, dwell, camera mode/focus/zoom/transition and `goto` targets, with unresolved references kept and marked instead of silently dropped.
+- Added golden fixtures covering all eight step kinds, nested alt/par, `goto`, unicode, quoted names and every presentation field (`testdata/markdown/`), byte-compared against the downloaded files in Playwright; documented the agent PDL workflow in the user guide with a valid example that both parsers now check (`check-docs.sh` covers the guide's ```pcd fences, `docsExamples.test.ts` covers them from TypeScript), and paired every declared Mermaid sequence drop with what the Markdown outline keeps in the generated interop matrix.
+
 ## 2026-11-14 — FLOW-02 connector sparks
 
 - Added per-link playback sparks (`sparks 1..8`, `speed 0.25..4` in the link style block, PDL/IR v7 and TS⇄Go parity): deterministic staggering, one-way completion, bidirectional ping-pong until the step ends, `flip` as the initial direction, bounded validation, unchanged step timing, static reduced-motion playback and cleanup on every exit path.

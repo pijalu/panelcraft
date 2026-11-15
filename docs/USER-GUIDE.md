@@ -195,6 +195,16 @@ and the CLI's `--theme` option.
   alternatives, parallel lanes and notes. `goto` navigation, per-step delays and
   notes in a flow with no participants cannot be represented and are reported by
   the converter's `dropped[]` result; sequence import still warns on block syntax.
+10. **Export documentation**: `.md` beside *Steps* downloads the selected flow as
+  a Markdown outline; **All flows (.md)** under the flow list downloads every flow
+  in one document. The outline is generated from the parsed file, not from
+  playback, so it lists each step in order with its nesting, the readable names
+  *and* the stable ids, every description, the dwell, the camera behaviour
+  (automatic/hold/focus with its zoom and transition) and any `goto` target. A
+  shape the diagram does not define stays in the outline marked *(not in this
+  diagram)* instead of disappearing. Both downloads are offline, name themselves
+  after the file plus the flow, and never touch the document, the selection or
+  playback.
 
 ## 4. Import / export
 
@@ -202,6 +212,7 @@ and the CLI's `--theme` option.
 |---|---|---|
 | Export single file | toolbar → *Export* | `.pcd` (canonical), `.mmd` (flowchart), `.svg` (sanitized), `.png` (2×) |
 | Export selected flow | *Flows* → select flow → `.seq.mmd` | Mermaid `sequenceDiagram`; one flow per download |
+| Export flow documentation | *Flows* → select flow → `.md`, or **All flows (.md)** | Markdown outline of the parsed document: steps, names + ids, descriptions, dwell, camera; one file per flow or one for all |
 | Import mermaid | toolbar → *Import* | best-effort converter; result lands in the code view for review |
 | Workspace round-trip | *Export ZIP* / *Import ZIP* | includes all files; snapshots stay local |
 | SVG safety | automatic | exported SVG is sanitized (no scripts/event handlers/foreign objects) — SPEC N6 |
@@ -256,3 +267,57 @@ Normative grammar: [docs/FILE-FORMAT.md](FILE-FORMAT.md). A `.pcd` file is
 UTF-8 text: header (`pcd 1.0`, title, level, direction), objects with kind/id/
 name/attributes, links (`a -> b : "label"`), flows, views, styles. Comments
 start with `#`.
+
+## 8. Agent workflow (PDL first)
+
+PDL is the normative interface for tools and agents: the same text the app edits is
+what the [Go CLI](../cmd/panelcraft) validates, converts and renders, and the shared
+`testdata/corpus` fixtures are the TypeScript ⇄ Go contract. Prefer editing `.pcd`
+directly over driving the UI, and prefer `panelcraft validate` over reading the
+canvas.
+
+1. Read the grammar in [docs/FILE-FORMAT.md](FILE-FORMAT.md) — it is normative for
+every construct used below; Markdown pictures elsewhere are never normative.
+2. Write or patch the `.pcd` file. Flows live in the file, so a walkthrough is
+   reviewable in a diff: `flow "…" as id { … }` with `intro`, messages, `process`,
+   `alt`, `par`, `info`, `conclusion` and `goto` steps, each optionally carrying
+   `delay <ms>` and `presentation { description / camera / duration }`.
+3. Validate and round-trip before shipping: `panelcraft validate PATH` (exit `1`
+   only for error-severity findings) and `panelcraft convert PATH -o /tmp/x.pcd`
+   for the canonical form.
+4. Ask for the `.md` flow documentation instead of re-deriving a flow's order
+   from the canvas, and compare against
+   [docs/MERMAID-MATRIX.md](MERMAID-MATRIX.md) before promising a Mermaid round
+   trip — Mermaid export is lossy by design and every drop is declared.
+
+A complete, valid example (the same shape the app writes):
+
+```pcd
+pcd 1.0
+title "Checkout"
+
+person shopper "Shopper"
+system shop "Shop"
+
+shopper -> shop : "places order"
+
+flow "Order arrives" as order {
+  description "How one order reaches the shop"
+  intro "Shopper checks out" delay 800
+  shopper -> shop : "places order" presentation {
+    description "the order leaves the browser"
+    camera hold
+  }
+  process shop "accepts" presentation {
+    camera focus (420, 180) zoom 1.5
+  }
+  alt "stock?" {
+    "yes" { process shop "reserves" }
+    "no" { info "back-order path not covered here" }
+  }
+  conclusion "Order accepted"
+}
+```
+
+`panelcraft validate` on that block is the check that the example still matches the
+shipped grammar.

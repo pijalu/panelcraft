@@ -75,6 +75,43 @@ describe('FlowPane sequence export (M6-WP7)', () => {
   });
 });
 
+describe('FlowPane Markdown documentation (UX08-WP14)', () => {
+  const last = (): [string, string] => {
+    const call = vi.mocked(downloadText).mock.calls.at(-1);
+    return [String(call?.[0]), String(call?.[1])];
+  };
+
+  it('downloads the selected flow as .md with names, ids and nesting', () => {
+    vi.mocked(downloadText).mockClear();
+    mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('flow-export-doc'));
+    const [text, name] = last();
+    expect(name).toBe('main.main.md');
+    expect(text).toContain('# Main');
+    expect(text).toContain('1. **Intro** — start');
+    expect(text).toContain('2. **Message** — Ada `a` → Web `b`: order');
+    expect(text).toContain('   - **Branch "fast"**');
+    expect(text).toContain('6. **Conclusion** — done');
+  });
+
+  it('downloads every flow as one .md outline', () => {
+    vi.mocked(downloadText).mockClear();
+    mount();
+    fireEvent.click(screen.getByTestId('flow-export-docs'));
+    const [text, name] = last();
+    expect(name).toBe('main.flows.md');
+    expect(text).toContain('# Flows');
+    expect(text).toContain('## Main');
+  });
+
+  it('leaves the document text untouched', () => {
+    const { out } = mount();
+    fireEvent.click(screen.getByTestId('flow-export-docs'));
+    expect(out()).toBe(DOC);
+  });
+});
+
 describe('FlowPane flow list (M5-WP4)', () => {
   it('lists flows and starts playback on ▶', () => {
     const played: string[] = [];

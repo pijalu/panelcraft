@@ -65,6 +65,21 @@ diagram topology stay in PDL; navigation and timing loss are explicit.
 - `goto navigation`
 - `notes without participants`
 
+## Flow documentation export (`.md`)
+
+`flowMarkdown` / `flowsMarkdown` (UX08-WP14) render the parsed IR — never
+flattened playback beats — so the Markdown outline documents everything the
+sequence export above has to drop. It is not a Mermaid conversion and is never
+re-imported.
+
+| Sequence drop | Documented as |
+|---|---|
+| `per-step delays` | `dwell <ms> ms` under the step |
+| `step descriptions` | italic line under the step |
+| `camera overrides` | `camera auto / hold / focus (x, y) zoom z` |
+| `goto navigation` | `**Go to** — file#flow (returns here)` |
+| `notes without participants` | the step keeps its own text |
+
 ## Importer diagnostics
 
 | Code | Severity | Meaning |

@@ -2050,6 +2050,19 @@ marker .pc-arrow[fill='none'] {
   padding: 0;
 }
 
+/* UX08-WP14: "New flow" and the all-flows export sit side by side so neither
+   reads as another row of the list above. */
+.flow-list-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.flow-list-actions button {
+  flex: 1;
+  white-space: nowrap;
+}
+
 .flow-list li {
   display: flex;
   align-items: center;
@@ -2644,11 +2657,21 @@ marker .pc-arrow[fill='none'] {
   top: 0;
   z-index: 1;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
   padding: 2px 4px;
   background: var(--pc-panel-header-bg);
+}
+
+/* Present + both export actions travel together, so a narrow panel wraps them
+   as one right-aligned group instead of leaving a lone button on its own row. */
+.flow-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
 }
 
 .chip-dirty {

@@ -32,23 +32,26 @@ for f in "${DOCS[@]}"; do
   done < <(grep -oE '\]\(([^)#]+)(#[^)]*)?\)' "$f" | sed -E 's/\]\(([^)#]+)(#[^)]*)?\)/\1/' | sort -u)
 done
 
-# .pcd fences (plain ``` or ```pcd) in FILE-FORMAT must parse (dogfooding):
-# the spec's examples carry inline ← annotations, so strip comments starting
-# with ← before validating. Only fence blocks whose first line looks like a
-# header (pcd 1.0) are treated as .pcd.
+# .pcd fences (plain ``` or ```pcd) in FILE-FORMAT (the spec) and USER-GUIDE (the
+# agent workflow example) must parse (dogfooding). The spec's examples carry
+# inline ← annotations, so strip comments starting with ← before validating. Only
+# fence blocks whose first line looks like a header (pcd 1.0) are treated as .pcd.
+PCD_DOCS=(docs/FILE-FORMAT.md docs/USER-GUIDE.md)
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 n=0
-while IFS= read -r block; do
-  n=$((n + 1))
-  first="$(printf '%s' "$block" | head -1)"
-  [[ "$first" == "pcd 1.0"* ]] || continue
-  printf '%s\n' "$block" | sed -E 's/←.*$//' > "$TMP/block-$n.pcd"
-  if ! go run ./cmd/panelcraft validate "$TMP/block-$n.pcd" > /dev/null 2>&1; then
-    echo "check-docs: .pcd block $n fails validation (see $TMP/block-$n.pcd content)" >&2
-    FAIL=1
-  fi
-done < <(awk '/^```(pcd)?$/{f=1;next} /^```$/{f=0} f' docs/FILE-FORMAT.md)
+for doc in "${PCD_DOCS[@]}"; do
+  while IFS= read -r block; do
+    n=$((n + 1))
+    first="$(printf '%s' "$block" | head -1)"
+    [[ "$first" == "pcd 1.0"* ]] || continue
+    printf '%s\n' "$block" | sed -E 's/←.*$//' > "$TMP/block-$n.pcd"
+    if ! go run ./cmd/panelcraft validate "$TMP/block-$n.pcd" > /dev/null 2>&1; then
+      echo "check-docs: $doc .pcd block $n fails validation (see $TMP/block-$n.pcd content)" >&2
+      FAIL=1
+    fi
+  done < <(awk '/^```(pcd)?$/{f=1;next} /^```$/{f=0} f' "$doc")
+done
 
 if (( FAIL != 0 )); then
   echo "check-docs: FAILED" >&2

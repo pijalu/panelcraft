@@ -11,6 +11,7 @@ import { useState } from 'preact/hooks';
 import { ILLUSTRATION_IDS, type IllustrationId } from '../../engine/anim/illustrations';
 import { parsePDL } from '../../engine/format/parser';
 import { flowToMermaid } from '../../engine/format/mermaidSequenceExport';
+import { flowMarkdown, flowsMarkdown, markdownFileName } from '../../engine/format/flowMarkdown';
 import { downloadText } from '../download';
 import { stem } from '../paths';
 import type { Branch, CameraSpec, Doc, Flow, FlowStep } from '../../engine/model/types';
@@ -788,17 +789,23 @@ function FlowMeta(props: {
   onPatch(patch: { title?: string; description?: string }): void;
   onPresent(): void;
   onExport(): void;
+  onExportDoc(): void;
 }) {
   return (
     <>
       <div class="flow-detail-head">
         <span class="panel-title">{s('Steps')}</span>
-        <button type="button" data-testid="flow-present" title={s('Play this flow from the start')} onClick={props.onPresent}>
-          <PlayIcon />{s('Present')}
-        </button>
-        <button type="button" data-testid="flow-export-seq" title={s('Export selected flow as Mermaid sequenceDiagram')} onClick={props.onExport}>
-          {s('.seq.mmd')}{' '}
-        </button>
+        <div class="flow-head-actions">
+          <button type="button" data-testid="flow-present" title={s('Play this flow from the start')} onClick={props.onPresent}>
+            <PlayIcon />{s('Present')}
+          </button>
+          <button type="button" data-testid="flow-export-seq" title={s('Export selected flow as Mermaid sequenceDiagram')} onClick={props.onExport}>
+            {s('.seq.mmd')}{' '}
+          </button>
+          <button type="button" data-testid="flow-export-doc" title={s('Export selected flow as Markdown documentation')} onClick={props.onExportDoc}>
+            {s('.md')}{' '}
+          </button>
+        </div>
         {props.dirty === true && (
           <span class="chip chip-dirty" data-testid="flow-dirty" title={s('Unapplied code edits')}>
             {s('unsaved')}{' '}
@@ -980,9 +987,25 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
             illustration={pane.illustration}
             onIllustration={pane.onIllustration}
           />
-          <button type="button" data-testid="flow-add" title={s('Add another flow')} onClick={addFlowRow}>
-            {s('New flow')}
-          </button>
+          <div class="flow-list-actions">
+            <button type="button" data-testid="flow-add" title={s('Add another flow')} onClick={addFlowRow}>
+              {s('New flow')}
+            </button>
+            <button
+              type="button"
+              data-testid="flow-export-docs"
+              title={s('Export all flows as Markdown documentation')}
+              onClick={() =>
+                downloadText(
+                  flowsMarkdown(doc),
+                  `${pane.activePath === null ? 'flows' : stem(pane.activePath)}.flows.md`,
+                  'text/markdown',
+                )
+              }
+            >
+              {s('All flows (.md)')}
+            </button>
+          </div>
         </>
       )}
       {flow !== null && (
@@ -996,6 +1019,9 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
               if (pane.activePath !== null) {
                 downloadText(flowToMermaid(doc, flow).text, `${stem(pane.activePath)}.seq.mmd`);
               }
+            }}
+            onExportDoc={() => {
+              downloadText(flowMarkdown(doc, flow), markdownFileName(flow, pane.activePath), 'text/markdown');
             }}
           />
           <StepList steps={flat} sel={selStep} ops={ops} names={names} />
