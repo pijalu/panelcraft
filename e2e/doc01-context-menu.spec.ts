@@ -34,6 +34,8 @@ view "Base" {
 
 /** The exact labels the guide documents for a single-object selection. */
 const DOCUMENTED_SINGLE = [
+  // UX08-WP08: the inspector entry leads the menu for a single object/link.
+  'Properties',
   'Duplicate', 'Copy', 'Paste', 'Delete',
   'Align left', 'Align centre (horizontal)', 'Align right',
   'Align top', 'Align middle (vertical)', 'Align bottom',

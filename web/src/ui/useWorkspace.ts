@@ -164,6 +164,8 @@ export function useCanvasController(
   /** UX08-WP05: grid preference; `null` until the workspace reports one. */
   gridSettings: GridSettings | null = null,
   onGridShortcut: () => void = () => {},
+  /** UX08-WP08: a canvas gesture asked the shell to show an inspector. */
+  onPropertiesRequest: (request: import('./CanvasController').PropertiesRequest) => void = () => {},
 ): CanvasHandle {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const ctrlRef = useRef<CanvasController | null>(null);
@@ -252,6 +254,7 @@ export function useCanvasController(
       onHover,
       // `g` is a preference change: the shell re-applies the stored settings.
       onGridShortcut: () => gridShortcutRef.current(),
+      onPropertiesRequest,
     });
     ctrlRef.current = ctrl;
     if (gridRef.current !== null) ctrl.applyGrid(gridRef.current);

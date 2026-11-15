@@ -861,3 +861,93 @@ describe('M6 session fade + positions (FR-V1/V2/V3)', () => {
     expect(svg.querySelector(`g.pc-obj[data-id="${id}"]`)?.classList.contains('pc-selected')).toBe(true);
   });
 });
+
+describe('properties request (UX08-WP08)', () => {
+  const seed = (): void => {
+    ctrl.loadState({
+      objects: [
+        { id: 'o1', kind: 'system', x: 0, y: 0, w: 160, h: 60, name: 'A' },
+        { id: 'o2', kind: 'system', x: 300, y: 0, w: 160, h: 60, name: 'B' },
+      ],
+      links: [{ id: 'L1', from: 'o1', to: 'o2' }],
+    });
+  };
+  /** A point on L1's route between the two shapes (y = vertical centre). */
+  const onRoute = (): MouseEvent => new MouseEvent('dblclick', {
+    clientX: 230, clientY: 30, button: 0, bubbles: true, cancelable: true,
+  });
+
+  it('double-clicking link geometry asks for its properties', () => {
+    const asked: Array<{ kind: string; id: string }> = [];
+    const renames: string[] = [];
+    const c2 = new CanvasController(svg, {
+      onPropertiesRequest: (r) => asked.push(r),
+      onRenameRequest: (id) => renames.push(id),
+    });
+    c2.loadState(ctrl.snapshot);
+    c2.loadState({
+      objects: [
+        { id: 'o1', kind: 'system', x: 0, y: 0, w: 160, h: 60, name: 'A' },
+        { id: 'o2', kind: 'system', x: 300, y: 0, w: 160, h: 60, name: 'B' },
+      ],
+      links: [{ id: 'L1', from: 'o1', to: 'o2' }],
+    });
+    svg.dispatchEvent(onRoute());
+    expect(asked).toEqual([{ kind: 'link', id: 'L1' }]);
+    expect(renames).toEqual([]);
+    c2.destroy();
+  });
+
+  it('double-clicking an object still starts inline rename (non-regression)', () => {
+    seed();
+    const asked: string[] = [];
+    const renames: string[] = [];
+    const c2 = new CanvasController(svg, {
+      onPropertiesRequest: (r) => asked.push(r.id),
+      onRenameRequest: (id) => renames.push(id),
+    });
+    c2.loadState(ctrl.snapshot);
+    svg.dispatchEvent(new MouseEvent('dblclick', { clientX: 80, clientY: 30, bubbles: true }));
+    expect(renames).toEqual(['o1']);
+    expect(asked).toEqual([]);
+    c2.destroy();
+  });
+
+  it('Enter opens properties when exactly one link is selected', () => {
+    seed();
+    const asked: Array<{ kind: string; id: string }> = [];
+    const c2 = new CanvasController(svg, { onPropertiesRequest: (r) => asked.push(r) });
+    c2.loadState(ctrl.snapshot);
+    c2.setSelection([], ['L1']);
+    window.dispatchEvent(key('keydown', { key: 'Enter' }));
+    expect(asked).toEqual([{ kind: 'link', id: 'L1' }]);
+    c2.destroy();
+  });
+
+  it('Enter keeps roving object selection and ignores typing in a field', () => {
+    seed();
+    const asked: string[] = [];
+    const c2 = new CanvasController(svg, { onPropertiesRequest: (r) => asked.push(r.id) });
+    c2.loadState(ctrl.snapshot);
+    c2.setSelection([], ['L1']);
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.dispatchEvent(key('keydown', { key: 'Enter' }));
+    expect(asked).toEqual([]);
+    input.remove();
+    c2.destroy();
+  });
+
+  it('openProperties() serves the same path for the context menu', () => {
+    seed();
+    const asked: Array<{ kind: string; id: string }> = [];
+    const c2 = new CanvasController(svg, { onPropertiesRequest: (r) => asked.push(r) });
+    c2.loadState(ctrl.snapshot);
+    c2.setSelection([], ['L1']);
+    expect(c2.openProperties()).toBe(true);
+    expect(asked).toEqual([{ kind: 'link', id: 'L1' }]);
+    c2.setSelection([]); // nothing selected: no request, menu item disabled
+    expect(c2.openProperties()).toBe(false);
+    c2.destroy();
+  });
+});

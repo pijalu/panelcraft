@@ -7,6 +7,14 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ### Added — UX-08 application experience
 
+- **UX-08 WP08** A connector no longer hides its properties behind a lucky click: double-clicking
+  a link's line, pressing `Enter` while it is the only selected link, or choosing **Properties**
+  from the link's context menu all select it, bring the Properties panel back (even after it was
+  closed) and put the cursor in its **Label** field — without selecting or clearing what is
+  already there, so typing appends. The canvas only reports what to inspect; the shell owns the
+  panel and focus. Object double-click/F2 inline rename is unchanged, and no gesture fires while
+  you are typing in a field or the code editor.
+
 - **UX-08 WP07** A shape's icon now sits at the top centre and the whole wrapped label block is
   centred in the space the icon leaves, so icon and text read as one unit instead of a label
   pinned to the shape's bottom edge with an icon stranded in the top-right corner. Rendering,

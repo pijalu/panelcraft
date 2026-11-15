@@ -28,8 +28,13 @@ and the CLI's `--theme` option.
   editor chrome: it is never written into a `.pcd` view and never appears in an SVG/PNG export).
   `G` toggles visibility and brings back the last visible type.
 - **Select**: click; Shift-click adds to the selection. Drag moves (snaps to
-  the grid). **Rename** in place with `F2` or double-click; Enter commits,
+  the grid). **Rename** an object in place with `F2` or double-click; Enter commits,
   Escape cancels.
+- **Inspect a link**: a connector has no name to edit in place, so double-clicking its
+  line — or pressing `Enter` while it is the only selected link — selects it, opens
+  **Properties** and puts the cursor in its **Label** field (right-click → **Properties**
+  does the same). A closed or collapsed Properties panel comes back first, and the
+  request never runs while you are typing in a field or the code editor.
 - **Resize**: select anything and drag one of the eight handles; the box stays
   on the grid and never gets smaller than 48×32. While you drag, a badge beside the
   handle shows the live `W × H` (and every other selected object keeps a badge with its
@@ -80,7 +85,8 @@ and the CLI's `--theme` option.
   to Auto. The change is undoable and saved as `z <n>`. Links always paint below
   objects, and the mini-map, SVG/PNG exports and `panelcraft render` use the same
   order.
-- **Context menu** (right-click): **Duplicate**, **Copy**, **Paste**, **Delete**,
+- **Context menu** (right-click): **Properties** (a single selected object or link;
+  disabled for larger selections), **Duplicate**, **Copy**, **Paste**, **Delete**,
   **Align left**, **Align centre (horizontal)**, **Align right**, **Align top**,
   **Align middle (vertical)**, **Align bottom**, **Distribute horizontally**,
   **Distribute vertically**, and **Equal size** (the last three need two or three

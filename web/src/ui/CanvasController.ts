@@ -187,10 +187,21 @@ export interface Snapshot {
   routes?: Record<string, Point[]>;
 }
 
+export interface PropertiesRequest {
+  kind: 'object' | 'link';
+  id: string;
+}
+
 export interface ControllerOptions {
   undo?: UndoStack;
   onState?: (s: Snapshot) => void;
   onRenameRequest?: (id: string) => void;
+  /**
+   * UX08-WP08: a gesture asked for the inspector (double-click on a link,
+   * Enter on a selected link, the context menu). The controller only says
+   * *what* to inspect — the shell owns panels and focus.
+   */
+  onPropertiesRequest?: (request: PropertiesRequest) => void;
   /** F-20: open the file an imported (ghost) object came from. */
   onGhostOpen?: (path: string) => void;
   /** Text measurement port (F-13); defaults to an offscreen canvas in a DOM. */
@@ -350,6 +361,7 @@ export class CanvasController {
   private hydrated = false;
   private readonly onState?: (s: Snapshot) => void;
   private readonly onRenameRequest?: (id: string) => void;
+  private readonly onPropertiesRequest?: (request: PropertiesRequest) => void;
   private readonly measure: TextMeasurer;
   private readonly onGeometry?: (positions: Record<string, { x: number; y: number }>) => void;
   private readonly onHistory?: (label: string, mergeKey?: string) => void;
@@ -371,6 +383,7 @@ export class CanvasController {
     this.undo = opts.undo ?? new UndoStack();
     this.onState = opts.onState;
     this.onRenameRequest = opts.onRenameRequest;
+    this.onPropertiesRequest = opts.onPropertiesRequest;
     this.measure = opts.measure ?? canvasMeasurer();
     this.onGeometry = opts.onGeometry;
     this.onHistory = opts.onHistory;
@@ -1154,6 +1167,25 @@ export class CanvasController {
   private onDblClick(e: MouseEvent): void {
     const hit = pick(this.state.objects, this.sceneLinks(), this.toCanvas(e));
     if (hit?.type === 'object') this.onRenameRequest?.(hit.id);
+    // UX08-WP08: an object's double-click still renames in place; a link has no
+    // name to edit inline, so its double-click opens the inspector instead.
+    if (hit?.type === 'link') this.onPropertiesRequest?.({ kind: 'link', id: hit.id });
+  }
+
+  /**
+   * UX08-WP08: the one command path for “show me this in Properties” — used by
+   * Enter and the context menu. True when a single object/link was selected.
+   */
+  openProperties(): boolean {
+    if (this.selObjects.size === 1 && this.selLinks.size === 0) {
+      this.onPropertiesRequest?.({ kind: 'object', id: [...this.selObjects][0]! });
+      return true;
+    }
+    if (this.selLinks.size === 1 && this.selObjects.size === 0) {
+      this.onPropertiesRequest?.({ kind: 'link', id: [...this.selLinks][0]! });
+      return true;
+    }
+    return false;
   }
 
   /** True when the key event belongs to a text field (never hijack typing). */
@@ -1325,6 +1357,11 @@ export class CanvasController {
     if (e.key === 'Enter' && this.focusId !== null) {
       e.preventDefault();
       this.selectObjects([this.focusId]);
+      return true;
+    }
+    // UX08-WP08: a selected link has no inline editor, so Enter inspects it.
+    if (e.key === 'Enter' && this.openProperties()) {
+      e.preventDefault();
       return true;
     }
     if (!inside) return false;

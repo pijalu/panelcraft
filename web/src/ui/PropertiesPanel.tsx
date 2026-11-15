@@ -23,6 +23,8 @@ export interface PropertiesPanelProps {
   obj: DiagramObject | null;
   link: DiagramLink | null;
   nameFieldRef?: Ref<HTMLInputElement>;
+  /** UX08-WP08: the link Label field, focused when a link is inspected. */
+  linkLabelRef?: Ref<HTMLInputElement>;
   onChangeObject: ObjectChange;
   onChangeLink: LinkChange;
   /** F-13 `Fit` command: size the selection to its labels. */
@@ -388,7 +390,11 @@ function ConnectorStyleControls(props: { link: DiagramLink; onChange: LinkChange
 }
 
 /** Link fields: semantics, arrow model (F-12, CX-04) and texture. */
-function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
+function LinkFields(props: {
+  link: DiagramLink;
+  onChange: LinkChange;
+  labelRef?: Ref<HTMLInputElement>;
+}) {
   const { link, onChange } = props;
   const [more, setMore] = useState(false);
   const primary = more ? LINK_TYPES : PRIMARY_LINK_TYPES;
@@ -425,6 +431,7 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
       <Field label={s("Label")}>
         <input
           data-testid="link-label"
+          ref={props.labelRef}
           value={link.label ?? ''}
           onInput={(e) => onChange(link.id, { label: (e.target as HTMLInputElement).value })}
         />
@@ -454,7 +461,7 @@ function LinkFields(props: { link: DiagramLink; onChange: LinkChange }) {
 }
 
 export function PropertiesPanel(props: PropertiesPanelProps) {
-  const { obj, link, nameFieldRef, onChangeObject, onChangeLink, onFit, onCollapse } = props;
+  const { obj, link, nameFieldRef, linkLabelRef, onChangeObject, onChangeLink, onFit, onCollapse } = props;
   const sections = props.sections ?? {};
   if (obj) {
     return (
@@ -469,7 +476,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
       />
     );
   }
-  if (link) return <LinkFields link={link} onChange={onChangeLink} />;
+  if (link) return <LinkFields link={link} onChange={onChangeLink} labelRef={linkLabelRef} />;
   return (
     <aside class="properties" data-testid="properties" aria-label={s("Properties")}>
       {onCollapse && (

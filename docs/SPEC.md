@@ -115,6 +115,8 @@ play mode, exports PNG/SVG for docs.
 * **FR-C7** Connections: drag from port/edge halo to target; typed links
   (`uses`, `includes`, `requests`, `returns`, `publishes`, `subscribes`, `reads`,
   `writes`, `data`, custom); label; direction (uni/bi); arrowhead styles; dashed/solid.
+  Double-clicking a link, pressing `Enter` on a single selected link, or right-click →
+  **Properties** opens its inspector with focus in the Label field.
 * **FR-C8** Edge routing: orthogonal (default), curved (bezier), straight; drag
   waypoints; per-edge style override.
 * **FR-C9** Undo/redo (command stack, coalesced typing/drag operations, ≥100 steps),

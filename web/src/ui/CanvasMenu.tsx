@@ -11,13 +11,25 @@ export interface CanvasMenuProps {
   y: number;
   /** Object count in the current selection (menu enablement). */
   selectionCount: number;
+  /** Link count in the current selection (UX08-WP08: inspect exactly one). */
+  linkCount?: number;
   onClose: () => void;
 }
 
 /** Objects/edges/canvas actions for the current selection. */
-export function CanvasMenu({ ctrl, x, y, selectionCount, onClose }: CanvasMenuProps) {
+export function CanvasMenu({ ctrl, x, y, selectionCount, linkCount = 0, onClose }: CanvasMenuProps) {
   const many = selectionCount > 1;
+  // UX08-WP08: the inspector exists for exactly one object or exactly one link;
+  // the menu entry and Enter share controller.openProperties().
+  const inspectable =
+    (selectionCount === 1 && linkCount === 0) || (selectionCount === 0 && linkCount === 1);
   const items: MenuItem[] = [
+    {
+      id: 'properties',
+      label: s('Properties'),
+      onSelect: () => ctrl.openProperties(),
+      disabled: !inspectable,
+    },
     {
       id: 'duplicate',
       label: s('Duplicate'),

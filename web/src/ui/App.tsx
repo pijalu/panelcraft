@@ -41,6 +41,7 @@ import { useShellLifecycle } from './useShellLifecycle';
 import type { useDivergedClose } from './useDivergedClose';
 import { useFlowStage } from './useFlowStage';
 import { useDrawer } from './useDrawer';
+import { useAppCanvas } from './useAppCanvas';
 
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
 import type { CodeSyncHandle } from './useCodeSync';
@@ -401,6 +402,38 @@ function flowsSlot(
   );
 }
 
+/** UX08-WP08: Properties + dependencies slot, wired to canvas edits and focus. */
+function propsSlot(p: {
+  canvas: ReturnType<typeof useCanvasController>;
+  ui: ReturnType<typeof useUiLayout>;
+  manager: WorkspaceManager;
+  sel: ReturnType<typeof selections>;
+  activePath: string | null;
+  viewName: string | undefined;
+  linkLabelRef: { current: HTMLInputElement | null };
+}): ComponentChildren {
+  const ctrl = p.canvas.ctrlRef.current;
+  return (
+    <PropsSlot
+      ui={p.ui}
+      obj={p.sel.obj}
+      link={p.sel.link}
+      nameFieldRef={p.canvas.nameFieldRef}
+      linkLabelRef={p.linkLabelRef}
+      onChangeObject={(id, patch) => ctrl?.updateObject(id, patch)}
+      onChangeLink={(id, patch) => ctrl?.updateLink(id, patch)}
+      onFit={() => ctrl?.fitSelection()}
+      depsText={p.activePath !== null ? p.manager.text(p.activePath) : null}
+      activePath={p.activePath}
+      viewName={p.viewName}
+      activeId={p.sel.obj?.id ?? null}
+      ctrl={ctrl}
+      sections={p.ui.layout.sections}
+      onToggleSection={p.ui.toggleSection}
+    />
+  );
+}
+
 /** Shell body with recoverable left/right/bottom docks and floating panels. */
 function AppBody(p: {
   ws: ReturnType<typeof useWorkspace>;
@@ -419,6 +452,8 @@ function AppBody(p: {
   dirty: boolean; flowSelection: FlowSelection | null;
   onFlowSelection: (selection: FlowSelection) => void;
   revealRef: { current: ((id: string) => void) | null };
+  /** UX08-WP08: link Label field, focused when a link is inspected. */
+  linkLabelRef: { current: HTMLInputElement | null };
 }) {
   const { ws, canvas, code, ui, player, activePath, viewName } = p;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -451,24 +486,15 @@ function AppBody(p: {
         }}
       />
     ),
-    props: (
-      <PropsSlot
-        ui={ui}
-        obj={p.sel.obj}
-        link={p.sel.link}
-        nameFieldRef={canvas.nameFieldRef}
-        onChangeObject={(id, patch) => ctrl?.updateObject(id, patch)}
-        onChangeLink={(id, patch) => ctrl?.updateLink(id, patch)}
-        onFit={() => ctrl?.fitSelection()}
-        depsText={activePath !== null ? ws.manager.text(activePath) : null}
-        activePath={activePath}
-        viewName={viewName}
-        activeId={p.sel.obj?.id ?? null}
-        ctrl={ctrl}
-        sections={ui.layout.sections}
-        onToggleSection={ui.toggleSection}
-      />
-    ),
+    props: propsSlot({
+      canvas,
+      ui,
+      manager: ws.manager,
+      sel: p.sel,
+      activePath,
+      viewName,
+      linkLabelRef: p.linkLabelRef,
+    }),
   };
   const docked = (dock: DockId) =>
     PANELS.filter((panel) => ui.layout.docks[panel] === dock)
@@ -516,6 +542,7 @@ function AppBody(p: {
           x={menu.x}
           y={menu.y}
           selectionCount={canvas.snap?.selection.objects.length ?? 0}
+          linkCount={canvas.snap?.selection.links.length ?? 0}
           onClose={() => setMenu(null)}
         />
       )}
@@ -570,19 +597,17 @@ export function App() {
   const [renaming, setRenaming] = useState<string | null>(null); // F-15 inline rename
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const grid = useCanvasGrid(ws.manager, ws.ready, ws.version);
-  const canvas = useCanvasController(
-    ws.manager,
-    ws.ready,
-    ws.version,
-    view.viewNameRef,
-    view.commitDocRef,
-    (id) => setRenaming(id),
-    // F-20: clicking an imported ghost opens its source file
-    (path) => ws.manager.openFile(path),
-    // F-25: hover info card
-    (info) => setHover(info),
-    grid.grid, grid.toggle, // UX08-WP05: grid preference + the `g` hand-off
-  );
+  const ui = useUiLayout(ws.manager, ws.ready, ws.version);
+  // UX08-WP08: the canvas + the inspector wiring it needs at construction time.
+  const { canvas, inspect } = useAppCanvas({
+    ws,
+    view,
+    ui,
+    grid,
+    onRename: (id) => setRenaming(id),
+    onGhostOpen: (path) => ws.manager.openFile(path), // F-20
+    onHover: (info) => setHover(info), // F-25
+  });
   const { manager } = ws;
   const [clearOpen, setClearOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
@@ -601,7 +626,6 @@ export function App() {
   const [illustration, setIllustration] = useState<IllustrationId | 'auto'>('auto');
   const [flowSelection, setFlowSelection] = useState<FlowSelection | null>(null);
   const player = useFlowStage({ manager, canvas, activePath, illustration });
-  const ui = useUiLayout(manager, ws.ready, ws.version);
   const appTheme = useAppTheme(manager, ws.ready, ws.version);
   const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null, setFlash);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -658,6 +682,7 @@ export function App() {
         flowSelection={flowSelection}
         onFlowSelection={setFlowSelection}
         revealRef={revealRef}
+        linkLabelRef={inspect.linkLabelRef}
       />
       <AppOverlays
         hover={hover}

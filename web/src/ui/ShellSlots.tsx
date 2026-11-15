@@ -66,6 +66,8 @@ export interface PropsSlotProps {
   obj: DiagramObject | null;
   link: DiagramLink | null;
   nameFieldRef: { current: HTMLInputElement | null };
+  /** UX08-WP08: link Label field for the “inspect this link” focus. */
+  linkLabelRef: { current: HTMLInputElement | null };
   onChangeObject: CanvasController['updateObject'];
   onChangeLink: CanvasController['updateLink'];
   onFit: () => void;
@@ -91,6 +93,7 @@ export function PropsSlot(props: PropsSlotProps) {
         obj={props.obj}
         link={props.link}
         nameFieldRef={props.nameFieldRef}
+        linkLabelRef={props.linkLabelRef}
         onChangeObject={props.onChangeObject}
         onChangeLink={props.onChangeLink}
         onFit={props.onFit}
