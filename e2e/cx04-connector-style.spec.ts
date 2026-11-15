@@ -59,11 +59,11 @@ for (const theme of ['light', 'dark'] as const) {
 
     // Every picker starts on its documented default and exposes previews with
     // accessible names.
-    expect(await checked(page, 'link-head')).toEqual(['arrow']);
-    expect(await checked(page, 'link-tail')).toEqual(['none']);
-    expect(await checked(page, 'link-line')).toEqual(['solid']);
-    expect(await checked(page, 'link-route')).toEqual(['orthogonal']);
-    expect(await checked(page, 'link-width-preset')).toEqual(['1.5']);
+    await expect.poll(() => checked(page, 'link-head'), { timeout: 15_000 }).toEqual(['arrow']);
+    await expect.poll(() => checked(page, 'link-tail'), { timeout: 15_000 }).toEqual(['none']);
+    await expect.poll(() => checked(page, 'link-line'), { timeout: 15_000 }).toEqual(['solid']);
+    await expect.poll(() => checked(page, 'link-route'), { timeout: 15_000 }).toEqual(['orthogonal']);
+    await expect.poll(() => checked(page, 'link-width-preset'), { timeout: 15_000 }).toEqual(['1.5']);
     for (const marker of ['arrow', 'open', 'diamond', 'circle', 'square', 'none']) {
       await expect(page.getByTestId(`link-head-${marker}`).getByRole('radio')).toBeVisible();
     }
@@ -77,7 +77,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByTestId('link-route-curved').click();
     await expect(route(page)).toHaveAttribute('d', / C /);
     await expect(page.locator('.cm-content')).toContainText('route curved');
-    expect(await checked(page, 'link-route')).toEqual(['curved']);
+    await expect.poll(() => checked(page, 'link-route'), { timeout: 15_000 }).toEqual(['curved']);
 
     // Texture and weight.
     await page.getByTestId('link-line-dotted').click();
@@ -88,7 +88,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByTestId('link-width-preset-3').click();
     await expect(route(page)).toHaveAttribute('stroke-width', '3');
     await expect(page.locator('.cm-content')).toContainText('width 3');
-    expect(await checked(page, 'link-width-preset')).toEqual(['3']);
+    await expect.poll(() => checked(page, 'link-width-preset'), { timeout: 15_000 }).toEqual(['3']);
 
     // Independent head/tail markers.
     await page.getByTestId('link-head-diamond').click();
@@ -106,20 +106,20 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByTestId('link-width').fill('2.5');
     await expect(route(page)).toHaveAttribute('stroke-width', '2.5');
     await expect(page.locator('.cm-content')).toContainText('width 2.5');
-    expect(await checked(page, 'link-width-preset')).toEqual([]);
+    await expect.poll(() => checked(page, 'link-width-preset'), { timeout: 15_000 }).toEqual([]);
 
     // Keyboard: a radio group moves with arrow keys and commits on change.
     await page.getByTestId('link-line-solid').getByRole('radio').focus();
     await page.keyboard.press('ArrowRight');
-    expect(await checked(page, 'link-line')).toEqual(['dashed']);
+    await expect.poll(() => checked(page, 'link-line'), { timeout: 15_000 }).toEqual(['dashed']);
     await expect(page.getByTestId('canvas').locator('g.pc-link[data-id="L1"]')).toHaveClass(/pc-dashed/);
 
     // Undo restores the previous style, redo reapplies it.
     await chooseAppMenu(page, 'history-open');
     await page.getByTestId('history-undo').click();
-    expect(await checked(page, 'link-line')).toEqual(['solid']);
+    await expect.poll(() => checked(page, 'link-line'), { timeout: 15_000 }).toEqual(['solid']);
     await page.getByTestId('history-redo').click();
-    expect(await checked(page, 'link-line')).toEqual(['dashed']);
+    await expect.poll(() => checked(page, 'link-line'), { timeout: 15_000 }).toEqual(['dashed']);
     await page.getByTestId('history-close').click();
     const flash = page.getByTestId('banner-flash').getByRole('button', { name: 'dismiss' });
     if (await flash.isVisible()) await flash.click();
@@ -145,9 +145,9 @@ for (const theme of ['light', 'dark'] as const) {
     await page.reload();
     await expect(page.getByTestId('canvas').locator('g.pc-link')).toHaveCount(1);
     await selectLink(page);
-    expect(await checked(page, 'link-route')).toEqual(['straight']);
-    expect(await checked(page, 'link-head')).toEqual(['none']);
-    expect(await checked(page, 'link-tail')).toEqual(['circle']);
+    await expect.poll(() => checked(page, 'link-route'), { timeout: 15_000 }).toEqual(['straight']);
+    await expect.poll(() => checked(page, 'link-head'), { timeout: 15_000 }).toEqual(['none']);
+    await expect.poll(() => checked(page, 'link-tail'), { timeout: 15_000 }).toEqual(['circle']);
     await expect(page.locator('.cm-content')).toContainText('width 2.5');
   });
 }
