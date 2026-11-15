@@ -13,7 +13,7 @@ import { parsePDL } from '../../engine/format/parser';
 import { flowToMermaid } from '../../engine/format/mermaidSequenceExport';
 import { downloadText } from '../download';
 import { stem } from '../paths';
-import type { Branch, Doc, Flow, FlowStep } from '../../engine/model/types';
+import type { Branch, CameraSpec, Doc, Flow, FlowStep } from '../../engine/model/types';
 import { s } from '../strings';
 import { ArrowDownIcon, ArrowUpIcon, CloseIcon, CopyIcon, PlayIcon } from '../icons';
 import {
@@ -30,8 +30,16 @@ import {
   patchStep,
   removeAt,
   retext,
+  setStepCamera,
   type FlatStep,
 } from './flowDoc';
+
+/** Canvas point in diagram coordinates plus its zoom (UX08-WP13). */
+export interface ViewPoint {
+  x: number;
+  y: number;
+  k: number;
+}
 
 export interface FlowPaneProps {
   textOf(path: string): string | null;
@@ -56,6 +64,8 @@ export interface FlowPaneProps {
   canvas?: FlowCanvasContext;
   /** FLOW-01: fade everything except these participants (null clears). */
   onHighlight?(ids: string[] | null): void;
+  /** UX08-WP13: current viewport centre in canvas coords + zoom ("use current view"). */
+  currentView?(): ViewPoint | null;
 }
 
 /** What the canvas currently offers the flow editor (FLOW-01). */
@@ -82,6 +92,8 @@ interface InspectActions {
   remove: () => void;
   addBranch: () => void;
   addLane: () => void;
+  /** UX08-WP13: set (or clear, `null`) the step's camera override. */
+  camera: (spec: CameraSpec | null) => void;
 }
 
 const ILLUSTRATION_LABELS = {
@@ -311,7 +323,102 @@ function patchLabel(patch: Patch, v: string): void {
 }
 
 /** Per-kind inline inspector for the selected step (advanced repair path). */
-function StepInspector({ step, a, canvas }: { step: FlowStep; a: InspectActions; canvas?: FlowCanvasContext }) {
+/** UX08-WP13: the Presentation block — camera mode, recorded view, zoom and
+ * transition. Automatic removes the override so the plan's locked table applies;
+ * "Use current view" stores the viewport centre in canvas coordinates plus its
+ * zoom, so the framing survives a different presentation window size. */
+function CameraFields({
+  step,
+  camera,
+  view,
+}: {
+  step: FlowStep;
+  camera: (spec: CameraSpec | null) => void;
+  view?: () => ViewPoint | null;
+}) {
+  const spec = step.camera;
+  const mode = spec?.mode ?? 'auto';
+  const here = (): CameraSpec => {
+    const p = view?.() ?? null;
+    return {
+      mode: 'focus',
+      x: Math.round(p?.x ?? 0),
+      y: Math.round(p?.y ?? 0),
+      ...(p === null ? {} : { zoom: Math.round(p.k * 100) / 100 }),
+    };
+  };
+  return (
+    <div class="flow-camera" data-testid="insp-camera-block">
+      <label class="flow-field">
+        <span>{s('Camera')}</span>
+        <select
+          data-testid="insp-camera"
+          value={mode}
+          onChange={(e) => {
+            const next = (e.target as HTMLSelectElement).value;
+            if (next === 'auto') camera(null);
+            else if (next === 'hold') camera({ mode: 'hold' });
+            else camera(here());
+          }}
+        >
+          <option value="auto">{s('Automatic')}</option>
+          <option value="hold">{s('Hold')}</option>
+          <option value="focus">{s('Use current view')}</option>
+        </select>
+      </label>
+      {spec?.mode === 'focus' && (
+        <>
+          <button
+            type="button"
+            class="flow-action"
+            data-testid="insp-camera-here"
+            onClick={() => camera({ ...here(), ...(spec.durationMs === undefined ? {} : { durationMs: spec.durationMs }) })}
+          >
+            {s('Use current view')}
+          </button>
+          <label class="flow-field">
+            <span>{s('Zoom')}</span>
+            <input
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="4"
+              data-testid="insp-zoom"
+              value={spec.zoom ?? ''}
+              onChange={(e) =>
+                camera({ ...spec, zoom: clampNumber((e.target as HTMLInputElement).value, 0.1, 4) })
+              }
+            />
+          </label>
+        </>
+      )}
+      {spec !== undefined && (
+        <label class="flow-field">
+          <span>{s('Transition (ms)')}</span>
+          <input
+            type="number"
+            step="10"
+            min="0"
+            max="300"
+            data-testid="insp-duration"
+            value={spec.durationMs ?? ''}
+            onChange={(e) => camera({ ...spec, durationMs: clampNumber((e.target as HTMLInputElement).value, 0, 300) }) }
+          />
+        </label>
+      )}
+      <p class="flow-hint">{s('Automatic fits each step; Hold keeps the previous view.')}</p>
+    </div>
+  );
+}
+
+/** Clamp a numeric field to its documented range (invalid input → nearest). */
+function clampNumber(raw: string, min: number, max: number): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, n));
+}
+
+function StepInspector({ step, a, canvas, view }: { step: FlowStep; a: InspectActions; canvas?: FlowCanvasContext; view?: () => ViewPoint | null }) {
   return (
     <div class="flow-inspector" data-testid="flow-inspector">
       <div class="flow-insp-head">
@@ -335,6 +442,7 @@ function StepInspector({ step, a, canvas }: { step: FlowStep; a: InspectActions;
         onInput={(v) => a.patch({ description: v === '' ? undefined : v })}
         testid="insp-description"
       />
+      <CameraFields step={step} camera={a.camera} {...(view === undefined ? {} : { view })} />
       {step.type === 'msg' ? (
         <MsgFields step={step} patch={a.patch} canvas={canvas} />
       ) : step.type === 'process' ? (
@@ -763,6 +871,7 @@ function makeActions(
     addBranch: () =>
       mutateSel((f, path) => addBranch(f, path, s('option {n}', { n: (step?.type === 'alt' ? step.branches.length : 0) + 1 }))),
     addLane: () => mutateSel((f, path) => addLane(f, path)),
+    camera: (spec) => mutateSel((f, path) => setStepCamera(f, path, spec)),
   };
 }
 
@@ -891,7 +1000,7 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
           />
           <StepList steps={flat} sel={selStep} ops={ops} names={names} />
           <ActionBar ready={ready} onAdd={(kind) => addKindStep(apply, selKey, kind, pane.canvas)} />
-          {step !== null && <StepInspector step={step} a={actions} canvas={pane.canvas} />}
+          {step !== null && <StepInspector step={step} a={actions} canvas={pane.canvas} {...(pane.currentView === undefined ? {} : { view: pane.currentView })} />}
         </>
       )}
     </div>

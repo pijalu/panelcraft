@@ -266,6 +266,118 @@ body {
   font-weight: 600;
 }
 
+/* UX08-WP13: presentation launcher entry point in the shell header. */
+.app-present {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pc-space-2);
+  margin-left: auto;
+  padding: var(--pc-space-1) var(--pc-space-3);
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-panel-bg);
+  color: var(--pc-fg);
+  cursor: pointer;
+}
+
+.app-present:hover {
+  background: var(--pc-list-hover-bg);
+}
+
+.launcher-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 35%);
+}
+
+.launcher {
+  width: min(560px, calc(100vw - 2 * var(--pc-space-5)));
+  max-height: min(70vh, 640px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-space-3);
+  padding: var(--pc-space-4);
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-panel-bg);
+  box-shadow: var(--pc-menu-shadow);
+}
+
+.launcher-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pc-space-3);
+}
+
+.launcher-head h2 {
+  margin: 0;
+  font-size: var(--pc-text-lg);
+}
+
+.launcher-intro,
+.launcher-empty {
+  margin: 0;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-sm);
+}
+
+.launcher-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-space-2);
+}
+
+.launcher-row {
+  display: flex;
+  gap: var(--pc-space-3);
+  width: 100%;
+  padding: var(--pc-space-3);
+  text-align: left;
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-panel-bg);
+  color: var(--pc-fg);
+  cursor: pointer;
+}
+
+.launcher-row:hover,
+.launcher-row:focus-visible {
+  background: var(--pc-list-hover-bg);
+  border-color: var(--pc-accent);
+}
+
+.launcher-play {
+  display: inline-flex;
+  align-items: center;
+  color: var(--pc-accent);
+}
+
+.launcher-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.launcher-desc {
+  color: var(--pc-muted);
+  font-size: var(--pc-text-sm);
+}
+
+.launcher-meta {
+  color: var(--pc-muted);
+  font-size: var(--pc-text-sm);
+}
+
 .app-body {
   flex: 1;
   display: flex;
@@ -410,6 +522,14 @@ body {
   font-size: var(--pc-text-sm);
   color: var(--pc-fg);
   min-height: 18px;
+}
+
+/* UX08-WP13: the step's one-line prose, quieter than the narration title. */
+.present-desc {
+  margin: 2px 0 0;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-muted);
+  max-width: 72ch;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2167,6 +2287,16 @@ marker .pc-arrow[fill='none'] {
   white-space: nowrap;
   text-align: right;
   color: var(--pc-fg);
+}
+
+/* UX08-WP13: step prose under the narration, quieter and truncating first. */
+.playbar-desc {
+  max-width: 40ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-sm);
 }
 
 /* Step-emphasis + dim end-states (FR-F2/F3). Dim/un-dim both transition so

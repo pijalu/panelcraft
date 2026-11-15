@@ -441,6 +441,21 @@ const EN = {
   "object": "object",
   "flow": "flow",
   "s": "s",
+  "Present a flow": "Present a flow",
+  "Pick a walkthrough to present. Each step frames its own part of the diagram.":
+    "Pick a walkthrough to present. Each step frames its own part of the diagram.",
+  "No flows in this file yet. Add one in Flow Steps.":
+    "No flows in this file yet. Add one in Flow Steps.",
+  "Present {title}": "Present {title}",
+  "{steps} steps, about {length}": "{steps} steps, about {length}",
+  "Camera": "Camera",
+  "Automatic": "Automatic",
+  "Hold": "Hold",
+  "Use current view": "Use current view",
+  "Zoom": "Zoom",
+  "Transition (ms)": "Transition (ms)",
+  "Automatic fits each step; Hold keeps the previous view.":
+    "Automatic fits each step; Hold keeps the previous view.",
 } as const;
 
 export type StringKey = keyof typeof EN;

@@ -10,8 +10,10 @@ import { labelFor, CanvasController, type DiagramLink, type Snapshot } from './C
 import { FileTree } from './FileTree';
 import { Tabs } from './Tabs';
 import { CodePane } from './CodePane';
-import { FlowPane, type FlowCanvasContext, type FlowSelection } from './flows/FlowPane';
+import { FlowPane, type FlowCanvasContext, type FlowSelection, type ViewPoint } from './flows/FlowPane';
+import { invert } from '../engine/render/viewport';
 import { PlayBar } from './flows/PlayBar';
+import { useStagePresentation } from './useStagePresentation';
 import { ViewBar } from './views/ViewBar';
 import { AppHeader } from './AppHeader';
 import { AppDialogs } from './AppDialogs';
@@ -33,7 +35,6 @@ import { s } from './strings';
 import { ShellBanners } from './ShellBanners';
 import { DropZone, HostedPanel } from './WorkspacePanels';
 import { useCanvasRevealPort } from './useCanvasReveal';
-import { usePresentation } from './usePresentation';
 import type { IllustrationId } from '../engine/anim/illustrations';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
 import { useCodeSync } from './useCodeSync';
@@ -42,6 +43,7 @@ import type { useDivergedClose } from './useDivergedClose';
 import { useFlowStage } from './useFlowStage';
 import { useDrawer } from './useDrawer';
 import { useAppCanvas } from './useAppCanvas';
+import { useShellDialogs } from './useShellDialogs';
 
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
 import type { CodeSyncHandle } from './useCodeSync';
@@ -80,6 +82,18 @@ function highlightParticipants(
     snap.objects.filter((o) => !keep.has(o.id)).map((o) => o.id),
     snap.links.filter((l) => !keep.has(l.from) || !keep.has(l.to)).map((l) => l.id),
   );
+}
+
+/** UX08-WP13: viewport centre in canvas coordinates + zoom ("use current view"). */
+function currentViewOf(canvas: ReturnType<typeof useCanvasController>): () => ViewPoint | null {
+  return () => {
+    const ctrl = canvas.ctrlRef.current;
+    const svg = canvas.svgRef.current;
+    if (ctrl === null || svg === null) return null;
+    const v = ctrl.viewport;
+    const c = invert(v, { x: svg.clientWidth / 2, y: svg.clientHeight / 2 });
+    return { x: Math.round(c.x), y: Math.round(c.y), k: Math.round(v.k * 100) / 100 };
+  };
 }
 
 function findObj(snap: Snapshot | null) {
@@ -131,6 +145,7 @@ function FlowStepsPane(props: {
   onSelection(selection: FlowSelection): void;
   canvasContext: FlowCanvasContext;
   onHighlight(ids: string[] | null): void;
+  currentView?: () => ViewPoint | null;
 }) {
   return (
     <aside class="sidebar" aria-label={s('Flow step editor')}>
@@ -152,6 +167,7 @@ function FlowStepsPane(props: {
         onSelection={props.onSelection}
         canvas={props.canvasContext}
         onHighlight={props.onHighlight}
+        {...(props.currentView === undefined ? {} : { currentView: props.currentView })}
       />
     </aside>
   );
@@ -248,6 +264,7 @@ function FlowSlot(props: {
   onSelection: (selection: FlowSelection) => void;
   canvasContext: FlowCanvasContext;
   onHighlight: (ids: string[] | null) => void;
+  currentView?: () => ViewPoint | null;
 }) {
   return slot(
     props.ui.layout.panels.flows === 'collapsed',
@@ -269,6 +286,7 @@ function FlowSlot(props: {
       onSelection={props.onSelection}
       canvasContext={props.canvasContext}
       onHighlight={props.onHighlight}
+      {...(props.currentView === undefined ? {} : { currentView: props.currentView })}
     />,
   );
 }
@@ -378,6 +396,7 @@ function flowsSlot(
     manager: WorkspaceManager;
     version: number;
     player: FlowPlayerApi;
+    currentView?: () => ViewPoint | null;
   },
 ): ComponentChildren {
   return (
@@ -398,6 +417,7 @@ function flowsSlot(
       onSelection={p.onFlowSelection}
       canvasContext={canvasContext(p.canvas.snap, p.sel.link)}
       onHighlight={(ids) => highlightParticipants(p.canvas, ids)}
+      {...(p.currentView === undefined ? {} : { currentView: p.currentView })}
     />
   );
 }
@@ -477,6 +497,7 @@ function AppBody(p: {
       manager: ws.manager,
       version: ws.version,
       player,
+      currentView: currentViewOf(canvas),
     }),
     palette: <PaletteSlot ui={ui} onPlace={(kind) => ctrl?.addObject(kind)} onDragDrop={canvas.onPaletteDrop} />,
     code: (
@@ -601,7 +622,6 @@ export function App() {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const grid = useCanvasGrid(ws.manager, ws.ready, ws.version);
   const ui = useUiLayout(ws.manager, ws.ready, ws.version);
-  // UX08-WP08: the canvas + the inspector wiring it needs at construction time.
   const { canvas, inspect } = useAppCanvas({
     ws,
     view,
@@ -612,10 +632,7 @@ export function App() {
     onHover: (info) => setHover(info), // F-25
   });
   const { manager } = ws;
-  const [clearOpen, setClearOpen] = useState(false);
-  const [flash, setFlash] = useState<string | null>(null);
-  const [snapsOpen, setSnapsOpen] = useState(false);
-  const { viewName, setViewName } = view;
+  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = useShellDialogs();
   const code = useCodeSync({
     manager: ws.manager,
     ready: ws.ready,
@@ -635,7 +652,7 @@ export function App() {
   const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
   const sel = selections(canvas.snap);
   const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
-  const pres = usePresentation(player);
+  const pres = useStagePresentation({ player, activePath, textOf: (path) => manager.text(path) });
 
   const { diverged, pwa } = useShellLifecycle({
     manager: ws.manager,
@@ -664,7 +681,7 @@ export function App() {
         onSnapshotsRequest={() => setSnapsOpen(true)}
         {...statusProps(code.snapshot, ws.ready, manager)}
         onHistoryRequest={() => setHistoryOpen(true)}
-        onPresentRequest={pres.start}
+        onPresentRequest={pres.launcher.show}
         pwa={pwa} grid={grid}
       />
       <AppBody
@@ -674,8 +691,8 @@ export function App() {
         ui={ui}
         player={player}
         activePath={activePath}
-        viewName={viewName}
-        onView={setViewName}
+        viewName={view.viewName}
+        onView={view.setViewName}
         onPresent={pres.start}
         sel={sel}
         diverged={diverged}
@@ -691,6 +708,7 @@ export function App() {
         hover={hover}
         presenting={pres.presenting}
         player={player}
+        launcher={pres.launcher}
         renameTarget={renameTarget}
         onRenameCommit={(name) => {
           if (renameTarget !== null) canvas.ctrlRef.current?.updateObject(renameTarget.id, { name });

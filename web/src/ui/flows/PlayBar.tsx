@@ -98,6 +98,11 @@ export function PlayBar({ player: p, onPresent }: PlayBarProps) {
       <span class="playbar-narration" data-testid="pb-narration" aria-live="polite" role="status">
         {st.narration}
       </span>
+      {st.description !== '' && (
+        <span class="playbar-desc" data-testid="pb-description">
+          {st.description}
+        </span>
+      )}
       {st.status === 'ended' && (
         <div class="closing-card" data-testid="closing-card" role="status">
           <strong>{st.progress === null ? s('Flow') : s('Flow complete')}</strong>

@@ -102,3 +102,55 @@ describe('PlayBar transport (M5-WP5)', () => {
     expect(screen.queryByTestId('playbar')).toBeNull();
   });
 });
+
+// UX08-WP13 — the transport shows the step description next to the narration.
+const DOC_DESC = `pcd 1.0
+
+person a "Ada"
+system b "Web"
+
+a -> b as ab
+
+flow "Main" as main {
+  intro "start" presentation {
+    description "what this walkthrough explains"
+  }
+  a -> b : "order"
+}
+`;
+
+function DescHarness() {
+  const player = useFlowPlayer({
+    textOf: () => DOC_DESC,
+    openFile: () => {},
+    animator: { play: () => {}, stop: () => {} },
+    camera: { focus: () => {}, save: () => {}, restoreSaved: () => {} },
+    clock: { now: () => 0, delay: () => 0, cancel: () => {} },
+    currentViewport: () => ({ x: 0, y: 0, k: 1 }),
+  });
+  return (
+    <div>
+      <button type="button" data-testid="boot-desc" onClick={() => player.start('main.pcd', 'main')} />
+      <PlayBar player={player} />
+    </div>
+  );
+}
+
+describe('PlayBar step description (UX08-WP13)', () => {
+  afterEach(cleanup);
+
+  it('renders the step description under the narration title', () => {
+    render(<DescHarness />);
+    fireEvent.click(screen.getByTestId('boot-desc'));
+    expect(screen.getByTestId('pb-narration').textContent).toBe('start');
+    expect(screen.getByTestId('pb-description').textContent).toBe('what this walkthrough explains');
+  });
+
+  it('hides the description element for steps without prose', () => {
+    render(<DescHarness />);
+    fireEvent.click(screen.getByTestId('boot-desc'));
+    fireEvent.click(screen.getByTestId('pb-step-fwd'));
+    expect(screen.getByTestId('pb-narration').textContent).toBe('order');
+    expect(screen.queryByTestId('pb-description')).toBeNull();
+  });
+});

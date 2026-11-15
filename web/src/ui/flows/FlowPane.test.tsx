@@ -459,3 +459,61 @@ flow "Main" as main {
     expect(doc?.flows[0]?.steps[0]?.type).toBe('msg');
   });
 });
+
+// UX08-WP13 — per-step Presentation inspector: camera mode, "use current view",
+// zoom and duration. Everything is asserted through the printed document.
+const VIEW = { x: 420, y: 180, k: 1.5 };
+
+function ViewHarness() {
+  const [text, setText] = useState(DOC);
+  return (
+    <div>
+      <FlowPane
+        textOf={() => text}
+        activePath="main.pcd"
+        version={1}
+        onChangeText={(t) => setText(t)}
+        onPlay={() => {}}
+        currentView={() => VIEW}
+      />
+      <pre data-testid="text-out">{text}</pre>
+    </div>
+  );
+}
+
+function mountWithView(): { out: () => string } {
+  render(<ViewHarness />);
+  fireEvent.click(screen.getByTestId('flow-row-main'));
+  fireEvent.click(screen.getByTestId('step-0'));
+  return { out: () => screen.getByTestId('text-out').textContent ?? '' };
+}
+
+describe('FlowPane presentation inspector (UX08-WP13)', () => {
+  it('writes a hold camera and removes it again for automatic', () => {
+    const h = mountWithView();
+    fireEvent.change(screen.getByTestId('insp-camera'), { target: { value: 'hold' } });
+    expect(h.out()).toContain('camera hold');
+    fireEvent.change(screen.getByTestId('insp-camera'), { target: { value: 'auto' } });
+    expect(h.out()).not.toContain('camera');
+  });
+
+  it('records the current view as a focus camera with zoom', () => {
+    const h = mountWithView();
+    fireEvent.change(screen.getByTestId('insp-camera'), { target: { value: 'focus' } });
+    expect(h.out()).toContain('camera focus (420, 180) zoom 1.5');
+    // re-recording after panning updates the coordinates
+    fireEvent.click(screen.getByTestId('insp-camera-here'));
+    expect(h.out()).toContain('camera focus (420, 180)');
+  });
+
+  it('edits the transition duration inside the documented 0-300 ms range', () => {
+    const h = mountWithView();
+    fireEvent.change(screen.getByTestId('insp-camera'), { target: { value: 'focus' } });
+    fireEvent.change(screen.getByTestId('insp-duration'), { target: { value: '120' } });
+    expect(h.out()).toContain('duration 120');
+    // out-of-range input is clamped, never written as an invalid document
+    fireEvent.change(screen.getByTestId('insp-duration'), { target: { value: '900' } });
+    expect(h.out()).toContain('duration 300');
+    expect(h.out()).not.toContain('duration 900');
+  });
+});

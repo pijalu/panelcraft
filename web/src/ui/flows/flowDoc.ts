@@ -10,7 +10,7 @@
 // retext() owns the parse/print lifecycle.
 import { parsePDL } from '../../engine/format/parser';
 import { printDoc } from '../../engine/format/printer';
-import type { Branch, Doc, Flow, FlowStep } from '../../engine/model/types';
+import type { Branch, CameraSpec, Doc, Flow, FlowStep } from '../../engine/model/types';
 import { s } from '../strings';
 
 type StepList = FlowStep[];
@@ -143,6 +143,11 @@ export function patchStep(flow: Flow, path: number[], patch: Partial<FlowStep>):
   const cur = loc.list[loc.index];
   if (cur === undefined) return;
   loc.list[loc.index] = { ...cur, ...patch } as FlowStep;
+}
+
+/** UX08-WP13: set or clear a step's camera override (`null` = Automatic). */
+export function setStepCamera(flow: Flow, path: number[], camera: CameraSpec | null): void {
+  patchStep(flow, path, camera === null ? { camera: undefined } : { camera });
 }
 
 export function removeAt(flow: Flow, path: number[]): void {

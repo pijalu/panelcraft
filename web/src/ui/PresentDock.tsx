@@ -97,6 +97,11 @@ export function PresentDock({ player: p }: PresentDockProps) {
       <p class="present-notes" data-testid="present-notes" aria-live="polite">
         {st.narration}
       </p>
+      {st.description !== '' && (
+        <p class="present-desc" data-testid="present-description">
+          {st.description}
+        </p>
+      )}
     </div>
   );
 }

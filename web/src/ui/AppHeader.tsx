@@ -6,6 +6,7 @@ import type { RefObject } from 'preact';
 import { Banners } from './Banners';
 import { StatusPill } from './StatusPill';
 import { AppMenu } from './AppMenu';
+import { PlayIcon } from './icons';
 import { useWorkspace } from './useWorkspace';
 import type { WorkspaceManager } from '../workspace/workspace';
 import type { UiLayoutHandle } from './useUiLayout';
@@ -82,6 +83,17 @@ export function AppHeader(props: {
             setSnap: props.grid.setSnap,
           }}
         />
+        {/* UX08-WP13: presentation is discoverable from the shell, not only a menu item. */}
+        <button
+          type="button"
+          class="app-present"
+          data-testid="present-open"
+          title={s('Present a flow')}
+          onClick={props.onPresentRequest}
+        >
+          <PlayIcon />
+          <span>{s('Present')}</span>
+        </button>
       </header>
       <Banners
         openError={errorToShow(ws.manager, dismissedError, ws.ready)}
