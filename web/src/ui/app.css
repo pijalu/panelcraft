@@ -523,6 +523,39 @@ body {
   background: var(--pc-button-hover-bg);
 }
 
+/* UX08-WP09: Start/End anchor rows — side picker plus side-relative percent */
+.prop-route {
+  margin-bottom: 8px;
+}
+
+.prop-anchor {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.prop-anchor .field-label {
+  flex: 0 0 44px;
+  margin: 0;
+}
+
+.prop-anchor select {
+  flex: 1;
+  min-width: 0;
+}
+
+.prop-anchor input {
+  flex: 0 0 64px;
+  min-width: 0;
+}
+
+.prop-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
 /* F-10: collapsible shell chrome — panel headers, rails, splitters */
 .panel-head {
   display: flex;
@@ -2574,6 +2607,32 @@ marker .pc-arrow[fill='none'] {
 
 .pc-waypoint:hover {
   fill: var(--pc-accent);
+}
+
+/* UX08-WP09 slidable channels: same accent language as the bend/end handles,
+   drawn as a small chip so it reads as a grip on the run, not a stray mark. */
+.pc-segment {
+  fill: var(--pc-accent);
+  stroke: var(--pc-bg);
+  stroke-width: 1.5;
+  opacity: 0.75;
+  cursor: grab;
+  touch-action: none;
+}
+
+.pc-segment:hover,
+.pc-segment:focus {
+  opacity: 1;
+  stroke: var(--pc-fg);
+}
+
+.pc-segment:active {
+  cursor: grabbing;
+}
+
+.pc-segment:focus {
+  outline: none;
+  stroke-width: 2.5;
 }
 
 /* CX-01: explicit link endpoints; hollow start and filled destination. */

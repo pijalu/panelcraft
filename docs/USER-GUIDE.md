@@ -65,6 +65,18 @@ and the CLI's `--theme` option.
   override automatic avoidance, including when **Allow overlap** is off. Labels
   automatically try nearby positions to avoid objects, other routes, and
   other labels; a text halo keeps the least-bad fallback readable in dense diagrams.
+- **Reshape**: a selected link exposes three kinds of handle. Drag a **channel** chip (the
+  small square on a slidable run) to slide that orthogonal segment sideways — both ends of
+  the run move together and the semantic endpoints stay pinned to their entities. Drag a
+  **bend** circle to move one corner freely. Double-click a channel chip to add a bend under
+  the pointer. Snapping lines the channel up with entity corners, side midpoints and centres
+  within a few pixels, then with the grid; hold **Alt** while dragging to suspend snapping.
+  A focused bend nudge-moves with the arrow keys (one grid step, one unit with **Shift**) and
+  is deleted with **Delete**/**Backspace**; **Escape** cancels the gesture in flight. Each
+  committed gesture is one undo step. Properties → **Endpoints** sets **Start**/**End** to
+  **Auto**, **Top**, **Right**, **Bottom** or **Left** plus a side-relative percentage (stored
+  as `anchor from` / `anchor to`); **Reset bends** drops the waypoints and **Reset route**
+  returns the link to fully automatic routing.
 - **Sparks**: a link can carry **Spark count** (1–8) and **Spark speed** (0.25–4×) for
   flow playback, saved as `sparks n` / `speed n` inside its style block. Several sparks
   stagger along the path; a bidirectional (`<->`) link ping-pongs until the step ends,

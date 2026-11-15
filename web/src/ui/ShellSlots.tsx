@@ -70,6 +70,10 @@ export interface PropsSlotProps {
   linkLabelRef: { current: HTMLInputElement | null };
   onChangeObject: CanvasController['updateObject'];
   onChangeLink: CanvasController['updateLink'];
+  /** UX08-WP09: Start/End perimeter anchors and the route reset commands. */
+  onChangeAnchor: CanvasController['setLinkAnchor'];
+  onResetRoute: (id: string) => void;
+  onResetBends: (id: string) => void;
   onFit: () => void;
   depsText: string | null;
   activePath: string | null;
@@ -96,6 +100,9 @@ export function PropsSlot(props: PropsSlotProps) {
         linkLabelRef={props.linkLabelRef}
         onChangeObject={props.onChangeObject}
         onChangeLink={props.onChangeLink}
+        onChangeAnchor={props.onChangeAnchor}
+        onResetRoute={props.onResetRoute}
+        onResetBends={props.onResetBends}
         onFit={props.onFit}
         onCollapse={() => props.ui.togglePanel('props')}
         sections={props.sections}

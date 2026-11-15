@@ -422,6 +422,9 @@ function propsSlot(p: {
       linkLabelRef={p.linkLabelRef}
       onChangeObject={(id, patch) => ctrl?.updateObject(id, patch)}
       onChangeLink={(id, patch) => ctrl?.updateLink(id, patch)}
+      onChangeAnchor={(id, end, anchor) => ctrl?.setLinkAnchor(id, end, anchor)}
+      onResetRoute={(id) => ctrl?.resetLinkRoute(id)}
+      onResetBends={(id) => ctrl?.resetLinkBends(id)}
       onFit={() => ctrl?.fitSelection()}
       depsText={p.activePath !== null ? p.manager.text(p.activePath) : null}
       activePath={p.activePath}

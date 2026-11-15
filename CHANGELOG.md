@@ -7,6 +7,25 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ### Added — UX-08 application experience
 
+- **UX-08 WP09** A selected connector's geometry is now editable, not just its endpoints. Slidable
+  runs show a channel grip: dragging it slides the whole orthogonal segment sideways while the
+  semantic `anchor from`/`anchor to` endpoints stay pinned to their entities. Bends are draggable,
+  double-clicking a channel adds one under the pointer, a focused bend nudge-moves with the arrow
+  keys (one grid step, one unit with `Shift`) and is removed with `Delete`/`Backspace`, and
+  `Escape` cancels the gesture in flight. Channels snap to entity corners, side midpoints and
+  centres before the grid, with `Alt` suspending snapping. Properties gained an **Endpoints**
+  block — **Start**/**End** as `Auto`/`Top`/`Right`/`Bottom`/`Left` plus a side-relative
+  percentage, **Reset bends** and **Reset route** — placed above the appearance controls because
+  geometry is what a reader follows. Every gesture is one undo step, and an untouched automatic
+  route still gains no geometry: waypoints are materialised only when a route is actually edited.
+- **UX-08 WP09 fix** Double-clicking a channel grip did nothing: the browser only emits `dblclick`
+  when both clicks hit the same element, and the no-op pointer release repainted the overlay and
+  replaced the handle node. An inert channel release no longer repaints, so the gesture works —
+  and a unit test pins the node identity that the browser requires.
+- **UX-08 WP09 fix** A connector route that doubles back on itself (the F-19 waypoint router goes
+  down to a waypoint and back up the same channel) drew two overlapping grips, one per raw
+  segment, and sliding either one deformed the route. Grips are now derived from maximal collinear
+  *runs*, so such a route offers one grip and sliding it moves the whole run.
 - **UX-08 WP08** A connector no longer hides its properties behind a lucky click: double-clicking
   a link's line, pressing `Enter` while it is the only selected link, or choosing **Properties**
   from the link's context menu all select it, bring the Properties panel back (even after it was

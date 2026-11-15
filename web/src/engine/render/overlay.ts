@@ -110,17 +110,61 @@ export function drawEndpointHandles(
 }
 
 /** F-19: draggable handles for a link's explicit waypoints. */
-export function drawWaypointHandles(overlay: SVGGElement, points: Polyline, linkId: string): void {
+export function drawWaypointHandles(
+  overlay: SVGGElement,
+  points: Polyline,
+  linkId: string,
+  label: (index: number) => string,
+): void {
   points.forEach((p, i) => {
     const circle = el('circle') as SVGCircleElement;
     circle.setAttribute('class', 'pc-waypoint');
     circle.setAttribute('data-link', linkId);
     circle.setAttribute('data-wp-index', String(i));
+    circle.setAttribute('data-testid', `waypoint-${i}`);
     circle.setAttribute('cx', String(p.x));
     circle.setAttribute('cy', String(p.y));
     circle.setAttribute('r', '5');
+    // UX08-WP09: a bend is keyboard-reachable, so it can be nudged and deleted
+    // without a pointer.
+    circle.setAttribute('role', 'button');
+    circle.setAttribute('tabindex', '0');
+    circle.setAttribute('aria-label', label(i));
     overlay.appendChild(circle);
   });
+}
+
+/**
+ * UX08-WP09: one handle per slidable *channel* — a maximal collinear run whose
+ * ends are both interior vertices. Dragging slides the run; a click without
+ * movement is not an edit, so an untouched automatic route gains no geometry.
+ */
+export function drawSegmentHandles(
+  overlay: SVGGElement,
+  list: ReadonlyArray<{ from: number; to: number; mid: Point; axis: 'h' | 'v' | 'diag'; editable: boolean }>,
+  linkId: string,
+  label: (axis: 'h' | 'v' | 'diag') => string,
+): void {
+  for (const channel of list) {
+    if (!channel.editable || channel.axis === 'diag') continue;
+    const rect = el('rect') as SVGRectElement;
+    const size = 9;
+    rect.setAttribute('class', 'pc-segment');
+    rect.setAttribute('data-link', linkId);
+    rect.setAttribute('data-seg-index', String(channel.from));
+    rect.setAttribute('data-seg-to', String(channel.to));
+    rect.setAttribute('data-seg-axis', channel.axis);
+    rect.setAttribute('data-testid', `segment-${channel.from}`);
+    rect.setAttribute('x', String(channel.mid.x - size / 2));
+    rect.setAttribute('y', String(channel.mid.y - size / 2));
+    rect.setAttribute('width', String(size));
+    rect.setAttribute('height', String(size));
+    rect.setAttribute('rx', '2');
+    rect.setAttribute('role', 'button');
+    rect.setAttribute('tabindex', '0');
+    rect.setAttribute('aria-label', label(channel.axis));
+    overlay.appendChild(rect);
+  }
 }
 
 /** The eight resize anchors (F-13: every kind resizes, not just groups). */

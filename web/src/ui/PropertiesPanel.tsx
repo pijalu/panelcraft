@@ -14,10 +14,12 @@ import { CollapseButton } from './PanelChrome';
 import { LINE_OPTIONS, MARKER_OPTIONS, ROUTE_OPTIONS, WIDTH_OPTIONS } from './connectorOptions';
 import { VisualPicker } from './VisualPicker';
 import { CloseIcon, DisclosureClosedIcon, DisclosureOpenIcon } from './icons';
+import { anchorToChoice, choiceToAnchor, ANCHOR_SIDES, type AnchorSide } from '../engine/render/anchorControls';
 import { s } from './strings';
 
 type ObjectChange = CanvasController['updateObject'];
 type LinkChange = CanvasController['updateLink'];
+type AnchorChange = CanvasController['setLinkAnchor'];
 
 export interface PropertiesPanelProps {
   obj: DiagramObject | null;
@@ -27,6 +29,11 @@ export interface PropertiesPanelProps {
   linkLabelRef?: Ref<HTMLInputElement>;
   onChangeObject: ObjectChange;
   onChangeLink: LinkChange;
+  /** UX08-WP09: Start/End perimeter anchors (`Auto` = undefined). */
+  onChangeAnchor?: AnchorChange;
+  /** UX08-WP09: back to an automatic route / to no bends. */
+  onResetRoute?: (id: string) => void;
+  onResetBends?: (id: string) => void;
   /** F-13 `Fit` command: size the selection to its labels. */
   onFit?: () => void;
   /** F-10: collapse this panel into its rail. */
@@ -390,10 +397,112 @@ function ConnectorStyleControls(props: { link: DiagramLink; onChange: LinkChange
 }
 
 /** Link fields: semantics, arrow model (F-12, CX-04) and texture. */
+const SIDE_LABELS: Record<AnchorSide, 'Top' | 'Right' | 'Bottom' | 'Left'> = {
+  top: 'Top',
+  right: 'Right',
+  bottom: 'Bottom',
+  left: 'Left',
+};
+
+/**
+ * UX08-WP09: one endpoint anchor as a side picker plus a side-relative
+ * percentage, so the user never has to think in normalized quarter units.
+ */
+function AnchorField(props: {
+  link: DiagramLink;
+  end: 'from' | 'to';
+  onChangeAnchor?: AnchorChange;
+}) {
+  const label = props.end === 'from' ? s('Start') : s('End');
+  const anchor = props.end === 'from' ? props.link.fromAnchor : props.link.toAnchor;
+  const choice = anchor === undefined ? null : anchorToChoice(anchor);
+  const set = (value: number | undefined): void => {
+    props.onChangeAnchor?.(props.link.id, props.end, value);
+  };
+  return (
+    <div class="prop-anchor" data-testid={`link-anchor-${props.end}`}>
+      <span class="field-label">{label}</span>
+      <select
+        aria-label={s('{endpoint} side', { endpoint: label })}
+        data-testid={`link-anchor-${props.end}-side`}
+        value={choice?.side ?? 'auto'}
+        onChange={(e) => {
+          const side = (e.target as HTMLSelectElement).value;
+          set(side === 'auto' ? undefined : choiceToAnchor(side as AnchorSide, choice?.percent ?? 50));
+        }}
+      >
+        <option value="auto">{s('Auto')}</option>
+        {ANCHOR_SIDES.map((side) => (
+          <option key={side} value={side}>{s(SIDE_LABELS[side])}</option>
+        ))}
+      </select>
+      <input
+        type="number"
+        min={0}
+        max={100}
+        step={1}
+        aria-label={s('{endpoint} position percent', { endpoint: label })}
+        placeholder={s('—')}
+        data-testid={`link-anchor-${props.end}-percent`}
+        disabled={choice === null}
+        value={choice === null ? '' : choice.percent}
+        onInput={(e) => {
+          if (choice === null) return;
+          const raw = Number((e.target as HTMLInputElement).value);
+          if (!Number.isFinite(raw)) return;
+          set(choiceToAnchor(choice.side, raw));
+        }}
+      />
+    </div>
+  );
+}
+
+/** UX08-WP09: endpoint anchors plus the two reset commands. */
+function RouteFields(props: {
+  link: DiagramLink;
+  onChangeAnchor?: AnchorChange;
+  onResetRoute?: (id: string) => void;
+  onResetBends?: (id: string) => void;
+}) {
+  const bends = props.link.waypoints?.length ?? 0;
+  const automatic = props.link.fromAnchor === undefined && props.link.toAnchor === undefined &&
+    bends === 0;
+  return (
+    <div class="prop-route" data-testid="link-endpoints">
+      <span class="field-label">{s('Endpoints')}</span>
+      <AnchorField link={props.link} end="from" onChangeAnchor={props.onChangeAnchor} />
+      <AnchorField link={props.link} end="to" onChangeAnchor={props.onChangeAnchor} />
+      <div class="prop-actions">
+        <button
+          type="button"
+          class="prop-action"
+          data-testid="link-reset-route"
+          disabled={automatic}
+          onClick={() => props.onResetRoute?.(props.link.id)}
+        >
+          {s('Reset route')}
+        </button>
+        <button
+          type="button"
+          class="prop-action"
+          data-testid="link-reset-bends"
+          disabled={bends === 0}
+          onClick={() => props.onResetBends?.(props.link.id)}
+        >
+          {s('Reset bends')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LinkFields(props: {
   link: DiagramLink;
   onChange: LinkChange;
   labelRef?: Ref<HTMLInputElement>;
+  onChangeAnchor?: AnchorChange;
+  onResetRoute?: (id: string) => void;
+  onResetBends?: (id: string) => void;
 }) {
   const { link, onChange } = props;
   const [more, setMore] = useState(false);
@@ -436,6 +545,15 @@ function LinkFields(props: {
           onInput={(e) => onChange(link.id, { label: (e.target as HTMLInputElement).value })}
         />
       </Field>
+      {/* UX08-WP09: routing geometry comes before appearance — the endpoints are
+          what a reader follows, and they were previously out of sight below the
+          whole connector-style block. */}
+      <RouteFields
+        link={link}
+        onChangeAnchor={props.onChangeAnchor}
+        onResetRoute={props.onResetRoute}
+        onResetBends={props.onResetBends}
+      />
       <ConnectorStyleControls link={link} onChange={onChange} />
       <label class="field field-checkbox">
         <input
@@ -476,7 +594,18 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
       />
     );
   }
-  if (link) return <LinkFields link={link} onChange={onChangeLink} labelRef={linkLabelRef} />;
+  if (link) {
+    return (
+      <LinkFields
+        link={link}
+        onChange={onChangeLink}
+        labelRef={linkLabelRef}
+        onChangeAnchor={props.onChangeAnchor}
+        onResetRoute={props.onResetRoute}
+        onResetBends={props.onResetBends}
+      />
+    );
+  }
   return (
     <aside class="properties" data-testid="properties" aria-label={s("Properties")}>
       {onCollapse && (

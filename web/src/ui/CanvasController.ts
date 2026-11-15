@@ -36,6 +36,13 @@ import {
 } from '../engine/render/sizeHints';
 import { projectPerimeter } from '../engine/render/perimeter';
 import {
+  channels as routeChannels,
+  materialize,
+  moveChannel,
+  snapChannel,
+  splitSegment,
+} from '../engine/render/routeEditing';
+import {
   alignObjects,
   copySelection,
   distributeObjects,
@@ -63,6 +70,7 @@ import {
   drawEndpointHandles,
   HANDLE_OFFSET,
   drawWaypointHandles,
+  drawSegmentHandles,
   type HaloSide,
   type ResizeHandle,
 } from '../engine/render/overlay';
@@ -170,7 +178,19 @@ type Mode =
   | { t: 'link'; fromId: string; fromSide: Side }
   | { t: 'resize'; id: string; handle: ResizeHandle; startCanvas: Point; before: Rect; original: DiagramObject }
   | { t: 'endpoint'; linkId: string; end: 'from' | 'to'; before: Pick<DiagramLink, 'fromAnchor' | 'toAnchor'> }
-  | { t: 'waypoint'; linkId: string; index: number; before: [number, number][] };
+  | { t: 'waypoint'; linkId: string; index: number; before: [number, number][] }
+  | {
+    t: 'segment';
+    linkId: string;
+    segIndex: number;
+    axis: 'h' | 'v';
+    startCanvas: Point;
+    /** Undefined on an automatic route: only a real move materialises waypoints. */
+    before: [number, number][] | undefined;
+    /** Rendered route at gesture start (the geometry the user grabbed). */
+    startPoints: Point[];
+    moved: boolean;
+  };
 
 interface PositionRec {
   id: string;
@@ -296,6 +316,25 @@ function listEq<T>(a: T[], b: T[]): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
+/** UX08-WP09: the document fields a route gesture may rewrite. */
+type RoutePatch = Pick<DiagramLink, 'waypoints' | 'fromAnchor' | 'toAnchor'>;
+
+/** Geometry → stored waypoints; an automatic route stores nothing at all. */
+function pointsToWaypoints(points: readonly Point[]): [number, number][] | undefined {
+  return points.length === 0 ? undefined : points.map((p) => [p.x, p.y] as [number, number]);
+}
+
+/** Defensive copy, so an undo closure never aliases live state. */
+function copyWaypoints(waypoints: readonly [number, number][]): [number, number][] {
+  return waypoints.map((w) => [w[0], w[1]] as [number, number]);
+}
+
+/** UX08-WP09: how close (in screen px) a channel must be to snap to a line. */
+const SNAP_THRESHOLD_PX = 6;
+/** Arrow-key nudge: one grid cell, or one canvas unit with Shift. */
+const KEY_STEP = 8;
+const FINE_KEY_STEP = 1;
+
 function haloTarget(e: Event): { id: string; side: HaloSide } | null {
   const el = (e.target as Element | null)?.closest('.pc-halo');
   if (!el) return null;
@@ -325,6 +364,43 @@ function endpointTarget(e: Event): { linkId: string; end: 'from' | 'to' } | null
   const linkId = el?.getAttribute('data-link');
   const end = el?.getAttribute('data-end');
   return linkId && (end === 'from' || end === 'to') ? { linkId, end } : null;
+}
+
+/** UX08-WP09: a slidable segment handle (never one that owns an endpoint). */
+function segmentTarget(e: Event): { linkId: string; index: number; axis: 'h' | 'v' } | null {
+  const el = (e.target as Element | null)?.closest('.pc-segment');
+  const linkId = el?.getAttribute('data-link');
+  const index = el?.getAttribute('data-seg-index');
+  const axis = el?.getAttribute('data-seg-axis');
+  return linkId && index !== null && index !== undefined && (axis === 'h' || axis === 'v')
+    ? { linkId, index: Number(index), axis }
+    : null;
+}
+
+/**
+ * UX08-WP09: the route handle that currently has keyboard focus. Bends nudge
+ * and delete; segments slide on their own channel.
+ */
+interface RouteHandleFocus {
+  kind: 'bend' | 'segment';
+  linkId: string;
+  index: number;
+  axis?: 'h' | 'v';
+}
+
+function routeHandleFocus(): RouteHandleFocus | null {
+  const el = document.activeElement?.closest('.pc-waypoint, .pc-segment');
+  if (!el) return null;
+  const linkId = el.getAttribute('data-link');
+  if (!linkId) return null;
+  if (el.classList.contains('pc-waypoint')) {
+    const index = el.getAttribute('data-wp-index');
+    return index === null ? null : { kind: 'bend', linkId, index: Number(index) };
+  }
+  const index = el.getAttribute('data-seg-index');
+  const axis = el.getAttribute('data-seg-axis');
+  if (index === null || (axis !== 'h' && axis !== 'v')) return null;
+  return { kind: 'segment', linkId, index: Number(index), axis };
 }
 
 function waypointTarget(e: Event): { linkId: string; index: number } | null {
@@ -697,6 +773,7 @@ export class CanvasController {
       Pick<
         DiagramLink,
         'type' | 'label' | 'dashed' | 'bidir' | 'head' | 'tail' | 'line' | 'route' | 'width' | 'sparks' | 'speed' | 'allowOverlap'
+        | 'fromAnchor' | 'toAnchor'
       >
     >,
   ): void {
@@ -1116,10 +1193,21 @@ export class CanvasController {
   }
 
   private drawLinkHandles(link: DiagramLink): void {
-    if (link.waypoints && link.waypoints.length > 0) {
-      drawWaypointHandles(this.renderer.overlay, link.waypoints.map(([x, y]) => ({ x, y })), link.id);
-    }
     const route = this.routes.get(link.id);
+    // UX08-WP09: segment handles first, so the bend and endpoint circles that
+    // are appended later stay on top (they are the finer targets).
+    if (route) {
+      drawSegmentHandles(this.renderer.overlay, routeChannels(route), link.id, (axis) =>
+        axis === 'h' ? s('Slide horizontal segment') : s('Slide vertical segment'));
+    }
+    if (link.waypoints && link.waypoints.length > 0) {
+      drawWaypointHandles(
+        this.renderer.overlay,
+        link.waypoints.map(([x, y]) => ({ x, y })),
+        link.id,
+        (index) => s('Bend {n}', { n: index + 1 }),
+      );
+    }
     if (route) {
       drawEndpointHandles(this.renderer.overlay, route, link.id, {
         from: s('Drag link start anchor'), to: s('Drag link end anchor'),
@@ -1165,6 +1253,12 @@ export class CanvasController {
   }
 
   private onDblClick(e: MouseEvent): void {
+    // UX08-WP09: a double-click on a slidable segment adds a bend there.
+    const seg = segmentTarget(e);
+    if (seg) {
+      this.insertRouteBend(seg.linkId, seg.index, this.toCanvas(e));
+      return;
+    }
     const hit = pick(this.state.objects, this.sceneLinks(), this.toCanvas(e));
     if (hit?.type === 'object') this.onRenameRequest?.(hit.id);
     // UX08-WP08: an object's double-click still renames in place; a link has no
@@ -1204,14 +1298,20 @@ export class CanvasController {
       return;
     }
     if (this.handleUndoKeys(e)) return;
-    if (/^[1-9]$/.test(e.key) && !e.metaKey && !e.ctrlKey) {
-      this.quickAdd(Number(e.key));
-      return;
-    }
+    // UX08-WP09: a focused bend or segment handle owns the arrow/Delete keys.
+    if (this.handleRouteKeys(e)) return;
+    if (this.handleQuickAddKey(e)) return;
     if (this.handleNavKeys(e)) return;
     if (this.handleRenameKey(e)) return;
     if (this.handleArrowKey(e)) return;
     if (this.handleActionKey(e)) return;
+  }
+
+  /** F-12/shape palette: `1`…`9` add the matching kind — true when consumed. */
+  private handleQuickAddKey(e: KeyboardEvent): boolean {
+    if (!/^[1-9]$/.test(e.key) || e.metaKey || e.ctrlKey) return false;
+    this.quickAdd(Number(e.key));
+    return true;
   }
 
   /** F-19 mod+C / mod+V / mod+D — true when consumed. */
@@ -1419,26 +1519,43 @@ export class CanvasController {
     if (action === 'fit-diagram') return void this.fitDiagram();
     if (action === 'grid-toggle') return void this.gridToggleRequested();
     if (action === 'delete') return void this.deleteSelection();
-    if (action === 'escape') {
-      if (this.mode.t === 'resize') {
-        const { id, original } = this.mode;
-        this.state = {
-          ...this.state,
-          objects: this.state.objects.map((o) => o.id === id ? original : o),
-        };
-        this.recomputeRoutes();
-      } else if (this.mode.t === 'endpoint') {
-        const { linkId, before } = this.mode;
-        this.state = {
-          ...this.state,
-          links: this.state.links.map((l) => l.id === linkId ? { ...l, ...before } : l),
-        };
-        this.recomputeRoutes();
-      }
-      this.mode = { t: 'idle' };
-      this.selectObjects([]);
-      this.render();
+    if (action === 'escape') return void this.cancelGesture();
+  }
+
+  /**
+   * Escape abandons the gesture in flight. Every branch restores the geometry
+   * the gesture started from, so a cancelled edit never reaches the document.
+   */
+  private cancelGesture(): void {
+    if (this.mode.t === 'resize') {
+      const { id, original } = this.mode;
+      this.state = {
+        ...this.state,
+        objects: this.state.objects.map((o) => o.id === id ? original : o),
+      };
+      this.recomputeRoutes();
+    } else if (this.mode.t === 'endpoint') {
+      const { linkId, before } = this.mode;
+      this.state = {
+        ...this.state,
+        links: this.state.links.map((l) => l.id === linkId ? { ...l, ...before } : l),
+      };
+      this.recomputeRoutes();
+    } else if (this.mode.t === 'waypoint' || this.mode.t === 'segment') {
+      // UX08-WP09: a cancelled route gesture leaves the document untouched.
+      const { linkId, before } = this.mode;
+      this.state = {
+        ...this.state,
+        links: this.state.links.map((l) =>
+          l.id === linkId
+            ? { ...l, waypoints: before === undefined || before.length === 0 ? undefined : before }
+            : l),
+      };
+      this.recomputeRoutes();
     }
+    this.mode = { t: 'idle' };
+    this.selectObjects([]);
+    this.render();
   }
 
   // ---- pointer modes ------------------------------------------------------
@@ -1499,6 +1616,24 @@ export class CanvasController {
   }
 
   private beginLinkHandle(e: PointerEvent): boolean {
+    const seg = segmentTarget(e);
+    if (seg) {
+      const link = this.state.links.find((l) => l.id === seg.linkId);
+      const route = this.routes.get(seg.linkId);
+      if (link && route) {
+        this.mode = {
+          t: 'segment',
+          linkId: seg.linkId,
+          segIndex: seg.index,
+          axis: seg.axis,
+          startCanvas: this.toCanvas(e),
+          before: link.waypoints === undefined ? undefined : link.waypoints.map((w) => [w[0], w[1]]),
+          startPoints: route.map((p) => ({ x: p.x, y: p.y })),
+          moved: false,
+        };
+      }
+      return true;
+    }
     // F-19: dragging a waypoint handle re-routes the selected link.
     const wp = waypointTarget(e);
     if (wp) {
@@ -1579,6 +1714,9 @@ export class CanvasController {
         break;
       case 'waypoint':
         this.waypointMove(e);
+        break;
+      case 'segment':
+        this.segmentMove(e);
         break;
       default:
         break;
@@ -1767,6 +1905,10 @@ export class CanvasController {
   }
 
   private onPointerUp(e: PointerEvent): void {
+    // UX08-WP09: clicking a channel is not an edit. Skipping the repaint keeps
+    // the handle node alive, which is what lets the browser pair two clicks into
+    // a `dblclick` — it only fires when both land on the same element.
+    const inert = this.mode.t === 'segment' && !this.mode.moved;
     switch (this.mode.t) {
       case 'drag':
         this.commitDrag();
@@ -1786,6 +1928,9 @@ export class CanvasController {
       case 'waypoint':
         this.commitWaypoint();
         break;
+      case 'segment':
+        this.commitSegment();
+        break;
       default:
         break;
     }
@@ -1793,7 +1938,7 @@ export class CanvasController {
     for (const o of this.state.objects) {
       this.renderer.elementFor(o.id)?.classList.remove('pc-link-target');
     }
-    this.render();
+    if (!inert) this.render();
   }
 
   /** F-19: drag one waypoint; the route re-elbows through the new position. */
@@ -1817,22 +1962,232 @@ export class CanvasController {
   private commitWaypoint(): void {
     const m = this.mode;
     if (m.t !== 'waypoint') return;
-    const after = this.state.links.find((l) => l.id === m.linkId)?.waypoints ?? [];
-    if (JSON.stringify(after) === JSON.stringify(m.before)) return;
-    const set = (wps: [number, number][]): void => {
+    const after = this.state.links.find((l) => l.id === m.linkId)?.waypoints;
+    if (JSON.stringify(after ?? []) === JSON.stringify(m.before ?? [])) return;
+    this.pushRoutePatch(m.linkId, { waypoints: m.before }, { waypoints: after }, s('move waypoint'));
+  }
+
+  // ---- UX08-WP09 route geometry -------------------------------------------
+
+  /**
+   * UX08-WP09: snap a sliding channel to an entity corner, side midpoint or
+   * centre within a screen-space threshold, then to the canvas grid. Alt
+   * suspends snapping entirely for that gesture.
+   */
+  private snapChannelTo(value: number, axis: 'h' | 'v', alt: boolean): number {
+    if (alt) return value;
+    const others = this.state.objects.filter((o) => o.kind !== 'group');
+    const snap = snapChannel(value, axis, others, SNAP_THRESHOLD_PX / this.t.k);
+    return snap.snapped ? snap.value : this.snapped(value);
+  }
+
+  /** Write waypoints and repaint the route without touching the undo stack. */
+  private applyWaypoints(
+    linkId: string,
+    waypoints: [number, number][] | undefined,
+  ): DiagramLink | undefined {
+    const link = this.state.links.find((l) => l.id === linkId);
+    if (!link) return undefined;
+    const next: DiagramLink = { ...link, waypoints };
+    this.state = {
+      ...this.state,
+      links: this.state.links.map((l) => (l.id === linkId ? next : l)),
+    };
+    this.recomputeRoutes();
+    // Intermediate geometry is view-only: commit/cancel owns code sync + undo.
+    this.render(false);
+    return next;
+  }
+
+  /** One undo entry per committed route edit (bends and endpoint anchors). */
+  private pushRoutePatch(
+    linkId: string,
+    before: RoutePatch,
+    after: RoutePatch,
+    label: string,
+    coalesceKey?: string,
+  ): void {
+    const set = (patch: RoutePatch): void => {
       this.state = {
         ...this.state,
-        links: this.state.links.map((l) => (l.id === m.linkId ? { ...l, waypoints: wps } : l)),
+        links: this.state.links.map((l) => (l.id === linkId ? { ...l, ...patch } : l)),
       };
       this.recomputeRoutes();
       this.render();
     };
     this.undo.push({
-      label: s('move waypoint'),
-      undo: () => set(m.before),
-      redo: () => set(after as [number, number][]),
+      label,
+      ...(coalesceKey === undefined ? {} : { coalesceKey }),
+      undo: () => set(before),
+      redo: () => set(after),
       coalesce: () => null,
     });
+    set(after);
+  }
+
+  /** UX08-WP09 `Start`/`End` = Auto/Top/Right/Bottom/Left: set or clear one anchor. */
+  setLinkAnchor(id: string, end: 'from' | 'to', anchor: number | undefined): void {
+    const link = this.state.links.find((l) => l.id === id);
+    if (!link) return;
+    const before: RoutePatch =
+      end === 'from' ? { fromAnchor: link.fromAnchor } : { toAnchor: link.toAnchor };
+    if (before[end === 'from' ? 'fromAnchor' : 'toAnchor'] === anchor) return;
+    const after: RoutePatch = end === 'from' ? { fromAnchor: anchor } : { toAnchor: anchor };
+    this.pushRoutePatch(id, before, after, s('anchor link {endpoint}', { endpoint: end }));
+  }
+
+  /** UX08-WP09 `Reset route`: automatic endpoints and no bends. */
+  resetLinkRoute(id: string): void {
+    const link = this.state.links.find((l) => l.id === id);
+    if (!link) return;
+    const before: RoutePatch = {
+      waypoints: link.waypoints, fromAnchor: link.fromAnchor, toAnchor: link.toAnchor,
+    };
+    const unchanged = before.waypoints === undefined && before.fromAnchor === undefined &&
+      before.toAnchor === undefined;
+    if (unchanged) return;
+    this.pushRoutePatch(
+      id, before, { waypoints: undefined, fromAnchor: undefined, toAnchor: undefined },
+      s('reset route'),
+    );
+  }
+
+  /** UX08-WP09 `Reset bends`: drop the waypoints, keep the endpoint anchors. */
+  resetLinkBends(id: string): void {
+    const link = this.state.links.find((l) => l.id === id);
+    if (!link || link.waypoints === undefined || link.waypoints.length === 0) return;
+    this.pushRoutePatch(
+      id, { waypoints: link.waypoints.map((w) => [w[0], w[1]] as [number, number]) },
+      { waypoints: undefined }, s('reset bends'),
+    );
+  }
+
+  /**
+   * UX08-WP09 segment drag: slide a whole orthogonal channel. Endpoints never
+   * move, and an untouched automatic route is only materialised once the
+   * pointer has actually moved it.
+   */
+  private segmentMove(e: PointerEvent): void {
+    const m = this.mode;
+    if (m.t !== 'segment') return;
+    const start = m.startPoints[m.segIndex];
+    if (!start) return;
+    const p = this.toCanvas(e);
+    const axisKey = m.axis === 'h' ? 'y' : 'x';
+    const raw = (m.axis === 'h' ? p.y - m.startCanvas.y : p.x - m.startCanvas.x);
+    if (!m.moved && Math.abs(raw) * this.t.k < DRAG_THRESHOLD) return;
+    m.moved = true;
+    const channel = this.snapChannelTo(start[axisKey] + raw, m.axis, e.altKey);
+    const moved = moveChannel(m.startPoints, m.segIndex, channel - start[axisKey]);
+    if (!moved) return;
+    const link = this.applyWaypoints(m.linkId, pointsToWaypoints(materialize(moved)));
+    clearOverlay(this.renderer.overlay);
+    if (link) this.drawLinkHandles(link);
+    this.svg.setAttribute('aria-description', s('Segment at {value}', { value: channel }));
+  }
+
+  private commitSegment(): void {
+    const m = this.mode;
+    if (m.t !== 'segment' || !m.moved) return;
+    const after = this.state.links.find((l) => l.id === m.linkId)?.waypoints;
+    if (JSON.stringify(after ?? []) === JSON.stringify(m.before ?? [])) return;
+    this.pushRoutePatch(m.linkId, { waypoints: m.before }, { waypoints: after }, s('move segment'));
+  }
+
+  /**
+   * UX08-WP09 double-click on a segment: add one bend under the pointer. The
+   * new vertex is kept even though it is collinear until the user pulls it —
+   * an explicitly requested bend is intent, not redundant geometry.
+   */
+  private insertRouteBend(linkId: string, segIndex: number, at: Point): void {
+    const link = this.state.links.find((l) => l.id === linkId);
+    const route = this.routes.get(linkId);
+    if (!link || !route) return;
+    const before = link.waypoints === undefined ? undefined : copyWaypoints(link.waypoints);
+    const points = splitSegment(route, segIndex, at);
+    const after = pointsToWaypoints(points.slice(1, -1));
+    if (after === undefined) return;
+    this.pushRoutePatch(linkId, { waypoints: before }, { waypoints: after }, s('add bend'));
+    this.focusHandle(`waypoint-${after.length - 1}`);
+  }
+
+  /** UX08-WP09 keyboard: arrows nudge a focused bend, Delete removes it. */
+  private handleRouteKeys(e: KeyboardEvent): boolean {
+    const focus = routeHandleFocus();
+    if (!focus) return false;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      if (focus.kind === 'bend') this.removeRouteBend(focus.linkId, focus.index);
+      return true;
+    }
+    return this.nudgeHandle(focus, e);
+  }
+
+  /** Arrow keys slide/nudge the focused handle; other keys fall through. */
+  private nudgeHandle(focus: RouteHandleFocus, e: KeyboardEvent): boolean {
+    const dir = arrowDirection(e.key, e.metaKey || e.ctrlKey || e.altKey);
+    if (!dir) return false;
+    e.preventDefault();
+    const step = e.shiftKey ? FINE_KEY_STEP : KEY_STEP;
+    const dx = dir === 'left' ? -step : dir === 'right' ? step : 0;
+    const dy = dir === 'up' ? -step : dir === 'down' ? step : 0;
+    if (focus.kind === 'bend') this.nudgeRouteBend(focus.linkId, focus.index, dx, dy);
+    else this.nudgeRouteSegment(focus.linkId, focus.index, focus.axis ?? 'h', dx, dy);
+    return true;
+  }
+
+  private nudgeRouteBend(linkId: string, index: number, dx: number, dy: number): void {
+    const before = this.state.links.find((l) => l.id === linkId)?.waypoints;
+    const current = before?.[index];
+    if (!before || !current) return;
+    const after = pointsToWaypoints(
+      before.map((w, i) => ({ x: i === index ? w[0] + dx : w[0], y: i === index ? w[1] + dy : w[1] })),
+    );
+    this.pushRoutePatch(
+      linkId, { waypoints: copyWaypoints(before) }, { waypoints: after }, s('move bend'), `route:${linkId}`,
+    );
+    this.focusHandle(`waypoint-${index}`);
+  }
+
+  private nudgeRouteSegment(
+    linkId: string,
+    segIndex: number,
+    axis: 'h' | 'v',
+    dx: number,
+    dy: number,
+  ): void {
+    const route = this.routes.get(linkId);
+    // Only the axis perpendicular to the segment can slide it.
+    const delta = axis === 'h' ? dy : dx;
+    if (!route || delta === 0) return;
+    const moved = moveChannel(route, segIndex, delta);
+    if (!moved) return;
+    const before = this.state.links.find((l) => l.id === linkId)?.waypoints;
+    this.pushRoutePatch(
+      linkId,
+      { waypoints: before === undefined ? undefined : copyWaypoints(before) },
+      { waypoints: pointsToWaypoints(materialize(moved)) },
+      s('move segment'),
+      `route:${linkId}`,
+    );
+    this.focusHandle(`segment-${segIndex}`);
+  }
+
+  private removeRouteBend(linkId: string, index: number): void {
+    const before = this.state.links.find((l) => l.id === linkId)?.waypoints;
+    if (!before || before[index] === undefined) return;
+    const after = before.length > 1 ? copyWaypoints(before.filter((_, i) => i !== index)) : undefined;
+    this.pushRoutePatch(
+      linkId, { waypoints: copyWaypoints(before) }, { waypoints: after }, s('remove bend'),
+    );
+    this.focusHandle(after === undefined ? null : `waypoint-${Math.min(index, after.length - 1)}`);
+  }
+
+  /** Repaint preserves neither focus nor hover: re-focus the edited handle. */
+  private focusHandle(testId: string | null): void {
+    if (testId === null) return;
+    const el = this.renderer.overlay.querySelector<SVGElement>(`[data-testid="${testId}"]`);
+    el?.focus();
   }
 
   private commitDrag(): void {
