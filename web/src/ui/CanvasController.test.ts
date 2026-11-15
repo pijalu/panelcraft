@@ -427,6 +427,80 @@ describe('UX-06 equal-size resize interaction', () => {
   });
 });
 
+describe('UX-08 size hints during resize (WP06)', () => {
+  const seed = (): void => {
+    ctrl.loadState({
+      objects: [
+        { id: 'target', kind: 'system', name: 'Target', x: 100, y: 100, w: 120, h: 60 },
+        { id: 'peer', kind: 'group', name: 'Peer', x: 400, y: 300, w: 200, h: 100 },
+      ],
+      links: [],
+    });
+    ctrl.setSelection(['target', 'peer'], []);
+  };
+
+  const start = (handleName: string): void => {
+    const handle = svg.querySelector(`.pc-resize-handle[data-handle="${handleName}"]`);
+    if (!handle) throw new Error(`missing ${handleName} handle`);
+    handle.dispatchEvent(ptr('pointerdown', 0, 0));
+  };
+
+  it('describes the active size and every other selected object without any match', () => {
+    seed();
+    start('e');
+    // 237 snaps to 240 → width 140, which is nowhere near the 200 peer width.
+    window.dispatchEvent(ptr('pointermove', 237, 0));
+    expect(obj('target').w).toBe(140);
+    expect(svg.querySelectorAll('.pc-resize-cue')).toHaveLength(0);
+
+    const active = svg.querySelector('.pc-size-hint-active');
+    expect(active?.getAttribute('data-id')).toBe('target');
+    expect(active?.textContent).toBe('140 × 60');
+    const peer = svg.querySelector('[data-testid="size-hint-peer"]');
+    expect(peer?.textContent).toBe('200 × 100');
+    expect(svg.querySelectorAll('.pc-size-hint')).toHaveLength(2);
+
+    // Screen-readable, announced once through the canvas description.
+    expect(svg.getAttribute('aria-description')).toContain('140 × 60');
+    window.dispatchEvent(ptr('pointerup', 237, 0));
+  });
+
+  it('keeps equal-size references visually distinct from the plain size hints', () => {
+    seed();
+    start('e');
+    window.dispatchEvent(ptr('pointermove', 296, 0));
+    expect(obj('target').w).toBe(200);
+    expect(svg.querySelectorAll('.pc-resize-cue-width')).toHaveLength(1);
+    const active = svg.querySelector('.pc-size-hint-active');
+    expect(active?.textContent).toBe('200 × 60');
+    expect(svg.querySelectorAll('.pc-size-hint')).toHaveLength(2);
+    window.dispatchEvent(ptr('pointerup', 296, 0));
+  });
+
+  it('clears every hint on Escape and on commit, keeping one undo entry', () => {
+    seed();
+    const undoBefore = ctrl.undo.size;
+    start('e');
+    window.dispatchEvent(ptr('pointermove', 237, 0));
+    expect(svg.querySelectorAll('.pc-size-hint')).toHaveLength(2);
+    window.dispatchEvent(key('keydown', { key: 'Escape' }));
+    expect(svg.querySelectorAll('.pc-size-hint')).toHaveLength(0);
+    expect(obj('target').w).toBe(120);
+    window.dispatchEvent(ptr('pointerup', 237, 0));
+    expect(ctrl.undo.size).toBe(undoBefore);
+
+    // Escape also drops the selection, so the same objects are picked again.
+    ctrl.setSelection(['target', 'peer'], []);
+    start('e');
+    window.dispatchEvent(ptr('pointermove', 237, 0));
+    window.dispatchEvent(ptr('pointerup', 237, 0));
+    expect(svg.querySelectorAll('.pc-size-hint')).toHaveLength(0);
+    expect(ctrl.undo.size).toBe(undoBefore + 1);
+    // The non-active selection never changed size.
+    expect(obj('peer')).toMatchObject({ w: 200, h: 100 });
+  });
+});
+
 describe('link visual model (F-12)', () => {
   const seed = (): void => {
     ctrl.loadState({

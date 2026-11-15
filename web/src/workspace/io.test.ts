@@ -172,6 +172,27 @@ describe('svg sanitize + export (FR-W4, N6)', () => {
     expect(out).toContain('pc-obj');
   });
 
+  it('drops the transient interaction overlay from an export (UX08-WP06)', () => {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    const shape = document.createElementNS(NS, 'g');
+    shape.setAttribute('class', 'pc-obj');
+    svg.appendChild(shape);
+    const overlay = document.createElementNS(NS, 'g');
+    overlay.setAttribute('class', 'pc-layer-overlay');
+    const hint = document.createElementNS(NS, 'g');
+    hint.setAttribute('class', 'pc-size-hint pc-size-hint-active');
+    hint.textContent = '140 × 60';
+    overlay.appendChild(hint);
+    svg.appendChild(overlay);
+
+    const out = exportSvg(svg as unknown as SVGSVGElement);
+    // Size hints and resize handles are editor chrome, never diagram content.
+    expect(out).not.toContain('pc-size-hint');
+    expect(out).not.toContain('140 × 60');
+    expect(out).toContain('pc-obj');
+  });
+
   it('exportSvg serializes a clean svg unchanged', () => {
     const doc = typeof document !== 'undefined';
     expect(doc).toBe(true); // jsdom present

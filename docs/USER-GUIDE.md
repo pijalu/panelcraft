@@ -31,7 +31,10 @@ and the CLI's `--theme` option.
   the grid). **Rename** in place with `F2` or double-click; Enter commits,
   Escape cancels.
 - **Resize**: select anything and drag one of the eight handles; the box stays
-  on the grid and never gets smaller than 48×32. Within 4 canvas units of another
+  on the grid and never gets smaller than 48×32. While you drag, a badge beside the
+  handle shows the live `W × H` (and every other selected object keeps a badge with its
+  own unchanged size — only the object you grabbed changes); a multi-selection therefore
+  offers a handle set per selected object. Within 4 canvas units of another
   visible object's width or height, the nearest matching dimension snaps into place
   and a red bracket labels `W = …` or `H = …`. Corner handles can match both dimensions.
   These cues also describe the match to assistive technology and disappear on commit

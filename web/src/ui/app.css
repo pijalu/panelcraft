@@ -922,6 +922,34 @@ body {
   text-anchor: middle;
 }
 
+.pc-size-hint {
+  pointer-events: none;
+}
+
+.pc-size-hint-bg {
+  fill: var(--pc-panel-bg);
+  stroke: var(--pc-input-border);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.pc-size-hint-label {
+  fill: var(--pc-fg);
+  font-size: var(--pc-text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The active badge follows the pointer: match colour and a stronger border, so
+   it never reads as the static equal-size bracket. */
+.pc-size-hint-active .pc-size-hint-bg {
+  stroke: var(--pc-match);
+}
+
+.pc-size-hint-active .pc-size-hint-label {
+  fill: var(--pc-match);
+}
+
 .pc-link-target .pc-shape {
   stroke: var(--pc-accent);
   stroke-width: 2;

@@ -26,6 +26,12 @@ const CHROME_TOKENS = [
 
 type Tokens = Map<string, string>;
 
+/**
+ * Tokens the renderer/layout writes at runtime (per-object style overrides and
+ * the user-resized panel width), so they are intentionally absent from the CSS.
+ */
+const RUNTIME_TOKENS = new Set(['shape-fill', 'shape-stroke', 'label-fill', 'flows-w']);
+
 function block(selector: string): string {
   const start = css.indexOf(`${selector} {`);
   if (start === -1) throw new Error(`missing CSS block ${selector}`);
@@ -138,6 +144,25 @@ describe('application chrome tokens (UX08-WP03)', () => {
       expect(dark.get(token)).toBeTruthy();
     }
     expect(light.get('panel-bg')).not.toBe(light.get('canvas'));
+  });
+
+  it('never references a custom property the file does not define', () => {
+    // UX08-WP06: a `var(--pc-text)` typo (the real token is `--pc-fg`) silently
+    // fell back to black, which made a size badge invisible in the dark theme.
+    // Every referenced token must be declared somewhere in this file — theme
+    // tokens in the `:root` blocks, layout/metric tokens on their owning rule.
+    const declared = new Set<string>();
+    for (const match of css.matchAll(/--pc-([a-z0-9-]+)\s*:/g)) {
+      if (match[1]) declared.add(match[1]);
+    }
+    const referenced = new Set<string>();
+    for (const match of css.matchAll(/var\(--pc-([a-z0-9-]+)/g)) {
+      if (match[1]) referenced.add(match[1]);
+    }
+    const missing = [...referenced]
+      .filter((token) => !declared.has(token) && !RUNTIME_TOKENS.has(token))
+      .sort();
+    expect(missing, 'referenced but never declared').toEqual([]);
   });
 
   it('declares colour values only in the theme blocks, never inline in a rule', () => {

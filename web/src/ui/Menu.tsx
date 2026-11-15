@@ -3,7 +3,7 @@
 // the panel action menus. Keyboard contract: trigger `aria-haspopup="menu"`,
 // roving `menuitem` focus with arrows/Home/End, ArrowRight/Left for submenus,
 // Escape and outside pointer dismiss, Tab closes, focus returns to the trigger.
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { clampMenuPosition, edgeIndex, isInside, MENU_MARGIN, rovingIndex } from './menuModel';
 import { CheckIcon, SubmenuIcon } from './icons';
@@ -87,11 +87,17 @@ function MenuList(props: MenuListProps): ComponentChildren {
   const keyboardSub = useRef(false);
   const list = (): HTMLDivElement | null => listRef.current ?? localRef.current;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!props.autoFocus) return;
     // Land on the first *enabled* action: focusing a disabled button is a no-op
     // and would leave focus on the trigger (panel menus start with e.g. a
     // disabled "Dock left").
+    //
+    // This must be a layout effect: the popover is already in the DOM and
+    // answering hover/focus once the commit finishes, so a deferred effect ran
+    // a frame later and stole focus back from a user (or a test driver) who had
+    // already moved into the list — Enter then activated the first item instead
+    // of the one under focus.
     const root = list();
     const enabled = menuElements(root).map((el) => !(el as HTMLButtonElement).disabled);
     focusAt(root, edgeIndex(enabled, 'first'));

@@ -107,6 +107,8 @@ const ACTIVE_TAG = /^(script|foreignobject|iframe)$/;
 /** Editor-only grid geometry (UX08-WP05) — never part of an export. */
 const GRID_PATTERN_TAG = /<pattern\b[^>]*pc-grid[^>]*>[\s\S]*?<\/pattern\s*>/gi;
 const GRID_RECT_TAG = /<rect\b[^>]*pc-grid[^>]*\/>/gi;
+/** Editor interaction overlay (UX08-WP06) — also stripped when parsing failed. */
+const OVERLAY_TAG = /<g\b[^>]*pc-layer-overlay[^>]*>[\s\S]*?<\/g\s*>/gi;
 
 /**
  * Remove scripts/foreignObject/iframes and script-URL/event attributes from
@@ -129,7 +131,8 @@ export function sanitizeSvg(svgText: string): string {
       .replace(UNSAFE_TAG, '')
       .replace(UNSAFE_ATTR, '')
       .replace(GRID_PATTERN_TAG, '')
-      .replace(GRID_RECT_TAG, '');
+      .replace(GRID_RECT_TAG, '')
+      .replace(OVERLAY_TAG, '');
   }
   pruneActive(root);
   pruneEditorChrome(root);
@@ -142,7 +145,11 @@ export function sanitizeSvg(svgText: string): string {
  * grid baked in would claim the grid is part of the diagram.
  */
 function pruneEditorChrome(root: Element): void {
-  for (const el of Array.from(root.querySelectorAll('.pc-grid, #pc-grid-pattern-dots, #pc-grid-pattern-lines'))) {
+  // UX08-WP06: the interaction overlay (rubber band, guides, resize handles and
+  // size hints) is transient editor chrome like the grid — never part of a file.
+  for (const el of Array.from(root.querySelectorAll(
+    '.pc-grid, #pc-grid-pattern-dots, #pc-grid-pattern-lines, .pc-layer-overlay',
+  ))) {
     el.remove();
   }
 }

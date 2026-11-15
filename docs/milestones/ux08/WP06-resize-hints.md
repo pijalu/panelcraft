@@ -4,7 +4,7 @@
 
 **Severity:** Medium — direct-manipulation feedback
 
-**Status:** Proposed  
+**Status:** Implemented and verified (2026-11-15).
 **Requirement:** 2 — size hints on all selected elements, including the one being resized  
 **Depends on:** nothing  
 **Branch:** `feat/ux08-resize-hints`
@@ -60,4 +60,80 @@ Capture no-match, match and multi-select states in both themes.
 
 ## Evidence
 
-Pending. Record original missing-hint failures, green checks and screenshot review here.
+Implemented on `feat/ux08-resize-hints`. **RED:** the new controller tests failed with
+`svg.querySelector('.pc-size-hint-active')` returning `null` during a no-match resize (nothing
+described the active size), and `web/src/engine/render/sizeHints.test.ts` failed to import the
+module at all. Both went green after the module and the overlay painting landed.
+
+### What shipped
+
+- `web/src/engine/render/sizeHints.ts` — pure hint model: `sizeText(rect)` (the one rounded
+  `W × H` format), `sizeHints(active, others)` (active first, peers with their unchanged rect,
+  deduplicated by id), `hintAnchor(rect, handle, gap)` (outside the dragged edge or corner) and
+  `clampToView(point, view, margin)`.
+- `web/src/engine/render/overlay.ts` — `drawSizeHints()` / `drawSizeHint()`: a pill + label per
+  hint, `pointer-events: none`, `aria-hidden` (the canvas narrates instead), the active badge in
+  the match colour and every peer badge in the normal foreground. Metrics are divided by the
+  world zoom, so the badge keeps the 11 px UI type size on screen instead of shrinking with the
+  canvas.
+- `web/src/ui/CanvasController.ts` — `resizeMove()` now always paints the active hint (clamped
+  inside the viewport) plus a badge per other selected object; `viewRect()` gives the visible
+  canvas in canvas units; `resizeStatus(cues, size)` always announces `Size W × H` and appends
+  the equal-size matches, so assistive technology gets the same information without a live
+  region per badge. `paintIdleOverlay()` draws one handle set per selected object for a
+  multi-selection (halos stay single-selection, because linking from an ambiguous member is
+  not a decision the canvas should make).
+- `web/src/ui/app.css` — `.pc-size-hint*` rules on theme tokens; `web/src/workspace/io.ts`
+  also strips `.pc-layer-overlay` from exports (the overlay is interaction chrome).
+- `web/src/engine/render/sizeHints.test.ts`, controller tests, an export test and the extended
+  `e2e/ux06-resize-cues.spec.ts` cover the model, the drag, the export and the visuals.
+
+### Two defects found and fixed while verifying
+
+1. **The passive badge was invisible in the dark theme.** `app.css` used `var(--pc-text)`, a
+   token that does not exist (the real one is `--pc-fg`), so the fill fell back to black on a
+   dark canvas. Found by the screenshot review; fixed, and guarded by a new `appTokens` test
+   that fails when any `var(--pc-…)` reference is not declared (four runtime-written tokens are
+   allow-listed with a comment).
+2. **The menu popover stole focus back.** `Menu` focused its first item in a deferred effect, a
+   frame *after* the popover was already interactive — a user (or the e2e driver) who had
+   already moved into the list lost focus, and Enter activated the wrong item. Found as a
+   1-in-6 flake in `ux03-files.spec.ts` under parallel load; the focus move is now a
+   `useLayoutEffect`, and `--repeat-each=6 --workers=6` on that spec passes 24/24.
+
+### Tests
+
+```text
+$ npx vitest run web/src/engine/render/sizeHints.test.ts web/src/ui/CanvasController.test.ts \
+    web/src/ui/appTokens.test.ts web/src/workspace/io.test.ts
+Test Files  4 passed (4)   Tests  86 passed (86)
+
+$ npx vitest run            # whole suite
+Test Files  110 passed (110)   Tests  1134 passed (1134)
+
+$ npm run check             # tsc + tsc -p tsconfig.sw.json + eslint — clean
+```
+
+### Browser checks
+
+```text
+$ npm run build && npx playwright test e2e/ux06-resize-cues.spec.ts e2e/p1-size.spec.ts
+8 passed (3.3s)
+
+$ npx playwright test e2e/ux03-files.spec.ts --repeat-each=6 --workers=6
+24 passed (13.2s)          # the focus-stealing flake was here
+
+$ npx playwright test
+124 passed (46.8s)
+```
+
+`e2e/ux06-resize-cues.spec.ts` now also asserts the no-match case (a `W × H` badge and a
+`Size …` canvas description without any equal-size bracket), a multi-selection drag (one badge
+per selected object, the passive object's size unchanged, `Escape` removing every badge and
+restoring the geometry) and keeps the equal-size bracket assertions untouched alongside the new
+badges.
+
+Screenshots reviewed against the STYLE-GUIDE checklist: `ux06-no-match-{light,dark}` and
+`ux08-resize-hints-multi-{light,dark}`. The active badge sits just outside the dragged corner in
+the match colour, the peer badge above its object in normal foreground; both stay legible on the
+canvas fill. The dark-theme review caught defect 1 above.

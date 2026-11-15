@@ -31,6 +31,9 @@ import {
   defaultGrid, toggleGridVisibility, type GridSettings, type GridType,
 } from '../engine/render/grid';
 import { resizedRectWithCues, type ResizeCandidate, type ResizeCue } from '../engine/render/resize';
+import {
+  clampToView, HINT_GAP, hintAnchor, sizeHints, sizeText, type SizeHint, type SizeTarget,
+} from '../engine/render/sizeHints';
 import { projectPerimeter } from '../engine/render/perimeter';
 import {
   alignObjects,
@@ -56,7 +59,9 @@ import {
   drawHalos,
   drawResizeHandle,
   drawResizeCues,
+  drawSizeHints,
   drawEndpointHandles,
+  HANDLE_OFFSET,
   drawWaypointHandles,
   type HaloSide,
   type ResizeHandle,
@@ -249,13 +254,18 @@ function resizeCandidate(o: DiagramObject): ResizeCandidate {
   return { id: o.id, label: o.name || o.id, rect: rectOf(o) };
 }
 
-function resizeStatus(cues: ResizeCue[]): string {
-  return cues.map((cue) => s(
+/**
+ * The resize narration: the active `W × H` always, plus any equal-size match
+ * (UX08-WP06). One announcement per frame — no live region per hint.
+ */
+function resizeStatus(cues: ResizeCue[], size: string): string {
+  const matches = cues.map((cue) => s(
     cue.dimension === 'width'
       ? 'Equal width with {label} ({value})'
       : 'Equal height with {label} ({value})',
     { label: cue.candidate.label ?? cue.candidate.id, value: cue.value },
-  )).join('; ');
+  ));
+  return [s('Size {value}', { value: size }), ...matches].join('; ');
 }
 
 function normRect(a: Point, b: Point): Rect {
@@ -954,6 +964,13 @@ export class CanvasController {
     return invert(this.t, { x: w / 2, y: h / 2 });
   }
 
+  /** Visible canvas area in canvas units (used to keep hints on screen). */
+  private viewRect(): Rect {
+    const { w, h } = this.viewSize();
+    const tl = invert(this.t, { x: 0, y: 0 });
+    return { x: tl.x, y: tl.y, w: w / this.t.k, h: h / this.t.k };
+  }
+
   private setTransform(t: Transform): void {
     this.t = t;
     this.renderer.setWorldTransform(t);
@@ -1069,6 +1086,15 @@ export class CanvasController {
     if (obj) {
       drawHalos(this.renderer.overlay, obj, obj.id);
       drawResizeHandle(this.renderer.overlay, obj, obj.id);
+      return;
+    }
+    // UX08-WP06: a multi-selection still exposes one resize overlay per selected
+    // object — dragging a handle resizes only that object, and the other selected
+    // objects show their (unchanged) size beside it. Halos stay single-selection
+    // only, because linking from one of several selected objects is ambiguous.
+    const many = this.state.objects.filter((o) => this.selObjects.has(o.id));
+    if (many.length > 1) {
+      for (const o of many) drawResizeHandle(this.renderer.overlay, o, o.id);
       return;
     }
     // F-19: a selected link exposes its explicit waypoints as drag handles
@@ -1630,9 +1656,33 @@ export class CanvasController {
     clearOverlay(this.renderer.overlay);
     drawResizeHandle(this.renderer.overlay, snapped, m.id);
     drawResizeCues(this.renderer.overlay, cues);
-    const description = resizeStatus(cues);
+    drawSizeHints(this.renderer.overlay, this.resizeHintTargets(snapped, m), {
+      handle: m.handle,
+      anchor: this.activeHintAnchor(snapped, m.handle),
+    }, this.t.k);
+    const description = resizeStatus(cues, sizeText(snapped));
     if (description) this.svg.setAttribute('aria-description', description);
     else this.svg.removeAttribute('aria-description');
+  }
+
+  /**
+   * UX08-WP06: the active object (live rect) plus every other selected object
+   * (unchanged rect). Ghosts are never resized, so they never get a hint.
+   */
+  private resizeHintTargets(activeRect: Rect, m: { id: string }): SizeHint[] {
+    const others: SizeTarget[] = [];
+    for (const id of this.selObjects) {
+      if (id === m.id) continue;
+      const o = this.state.objects.find((it) => it.id === id);
+      if (o) others.push({ id: o.id, rect: { x: o.x, y: o.y, w: o.w, h: o.h } });
+    }
+    return sizeHints({ id: m.id, rect: activeRect }, others);
+  }
+
+  /** The active badge follows the dragged handle, clamped inside the viewport. */
+  private activeHintAnchor(rect: Rect, handle: ResizeHandle): Point {
+    const anchor = hintAnchor(rect, handle, HANDLE_OFFSET + HINT_GAP);
+    return clampToView(anchor, this.viewRect(), 24 / this.t.k);
   }
 
   private endpointMove(e: PointerEvent): void {

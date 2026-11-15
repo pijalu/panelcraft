@@ -8,6 +8,7 @@ import type { Point, Rect } from './viewport';
 import type { Polyline } from './router';
 import type { Guide } from './snap';
 import type { ResizeCue } from './resize';
+import { HINT_GAP, type SizeHint } from './sizeHints';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -199,3 +200,62 @@ function drawResizeCue(overlay: SVGGElement, cue: ResizeCue): void {
 export function drawResizeCues(overlay: SVGGElement, cues: ResizeCue[]): void {
   for (const cue of cues) drawResizeCue(overlay, cue);
 }
+
+/**
+ * UX08-WP06: unconditional size badges. The active object's badge sits next to
+ * the dragged handle (it changes every frame); the others sit above their own
+ * unchanged rect. Same class prefix, so one CSS block styles them all, and the
+ * active one is marked separately — it must not be confused with an equal-size
+ * match cue, which is a bracket with a leader line.
+ */
+export function drawSizeHints(
+  overlay: SVGGElement,
+  hints: SizeHint[],
+  active: { handle: ResizeHandle; anchor: Point } | null,
+  /** World zoom, so the badges keep a constant *screen* size. */
+  zoom = 1,
+): void {
+  for (const hint of hints) {
+    if (hint.active && active === null) continue;
+    const at = hint.active && active !== null
+      ? active.anchor
+      : { x: hint.rect.x + hint.rect.w / 2, y: hint.rect.y - HINT_GAP / zoom };
+    drawSizeHint(overlay, hint, at, zoom);
+  }
+}
+
+function drawSizeHint(overlay: SVGGElement, hint: SizeHint, at: Point, zoom: number): void {
+  const s = 1 / (zoom > 0 ? zoom : 1);
+  const height = HINT_HEIGHT * s;
+  const pad = HINT_PAD * s;
+  const group = el('g') as SVGGElement;
+  group.setAttribute('class', hint.active ? 'pc-size-hint pc-size-hint-active' : 'pc-size-hint');
+  group.setAttribute('data-id', hint.id);
+  group.setAttribute('data-testid', hint.active ? 'size-hint-active' : `size-hint-${hint.id}`);
+  group.setAttribute('aria-hidden', 'true');
+  group.setAttribute('transform', `translate(${at.x} ${at.y})`);
+  const w = hint.label.length * HINT_CHAR_WIDTH * s + pad * 2;
+  const rect = el('rect') as SVGRectElement;
+  rect.setAttribute('class', 'pc-size-hint-bg');
+  rect.setAttribute('x', String(-w / 2));
+  rect.setAttribute('y', String(-height / 2));
+  rect.setAttribute('width', String(w));
+  rect.setAttribute('height', String(height));
+  rect.setAttribute('rx', String(3 * s));
+  group.appendChild(rect);
+  const label = el('text') as SVGTextElement;
+  label.setAttribute('class', 'pc-size-hint-label');
+  label.setAttribute('text-anchor', 'middle');
+  label.setAttribute('y', String(height / 2 - 4 * s));
+  // Overlay geometry is canvas-space: divide the type size by the zoom so the
+  // badge stays the 11 px UI token on screen instead of shrinking with it.
+  label.setAttribute('font-size', `${11 * s}px`);
+  label.textContent = hint.label;
+  group.appendChild(label);
+  overlay.appendChild(group);
+}
+
+/** Badge metrics in canvas units (a 11 px UI token at 100 % zoom). */
+export const HINT_HEIGHT = 16;
+export const HINT_PAD = 5;
+export const HINT_CHAR_WIDTH = 6.6;

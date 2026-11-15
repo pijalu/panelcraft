@@ -7,6 +7,20 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ### Added — UX-08 application experience
 
+- **UX-08 WP06** A resize now always states its size: a badge beside the dragged handle shows the
+  live `W × H`, and every other selected object keeps a badge with its own unchanged size — so a
+  multi-selection drag reads at a glance which object is changing. Equal-size matches keep their
+  separate bracket cues, so a snapped dimension still looks different from a plain measurement.
+  A multi-selection exposes one handle set per selected object (only the grabbed object resizes);
+  the badges keep a constant on-screen type size at any zoom, clamp inside the viewport, never
+  enter an SVG/PNG export, and the canvas announces `Size W × H` once per frame instead of a live
+  region per badge.
+- **UX-08 WP06 fix** A CSS token typo (`--pc-text`) left the passive size badge black on the dark
+  theme; the chrome token test now fails whenever a `var(--pc-…)` reference is undeclared.
+- **UX-08 WP06 fix** The menu popover moved focus to its first item a frame after it became
+  interactive, stealing focus back from a user who had already entered the list — Enter then ran
+  the first action instead of the focused one. The popover now focuses synchronously on mount.
+
 - **UX-08 WP05** The canvas grid has three independent states and no longer drags snapping along
   with it: *Application menu → View* offers **Grid: off / dots / lines** (radio) plus a separate
   **Snap to grid** checkbox, both stored as browser-local editor preferences and restored on

@@ -135,9 +135,12 @@ for (const theme of ['light', 'dark'] as const) {
     g = await geometry(page);
     await moveResize(page, g.x + 240, g.y + 140);
     await expect(page.locator('.pc-resize-cue')).toHaveCount(0);
-    await expect(page.getByTestId('canvas')).not.toHaveAttribute('aria-description', /.+/);
+    // UX08-WP06: without a match the active size is still shown and announced.
+    await expect(page.getByTestId('size-hint-active')).toHaveText(/^\d+ × \d+$/);
+    await expect(page.getByTestId('canvas')).toHaveAttribute('aria-description', /^Size \d+ × \d+$/);
     await capture(page, `ux06-no-match-${theme}`);
     await page.mouse.up();
+    await expect(page.getByTestId('canvas')).not.toHaveAttribute('aria-description', /.+/);
   });
 }
 
@@ -182,4 +185,49 @@ test('UX-06: Escape removes cues without committing resize geometry', async ({ p
   await expect(page.locator('.cm-content')).toContainText('size 120 60');
   await page.reload();
   await expectTargetSize(page, 120, 60);
+});
+
+test('UX08-WP06: a multi-selection shows a hint per selected object, only the dragged one resizes', async ({ page }) => {
+  await page.goto('/');
+  await seedDoc(page);
+  const canvas = page.getByTestId('canvas');
+  const target = canvas.locator('g.pc-obj[data-id="target"]');
+  await target.click();
+  await canvas.locator('g.pc-obj[data-id="wide"]').click({ modifiers: ['Shift'] });
+  await expect(canvas.locator('g.pc-obj.pc-selected')).toHaveCount(2);
+
+  // Every selected object exposes its own resize overlay; the passive one keeps
+  // its exact model size while the dragged one changes.
+  const handle = canvas.locator('.pc-resize-handle[data-id="target"][data-handle="e"]');
+  await expect(handle).toBeVisible();
+  const box = await handle.boundingBox();
+  if (!box) throw new Error('resize handle has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  const g = await geometry(page);
+  await moveResize(page, g.x + 236, g.y + g.h / 2);
+  await expect.poll(async () => (await geometry(page)).w).not.toBe(120);
+
+  // The badge states the live size of the dragged object, whatever the grid
+  // rounded it to; the passive member keeps its own size.
+  const resized = await geometry(page);
+  await expect(page.getByTestId('size-hint-active')).toHaveAttribute('data-id', 'target');
+  await expect(page.getByTestId('size-hint-active')).toHaveText(
+    `${Math.round(resized.w)} × ${Math.round(resized.h)}`,
+  );
+  await expect(page.getByTestId('size-hint-wide')).toHaveText('200 × 100');
+  await expect(canvas.locator('.pc-size-hint')).toHaveCount(2);
+  // The passive member never changes size.
+  await expect.poll(async () => (await geometry(page, 'wide')).w).toBe(200);
+  await capture(page, 'ux08-resize-hints-multi-light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await capture(page, 'ux08-resize-hints-multi-dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+
+  // Escape restores the geometry and removes every hint.
+  await page.keyboard.press('Escape');
+  await expect(canvas.locator('.pc-size-hint')).toHaveCount(0);
+  await page.mouse.up();
+  await expect.poll(async () => (await geometry(page)).w).toBe(120);
+  await expect(page.locator('.cm-content')).toContainText('size 120 60');
 });
