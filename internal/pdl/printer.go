@@ -140,6 +140,26 @@ func withDelay(line string, s ir.Step) string {
 
 func stepText(s ir.Step, depth int, p *printer) {
 	p.comment(s.Comments, depth)
+	body := &printer{}
+	stepBody(s, depth, body)
+	lines := body.lines()
+	if !hasPresentation(s) {
+		for _, line := range lines {
+			p.add(line)
+		}
+		return
+	}
+	// The block hangs off the step's last line, so a single-line step and a
+	// brace-terminated block step print the same way (`… {` / `} {`).
+	lines[len(lines)-1] += " presentation {"
+	for _, line := range lines {
+		p.add(line)
+	}
+	presentationLines(s, depth+1, p)
+	p.add(pad(depth) + "}")
+}
+
+func stepBody(s ir.Step, depth int, p *printer) {
 	switch s.Type {
 	case "intro", "info", "conclusion":
 		p.add(withDelay(pad(depth)+s.Type+" "+Quote(deref(s.Text)), s))
@@ -336,10 +356,51 @@ func printFlow(f ir.Flow, p *printer) {
 		head += " as " + f.ID
 	}
 	p.add(head + " {")
+	if f.Description != nil {
+		p.add(indent + "description " + Quote(*f.Description))
+	}
 	for _, s := range f.Steps {
 		stepText(s, 1, p)
 	}
 	p.add("}")
+}
+
+// hasPresentation reports whether step metadata must be printed (UX08-WP11).
+func hasPresentation(s ir.Step) bool { return s.Description != nil || s.Camera != nil }
+
+// cameraText renders the `camera …` line body.
+func cameraText(c ir.Camera) string {
+	if c.Mode != "focus" {
+		return "camera " + c.Mode
+	}
+	body := "camera focus (" + jsNum(derefF(c.X)) + ", " + jsNum(derefF(c.Y)) + ")"
+	if c.Zoom != nil {
+		body += " zoom " + jsNum(*c.Zoom)
+	}
+	return body
+}
+
+func derefF(v *float64) float64 {
+	if v == nil {
+		return 0
+	}
+	return *v
+}
+
+// presentationLines prints the block body in canonical order: description,
+// camera, then the camera duration.
+func presentationLines(s ir.Step, depth int, p *printer) {
+	prefix := pad(depth)
+	if s.Description != nil {
+		p.add(prefix + "description " + Quote(*s.Description))
+	}
+	if s.Camera == nil {
+		return
+	}
+	p.add(prefix + cameraText(*s.Camera))
+	if s.Camera.DurationMs != nil {
+		p.add(prefix + "duration " + jsNum(*s.Camera.DurationMs))
+	}
 }
 
 func printViewLine(l ir.ViewLine, p *printer) {

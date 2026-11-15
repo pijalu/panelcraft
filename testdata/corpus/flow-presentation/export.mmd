@@ -1,0 +1,8 @@
+flowchart TD
+  user((Shopper))
+  shop[Webshop]
+  api[Checkout API]
+  db[(Orders DB)]
+  user -->|Browses| shop
+  shop -->|POST /checkout| api
+  api --> db

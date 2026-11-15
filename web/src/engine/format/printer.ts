@@ -136,7 +136,42 @@ const STEP_PRINTERS: Record<FlowStep['type'], StepPrinter> = {
 
 const stepText: StepPrinter = (s, depth, p) => {
   p.comment(s.comments, depth);
-  STEP_PRINTERS[s.type](s, depth, p);
+  const body = new Printer();
+  STEP_PRINTERS[s.type](s, depth, body);
+  const lines = body.lines();
+  if (!hasPresentation(s)) {
+    for (const line of lines) p.add(line);
+    return;
+  }
+  // A presentation block hangs off the step's last line, so a single-line step
+  // and a brace-terminated block step print the same way (`… {` / `} {`).
+  lines[lines.length - 1] = `${lines[lines.length - 1]} presentation {`;
+  for (const line of lines) p.add(line);
+  presentationLines(s, depth + 1, p);
+  p.add(`${pad(depth)}}`);
+};
+
+/** UX08-WP11: metadata exists only when the document carries it. */
+const hasPresentation = (s: FlowStep): boolean =>
+  s.description !== undefined || s.camera !== undefined;
+
+/** `camera …` line body: `auto`, `hold` or `focus (x, y) [zoom n]`. */
+const cameraText = (camera: NonNullable<FlowStep['camera']>): string => {
+  if (camera.mode !== 'focus') return `camera ${camera.mode}`;
+  const point = `focus (${jsNum(camera.x ?? 0)}, ${jsNum(camera.y ?? 0)})`;
+  const zoom = camera.zoom === undefined ? '' : ` zoom ${jsNum(camera.zoom)}`;
+  return `camera ${point}${zoom}`;
+};
+
+/** Canonical order: description, camera, camera duration. */
+const presentationLines = (s: FlowStep, depth: number, p: Printer): void => {
+  const prefix = pad(depth);
+  if (s.description !== undefined) p.add(`${prefix}description ${quote(s.description)}`);
+  if (s.camera === undefined) return;
+  p.add(prefix + cameraText(s.camera));
+  if (s.camera.durationMs !== undefined) {
+    p.add(`${prefix}duration ${jsNum(s.camera.durationMs)}`);
+  }
 };
 
 // F-13/CX-03: explicit geometry, printed only when the document carries it.
@@ -234,6 +269,7 @@ const printFlow = (f: Doc['flows'][number], p: Printer): void => {
   if (f.title !== undefined) head += ' ' + quote(f.title);
   if (f.id !== undefined) head += ` as ${f.id}`;
   p.add(head + ' {');
+  if (f.description !== undefined) p.add(`${INDENT}description ${quote(f.description)}`);
   for (const s of f.steps) stepText(s, 1, p);
   p.add('}');
 };

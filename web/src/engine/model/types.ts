@@ -3,7 +3,7 @@
 // Normative shape: docs/FILE-FORMAT.md §7 + docs/milestones/M1.md decisions.
 // Versioning rule: `irVersion` (int) bumps on any schema change; forward-only.
 
-export const IR_VERSION = 7;
+export const IR_VERSION = 8;
 export const FORMAT_VERSION = '1.0';
 
 /** 1-based source position attached to every statement (FILE-FORMAT §10). */
@@ -124,11 +124,38 @@ export interface Link {
   pos: Pos;
 }
 
-interface StepBase {
+interface StmtBase {
   comments?: Comments;
   pos: Pos;
+}
+
+/**
+ * UX08-WP11 (IR v8): camera behaviour for one presentation step. `auto` is the
+ * default when a step carries no camera at all; `hold` keeps the previous one;
+ * `focus` names a canvas point and an optional zoom inside the 0.1–4 limits.
+ */
+export interface CameraSpec {
+  mode: 'auto' | 'hold' | 'focus';
+  /** focus only: canvas coordinates of the point to frame. */
+  x?: number;
+  y?: number;
+  /** focus only: zoom factor, 0.1–4. */
+  zoom?: number;
+  /** Transition time in ms, 0–300; absent = the player default. */
+  durationMs?: number;
+}
+
+/**
+ * Flow-step metadata. Deliberately separate from `StmtBase`: camera and step
+ * descriptions belong to flows, and a view line must never grow them.
+ */
+interface FlowStepBase extends StmtBase {
   /** Per-step dwell before auto-advance (F-18; overrides the beat default). */
   delayMs?: number;
+  /** What this step shows, in one line of prose (UX08-WP11). */
+  description?: string;
+  /** Optional camera override for this step (UX08-WP11). */
+  camera?: CameraSpec;
 }
 
 export interface Branch {
@@ -139,30 +166,32 @@ export interface Branch {
 }
 
 export type FlowStep =
-  | ({ type: 'intro'; text: string } & StepBase)
-  | ({ type: 'msg'; from: string; to: string; label?: string; linkRef?: string; flip?: boolean } & StepBase)
-  | ({ type: 'process'; target: string; text?: string } & StepBase)
-  | ({ type: 'alt'; label?: string; branches: Branch[] } & StepBase)
-  | ({ type: 'par'; label?: string; lanes: FlowStep[][] } & StepBase)
-  | ({ type: 'goto'; file?: string; flow: string; ret?: 'here' } & StepBase)
-  | ({ type: 'info'; text: string } & StepBase)
-  | ({ type: 'conclusion'; text: string } & StepBase);
+  | ({ type: 'intro'; text: string } & FlowStepBase)
+  | ({ type: 'msg'; from: string; to: string; label?: string; linkRef?: string; flip?: boolean } & FlowStepBase)
+  | ({ type: 'process'; target: string; text?: string } & FlowStepBase)
+  | ({ type: 'alt'; label?: string; branches: Branch[] } & FlowStepBase)
+  | ({ type: 'par'; label?: string; lanes: FlowStep[][] } & FlowStepBase)
+  | ({ type: 'goto'; file?: string; flow: string; ret?: 'here' } & FlowStepBase)
+  | ({ type: 'info'; text: string } & FlowStepBase)
+  | ({ type: 'conclusion'; text: string } & FlowStepBase);
 
 export interface Flow {
   id?: string;
   title?: string;
+  /** One-line summary shown before the flow runs (UX08-WP11). */
+  description?: string;
   steps: FlowStep[];
   comments?: Comments;
   pos: Pos;
 }
 
 export type ViewLine =
-  | ({ type: 'layout'; mode: 'auto'; dir: Dir } & StepBase)
-  | ({ type: 'layout'; mode: 'saved' } & StepBase)
-  | ({ type: 'hideTag'; id: string } & StepBase)
-  | ({ type: 'hide'; id: string } & StepBase)
-  | ({ type: 'position'; id: string; x: number; y: number } & StepBase)
-  | ({ type: 'pin'; id: string } & StepBase);
+  | ({ type: 'layout'; mode: 'auto'; dir: Dir } & StmtBase)
+  | ({ type: 'layout'; mode: 'saved' } & StmtBase)
+  | ({ type: 'hideTag'; id: string } & StmtBase)
+  | ({ type: 'hide'; id: string } & StmtBase)
+  | ({ type: 'position'; id: string; x: number; y: number } & StmtBase)
+  | ({ type: 'pin'; id: string } & StmtBase);
 
 export interface View {
   id?: string;

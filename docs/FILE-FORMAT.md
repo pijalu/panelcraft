@@ -250,7 +250,7 @@ import Alias as "./relative/path.pcd"
 ## 6. Flows
 
 ```
-FlowStmt    := "flow" [QuotedName] ["as" Id] "{" Step* "}"
+FlowStmt    := "flow" [QuotedName] ["as" Id] "{" ["description" QuotedText] Step* "}"
 ```
 
 Steps (ordered; each becomes one numbered beat in playback):
@@ -272,6 +272,12 @@ GotoStep        := "goto" [Target] ["return" ("end" | "here")]
                           | FlowId                    // same file
 InfoStep        := "info" QuotedText
 ConclusionStep  := "conclusion" QuotedText
+
+StepPresentation := ["presentation" "{" PresentationLine* "}"]   // after any step
+PresentationLine := "description" QuotedText
+                  | "camera" ("auto" | "hold"
+                              | "focus" "(" Number "," Number ")" ["zoom" Number])
+                  | "duration" Number                              // camera, 0–300 ms
 ```
 
 Rules:
@@ -286,6 +292,25 @@ Rules:
   resumes after the goto step, `return here` at the goto step (default `end`).
 * Empty flow, or flow whose every step is unreachable (no intro/msg/process), is a
   validation warning.
+
+* **Presentation metadata (IR v8)**: an optional `presentation { … }` block may follow *any*
+  step — including `alt`/`par` after their closing brace. It carries three order-free lines,
+  each at most once:
+
+  * `description "…"` — one line of prose for the step (what the presenter narrates). The
+    flow itself may carry a matching `description` at the top of its body.
+  * `camera auto | hold | focus (x, y) [zoom n]` — `auto` is the default when a step has no
+    camera at all, `hold` keeps the previous camera, `focus` frames a canvas point
+    (`x`, `y` in document units) with an optional `zoom` inside the existing 0.1–4 limits.
+  * `duration <ms>` — camera transition time, 0–300 ms. It needs a `camera` line in the
+    same block (a duration without one is a syntax error), and it is *separate* from the
+    step's `delay <ms>` dwell: dwell is reading time, duration is travel time.
+
+  Absent metadata prints nothing, so a pre-v8 document keeps its canonical form byte for
+  byte. The canonical block order is description, camera, duration, regardless of source
+  order, and metadata is only ever stored here — never in a UI-only side channel. Camera
+  and step descriptions are flow concepts and never appear on `view` lines. Mermaid export
+  declares them as drops (see MERMAID-MATRIX).
 
 Example (see SPEC §7 for semantics):
 

@@ -164,7 +164,9 @@ play mode, exports PNG/SVG for docs.
 IcePanel-style visual storytelling over the static diagram.
 
 * **FR-F1** Multiple named flows per diagram; flow editor: ordered step list, drag to
-  reorder, per-step title + description.
+  reorder, per-step title + description. A flow carries its own one-line `description`,
+  and each step may carry a `description` — both live in the file (IR v8), never in a
+  UI-only store.
 * **FR-F2** Step types (all in v1):
   | Type | Meaning | Visual behavior |
   |---|---|---|
@@ -180,7 +182,10 @@ IcePanel-style visual storytelling over the static diagram.
   (default 2.5 s, configurable per step), exit restores pre-play view state.
 * **FR-F4** Animation style: edge token (circle) traveling with trailing dash animation,
   object emphasis ring, non-participants dimmed to 25% opacity, smooth camera
-  (pan/zoom to step actors, 300 ms ease). All timing constants in theme config.
+  (pan/zoom to step actors, 300 ms ease). All timing constants in theme config. A step may
+  override the automatic camera with `camera auto` (explicit default), `camera hold` (keep
+  the previous framing) or `camera focus (x, y) [zoom n]` in document coordinates, with an
+  optional `duration 0–300 ms` travel time; without metadata the camera behaves as before.
 * **FR-F5** Reduced-motion: respect `prefers-reduced-motion` → crossfade instead of
   movement.
 * **FR-F6** Flow validation: steps reference existing objects/links; dangling refs are
@@ -296,7 +301,8 @@ Object    { id, kind(person|system|system_ext|container|component|datastore|queu
             name, description, technology, tags[], properties{}, style{}, importedFrom? }
 Link      { id, from, to, type, label, direction(uni|bi), style{}, waypoints[] }
 Flow      { id, title, description?, steps[] }
-Step      { id, type(intro|msg|process|alt|par|goto|info|conclusion), title?, description?,
+Step      { type(intro|msg|process|alt|par|goto|info|conclusion), description?,
+            camera?{ mode(auto|hold|focus), x?, y?, zoom?, durationMs? }, delayMs?,
             payload (per type: from/to/linkRef | on | branches[](label,steps[]) | branches[](steps[]) |
                      target{file?,flow,return} | text) }
 View      { id, name, layout(auto:LR|auto:TB|saved), positions{}, hiddenTags?, elements? }

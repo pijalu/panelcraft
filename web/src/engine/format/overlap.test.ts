@@ -21,7 +21,7 @@ describe('CX-02 allow overlap PDL', () => {
     const { doc, diagnostics } = parsePDL(source);
     expect(diagnostics).toEqual([]);
     expect(doc?.links[0]).toMatchObject({ allowOverlap: true });
-    expect(IR_VERSION).toBe(7);
+    expect(IR_VERSION).toBe(8);
     expect(printDoc(doc!)).toBe(source);
     expect(serializeDoc(doc!)).toContain('"allowOverlap": true');
   });

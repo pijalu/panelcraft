@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 7
+const IRVersion = 8
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -113,6 +113,17 @@ type Branch struct {
 	Pos      Pos      `json:"pos"`
 }
 
+// Camera is the optional per-step camera behaviour (UX08-WP11, IR v8):
+// "auto" (the default when absent), "hold" (keep the previous camera) or
+// "focus" with a canvas point and an optional zoom inside 0.1–4.
+type Camera struct {
+	Mode       string   `json:"mode"`
+	X          *float64 `json:"x,omitempty"`
+	Y          *float64 `json:"y,omitempty"`
+	Zoom       *float64 `json:"zoom,omitempty"`
+	DurationMs *float64 `json:"durationMs,omitempty"`
+}
+
 // Step is a flow step (§6); a tagged union flattened to one struct — exactly
 // one payload group is set, keyed by Type.
 type Step struct {
@@ -130,18 +141,22 @@ type Step struct {
 	Flow     *string  `json:"flow,omitempty"`     // goto: always set for goto
 	Ret      string   `json:"ret,omitempty"`      // goto: "here" only
 	// DelayMs overrides the beat dwell (F-18)
-	DelayMs  *float64 `json:"delayMs,omitempty"`
-	Comments []string `json:"comments,omitempty"`
-	Pos      Pos      `json:"pos"`
+	DelayMs *float64 `json:"delayMs,omitempty"`
+	// Description is one line of prose for this step (UX08-WP11).
+	Description *string  `json:"description,omitempty"`
+	Camera      *Camera  `json:"camera,omitempty"`
+	Comments    []string `json:"comments,omitempty"`
+	Pos         Pos      `json:"pos"`
 }
 
 // Flow is a flow statement (§6).
 type Flow struct {
-	ID       string   `json:"id,omitempty"`
-	Title    *string  `json:"title,omitempty"`
-	Steps    []Step   `json:"steps,omitempty"`
-	Comments []string `json:"comments,omitempty"`
-	Pos      Pos      `json:"pos"`
+	ID          string   `json:"id,omitempty"`
+	Title       *string  `json:"title,omitempty"`
+	Description *string  `json:"description,omitempty"`
+	Steps       []Step   `json:"steps,omitempty"`
+	Comments    []string `json:"comments,omitempty"`
+	Pos         Pos      `json:"pos"`
 }
 
 // ViewLine is one view body line (§7.1); tagged union like Step.

@@ -4,7 +4,7 @@
 // Empty collections and absent scalars are omitted on both sides.
 
 import type {
-  Branch, Comments, Doc, Flow, FlowStep, ImportStmt, Link, Obj, Pos,
+  Branch, CameraSpec, Comments, Doc, Flow, FlowStep, ImportStmt, Link, Obj, Pos,
   Property, RawAttr, StyleBlock, StyleStmt, View, ViewLine,
 } from './types';
 import { IR_VERSION } from './types';
@@ -145,6 +145,19 @@ const stepBuilders: Record<string, (s: FlowStep) => Entry[]> = {
   conclusion: (s) => [['text', (s as { text: string }).text]],
 };
 
+const cameraJSON = (c?: CameraSpec): Entry => [
+  'camera',
+  c === undefined
+    ? undefined
+    : obj(
+      ['mode', c.mode],
+      ['x', c.x],
+      ['y', c.y],
+      ['zoom', c.zoom],
+      ['durationMs', c.durationMs],
+    ),
+];
+
 const stepToJSON = (s: FlowStep): JSONRecord => {
   const build = stepBuilders[s.type];
   const payload = build ? build(s) : [];
@@ -152,6 +165,8 @@ const stepToJSON = (s: FlowStep): JSONRecord => {
     ['type', s.type],
     ...payload,
     ['delayMs', s.delayMs],
+    ['description', s.description],
+    cameraJSON(s.camera),
     comments(s.comments),
     ['pos', pos(s.pos)],
   );
@@ -161,6 +176,7 @@ const flowStmt = (f: Flow): JSONRecord =>
   obj(
     ['id', f.id],
     ['title', f.title],
+    ['description', f.description],
     ['steps', arr(f.steps.map(stepToJSON))],
     comments(f.comments),
     ['pos', pos(f.pos)],

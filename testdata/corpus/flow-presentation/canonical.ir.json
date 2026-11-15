@@ -1,0 +1,255 @@
+{
+  "irVersion": 8,
+  "formatVersion": "1.0",
+  "title": "Presentation metadata",
+  "level": "container",
+  "direction": "LR",
+  "objects": [
+    {
+      "kind": "person",
+      "id": "user",
+      "name": "Shopper",
+      "pos": {
+        "line": 6,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "shop",
+      "name": "Webshop",
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "api",
+      "name": "Checkout API",
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    },
+    {
+      "kind": "datastore",
+      "id": "db",
+      "name": "Orders DB",
+      "pos": {
+        "line": 9,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "L1",
+      "from": "user",
+      "to": "shop",
+      "label": "Browses",
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    },
+    {
+      "id": "L2",
+      "from": "shop",
+      "to": "api",
+      "label": "POST /checkout",
+      "pos": {
+        "line": 12,
+        "col": 1
+      }
+    },
+    {
+      "id": "L3",
+      "from": "api",
+      "to": "db",
+      "pos": {
+        "line": 13,
+        "col": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "id": "checkout",
+      "title": "Checkout",
+      "description": "A shopper submits an order and receives a receipt.",
+      "steps": [
+        {
+          "type": "intro",
+          "text": "Order journey",
+          "description": "Start with the whole checkout landscape.",
+          "camera": {
+            "mode": "auto",
+            "durationMs": 300
+          },
+          "pos": {
+            "line": 17,
+            "col": 3
+          }
+        },
+        {
+          "type": "msg",
+          "from": "user",
+          "to": "shop",
+          "label": "Submit order",
+          "linkRef": "L1",
+          "delayMs": 2500,
+          "description": "The browser sends the cart to the storefront.",
+          "camera": {
+            "mode": "focus",
+            "x": 420,
+            "y": 180,
+            "zoom": 1.25,
+            "durationMs": 300
+          },
+          "pos": {
+            "line": 22,
+            "col": 3
+          }
+        },
+        {
+          "type": "process",
+          "text": "Validate cart",
+          "target": "api",
+          "description": "The API checks prices, stock and the payment intent.",
+          "camera": {
+            "mode": "hold"
+          },
+          "pos": {
+            "line": 27,
+            "col": 3
+          }
+        },
+        {
+          "type": "alt",
+          "label": "payment method",
+          "branches": [
+            {
+              "label": "card",
+              "steps": [
+                {
+                  "type": "msg",
+                  "from": "api",
+                  "to": "db",
+                  "label": "store order",
+                  "linkRef": "L3",
+                  "description": "Card payments are stored with the PSP reference.",
+                  "camera": {
+                    "mode": "focus",
+                    "x": 10.5,
+                    "y": 20.25,
+                    "zoom": 0.1,
+                    "durationMs": 0
+                  },
+                  "pos": {
+                    "line": 33,
+                    "col": 7
+                  }
+                }
+              ],
+              "pos": {
+                "line": 32,
+                "col": 5
+              }
+            },
+            {
+              "label": "invoice",
+              "steps": [
+                {
+                  "type": "info",
+                  "text": "invoicing not in this story",
+                  "description": "Invoices are out of scope for this flow.",
+                  "pos": {
+                    "line": 40,
+                    "col": 7
+                  }
+                }
+              ],
+              "pos": {
+                "line": 39,
+                "col": 5
+              }
+            }
+          ],
+          "description": "Branch on how the shopper pays.",
+          "camera": {
+            "mode": "auto"
+          },
+          "pos": {
+            "line": 31,
+            "col": 3
+          }
+        },
+        {
+          "type": "par",
+          "label": "fan-out",
+          "lanes": [
+            [
+              {
+                "type": "info",
+                "text": "emit order.created",
+                "pos": {
+                  "line": 50,
+                  "col": 7
+                }
+              }
+            ],
+            [
+              {
+                "type": "info",
+                "text": "queue receipt",
+                "pos": {
+                  "line": 53,
+                  "col": 7
+                }
+              }
+            ]
+          ],
+          "description": "Notifications and receipts happen in parallel.",
+          "camera": {
+            "mode": "hold",
+            "durationMs": 0
+          },
+          "pos": {
+            "line": 48,
+            "col": 3
+          }
+        },
+        {
+          "type": "goto",
+          "file": "checkout",
+          "flow": "checkout",
+          "ret": "here",
+          "description": "Loop back for the next order.",
+          "pos": {
+            "line": 60,
+            "col": 3
+          }
+        },
+        {
+          "type": "conclusion",
+          "text": "Receipt delivered",
+          "description": "The shopper sees the confirmation page.",
+          "camera": {
+            "mode": "focus",
+            "x": 0,
+            "y": 0
+          },
+          "pos": {
+            "line": 63,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 15,
+        "col": 1
+      }
+    }
+  ]
+}

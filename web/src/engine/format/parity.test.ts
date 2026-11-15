@@ -204,6 +204,67 @@ flow "Checkout" as checkout {
     src: 'pcd 1.0\nflow "F" {\n  intro "x" delay -5\n}\n',
   },
   {
+    name: 'presentation-flow-description',
+    src: 'pcd 1.0\nflow "Checkout" as checkout {\n  description "A customer submits an order."\n  intro "Start"\n}\n',
+  },
+  {
+    name: 'presentation-all-step-kinds',
+    src: `pcd 1.0
+person a "A"
+person b "B"
+a -> b as L
+flow "F" as f {
+  intro "Welcome" presentation {
+    description "Intro text"
+  }
+  info "Note" presentation {
+    description "Info text"
+  }
+  conclusion "Done" presentation {
+    description "Conclusion text"
+  }
+  process a "work" presentation {
+    description "Process text"
+  }
+  a -> b : "call" as L presentation {
+    description "Message text"
+  }
+  goto f return here presentation {
+    description "Goto text"
+  }
+  alt "path?" {
+    "yes" {
+      info "y"
+    }
+  } presentation {
+    description "Alt text"
+  }
+  par {
+    { info "lane" }
+  } presentation {
+    description "Par text"
+  }
+}
+`,
+  },
+  {
+    name: 'presentation-camera-modes',
+    src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n    camera auto\n    duration 300\n  }\n  info "B" presentation {\n    camera hold\n  }\n  conclusion "C" presentation {\n    camera focus (420, 180) zoom 1.25\n  }\n  intro "D" presentation {\n    camera focus (10.5, 20.25) zoom 0.1 duration 0\n  }\n}\n',
+  },
+  {
+    name: 'presentation-order-and-delay',
+    src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n    duration 200\n    camera auto\n    description "D"\n  }\n  info "B" delay 100 presentation {\n    camera hold\n  }\n}\n',
+  },
+  { name: 'presentation-empty-block', src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n  }\n}\n' },
+  { name: 'presentation-zoom-out-of-range', src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n    camera focus (1, 2) zoom 9\n  }\n}\n' },
+  { name: 'presentation-duration-out-of-range', src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n    camera auto\n    duration 900\n  }\n}\n' },
+  { name: 'presentation-duration-without-camera', src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n    duration 200\n  }\n}\n' },
+  { name: 'presentation-unknown-key', src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n    sparkle yes\n  }\n}\n' },
+  { name: 'presentation-duplicate-key', src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n    camera auto\n    camera hold\n  }\n}\n' },
+  { name: 'presentation-focus-needs-point', src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n    camera focus 420 180\n  }\n}\n' },
+  { name: 'presentation-invalid-mode', src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n    camera swoop\n  }\n}\n' },
+  { name: 'presentation-unclosed', src: 'pcd 1.0\nflow "F" {\n  intro "A" presentation {\n    camera auto\n' },
+  {
     name: 'import-qualified-refs',
     src: 'pcd 1.0\n\nimport shared as "../shared/actors.pcd"\n\nsystem api "API"\nperson a2 "A2"\n\napi -> shared.psp : "call" as L1\n\na2 <- shared.auth as L2\n\nflow "F" {\n  intro "x"\n  api -> shared.psp\n  process shared.psp\n}\n\nnote n1 "memo" {\n  attach shared.psp\n}\n',
   },

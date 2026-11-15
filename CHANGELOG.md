@@ -7,6 +7,17 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ### Added — UX-08 application experience
 
+- **UX-08 WP11 (format, IR v8)** Flows and their steps can now document themselves in the file.
+  A flow takes a one-line `description`, and any step may carry a `presentation { … }` block with
+  a `description`, a `camera` override (`auto`, `hold`, or `focus (x, y) zoom n` in document
+  coordinates) and a camera `duration` (0–300 ms of travel time, deliberately separate from the
+  existing per-step `delay` dwell). Metadata is order-free on input and always printed in one
+  canonical order; absent metadata prints nothing, so pre-v8 documents keep their exact canonical
+  form. Ranges are enforced with positioned diagnostics in both engines, and Mermaid export
+  declares the new fields as drops. The TS parser/printer and the Go CLI were updated together —
+  shared fixtures and the whole corpus replay byte-identically — and a new
+  `testdata/corpus/flow-presentation/` case covers all eight step kinds and all three camera modes.
+
 - **UX-08 WP10** Connection labels are now readable on dense diagrams instead of being covered by
   shapes. Routes still paint below the objects; labels moved into their own layer *above* them
   (and are `pointer-events: none`, so a label floating over a shape never steals its click). Text

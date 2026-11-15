@@ -29,6 +29,16 @@ var (
 
 const maxDepth = 32
 
+// UX08-WP11 camera bounds (IR v8): the canvas zoom limits, ms ≤ 300.
+const (
+	cameraZoomMin = 0.1
+	cameraZoomMax = 4.0
+	cameraMsMax   = 300.0
+)
+
+// presentationKeys are the accepted block keys (order-free, at most once).
+var presentationKeys = map[string]bool{"description": true, "camera": true, "duration": true}
+
 // abort carries a syntax error out of the recursion (§2: aborts the file).
 type abort struct{ d Diagnostic }
 
@@ -646,10 +656,25 @@ func (p *parser) parseFlow() ir.Flow {
 		f.ID = p.ident()
 	}
 	p.expect(TokPunct, "{")
+	if d := p.flowDescription(); d != nil {
+		f.Description = d
+	}
 	f.Steps = p.parseSteps(1)
 	p.expectClose(t0, "flow")
 	f.Comments = comments
 	return f
+}
+
+// flowDescription reads an optional `description "…"` at the top of a flow
+// body (UX08-WP11): a flow attribute, not a step.
+func (p *parser) flowDescription() *string {
+	t := p.peek()
+	if t.Type != TokIdent || t.Text != "description" {
+		return nil
+	}
+	p.next()
+	v := p.quoted(p.next(), "description")
+	return &v
 }
 
 func (p *parser) parseSteps(depth int) []ir.Step {
@@ -741,7 +766,125 @@ func (p *parser) parseKeywordStep(kw string, depth int) ir.Step {
 	if kw != "alt" && kw != "par" {
 		p.stepDelay(t0.Line, &s)
 	}
+	p.presentation(t0, &s)
 	return s
+}
+
+// ---- presentation metadata (UX08-WP11 / IR v8) -----------------------------
+
+// presentation consumes an optional `presentation { … }` block after any step.
+// Absent means "no metadata": the step behaves as before and the printer omits
+// the block, so old documents keep their canonical form byte for byte.
+func (p *parser) presentation(t0 Token, s *ir.Step) {
+	t := p.peek()
+	if t.Type != TokIdent || t.Text != "presentation" {
+		return
+	}
+	p.next()
+	p.expect(TokPunct, "{")
+	desc, camera, duration, empty := p.presentationBody(t0)
+	if empty {
+		return
+	}
+	s.Description = desc
+	if duration != nil {
+		camera.DurationMs = duration
+	}
+	s.Camera = camera
+}
+
+// presentationBody parses the block body: description, camera and duration.
+func (p *parser) presentationBody(t0 Token) (*string, *ir.Camera, *float64, bool) {
+	var description *string
+	var camera *ir.Camera
+	var duration *float64
+	empty := true
+	seen := map[string]bool{}
+	for {
+		p.skipComments()
+		key := p.peek()
+		if key.Type == TokPunct && key.Text == "}" {
+			p.next()
+			break
+		}
+		if key.Type == TokEOF {
+			p.fail(t0, ErrUnclosedBlock, "unclosed presentation block")
+		}
+		name := p.presentationKey(key, seen)
+		empty = false
+		switch name {
+		case "description":
+			v := p.quoted(p.next(), "description")
+			description = &v
+		case "camera":
+			camera = p.parseCamera(key)
+		default:
+			duration = p.cameraDuration(key)
+		}
+	}
+	if duration != nil && camera == nil {
+		p.fail(t0, ErrUnexpected, "duration needs a camera line in the same block")
+	}
+	return description, camera, duration, empty
+}
+
+// presentationKey validates one block key (order-free, at most once).
+func (p *parser) presentationKey(key Token, seen map[string]bool) string {
+	if key.Type != TokIdent {
+		p.fail(key, ErrUnexpected, "unexpected "+string(key.Type)+" in presentation block")
+	}
+	name := key.Text
+	if !presentationKeys[name] {
+		p.fail(key, ErrUnexpected, "unknown presentation key '"+name+"'")
+	}
+	if seen[name] {
+		p.fail(key, ErrDuplicateAttr, "duplicate '"+name+"' in presentation block")
+	}
+	seen[name] = true
+	p.next()
+	return name
+}
+
+// parseCamera reads `camera auto | hold | focus (x, y) [zoom n]`.
+func (p *parser) parseCamera(key Token) *ir.Camera {
+	mode := p.expect(TokIdent, "")
+	if mode.Text == "auto" || mode.Text == "hold" {
+		return &ir.Camera{Mode: mode.Text}
+	}
+	if mode.Text != "focus" {
+		p.fail(mode, ErrUnexpected, "invalid camera mode '"+mode.Text+"' (auto, hold or focus)")
+	}
+	p.expect(TokPunct, "(")
+	x := p.num(p.expect(TokNumber, ""))
+	p.expect(TokPunct, ",")
+	y := p.num(p.expect(TokNumber, ""))
+	p.expect(TokPunct, ")")
+	camera := &ir.Camera{Mode: "focus", X: &x, Y: &y}
+	camera.Zoom = p.cameraZoom(key)
+	return camera
+}
+
+// cameraZoom reads an optional `zoom <n>` on the camera line, bounded like the canvas.
+func (p *parser) cameraZoom(key Token) *float64 {
+	t := p.peek()
+	if t.Type != TokIdent || t.Text != "zoom" || t.Line != key.Line {
+		return nil
+	}
+	p.next()
+	zoom := p.num(p.expect(TokNumber, ""))
+	if zoom < cameraZoomMin || zoom > cameraZoomMax {
+		p.fail(t, ErrUnexpected, "zoom must be within 0.1 and 4")
+	}
+	return &zoom
+}
+
+// cameraDuration reads `duration <ms>`: camera transition time, 0–300 ms.
+func (p *parser) cameraDuration(key Token) *float64 {
+	ms := p.num(p.expect(TokNumber, ""))
+	if ms < 0 || ms > cameraMsMax {
+		p.fail(key, ErrUnexpected, "duration must be within 0 and 300")
+	}
+	return &ms
 }
 
 func (p *parser) parseAltBody(t0 Token, depth int) (*string, []ir.Branch) {
@@ -854,8 +997,10 @@ func (p *parser) parseMsgStep() ir.Step {
 			s.Flip = true
 		case t.Type == TokIdent && t.Text == "delay" && t.Line == t0.Line:
 			p.stepDelay(t0.Line, &s)
+			p.presentation(t0, &s)
 			return s
 		default:
+			p.presentation(t0, &s)
 			return s
 		}
 	}

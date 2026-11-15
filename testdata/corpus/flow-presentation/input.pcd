@@ -1,0 +1,69 @@
+pcd 1.0
+title "Presentation metadata"
+level container
+direction LR
+
+person user "Shopper"
+system shop "Webshop"
+system api "Checkout API"
+datastore db "Orders DB"
+
+user -> shop : "Browses" as L1
+shop -> api : "POST /checkout" as L2
+api -> db as L3
+
+flow "Checkout" as checkout {
+  description "A shopper submits an order and receives a receipt."
+
+  intro "Order journey" presentation {
+    description "Start with the whole checkout landscape."
+    camera auto
+    duration 300
+  }
+
+  user -> shop : "Submit order" as L1 delay 2500 presentation {
+    description "The browser sends the cart to the storefront."
+    camera focus (420, 180) zoom 1.25
+    duration 300
+  }
+
+  process api "Validate cart" presentation {
+    description "The API checks prices, stock and the payment intent."
+    camera hold
+  }
+
+  alt "payment method" {
+    "card" {
+      api -> db : "store order" as L3 presentation {
+        description "Card payments are stored with the PSP reference."
+        camera focus (10.5, 20.25) zoom 0.1 duration 0
+      }
+    }
+    "invoice" {
+      info "invoicing not in this story" presentation {
+        description "Invoices are out of scope for this flow."
+      }
+    }
+  } presentation {
+    description "Branch on how the shopper pays."
+    camera auto
+  }
+
+  par "fan-out" {
+    { info "emit order.created" }
+    { info "queue receipt" }
+  } presentation {
+    description "Notifications and receipts happen in parallel."
+    camera hold
+    duration 0
+  }
+
+  goto "checkout#checkout" return here presentation {
+    description "Loop back for the next order."
+  }
+
+  conclusion "Receipt delivered" presentation {
+    description "The shopper sees the confirmation page."
+    camera focus (0, 0)
+  }
+}

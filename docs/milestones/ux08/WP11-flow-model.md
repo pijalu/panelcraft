@@ -4,7 +4,7 @@
 
 **Severity:** Medium — format and persistence foundation
 
-**Status:** Proposed  
+**Status:** Implemented and verified (2026-11-15)  
 **Requirements:** 10 and 11 model foundation  
 **Depends on:** nothing  
 **Branch:** `feat/ux08-flow-model`
@@ -101,8 +101,112 @@ record the exact command used.
 
 ## Format decision
 
-Pending final parser review; proposed contract above is the starting decision, not implemented.
+**Approved as proposed, with three clarifications recorded during parser review:**
+
+1. `presentation { … }` is a *suffix on any step*, including `alt`/`par` after their closing
+   brace (`} presentation {`). It is unambiguous because `presentation` is not a step keyword and
+   an ident step needs an arrow.
+2. The three block lines are order-free and each allowed at most once (`description`, `camera`,
+   `duration`); the canonical printer always emits them in that order, so source order never
+   survives into the file.
+3. `duration` **requires** a `camera` line in the same block. It is camera *travel* time (0–300 ms)
+   and is deliberately separate from the step's `delay <ms>` (reading dwell); a duration on its own
+   would silently invent a camera, so it is a positioned syntax error (E100).
+
+Bounds: `zoom` 0.1–4 (the canvas limits) and `duration` 0–300 ms, both enforced with positioned
+diagnostics in TS and Go. `camera focus` takes document coordinates; `auto`/`hold` take none.
+`zoom` is only accepted on the `focus` line. An empty `presentation { }` block parses to no
+metadata and prints nothing (only non-default metadata is printed).
 
 ## Evidence
 
-Pending. Record grammar decision, corpus/parity output and validation commands here.
+**RED first.** `web/src/engine/format/presentation.test.ts` was written before the grammar and
+failed against the pre-v8 engine:
+
+```
+$ npx vitest run web/src/engine/format/presentation.test.ts
+  Tests  9 failed | 4 passed (13)
+  AssertionError: expected 7 to be 8
+  AssertionError: expected [ { code: 'E100', …(4) } ] to deeply equal []
+  AssertionError: expected 'expected arrow, got '{'' to contain 'zoom'
+  AssertionError: expected { code: 'E100', …(4) } to match object { code: 'E110' }
+```
+
+**Grammar landed in both engines atomically.** TS: `model/types.ts` (`IR_VERSION = 8`,
+`CameraSpec`, `FlowStepBase` split out of the shared `StmtBase` so a view line can never grow a
+camera, `Flow.description`), `model/serialize.ts` (fixed key order `description`/`camera`),
+`format/parser.ts` (+`flowDescription`, `presentation`, `presentationBody`,
+`presentationKey`, `parseCamera`, `cameraZoom`, `cameraDuration`), `format/printer.ts`
+(`presentationLines`, block hangs off the step's last line). Go: `internal/ir` (`IRVersion = 8`,
+`Camera`, `Step.Description/Camera`, `Flow.Description`), `internal/pdl/parser.go` and
+`printer.go` mirroring each function one-for-one.
+
+**Parity.** The shared fixture gained 12 cases (all step kinds, every camera mode, order
+independence, empty block, and six error cases):
+
+```
+$ CORPUS_FIXTURE=1 npx vitest run web/src/engine/format/parity.test.ts
+  Tests  1 passed (1)                     # rewrites testdata/pdl-cases.json from TS
+$ go test ./internal/pdl/ -run TestParityFixture
+ok  github.com/pijalu/panelcraft/internal/pdl  0.276s
+$ go test ./internal/corpus/
+ok  github.com/pijalu/panelcraft/internal/corpus  0.307s
+```
+
+The Go replay compares IR JSON, canonical PDL *and* parse/validation diagnostics byte for byte,
+so the new syntax round-trips identically on both sides.
+
+**Corpus.** New case `testdata/corpus/flow-presentation/` exercises a flow description, all eight
+step kinds, all three camera modes, zoom/duration bounds edges (`0.1`, `0`, `300`) and flat
+re-wrapping. Regenerated only through the acceptance command:
+
+```
+$ node scripts/corpus-accept.mjs
+  Test Files  3 passed (3)
+      Tests  83 passed (83)
+$ git status --porcelain testdata | wc -l      # 22 existing canonicals + the new case
+```
+
+The only diff in the 22 pre-existing canonicals is `"irVersion": 7` → `8`, i.e. old files still
+parse and print with no unrelated diff.
+
+**Checks.**
+
+```
+$ npm run check
+(no output)
+$ npx vitest run
+ Test Files  115 passed (115)
+      Tests  1234 passed (1234)
+$ npm run corpus:check
+      Tests  25 passed (25)
+$ go test ./...
+ok  cmd/panelcraft · internal/corpus · internal/ir · internal/pdl · internal/server
+$ go vet ./... && staticcheck ./... && gocyclo -over 15 cmd internal web && echo GATES_OK
+GATES_OK
+$ bash scripts/check-docs.sh
+check-docs: OK — 9 docs, all links resolve, .pcd blocks valid
+```
+
+**CLI, through the repository's verified path** (`go build -o /tmp/panelcraft ./cmd/panelcraft`):
+
+```
+$ /tmp/panelcraft validate docs/architecture
+2 files checked, 0 errors, 4 warnings, 0 infos      # pre-existing P201 orphan notes only
+$ /tmp/panelcraft convert testdata/corpus/flow-presentation/canonical.pcd -o /tmp/rt.pcd
+wrote /tmp/rt.pcd                                    # diff -u → identical
+$ /tmp/panelcraft validate testdata/corpus/flow-presentation/canonical.pcd
+1 files checked, 0 errors, 0 warnings, 0 infos
+```
+
+(`panelcraft validate testdata/corpus` exits 2 — that tree is per-case
+`<case>/input.pcd`, and the CLI takes files or flat directories; the corpus is covered by the
+parity replay above instead.)
+
+**Docs.** `docs/FILE-FORMAT.md` §6 gained the `presentation` grammar and rules, the IR-v8 note and
+bounds; `docs/SPEC.md` FR-F1/FR-F4 state the description and camera contract and §7 lists the v8
+`Step`/`Flow` shape; `docs/MERMAID-MATRIX.md` (generated) now declares `flow descriptions`,
+`step descriptions` and `camera overrides` as sequence/flow export drops.
+
+**Not in this WP.** No Flow pane or presentation UI (WP12/WP13 consume the model); the player still
+ignores `camera` so playback is unchanged until WP13 wires it.

@@ -3,7 +3,15 @@
 import type { Doc, Flow, FlowStep, Obj } from '../model/types';
 import type { MermaidExportResult } from './mermaidExport';
 
-export const SEQUENCE_DROP_CATALOGUE = ['per-step delays', 'goto navigation', 'notes without participants'] as const;
+// UX08-WP11: step descriptions and camera overrides are presentation metadata
+// with no Mermaid counterpart — declared, never silently dropped.
+export const SEQUENCE_DROP_CATALOGUE = [
+  'per-step delays',
+  'step descriptions',
+  'camera overrides',
+  'goto navigation',
+  'notes without participants',
+] as const;
 
 const sanitizeId = (id: string): string => id.replace(/[^A-Za-z0-9_]/g, '_');
 

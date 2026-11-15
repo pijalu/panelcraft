@@ -6,7 +6,7 @@ import { lex, type ArrowInfo, type Token } from './lexer';
 import { E, diag, type Diagnostic } from './diagnostics';
 import {
   FORMAT_VERSION, IR_VERSION,
-  type Branch, type Comments, type Doc, type Flow, type FlowStep,
+  type Branch, type CameraSpec, type Comments, type Doc, type Flow, type FlowStep,
   type ImportStmt, type Kind, type Link, type Obj, type Pos, type StyleBlock,
   type StyleStmt, type View, type ViewLine,
 } from '../model/types';
@@ -25,6 +25,12 @@ const META_LEVELS = new Set<string>(['context', 'container', 'component', 'deplo
 const THEMES = new Set<string>(['light', 'dark']);
 const STEP_KWS = new Set<string>(['intro', 'process', 'alt', 'par', 'goto', 'info', 'conclusion']);
 const MAX_DEPTH = 32;
+/** UX08-WP11 camera bounds (IR v8): the existing canvas zoom limits, ms ≤ 300. */
+const CAMERA_ZOOM_MIN = 0.1;
+const CAMERA_ZOOM_MAX = 4;
+const CAMERA_MS_MAX = 300;
+/** UX08-WP11 presentation-block keys (order-free, each at most once). */
+const PRESENTATION_KEYS = new Set<string>(['description', 'camera', 'duration']);
 
 class Abort {
   constructor(readonly d: Diagnostic) {}
@@ -547,9 +553,22 @@ class Parser {
       f.id = this.ident();
     }
     this.expect('punct', '{');
+    const description = this.flowDescription();
+    if (description !== undefined) f.description = description;
     f.steps = this.parseSteps(1);
     this.expectClose(t0, 'flow');
     return comments.length ? { ...f, comments } : f;
+  }
+
+  /**
+   * UX08-WP11: an optional `description "…"` line at the top of a flow body.
+   * It is a flow attribute, not a step, so it is consumed before step parsing.
+   */
+  private flowDescription(): string | undefined {
+    const t = this.peek();
+    if (t.type !== 'ident' || t.text !== 'description') return undefined;
+    this.next();
+    return this.quoted(this.next(), 'description');
   }
 
   private parseSteps(depth: number): FlowStep[] {
@@ -586,12 +605,12 @@ class Parser {
     const comments = this.takeComments();
     const pos = tokPos(t0);
     const wrap = <T extends object>(base: T): FlowStep =>
-      ({
+      this.presentation(t0, ({
         ...(comments.length ? { ...base, comments } : base),
         type: kw,
         pos,
         ...(kw === 'alt' || kw === 'par' ? {} : this.stepDelay(t0.line)),
-      }) as unknown as FlowStep;
+      }) as unknown as FlowStep);
     switch (kw) {
       case 'intro':
       case 'info':
@@ -685,7 +704,109 @@ class Parser {
     } as { type: 'msg'; from: string; to: string; pos: Pos; label?: string; linkRef?: string; flip?: boolean; comments?: Comments };
     this.msgModifiers(t0, step);
     const delay = this.stepDelay(t0.line);
-    return delay.delayMs === undefined ? step : { ...step, ...delay };
+    return this.presentation(t0, delay.delayMs === undefined ? step : { ...step, ...delay });
+  }
+
+  // ---- presentation metadata (UX08-WP11 / IR v8) ---------------------------
+
+  /**
+   * Optional `presentation { … }` block after any step. Absent means "no
+   * metadata": the step behaves exactly as before, and the printer omits the
+   * block, so old documents keep their canonical form byte for byte.
+   */
+  private presentation<T extends FlowStep>(t0: Token, step: T): T {
+    const t = this.peek();
+    if (t.type !== 'ident' || t.text !== 'presentation') return step;
+    this.next();
+    this.expect('punct', '{');
+    const block = this.presentationBody(t0);
+    if (block.empty) return step;
+    return {
+      ...step,
+      ...(block.description === undefined ? {} : { description: block.description }),
+      ...(block.camera === undefined ? {} : { camera: block.camera }),
+    };
+  }
+
+  /** Body of a presentation block: description, camera and camera duration. */
+  private presentationBody(t0: Token): {
+    description?: string;
+    camera?: CameraSpec;
+    empty: boolean;
+  } {
+    const out: { description?: string; camera?: CameraSpec; empty: boolean } = { empty: true };
+    let durationMs: number | undefined;
+    const seen = new Set<string>();
+    for (;;) {
+      this.skipComments();
+      const key = this.peek();
+      if (key.type === 'punct' && key.text === '}') {
+        this.next();
+        break;
+      }
+      if (key.type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed presentation block');
+      const name = this.presentationKey(key, seen);
+      out.empty = false;
+      if (name === 'description') out.description = this.quoted(this.next(), 'description');
+      else if (name === 'camera') out.camera = this.parseCamera(key);
+      else durationMs = this.cameraDuration(key);
+    }
+    if (durationMs === undefined) return out;
+    if (out.camera === undefined) {
+      this.fail(t0, E.unexpected, 'duration needs a camera line in the same block');
+    }
+    return { ...out, camera: { ...out.camera, durationMs } };
+  }
+
+  /** Read and validate a presentation key name (duplicates are errors). */
+  private presentationKey(key: Token, seen: Set<string>): string {
+    if (key.type !== 'ident') this.fail(key, E.unexpected, `unexpected ${key.type} in presentation block`);
+    const name = key.text;
+    if (!PRESENTATION_KEYS.has(name)) {
+      this.fail(key, E.unexpected, `unknown presentation key '${name}'`);
+    }
+    if (seen.has(name)) this.fail(key, E.duplicateAttr, `duplicate '${name}' in presentation block`);
+    seen.add(name);
+    this.next();
+    return name;
+  }
+
+  /** `camera auto | hold | focus (x, y) [zoom n]` — one line, no ambiguity. */
+  private parseCamera(key: Token): CameraSpec {
+    const mode = this.expect('ident');
+    if (mode.text === 'auto' || mode.text === 'hold') return { mode: mode.text };
+    if (mode.text !== 'focus') {
+      this.fail(mode, E.unexpected, `invalid camera mode '${mode.text}' (auto, hold or focus)`);
+    }
+    this.expect('punct', '(');
+    const x = this.num(this.expect('number'));
+    this.expect('punct', ',');
+    const y = this.num(this.expect('number'));
+    this.expect('punct', ')');
+    const camera: CameraSpec = { mode: 'focus', x, y };
+    const zoom = this.cameraZoom(key);
+    return zoom === undefined ? camera : { ...camera, zoom };
+  }
+
+  /** Optional `zoom <n>` on the same camera line, bounded like the canvas. */
+  private cameraZoom(key: Token): number | undefined {
+    const t = this.peek();
+    if (t.type !== 'ident' || t.text !== 'zoom' || t.line !== key.line) return undefined;
+    this.next();
+    const zoom = this.num(this.expect('number'));
+    if (!(zoom >= CAMERA_ZOOM_MIN && zoom <= CAMERA_ZOOM_MAX)) {
+      this.fail(t, E.unexpected, `zoom must be within ${CAMERA_ZOOM_MIN} and ${CAMERA_ZOOM_MAX}`);
+    }
+    return zoom;
+  }
+
+  /** `duration <ms>` — camera transition time, 0–300 ms. */
+  private cameraDuration(key: Token): number {
+    const ms = this.num(this.expect('number'));
+    if (!(ms >= 0 && ms <= CAMERA_MS_MAX)) {
+      this.fail(key, E.unexpected, `duration must be within 0 and ${CAMERA_MS_MAX}`);
+    }
+    return ms;
   }
 
   /** Order-free msg modifiers (errata D-M1-9): : "label", as Ref, flip. */

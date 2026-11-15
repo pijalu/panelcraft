@@ -29,6 +29,9 @@ Every string below can appear in `dropped[]`; anything starting with
 - `level`
 - `direction (auto-layout)`
 - `flows`
+- `flow descriptions`
+- `step descriptions`
+- `camera overrides`
 - `views (positions/layout)`
 - `descriptions/technology`
 - `properties`
@@ -57,6 +60,8 @@ One selected Flow becomes one `.seq.mmd` document. Presentation, animation and
 diagram topology stay in PDL; navigation and timing loss are explicit.
 
 - `per-step delays`
+- `step descriptions`
+- `camera overrides`
 - `goto navigation`
 - `notes without participants`
 
