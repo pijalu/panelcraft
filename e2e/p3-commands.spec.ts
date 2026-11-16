@@ -53,6 +53,8 @@ test('F-19: align left from the menu lines objects up (undoable)', async ({ page
   await canvas.locator('g.pc-obj[data-id="b"]').click({ modifiers: ['Shift'] });
   await canvas.locator('g.pc-obj[data-id="b"]').click({ button: 'right' });
   await expect(page.getByTestId('context-menu')).toBeVisible();
+  // Item 7: arrangement commands live in the Arrange group.
+  await page.getByTestId('ctx-arrange').click();
   await page.getByTestId('ctx-align-left').click();
 
   const xs = await canvas.locator('g.pc-obj').evaluateAll((els) =>

@@ -1396,15 +1396,31 @@ marker .pc-arrow[fill='none'] {
   font-size: var(--pc-text-sm);
 }
 
+/* Item 7: a scrollable list says so — an inset edge shadow plus the standard
+   scrollbar. Without it a cut-off command looked missing rather than reachable. */
+.menu-scrolls {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-image: linear-gradient(var(--pc-menu-bg) 30%, transparent),
+    linear-gradient(transparent, var(--pc-menu-bg) 70%);
+  background-position: 0 0, 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 12px;
+  background-attachment: local, local;
+}
+
 .menu-submenu {
   position: relative;
 }
 
+/* Item 7: placement is measured in Menu.tsx (fixed, inline left/top/max-height)
+   so a nested surface flips to the left of its row and clamps vertically instead
+   of a fixed `left: 100%` running off-screen. */
 .menu-submenu-popover {
-  position: absolute;
-  top: -4px;
-  left: calc(100% + 2px);
+  position: fixed;
   z-index: 81;
+  overflow: auto;
+  max-width: min(320px, calc(100vw - 16px));
   min-width: 160px;
   display: flex;
   flex-direction: column;
@@ -2950,48 +2966,6 @@ marker .pc-arrow[fill='none'] {
 }
 
 /* F-19 context menu */
-.context-menu {
-  position: fixed;
-  z-index: 60;
-  min-width: 210px;
-  max-height: 70vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  padding: 4px;
-  background: var(--pc-menu-bg);
-  border: 1px solid var(--pc-menu-border);
-  border-radius: var(--pc-radius-md);
-  box-shadow: var(--pc-menu-shadow);
-}
-
-.context-item {
-  min-height: var(--pc-control-min);
-  padding: var(--pc-space-1) var(--pc-space-2);
-  border: 0;
-  border-radius: var(--pc-radius-sm);
-  background: transparent;
-  color: var(--pc-fg);
-  font: inherit;
-  font-size: var(--pc-text-sm);
-  text-align: left;
-  cursor: pointer;
-}
-
-.context-item:hover:not([disabled]) {
-  background: var(--pc-list-hover-bg);
-}
-
-.context-item[disabled] {
-  color: var(--pc-disabled-fg);
-  cursor: default;
-}
-
-.context-item:focus-visible {
-  outline: 2px solid var(--pc-focus-ring);
-  outline-offset: -2px;
-}
-
 /* F-19 waypoint handles (drag to re-route an explicit path) */
 .pc-waypoint {
   fill: var(--pc-bg);

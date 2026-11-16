@@ -182,7 +182,16 @@ function CanvasSplit(props: {
 }) {
   return (
     <main class="canvas-wrap" onContextMenu={props.onCanvasContextMenu}>
-      <svg ref={props.canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
+      {/* Item 7: focusable (not tabbable) so closing a menu can restore focus
+          to the canvas the user invoked it from. */}
+      <svg
+        ref={props.canvas.svgRef}
+        class="pc-canvas"
+        data-testid="canvas"
+        width="100%"
+        height="100%"
+        tabindex={-1}
+      />
       <MiniMap
         snapshot={props.canvas.snap}
         controller={props.canvas.ctrlRef.current}
@@ -592,7 +601,16 @@ function AppBody(p: {
           y={menu.y}
           selectionCount={canvas.snap?.selection.objects.length ?? 0}
           linkCount={canvas.snap?.selection.links.length ?? 0}
-          onClose={() => setMenu(null)}
+          onClose={() => {
+            setMenu(null);
+            // The invoking surface is this canvas, whatever held focus before
+            // (the code editor often does). Restoring focus must not change the
+            // selection or create undo history, and it runs after the surface
+            // unmounts: removing the focused menu item sends focus to <body>,
+            // which would undo a synchronous restore.
+            const canvasEl = canvas.svgRef.current;
+            requestAnimationFrame(() => canvasEl?.focus());
+          }}
         />
       )}
     </div>

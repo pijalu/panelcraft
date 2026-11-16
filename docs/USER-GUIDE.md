@@ -106,13 +106,15 @@ and the CLI's `--theme` option.
   objects, and the mini-map, SVG/PNG exports and `panelcraft render` use the same
   order.
 - **Context menu** (right-click): **Properties** (a single selected object or link;
-  disabled for larger selections), **Duplicate**, **Copy**, **Paste**, **Delete**,
-  **Align left**, **Align centre (horizontal)**, **Align right**, **Align top**,
-  **Align middle (vertical)**, **Align bottom**, **Distribute horizontally**,
-  **Distribute vertically**, and **Equal size** (the last three need two or three
-  selected objects and stay listed but disabled otherwise). There are no stacking
-  commands in the menu: layering is the **Stacking order** field in properties →
-  Advanced.
+  disabled for larger selections), **Duplicate**, **Copy**, **Paste** and **Delete**
+  are direct entries, followed by the **Arrange** group. Arrange holds the alignment
+  commands — **Align left**, **Align centre (horizontal)**, **Align right**, **Align top**,
+  **Align middle (vertical)**, **Align bottom** — plus **Distribute horizontally**,
+  **Distribute vertically** and **Equal size**; the group stays reachable and its entries
+  explain themselves when the selection is too small. Arrow keys, Home/End and Enter work
+  in the menu exactly as in the application menu, and closing returns focus to the canvas
+  without changing the selection. There are no stacking commands in the menu: layering is
+  the **Stacking order** field in properties → Advanced.
 - **History**: Ctrl/Cmd+Z / Shift-Ctrl/Cmd+Z act on the surface that has focus;
   the header's `⟲ History` lists the last actions across canvas and code with
   routed Undo/Redo.

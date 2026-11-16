@@ -127,7 +127,13 @@ play mode, exports PNG/SVG for docs.
 * **FR-C9** Undo/redo (command stack, coalesced typing/drag operations, ≥100 steps),
   full keyboard shortcuts (§10).
 * **FR-C10** Context menus: canvas, object, edge (duplicate, delete, bring-to-front,
-  add to group, create flow step from link…).
+  add to group, create flow step from link…). Every menu surface — application,
+  panel, nested submenu and context menu — shares one contract: placed from measured
+  rectangles inside the viewport without covering its trigger, nested surfaces flip
+  when the preferred side has no room, overflowing lists scroll internally with a
+  visible cue, focused entries scroll into view, and arrows/Home/End/Enter/Escape/Tab
+  plus focus restoration behave identically. Frequently used commands stay direct
+  while advanced arrangement commands are grouped, never removed.
 * **FR-C11** Dependencies view of selected object: highlight incoming/outgoing + list
   panel (M6).
 * **FR-C12** Copy/paste/duplicate objects within and across files (internal clipboard;

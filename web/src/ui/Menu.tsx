@@ -5,7 +5,17 @@
 // Escape and outside pointer dismiss, Tab closes, focus returns to the trigger.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { clampMenuPosition, edgeIndex, isInside, MENU_MARGIN, rovingIndex } from './menuModel';
+import {
+  availableMenuHeight,
+  clampMenuPosition,
+  edgeIndex,
+  isInside,
+  MENU_MARGIN,
+  needsScroll,
+  placeMenu,
+  placeSubmenu,
+  rovingIndex,
+} from './menuModel';
 import { CheckIcon, SubmenuIcon } from './icons';
 
 export interface MenuActionEntry {
@@ -59,7 +69,11 @@ function menuElements(list: HTMLDivElement | null): HTMLElement[] {
 
 function focusAt(list: HTMLDivElement | null, index: number): void {
   if (index < 0) return;
-  menuElements(list)[index]?.focus();
+  const target = menuElements(list)[index];
+  if (target === undefined) return;
+  target.focus();
+  // Keyboard focus must never sit outside the visible scroll window.
+  target.scrollIntoView?.({ block: 'nearest' });
 }
 
 function activeIndex(list: HTMLDivElement | null): number {
@@ -71,6 +85,7 @@ interface MenuListProps {
   id: string;
   label: string;
   items: MenuEntry[];
+  testId?: string;
   onClose: () => void;
   onBack?: () => void;
   autoFocus: boolean;
@@ -84,8 +99,17 @@ function MenuList(props: MenuListProps): ComponentChildren {
   const localRef = useRef<HTMLDivElement | null>(null);
   const listRef = props.listRef ?? localRef;
   const [openSub, setOpenSub] = useState<string | null>(null);
+  const [scrolls, setScrolls] = useState(false);
   const keyboardSub = useRef(false);
   const list = (): HTMLDivElement | null => listRef.current ?? localRef.current;
+
+  useLayoutEffect(() => {
+    // A list taller than its box scrolls internally; the class adds the visible
+    // overflow cue so a cut-off command looks scrollable rather than missing.
+    const root = list();
+    if (root === null) return;
+    setScrolls(needsScroll(root.scrollHeight, root.clientHeight));
+  }, [props.items]);
 
   useLayoutEffect(() => {
     if (!props.autoFocus) return;
@@ -159,7 +183,8 @@ function MenuList(props: MenuListProps): ComponentChildren {
     <div
       id={props.id}
       ref={listRef}
-      class={props.depth === 0 ? 'menu-popover' : 'menu-submenu-popover'}
+      data-testid={props.testId}
+      class={`${props.depth === 0 ? 'menu-popover' : 'menu-submenu-popover'}${scrolls ? ' menu-scrolls' : ''}`}
       role="menu"
       aria-label={props.label}
       style={props.style}
@@ -197,18 +222,61 @@ interface EntryContext {
 
 function renderEntry(entry: MenuEntry, ctx: EntryContext): ComponentChildren {
   if (entry.kind === 'separator') return <div key={entry.id} role="separator" class="menu-separator" />;
-  if (entry.kind === 'submenu') return renderSubmenu(entry, ctx);
+  if (entry.kind === 'submenu') return <SubmenuRow key={entry.id} entry={entry} ctx={ctx} />;
   return renderItem(entry, ctx);
 }
 
-function renderSubmenu(entry: MenuSubmenuEntry, ctx: EntryContext): ComponentChildren {
+/**
+ * One submenu row. Placement is measured, not assumed: the surface opens beside
+ * its row, flips to the left when the right-hand side has no room, is clamped
+ * vertically and sized to the space it actually has (item 7). A fixed
+ * `left: 100%` positioning pushed deep menus off-screen.
+ */
+function SubmenuRow(props: { entry: MenuSubmenuEntry; ctx: EntryContext }): ComponentChildren {
+  const { entry, ctx } = props;
   const open = ctx.openSub === entry.id;
+  const rowRef = useRef<HTMLButtonElement | null>(null);
+  const popRef = useRef<HTMLDivElement | null>(null);
+  const [placement, setPlacement] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPlacement(null);
+      return undefined;
+    }
+    const place = (): void => {
+      const row = rowRef.current?.getBoundingClientRect();
+      const size = popRef.current?.getBoundingClientRect();
+      if (row === undefined || size === undefined) return;
+      const viewport = { width: window.innerWidth, height: window.innerHeight };
+      const placed = placeSubmenu(
+        { left: row.left, top: row.top, right: row.right, bottom: row.bottom },
+        { width: size.width, height: size.height },
+        viewport,
+      );
+      setPlacement({
+        left: placed.left,
+        top: placed.top,
+        maxHeight: availableMenuHeight(placed.top, viewport),
+      });
+    };
+    place();
+    // A resize or a scrolled canvas moves the row under the open submenu.
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [open]);
+
   return (
-    <div class="menu-submenu" key={entry.id} role="none">
+    <div class="menu-submenu" role="none">
       <button
         type="button"
         role="menuitem"
         class="menu-item"
+        ref={rowRef}
         data-menu-index={ctx.index}
         data-testid={entry.testId}
         aria-haspopup="menu"
@@ -230,6 +298,15 @@ function renderSubmenu(entry: MenuSubmenuEntry, ctx: EntryContext): ComponentChi
           onBack={ctx.onBack}
           autoFocus={ctx.subAutoFocus}
           depth={ctx.depth}
+          listRef={popRef}
+          style={{
+            position: 'fixed',
+            left: `${placement?.left ?? 0}px`,
+            top: `${placement?.top ?? 0}px`,
+            ...(placement === null
+              ? { visibility: 'hidden' }
+              : { maxHeight: `${Math.max(120, placement.maxHeight)}px` }),
+          }}
         />
       )}
     </div>
@@ -261,10 +338,79 @@ function renderItem(entry: MenuActionEntry, ctx: EntryContext): ComponentChildre
   );
 }
 
+export interface FloatingMenuProps {
+  id: string;
+  label: string;
+  /** Viewport point the surface opens from (pointer position or trigger box). */
+  anchor: { left: number; top: number };
+  items: MenuEntry[];
+  onClose: () => void;
+  testId?: string;
+}
+
+/**
+ * A menu opened at an arbitrary viewport point — the same surface, placement,
+ * keyboard and dismissal rules as the trigger-anchored menus, so a context menu
+ * cannot drift away from the application menu's behaviour (item 7).
+ */
+export function FloatingMenu(props: FloatingMenuProps): ComponentChildren {
+  const popRef = useRef<HTMLDivElement | null>(null);
+  const [point, setPoint] = useState({ left: props.anchor.left, top: props.anchor.top });
+  const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
+  const anchor = props.anchor;
+
+  useEffect(() => {
+    const place = (): void => {
+      const size = popRef.current?.getBoundingClientRect();
+      const viewport = { width: window.innerWidth, height: window.innerHeight };
+      const placed = clampMenuPosition(
+        { left: anchor.left, top: anchor.top },
+        { width: size?.width ?? 0, height: size?.height ?? 0 },
+        viewport,
+      );
+      setPoint(placed);
+      setMaxHeight(availableMenuHeight(placed.top, viewport));
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    const onPointerDown = (event: Event): void => {
+      if (isInside(event.target, [popRef.current])) return;
+      props.onClose();
+    };
+    window.addEventListener('pointerdown', onPointerDown, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('pointerdown', onPointerDown, true);
+    };
+  }, [anchor.left, anchor.top, props]);
+
+  return (
+    <MenuList
+      id={props.id}
+      label={props.label}
+      items={props.items}
+      onClose={props.onClose}
+      autoFocus
+      listRef={popRef}
+      depth={0}
+      testId={props.testId}
+      style={{
+        position: 'fixed',
+        left: `${point.left}px`,
+        top: `${point.top}px`,
+        ...(maxHeight === undefined ? {} : { maxHeight: `${Math.max(160, maxHeight)}px` }),
+      }}
+    />
+  );
+}
+
 /** Anchor-pointed menu with one shared dismissal/focus lifecycle. */
 export function Menu(props: MenuProps): ComponentChildren {
   const [open, setOpen] = useState(false);
   const [point, setPoint] = useState({ left: 0, top: 0 });
+  const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const popRef = useRef<HTMLDivElement | null>(null);
 
@@ -291,15 +437,24 @@ export function Menu(props: MenuProps): ComponentChildren {
 
   useEffect(() => {
     if (!open) return undefined;
-    const trigger = triggerRef.current?.getBoundingClientRect();
-    const size = popRef.current?.getBoundingClientRect();
-    setPoint(
-      clampMenuPosition(
-        { left: trigger?.left ?? 0, top: (trigger?.bottom ?? 0) + 2 },
+    const place = (): void => {
+      const trigger = triggerRef.current?.getBoundingClientRect();
+      const size = popRef.current?.getBoundingClientRect();
+      if (trigger === undefined) return;
+      const placed = placeMenu(
+        { left: trigger.left, top: trigger.top, right: trigger.right, bottom: trigger.bottom },
         { width: size?.width ?? 0, height: size?.height ?? 0 },
         { width: window.innerWidth, height: window.innerHeight },
-      ),
-    );
+      );
+      setPoint({ left: placed.left, top: placed.top });
+      // Sized to the chosen side, so a long menu scrolls internally instead of
+      // growing over the trigger or off the viewport edge.
+      setMaxHeight(placed.maxHeight);
+    };
+    place();
+    // Keep the surface on screen when the window resizes or the page scrolls.
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
     const onPointerDown = (event: Event): void => {
       if (isInside(event.target, [triggerRef.current, popRef.current])) return;
       setOpenState(false);
@@ -313,6 +468,8 @@ export function Menu(props: MenuProps): ComponentChildren {
     window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('keydown', onEscape);
     return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
       window.removeEventListener('pointerdown', onPointerDown, true);
       window.removeEventListener('keydown', onEscape);
     };
@@ -358,8 +515,7 @@ export function Menu(props: MenuProps): ComponentChildren {
             position: 'fixed',
             left: `${point.left}px`,
             top: `${point.top}px`,
-            margin: `${MENU_MARGIN}px 0 0`,
-            maxHeight: `${Math.max(200, window.innerHeight - point.top - MENU_MARGIN * 2)}px`,
+            maxHeight: `${maxHeight ?? Math.max(200, window.innerHeight - point.top - MENU_MARGIN * 2)}px`,
           }}
         />
       )}

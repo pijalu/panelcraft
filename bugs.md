@@ -35,49 +35,6 @@ and final archive criteria. Planning only: no implementation has been executed.
 
 
 
-## 7. Audit and repair all menus and context menus for usable viewport behavior
-
-**Severity:** High — commands become unreachable, blocking basic editing tasks.
-
-**Observed behavior:** Menus with many commands extend or scroll outside the
-visible viewport, making the menu unusable. The review must cover the complete
-application menu, every nested submenu, panel/view menus, and canvas context
-menus rather than fixing only the most visible popover.
-
-**Expected behavior:** Every command remains visible or reachable through an
-obvious internal scrolling affordance at every supported viewport size. Menus
-open near their trigger without covering it, flip or clamp away from viewport
-edges, and keep nested submenus on screen. Pointer, touch, and keyboard users
-can reach the same commands; focused items scroll into view; disabled and
-destructive actions are understandable; and closing restores focus to the
-trigger or invoking canvas object. Frequently used actions remain easy to find,
-while advanced alignment/distribution choices are grouped without hiding
-recovery actions or removing capability.
-
-**Critical assessment:** This is not solved by adding `max-height` alone. The
-shared application menu clamps only its root rectangle; nested submenus are
-absolutely positioned to the right without viewport collision handling
-(`web/src/ui/Menu.tsx`, `web/src/ui/menuModel.ts`). The canvas context menu uses
-the pointer coordinates directly, so a right-click near an edge can place its
-70%-height surface off-screen (`web/src/ui/ContextMenu.tsx`). Context menus also
-lack the application menu's Arrow/Home/End navigation. Finally, the canvas menu
-shows twelve similarly prominent actions, including many disabled alignment and
-distribution commands, increasing search effort when the user only wants a
-common action such as Properties or Delete.
-
-**Fix plan:** Inventory all menu surfaces and define one shared viewport,
-scrolling, focus, and dismissal contract. Add failing geometry and interaction
-tests for root menus, nested submenus, and context menus opened at every viewport
-edge/corner, with long labels, browser zoom, and narrow/touch layouts. Implement
-available-space sizing, visible overflow cues, collision-aware placement, and
-consistent Arrow/Home/End, Enter, Escape, focus-return, and scroll-into-view
-behavior. Review command grouping from a user-task perspective: prioritize
-Properties, clipboard, and Delete; progressively disclose advanced arrangement
-commands without deleting functionality. Capture and inspect screenshots in
-light/dark themes at desktop, narrow, and short viewports, including scrolled and
-keyboard-focused states. Run the full menu, accessibility, browser, and quality
-gates, then repeat critical cases against the deployed site.
-
 ## 8. Keep long filenames and file actions reachable — schedule after long-menu fix
 
 **Observed behavior:** In the Files panel, an overly long filename pushes the
@@ -295,6 +252,23 @@ and light/dark/narrow screenshots. Mermaid/static SVG exports must state how lin
 children and source are represented or explicitly reported as unsupported.
 
 ## Closed this session
+
+- **Every menu now shares one viewport-safe contract.** Menus were positioned
+  from unmeasured guesses: nested submenus sat at `left: 100%` with no collision
+  handling, and the canvas context menu was drawn at raw pointer coordinates, so
+  a right-click near a corner put its surface off-screen — and it had no
+  arrow-key navigation at all. Placement is now measured (`placeMenu` picks the
+  side with room and refuses to cover its own trigger; `placeSubmenu` flips left
+  when the right side has no room), a list that overflows scrolls internally with
+  a visible cue and scroll-into-view focus, and the context menu runs on the same
+  surface as the application menu — arrows, Home/End, submenu open/close,
+  Enter/Space, Escape/Tab, outside dismissal and focus returning to the canvas.
+  The canvas commands keep Properties, clipboard and Delete direct and group the
+  nine arrange commands in one reachable **Arrange** submenu. Verified by pure
+  geometry tests, component keyboard tests, five browser scenarios asserting real
+  bounding boxes and key behaviour, accessibility scans, and the full
+  unit/coverage/perf/docs gates.
+  Write-up: `docs/archive/bugs-menu-viewport-contract.md`.
 
 - **A link-only diagram is presentable straight away.** The default C4 template
   ships "buys" and "charges" but no flow, so the story needed hand-written PDL.

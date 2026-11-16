@@ -192,6 +192,19 @@ under `docs/archive/` with the executed plan, validation and review evidence.
 - **DOC-01** The user guide now documents the context-menu commands the canvas really offers
   and no longer advertises stacking commands that do not exist.
 
+### Fixed — menu viewport contract
+
+- Every menu surface now shares one viewport-safe contract. Placement is measured:
+  a menu opens on the side with room inside an 8 px margin, never covers its own
+  trigger, and scrolls internally when the requested height does not fit; nested
+  submenus flip to the left of their row instead of running off the right edge.
+  Overflowing lists show a scroll cue and keep keyboard focus scrolled into view.
+  The canvas context menu moved onto the same shared surface, so it gains
+  arrows/Home/End/submenu navigation, Escape/Tab dismissal and focus restoration to
+  the canvas, and its nine align/distribute/equal-size commands are grouped in one
+  reachable **Arrange** submenu while Properties, Duplicate, Copy, Paste and Delete
+  stay direct. See `docs/archive/bugs-menu-viewport-contract.md`.
+
 ### Added — presentable default flow
 
 - A document that has connections but no authored flow is presentable immediately:

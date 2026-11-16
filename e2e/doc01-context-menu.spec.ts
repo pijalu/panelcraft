@@ -32,17 +32,21 @@ view "Base" {
 }
 `;
 
-/** The exact labels the guide documents for a single-object selection. */
+/** The direct entries the guide documents for a single-object selection. */
 const DOCUMENTED_SINGLE = [
   // UX08-WP08: the inspector entry leads the menu for a single object/link.
   'Properties',
   'Duplicate', 'Copy', 'Paste', 'Delete',
-  'Align left', 'Align centre (horizontal)', 'Align right',
-  'Align top', 'Align middle (vertical)', 'Align bottom',
 ];
 
-/** Multi-selection adds the commands that need two objects. */
-const DOCUMENTED_MULTI = ['Distribute horizontally', 'Distribute vertically', 'Equal size'];
+/** Alignment and distribution live in the Arrange group (item 7). */
+const DOCUMENTED_ARRANGE = [
+  'Align left', 'Align centre (horizontal)', 'Align right',
+  'Align top', 'Align middle (vertical)', 'Align bottom',
+  'Distribute horizontally', 'Distribute vertically', 'Equal size',
+];
+
+const DOCUMENTED_MULTI = ['Align left', 'Distribute horizontally', 'Equal size'];
 
 async function seed(page: Page): Promise<void> {
   await page.goto('/');
@@ -73,9 +77,11 @@ for (const theme of ['light', 'dark'] as const) {
     await canvas.locator('g.pc-obj[data-id="c"]').click({ button: 'right' });
     const menu = page.getByTestId('context-menu');
     await expect(menu).toBeVisible();
+    await page.getByTestId('ctx-arrange').click();
     for (const label of DOCUMENTED_MULTI) {
       await expect(menu.getByRole('menuitem', { name: label, exact: true })).toBeEnabled();
     }
+    await page.keyboard.press('Escape');
 
     // Single selection: the exact documented list, with the multi-object
     // commands still listed but disabled.
@@ -83,7 +89,10 @@ for (const theme of ['light', 'dark'] as const) {
     await canvas.locator('g.pc-obj[data-id="a"]').click({ button: 'right' });
     await expect(menu).toBeVisible();
     const labels = await menu.getByRole('menuitem').allInnerTexts();
-    expect(labels.map((t) => t.trim())).toEqual([...DOCUMENTED_SINGLE, ...DOCUMENTED_MULTI]);
+    expect(labels.map((t) => t.trim())).toEqual([...DOCUMENTED_SINGLE, 'Arrange']);
+    await page.getByTestId('ctx-arrange').click();
+    const arrangeLabels = await menu.locator('#arrange-menu').getByRole('menuitem').allInnerTexts();
+    expect(arrangeLabels.map((t) => t.trim())).toEqual(DOCUMENTED_ARRANGE);
     await capture(page, `doc01-context-menu-${theme}`);
     await axe(page);
     for (const label of DOCUMENTED_SINGLE) {
@@ -97,7 +106,7 @@ for (const theme of ['light', 'dark'] as const) {
 
     // The guide itself: documented commands present, unsupported claim gone.
     const guide = readFileSync('docs/USER-GUIDE.md', 'utf8');
-    for (const label of [...DOCUMENTED_SINGLE, ...DOCUMENTED_MULTI]) {
+    for (const label of [...DOCUMENTED_SINGLE, ...DOCUMENTED_ARRANGE]) {
       expect(guide, `USER-GUIDE must document "${label}"`).toContain(label);
     }
     expect(guide).not.toMatch(/bring to front/i);
