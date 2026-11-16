@@ -1,0 +1,83 @@
+{
+  "irVersion": 10,
+  "formatVersion": "1.0",
+  "title": "Decomposition diagnostics",
+  "level": "context",
+  "objects": [
+    {
+      "kind": "system",
+      "id": "shop",
+      "name": "Webshop",
+      "drilldown": {
+        "path": "containers/shop.pcd",
+        "view": "components"
+      },
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "billing",
+      "name": "Billing",
+      "drilldown": {
+        "path": "containers/shop.pcd"
+      },
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    },
+    {
+      "kind": "person",
+      "id": "shopper",
+      "name": "Shopper",
+      "drilldown": {
+        "path": "people/shopper.pcd"
+      },
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "api",
+      "name": "API",
+      "drilldown": {
+        "path": "notes/readme.md"
+      },
+      "pos": {
+        "line": 14,
+        "col": 1
+      }
+    },
+    {
+      "kind": "container",
+      "id": "worker",
+      "name": "Worker",
+      "source": {
+        "language": "go",
+        "lines": [
+          "func Run() {}",
+          "// <script>alert(1)</script> is data, never executed"
+        ]
+      },
+      "pos": {
+        "line": 17,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "shop",
+      "to": "billing",
+      "pos": {
+        "line": 25,
+        "col": 1
+      }
+    }
+  ]
+}

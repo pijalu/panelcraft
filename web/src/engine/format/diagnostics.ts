@@ -32,6 +32,8 @@ export const E = {
   invalidIconData: 'E114',
   /** Icon declaration names a media type this version cannot draw (§3.1). */
   invalidIconMedia: 'E115',
+  /** `source` block with no `text` line — nothing to show or print (§3.3). */
+  emptySource: 'E116',
 } as const;
 
 export const diag = (

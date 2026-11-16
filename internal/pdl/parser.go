@@ -366,7 +366,7 @@ func (p *parser) objectBlock(o *ir.Obj, t0 Token) {
 			return
 		}
 		t := p.expect(TokIdent, "")
-		if p.objectAttr(o, seen, t0, t) {
+		if p.objectAttr(o, seen, t0, t) || p.hierarchyAttr(o, seen, t) {
 			continue
 		}
 		o.Attributes = append(o.Attributes, ir.RawAttr{Raw: p.captureRaw(t), Pos: tokPos(t)})
@@ -424,11 +424,74 @@ func (p *parser) objectAttr(o *ir.Obj, seen map[string]bool, t0, t Token) bool {
 	return true
 }
 
+// hierarchyAttr handles the IR v10 decomposition and source attributes (§3.2,
+// §3.3) in their own function so the attribute table stays inside the
+// complexity gate and one concern per function.
+func (p *parser) hierarchyAttr(o *ir.Obj, seen map[string]bool, t Token) bool {
+	switch t.Text {
+	case "drilldown":
+		p.once(seen, t, "drilldown")
+		o.Drilldown = p.parseDrilldown()
+	case "source":
+		p.once(seen, t, "source")
+		o.Source = p.parseSource(t)
+	default:
+		return false
+	}
+	return true
+}
+
 func (p *parser) once(seen map[string]bool, t Token, key string) {
 	if seen[key] {
 		p.fail(t, ErrDuplicateAttr, fmt.Sprintf("duplicate attribute '%s'", key))
 	}
 	seen[key] = true
+}
+
+// parseDrilldown reads `"<path>" [view <id>]` (IR v10, FILE-FORMAT §3.2). The
+// path is a quoted workspace path, not an identifier; the optional view is the
+// child's view id.
+func (p *parser) parseDrilldown() *ir.Drilldown {
+	d := &ir.Drilldown{Path: p.str()}
+	peeked := p.peek()
+	if peeked.Type == TokIdent && peeked.Text == "view" {
+		p.next()
+		d.View = p.ident()
+	}
+	return d
+}
+
+// parseSource reads `{ language "…" text "…" … }` (IR v10, §3.3): one `text`
+// line per source line, in document order. No text line is E116 — the block
+// would show nothing and the printer would drop it, breaking round-trip.
+func (p *parser) parseSource(t0 Token) *ir.SourceBlock {
+	p.expect(TokPunct, "{")
+	src := &ir.SourceBlock{}
+	seen := map[string]bool{}
+	for {
+		p.skipComments()
+		if p.peek().Type == TokEOF {
+			p.fail(t0, ErrUnclosedBlock, "unclosed source block")
+		}
+		if p.peek().Type == TokPunct && p.peek().Text == "}" {
+			p.next()
+			break
+		}
+		t := p.expect(TokIdent, "")
+		switch t.Text {
+		case "language":
+			p.once(seen, t, "language")
+			src.Language = p.str()
+		case "text":
+			src.Lines = append(src.Lines, p.str())
+		default:
+			p.fail(t, ErrUnexpected, fmt.Sprintf("unknown source line '%s'", t.Text))
+		}
+	}
+	if len(src.Lines) == 0 {
+		p.fail(t0, ErrEmptySource, "source block needs at least one text line")
+	}
+	return src
 }
 
 // ident validates a PDL identifier (§1 + errata D-M1-8).

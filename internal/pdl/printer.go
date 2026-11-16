@@ -270,6 +270,30 @@ func objectAttrLines(o ir.Obj, p *printer) {
 	if o.Z != nil {
 		p.add(indent + "z " + jsNum(*o.Z))
 	}
+	hierarchyLines(o, p)
+}
+
+// hierarchyLines prints the IR v10 decomposition and source lines (§3.2, §3.3):
+// `drilldown` first, then the nested `source` block.
+func hierarchyLines(o ir.Obj, p *printer) {
+	if o.Drilldown != nil {
+		line := indent + "drilldown " + Quote(o.Drilldown.Path)
+		if o.Drilldown.View != "" {
+			line += " view " + o.Drilldown.View
+		}
+		p.add(line)
+	}
+	if o.Source == nil {
+		return
+	}
+	p.add(indent + "source {")
+	if o.Source.Language != "" {
+		p.add(indent + indent + "language " + Quote(o.Source.Language))
+	}
+	for _, line := range o.Source.Lines {
+		p.add(indent + indent + "text " + Quote(line))
+	}
+	p.add(indent + "}")
 }
 
 func printObject(o ir.Obj, p *printer) {

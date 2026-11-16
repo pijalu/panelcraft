@@ -494,6 +494,8 @@ func Validate(doc *ir.Doc, opts Options) []Diagnostic {
 	if opts.Imports != nil {
 		out = checkImports(doc, opts.File, opts.Imports, out)
 	}
+	readSrc, _ := opts.Imports.(ReadSource)
+	out = checkHierarchy(doc, opts.File, readSrc, out)
 	out = checkObjects(doc, s, out)
 	out = checkOrphans(doc, s, out)
 	out = checkFlowsEmpty(doc, out)

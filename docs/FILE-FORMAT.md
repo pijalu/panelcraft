@@ -78,6 +78,8 @@ attach id                   ← note only: anchored object id
 icon name                   ← built-in icon id (M5)
 size <w> <h>                ← explicit canvas geometry in document units (IR v2, F-13)
 z <int>                     ← explicit stacking order; absent = auto (IR v6, CX-03)
+drilldown "path.pcd" [view id]  ← C4 decomposition, IR v10 (§3.2)
+source { … }                ← embedded source text, IR v10 (§3.3)
 ```
 
 * `size` is presentation geometry, not semantics: it is optional, positive, and
@@ -175,6 +177,116 @@ icon brand {
 * **Exports**: the payload is local bytes, so SVG/PNG and the CLI renderer carry
   it as-is. Mermaid has no equivalent and declares `icons` dropped (§9).
 * Provenance and licensing of the built-in set: [ICONS.md](ICONS.md).
+
+### 3.2 Decomposition links — C4 drill-down (IR v10)
+
+A C4 element may *decompose* into a subordinate diagram that lives in the same
+workspace: a system opens its container diagram, a container opens its component
+diagram. The relation is authorised on the **parent object only** — a child file
+never points back at its parent — so every edge has exactly one author and the two
+ends can never disagree.
+
+```
+ObjectAttr += "drilldown" QuotedPath [ "view" Ident ]
+```
+
+```
+system shop "Webshop" {
+  description "Storefront SPA"
+  drilldown "containers/shop.pcd" view containers
+}
+```
+
+* **Target** — workspace-relative POSIX path to a `.pcd` file, resolved from the
+  declaring file's directory. Absolute paths, backslashes, paths that escape the
+  workspace root and non-`.pcd` suffixes are errors (`P213`).
+* **View** — optional view *id* inside the target file (the `as <id>` of a `view`
+  statement, §7.1). Absent, the child opens its default (implicit or first) view; a
+  view id the target does not declare is an error (`P218`).
+* **Allowed transitions** — decomposition follows C4's zoom levels:
+
+  | parent kind | child `level` (§2) |
+  |---|---|
+  | `system`, `system_ext` | `container` |
+  | `container` | `component`, `deployment` |
+
+  A child that declares **no** `level` line is accepted (the file makes no claim). A
+  child that declares a different one is `P214`. `person`, `datastore`, `queue`,
+  `note` and `group` cannot decompose at all (`P215`) — a group is a boundary and a
+  note is an annotation, neither is a C4 element.
+* **One parent per child** — a target file is claimed by at most one object per
+  document (`P211`); the workspace-wide pass behind the UI additionally reports a
+  child claimed by two *different* files.
+* **Acyclic** — following decomposition links must not return to a file already in
+  the trail (`P216`).
+* **Identity** — the parent object keeps its own id; the child diagram's content is
+  *not* merged into the parent, is never duplicated as ghost objects, and the parent
+  is never silently renamed. The child renders a parent-context boundary that names
+  the parent element and its file; imported ghosts (§5) stay visually distinct.
+* **Navigation** — a drill-down is opened from a visible, keyboard-reachable
+  affordance on the entity (properties panel action and canvas context action); the
+  trail shows breadcrumbs back to the root, and returning keeps the previous view
+  and camera. A broken, cyclic or duplicate relation keeps the current context and
+  reports the reason instead of opening anything.
+* **Editing** — `drilldown` is a document line like any other: setting, changing or
+  clearing it is one undoable command, so undo/redo never desynchronises the trail
+  (the trail re-resolves from the file after every edit).
+* **Rename / move / delete** — renaming or moving a target in the workspace rewrites
+  the referring `drilldown` path in every affected file in the same step; deleting a
+  target keeps the authored relation and reports `P212`, which the properties panel
+  offers to re-point. No hidden backlink is stored, so there is nothing else to
+  maintain.
+* **Exports** — the relation is not an edge: it draws no link, so SVG/PNG and the
+  CLI renderer are unaffected and an unsaved child never appears in a parent export.
+  Mermaid has no decomposition concept; `drilldown` is declared dropped (§9).
+
+### 3.3 Embedded source (IR v10)
+
+An object may carry a short piece of source text — a handler signature, a query, the
+interface a container exposes — so a diagram can explain itself without a second
+file.
+
+```
+ObjectAttr += "source" "{" ( "language" QuotedText | "text" QuotedText )* "}"
+```
+
+```
+container api "Checkout API" {
+  technology "Go"
+  source {
+    language "go"
+    text "func (h *Handler) Charge(ctx context.Context) error {"
+    text "  return h.psp.Authorize(ctx)"
+    text "}"
+  }
+}
+```
+
+* **Text is data** — one `text` line per source line, in document order; the parser
+  joins them with `\n` and the printer emits them back verbatim, one per line
+  (round-trip and `format(x) == x` hold). Escapes are the ordinary string escapes
+  (`\"`, `\\`), so a source line needs no special quoting rules; leading indentation
+  is content, not block structure (§1). A block without any `text` line is a syntax
+  error (`E116`), and `language` appears at most once per block.
+* **Language** — free-form short label (`go`, `typescript`, `sql`, …), printed
+  before the text lines. Absent means "unlabelled"; the viewer then shows plain text.
+* **Safety** — source is *text kept in the document*. It is never executed, never
+  parsed as markup, never fetched and never rendered as HTML: the viewer prints it in
+  a text node, so `<script>` is shown, not run. Storage stays browser-local (§5 of
+  SPEC FR-S1) — no URL, no server, no include.
+* **Limits** (`P217`): 64 KiB of source per object, 4096 lines per object, 256 KiB
+  per document. Over the limit is an error and the file keeps the text it authored —
+  nothing is truncated and nothing is dropped silently.
+* **Editing** — the viewer is an editor: saving is one undoable document command and
+  an unsaved buffer is reported before a drill-down/navigation discards it.
+* **Exports** — source is metadata, not geometry: SVG/PNG/CLI render the element
+  without the text (the canvas never draws it either); Mermaid declares `source`
+  dropped (§9).
+
+The three "same file" mechanisms stay distinct: `import` (§5) reuses another file's
+objects read-only inside this diagram, a flow `goto` (§6) jumps between flows, and
+`drilldown` opens a subordinate diagram. None is presented as a substitute for
+another.
 
 ## 4. Links
 
@@ -484,7 +596,9 @@ nested subgraph ids): warning + skipped, never silent.
 **Dropped (declared, per SPEC FR-M4):** flows, positions/layout, views, imports
 (exported file is flattened: imported objects inlined and marked via comment `%%
 imported from …`), properties, notes detach, icons (built-in and document-declared), endpoint perimeter anchors,
-waypoints, overlap overrides, object stacking order, custom shapes.
+waypoints, overlap overrides, object stacking order, custom shapes, decomposition
+links (`drilldown`, §3.2) and embedded source (`source`, §3.3) — mermaid has neither
+concept, so both are named in the drop list the export reports.
 C4 export mode (`--c4`): emits C4Context/Container statements when kinds fit, else
 fallback flowchart.
 
@@ -509,6 +623,14 @@ fallback flowchart.
 | P208 | error | icon payload/declaration count over the §3.1 limits |
 | P209 | error | icon payload is not valid UTF-8 or fails the SVG allowlist |
 | P210 | warning | `icon` name resolves to no built-in and no declared icon |
+| P211 | error | two objects in one document claim the same decomposition target |
+| P212 | warning | decomposition target file missing (relation and diagram stay usable) |
+| P213 | error | decomposition target path escapes the workspace or is not a `.pcd` path |
+| P214 | error | decomposition target declares a C4 level the parent kind cannot open (§3.2) |
+| P215 | error | this object kind cannot own a subordinate diagram (§3.2) |
+| P216 | error | decomposition cycle (the chain returns to a file already in the trail) |
+| P217 | error | embedded source over the §3.3 limits (64 KiB / 4096 lines / 256 KiB per doc) |
+| P218 | error | decomposition `view` id is not declared by the target file |
 
 Exit codes per SPEC FR-X. All findings carry `line:col` of the offending token.
 
@@ -540,7 +662,9 @@ object      = kind ident , [ string ] , [ "{" , { attr } , "}" ] ;
 attr        = ("description" , string) | ("technology" , string) | ("tag" , ident { ident })
             | ("property" , ident , string) | ("contains" , ident { ident })
             | ("attach" , ident) | ("icon" , ident)
-            | ("size" , number , number) | ("z" , number) ;
+            | ("size" , number , number) | ("z" , number)
+            | ("drilldown" , string , [ "view" , ident ])
+            | ("source" , "{" , [ "language" , string ] , { "text" , string } , "}" ) ;
 link        = ident , arrow , ident , [ ":" , string ] , [ "as" , ident ] , [ linkblock ] ;
 arrow       = [ "<" ] , "-" , [ ident , "-" ] , [ ">" ] ;   (* <-, ->, <->, -type-> *)
 flow        = "flow" , [ string ] , [ "as" , ident ] , "{" , { step } , "}" ;
@@ -554,6 +678,7 @@ goto        = "goto" , [ path , "#" ] , ident , [ "return" , ("end"|"here") ] ;
 anchor      = "anchor" , ("from" | "to") , number ;   (* normalized 0 <= n < 1 *)
 view        = "view" , string , [ "as" , ident ] , "{" , { viewline } , "}" ;
 style       = "style" , ident , "{" , { styleline } , "}" ;
+(* IR v10: `drilldown` and `source` are object attributes — see `attr` above. *)
 ```
 
 (Formal EBNF is the implementation reference; this section is the readable summary.
@@ -701,3 +826,18 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   ≥1 error finding or parse abort, 2 = usage error. PATH: files or directories
   (a directory globs `*.pcd`, non-recursive, sorted). `validate --json` emits
   `{files,errors,warnings,infos}`.
+
+**Decomposition and source (IR v10)**
+- E-22 `drilldown` is written `drilldown "<path>" [view <ident>]`, one per object;
+  the target path is a quoted string (a path, not an identifier) and the view is the
+  child's view *id*, not its display name. The canonical printer emits the two
+  lines after `size`/`z` and before the object's `style` block, `drilldown` first.
+- E-23 A `source` block holds `language "…"` at most once and any number of `text
+  "…"` lines in document order (one per source line). No `text` line is `E116`
+  (nothing to show, and the printed file would lose the block); any other line
+  inside the block is `E.unexpected`, like every other known block. The IR keeps the
+  lines separately (`source.lines`) so a reader never re-splits on `\n`.
+- E-24 `drilldown`/`source` are object attributes, so they inherit §12: unknown
+  attributes still become raw data, and the two new ones are never silently
+  downgraded to it. Diagnostics P211–P218 are semantic (§10) and therefore never
+  abort a parse.

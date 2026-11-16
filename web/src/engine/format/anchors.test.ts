@@ -24,7 +24,7 @@ describe('link endpoint anchors (CX-01)', () => {
     const { doc, diagnostics } = parsePDL(SOURCE);
     expect(diagnostics).toEqual([]);
     expect(doc?.links[0]).toMatchObject({ fromAnchor: 0.25, toAnchor: 0.875 });
-    expect(IR_VERSION).toBe(9);
+    expect(IR_VERSION).toBeGreaterThanOrEqual(9);
     expect(printDoc(doc!)).toBe(SOURCE);
     const json = serializeDoc(doc!);
     expect(json).toContain('"fromAnchor": 0.25');

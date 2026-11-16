@@ -94,6 +94,7 @@ func TestParityFixture(t *testing.T) {
 type fakeImports struct {
 	graph   map[string][]string // resolved → raw import paths
 	resolve map[string]string   // path → resolved id
+	texts   map[string]string   // resolved → file text (decomposition probe)
 }
 
 func (f fakeImports) Classify(from, path string) ClassResult {
@@ -107,6 +108,12 @@ func (f fakeImports) Classify(from, path string) ClassResult {
 }
 
 func (f fakeImports) ImportsOf(resolved string) []string { return f.graph[resolved] }
+
+// Read serves the decomposition rules (§3.2): texts holds parsed-file bodies.
+func (f fakeImports) Read(resolved string) (string, bool) {
+	text, ok := f.texts[resolved]
+	return text, ok
+}
 
 // TestValidateImports covers the import-graph rules the shared fixture skips
 // (they need a probe): P102 cycle, P103 escape, P200 missing.

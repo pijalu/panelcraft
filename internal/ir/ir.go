@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 9
+const IRVersion = 10
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -77,6 +77,22 @@ type ObjSize struct {
 	H float64 `json:"h"`
 }
 
+// Drilldown is a C4 decomposition relation (IR v10, FILE-FORMAT §3.2):
+// `drilldown "<path>" [view <id>]` on the parent object only. View is optional
+// and names a view *id* inside the target file.
+type Drilldown struct {
+	Path string `json:"path"`
+	View string `json:"view,omitempty"`
+}
+
+// SourceBlock is embedded source text (IR v10, FILE-FORMAT §3.3): `language`
+// plus one entry per source line, in document order. Lines is never empty —
+// the parser rejects a block without a `text` line (E116).
+type SourceBlock struct {
+	Language string   `json:"language,omitempty"`
+	Lines    []string `json:"lines"`
+}
+
 // Obj is an object statement (§3).
 type Obj struct {
 	Kind        string      `json:"kind"`
@@ -91,6 +107,8 @@ type Obj struct {
 	Icon        string      `json:"icon,omitempty"`
 	Size        *ObjSize    `json:"size,omitempty"`
 	Z           *float64    `json:"z,omitempty"`
+	Drilldown   *Drilldown  `json:"drilldown,omitempty"`
+	Source      *SourceBlock `json:"source,omitempty"`
 	Style       *StyleBlock `json:"style,omitempty"`
 	Attributes  []RawAttr   `json:"attributes,omitempty"`
 	Comments    []string    `json:"comments,omitempty"`

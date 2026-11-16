@@ -1,0 +1,6 @@
+flowchart TD
+  shopper((Shopper))
+  shop[Webshop]
+  psp([Payment provider])
+  shopper -->|browses| shop
+  shop -->|requests: charges| psp

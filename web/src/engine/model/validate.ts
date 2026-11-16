@@ -10,6 +10,7 @@ import {
   svgIssues,
 } from '../format/iconSvg';
 import { BUILTIN_ICON_NAMES, isBuiltinIcon } from './icons';
+import { checkHierarchy } from './hierarchy';
 import type { Doc, FlowStep } from './types';
 
 export interface ImportSource {
@@ -18,6 +19,9 @@ export interface ImportSource {
   classify(from: string | undefined, path: string): ClassResult;
   /** Raw import paths declared by the (readable) file at `resolved`. */
   importsOf(resolved: string): string[];
+  /** File text, or null when unknown. Used by the decomposition rules
+   * (P212/P214/P216/P218) which read the child diagram they point at. */
+  read?(resolved: string): string | null;
 }
 
 export type ClassResult =
@@ -360,6 +364,7 @@ export function validateDoc(doc: Doc, opts: ValidateOpts = {}): Diagnostic[] {
   checkIconRefs(doc, out);
   checkFlowSteps(doc, ids, out);
   if (opts.imports !== undefined) checkImports(doc, opts.file, opts.imports, out);
+  checkHierarchy(doc, opts.file, opts.imports?.read?.bind(opts.imports), out);
   checkObjects(doc, ids, out);
   checkOrphans(doc, ids, out);
   checkFlowsEmpty(doc, out);

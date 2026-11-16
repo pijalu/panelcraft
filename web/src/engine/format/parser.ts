@@ -6,10 +6,10 @@ import { lex, type ArrowInfo, type Token } from './lexer';
 import { E, diag, type Diagnostic } from './diagnostics';
 import { ICON_MEDIA_TYPES, decodeIconBase64, isCanonicalBase64 } from './iconSvg';
 import {
-  FORMAT_VERSION, IR_VERSION,
+  type Drilldown, FORMAT_VERSION, IR_VERSION,
   type Branch, type CameraSpec, type Comments, type Doc, type Flow, type FlowStep,
   type IconDecl, type ImportStmt, type Kind, type Link, type Obj, type Pos,
-  type StyleBlock, type StyleStmt, type View, type ViewLine,
+  type SourceBlock, type StyleBlock, type StyleStmt, type View, type ViewLine,
 } from '../model/types';
 
 export interface ParseResult {
@@ -299,7 +299,7 @@ class Parser {
       if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed object block');
       if (this.peek().type === 'punct' && this.peek().text === '}') { this.next(); return; }
       const t = this.expect('ident');
-      const h = this.attrHandler(seen, t0, t);
+      const h = this.attrHandler(seen, t) ?? this.attrStyle(seen, t0, t);
       if (h) {
         h(o);
         continue;
@@ -310,7 +310,7 @@ class Parser {
   }
 
   /** Object attribute dispatch (§3 block body). */
-  private attrHandler(seen: Set<string>, t0: Token, t: Token): ((o: Obj) => void) | undefined {
+  private attrHandler(seen: Set<string>, t: Token): ((o: Obj) => void) | undefined {
     switch (t.text) {
       case 'description':
         this.once(seen, t, 'description');
@@ -350,17 +350,77 @@ class Parser {
           if (!Number.isSafeInteger(z)) this.fail(t, E.unexpected, 'z must be an integer');
           o.z = z;
         };
-      case 'style':
-        this.once(seen, t, 'style');
-        return (o) => { o.style = this.parseStyleBlock(t0, 'object'); };
+      case 'drilldown':
+        this.once(seen, t, 'drilldown');
+        return (o) => { o.drilldown = this.parseDrilldown(); };
+      case 'source':
+        this.once(seen, t, 'source');
+        return (o) => { o.source = this.parseSource(t); };
       default:
         return undefined;
     }
   }
 
+  /**
+   * The one object attribute that needs the block's opening token (`t0`) for its
+   * style parsing, kept separate so the attribute table stays one concern per
+   * function and inside the complexity gate.
+   */
+  private attrStyle(
+    seen: Set<string>,
+    t0: Token,
+    t: Token,
+  ): ((o: Obj) => void) | undefined {
+    if (t.text !== 'style') return undefined;
+    this.once(seen, t, 'style');
+    return (o) => { o.style = this.parseStyleBlock(t0, 'object'); };
+  }
+
   private once(seen: Set<string>, t: Token, key: string): void {
     if (seen.has(key)) this.fail(t, E.duplicateAttr, `duplicate attribute '${key}'`);
     seen.add(key);
+  }
+
+  /**
+   * C4 decomposition (IR v10, FILE-FORMAT §3.2): `drilldown "<path>" [view <id>]`.
+   * The path is a quoted string, not an identifier — it is a workspace path — and the
+   * optional view is the child's view *id* (the `as <id>` of a `view` statement).
+   */
+  private parseDrilldown(): Drilldown {
+    const path = this.str();
+    const peeked = this.peek();
+    if (peeked.type === 'ident' && peeked.text === 'view') {
+      this.next();
+      return { path, view: this.ident() };
+    }
+    return { path };
+  }
+
+  /**
+   * Embedded source (IR v10, FILE-FORMAT §3.3): `source { language "…" text "…" … }`.
+   * One `text` line per source line, in document order. A block with no text line is
+   * `E116`: it would show nothing and the printer would drop it, breaking round-trip.
+   */
+  private parseSource(t0: Token): SourceBlock {
+    this.expect('punct', '{');
+    const lines: string[] = [];
+    let language: string | undefined;
+    const seen = new Set<string>();
+    for (;;) {
+      this.skipComments();
+      if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed source block');
+      if (this.peek().type === 'punct' && this.peek().text === '}') { this.next(); break; }
+      const t = this.expect('ident');
+      if (t.text === 'language') {
+        this.once(seen, t, 'language');
+        language = this.str();
+        continue;
+      }
+      if (t.text !== 'text') this.fail(t, E.unexpected, `unknown source line '${t.text}'`);
+      lines.push(this.str());
+    }
+    if (lines.length === 0) this.fail(t0, E.emptySource, 'source block needs at least one text line');
+    return language === undefined ? { lines } : { language, lines };
   }
 
   /** PDL identifier (FILE-FORMAT §1 + errata D-M1-8: letters first, ≤64). */

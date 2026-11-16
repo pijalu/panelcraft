@@ -3,7 +3,7 @@
 // Normative shape: docs/FILE-FORMAT.md §7 + docs/milestones/M1.md decisions.
 // Versioning rule: `irVersion` (int) bumps on any schema change; forward-only.
 
-export const IR_VERSION = 9;
+export const IR_VERSION = 10;
 export const FORMAT_VERSION = '1.0';
 
 /** 1-based source position attached to every statement (FILE-FORMAT §10). */
@@ -103,6 +103,31 @@ export interface Size {
   h: number;
 }
 
+/**
+ * C4 decomposition relation (IR v10, `drilldown "<path>" [view <id>]`): the object
+ * owns a subordinate diagram in the same workspace. Authored on the parent only —
+ * the child never declares a backlink — so an edge can never have two sources of
+ * truth (docs/FILE-FORMAT.md §3.2).
+ */
+export interface Drilldown {
+  /** Workspace-relative POSIX path exactly as authored. */
+  path: string;
+  /** Optional view id inside the target file. */
+  view?: string;
+}
+
+/**
+ * Embedded source (IR v10, `source { language "…" text "…" … }`): text the
+ * document owns. One entry per source line — never re-derived by splitting, so a
+ * trailing newline or an embedded blank line survives a round-trip (§3.3).
+ */
+export interface SourceBlock {
+  /** Free-form language label; absent = unlabelled. */
+  language?: string;
+  /** Source lines in document order (at least one; the parser requires it). */
+  lines: string[];
+}
+
 export interface Obj {
   kind: Kind;
   id: string;
@@ -118,6 +143,10 @@ export interface Obj {
   size?: Size;
   /** Optional integer stacking override; absent = auto/effective z=0 (CX-03, IR v6). */
   z?: number;
+  /** C4 decomposition target (IR v10, §3.2); absent = a leaf element. */
+  drilldown?: Drilldown;
+  /** Embedded source text (IR v10, §3.3); absent = none. */
+  source?: SourceBlock;
   style?: StyleBlock;
   attributes?: RawAttr[];
   comments?: Comments;

@@ -47,6 +47,8 @@ const (
 	ErrInvalidIconData = "E114"
 	// ErrInvalidIconMedia: icon names a media type this version cannot draw.
 	ErrInvalidIconMedia = "E115"
+	// ErrEmptySource: `source` block without a `text` line (IR v10, §3.3).
+	ErrEmptySource = "E116"
 )
 
 // Semantic warning codes mirrored from TS validate.ts.

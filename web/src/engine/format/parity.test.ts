@@ -500,6 +500,89 @@ style u {
 }
 `,
   },
+  // IR v10: C4 decomposition and embedded source (FILE-FORMAT §3.2, §3.3).
+  {
+    name: 'drilldown-view',
+    src: `pcd 1.0
+system shop "Webshop" {
+  drilldown "containers/shop.pcd" view containers
+}
+`,
+  },
+  {
+    name: 'drilldown-plain',
+    src: `pcd 1.0
+container api "API" {
+  drilldown "../components/api.pcd"
+}
+`,
+  },
+  {
+    name: 'source-block',
+    src: `pcd 1.0
+container api "API" {
+  source {
+    language "go"
+    text "func Charge() error {"
+    text "\\treturn nil"
+    text "}"
+  }
+}
+`,
+  },
+  {
+    // Order-free lines, canonical print is language first; empty lines survive.
+    name: 'source-order-free',
+    src: `pcd 1.0
+component svc "Svc" {
+  source {
+    text ""
+    text "a \\"quoted\\" line"
+    language "ts"
+    text "b"
+  }
+}
+`,
+  },
+  {
+    // A source block without a text line is E116 (nothing to show or print).
+    name: 'source-empty',
+    src: `pcd 1.0
+system a "A" {
+  source {
+    language "go"
+  }
+}
+`,
+  },
+  {
+    // Duplicate attributes are E110 on both sides of the parity fixture.
+    name: 'drilldown-duplicate',
+    src: `pcd 1.0
+system a "A" {
+  drilldown "a.pcd"
+  drilldown "b.pcd"
+}
+`,
+  },
+  {
+    // P215: only C4 elements decompose — a person cannot own a child diagram.
+    name: 'drilldown-unsupported-kind',
+    src: `pcd 1.0
+person u "User" {
+  drilldown "u.pcd"
+}
+`,
+  },
+  {
+    // P213: a non-.pcd target is rejected by validation, not by the grammar.
+    name: 'drilldown-not-pcd',
+    src: `pcd 1.0
+system s "S" {
+  drilldown "notes.md"
+}
+`,
+  },
 ];
 
 const run = (c: Case): FXCase => {

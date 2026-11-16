@@ -84,6 +84,14 @@ const objectStmt = (o: Obj): JSONRecord =>
     ['icon', o.icon],
     ['size', o.size === undefined ? undefined : { w: o.size.w, h: o.size.h }],
     ['z', o.z],
+    ['drilldown',
+      o.drilldown === undefined
+        ? undefined
+        : obj(['path', o.drilldown.path], ['view', o.drilldown.view])],
+    ['source',
+      o.source === undefined
+        ? undefined
+        : obj(['language', o.source.language], ['lines', o.source.lines])],
     styleBlock(o.style),
     [
       'attributes',

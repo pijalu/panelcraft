@@ -165,7 +165,8 @@ const usesIcons = (doc: Doc): boolean =>
   doc.icons.length > 0 ||
   doc.objects.some((o) => o.icon !== undefined || o.style?.icon !== undefined);
 
-const bodyDrops = (doc: Doc): string[] => {
+/** Prose, meta and custom data that mermaid cannot carry. */
+const proseDrops = (doc: Doc): string[] => {
   const d: string[] = [];
   if (doc.flows.length > 0) d.push('flows');
   if (doc.views.length > 0) d.push('views (positions/layout)');
@@ -174,17 +175,28 @@ const bodyDrops = (doc: Doc): string[] => {
   if (doc.objects.some((o) => o.attributes?.length) || doc.links.some((l) => l.attributes?.length)) {
     d.push('unknown attributes');
   }
+  return d;
+};
+
+/** Object-level semantics mermaid has no equivalent for (icons … IR v10). */
+const objectDrops = (doc: Doc): string[] => {
+  const d: string[] = [];
   // Icons are a declared drop whether they are built-in or declared in the file:
   // mermaid has no equivalent, and a project icon would otherwise vanish silently.
   if (usesIcons(doc)) d.push('icons');
   if (doc.objects.some((o) => o.z !== undefined)) d.push('object stacking order');
+  // IR v10: decomposition links and embedded source are document semantics with
+  // no mermaid counterpart, so both are named rather than dropped silently.
+  if (doc.objects.some((o) => o.drilldown !== undefined)) d.push('decomposition links (drilldown)');
+  if (doc.objects.some((o) => o.source !== undefined)) d.push('embedded source');
   if (doc.objects.some((o) => o.kind === 'note' && o.attach)) d.push('note anchors (detach)');
   if (doc.objects.some((o) => o.style && styleExtras(o.style)) || doc.styles.some((s) => styleExtras(s.style))) {
     d.push('style beyond fill (stroke/text/shape)');
   }
-  d.push(...linkDrops(doc));
   return d;
 };
+
+const bodyDrops = (doc: Doc): string[] => [...proseDrops(doc), ...objectDrops(doc), ...linkDrops(doc)];
 
 const hasNestedGroup = (doc: Doc): boolean =>
   doc.objects.some(
@@ -224,6 +236,8 @@ export const EXPORT_DROP_CATALOGUE = [
   'unknown attributes',
   'icons',
   'object stacking order',
+  'decomposition links (drilldown)',
+  'embedded source',
   'note anchors (detach)',
   'style beyond fill (stroke/text/shape)',
   'waypoints',
