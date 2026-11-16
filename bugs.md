@@ -52,6 +52,19 @@ gates. Add regression coverage where the failure exposes a repository or workflo
 defect. Plan this item last in the current bug-fixing session, after the canvas
 mouse-panning fix.
 
+## 7. Keep long menus inside the visible viewport — schedule after CI/CD
+
+**Observed behavior:** Menus with many commands can extend beyond the visible
+viewport, putting actions out of reach or requiring the page/menu to scroll out
+of view.
+
+**Expected behavior:** Limit menu size to the available viewport and use
+submenus where appropriate so every command remains reachable. If the content
+still cannot fit, provide a visible scrolling extension/affordance at the end of
+the visible menu area. Preserve pointer, touch, and keyboard navigation, and keep
+the menu anchored without clipping off-screen commands. Schedule this fix after
+the GitHub CI/CD repair.
+
 ## Closed this session
 
 - **Views are retained with a non-destructive contract.** Creating a view
