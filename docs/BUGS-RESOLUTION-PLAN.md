@@ -1,7 +1,12 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 # Coordinated plan to close every open bug and feature request
 
-**Status:** Planning only — no implementation is authorized by this document.
+**Status:** Closed. Every item below went through its sub-plan, its gates and its
+own `docs/archive/` write-up; item 11 — the release umbrella — was verified last
+against the deployed revision (identity, asset hashes, items 7–16 in a fresh and
+an upgrading browser context). [`../bugs.md`](../bugs.md) is back to guidelines
+only, so the next report starts the cycle again rather than extending this list.
+Retained here as the record of how each item was triaged, bounded and gated.
 **Scope:** Open items 7–16 in [../bugs.md](../bugs.md).
 **Execution model:** One primary agent per numbered work package below. Agents own
 their item's tests, implementation, visual review, documentation, archive write-up,

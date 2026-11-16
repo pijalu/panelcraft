@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { defineConfig, transformWithOxc, type Plugin } from 'vite';
 import preact from '@preact/preset-vite';
 import { readdirSync, statSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
@@ -68,9 +69,93 @@ function readSwSource(): string {
   return readFileSync(join(webDir, 'src', 'sw.ts'), 'utf8');
 }
 
+/** Whatever revision this bundle was built from, as the CI job knows it. */
+interface SourceIdentity {
+  sha: string;
+  ref: string;
+}
+
+/** The commit being built: the CI SHA when present, else the local HEAD. */
+function sourceIdentity(): SourceIdentity {
+  const git = (args: string[]): string => {
+    try {
+      return execFileSync('git', args, { encoding: 'utf8' }).trim();
+    } catch {
+      return '';
+    }
+  };
+  const sha = process.env.GITHUB_SHA ?? git(['rev-parse', 'HEAD']);
+  const ref = process.env.GITHUB_REF_NAME ?? git(['rev-parse', '--abbrev-ref', 'HEAD']);
+  return { sha: sha === '' ? 'unknown' : sha, ref: ref === '' ? 'unknown' : ref };
+}
+
+/** Hashed bundle files, so a served bundle can be matched to the built one. */
+function bundleFiles(dir: string): string[] {
+  const files: string[] = [];
+  const walk = (current: string, prefix: string): void => {
+    if (!existsSync(current)) return;
+    for (const name of readdirSync(current).sort()) {
+      const full = join(current, name);
+      if (statSync(full).isDirectory()) walk(full, `${prefix}${name}/`);
+      else files.push(`${prefix}${name}`);
+    }
+  };
+  walk(dir, '');
+  return files;
+}
+
+/**
+ * Deployment provenance (release gate for the hosted site): stamp the built
+ * bundle with the commit it came from and the hash of every emitted file, so a
+ * served page can be matched against the build instead of being trusted because
+ * a deploy job went green.
+ *
+ * Two halves, both derived from the same `SourceIdentity`:
+ *   - `build-info.json` in the bundle root — the machine-readable record the
+ *     hosted evidence step downloads and compares;
+ *   - `<meta name="panelcraft-build">` in index.html — the identity a browser
+ *     (and the hosted smoke suite) can read without an extra request.
+ *
+ * `build-info.json` is written after the service worker's precache manifest is
+ * computed on purpose: a file that names the build must never be served from a
+ * previous build's cache.
+ */
+function buildInfo(): Plugin {
+  const identity = sourceIdentity();
+  const short = identity.sha.slice(0, 7);
+  return {
+    name: 'panelcraft-build-info',
+    apply: 'build',
+    enforce: 'post',
+    transformIndexHtml(html) {
+      return html.replace(
+        '</title>',
+        `</title>\n    <meta name="panelcraft-build" content="${short}" />`,
+      );
+    },
+    writeBundle(options) {
+      const dir = options.dir ?? distDir;
+      const files = bundleFiles(dir);
+      const assets: Record<string, string> = {};
+      for (const file of files) {
+        if (file === 'build-info.json') continue;
+        assets[file] = createHash('sha256').update(readFileSync(join(dir, file))).digest('hex');
+      }
+      writeFileSync(
+        join(dir, 'build-info.json'),
+        `${JSON.stringify(
+          { schema: 1, sha: identity.sha, shortSha: short, ref: identity.ref, builtAt: new Date().toISOString(), assets },
+          null,
+          2,
+        )}\n`,
+      );
+    },
+  };
+}
+
 export default defineConfig({
   root: 'web',
-  plugins: [preact(), serviceWorker()],
+  plugins: [preact(), serviceWorker(), buildInfo()],
   build: {
     outDir: 'dist',
     emptyOutDir: true,

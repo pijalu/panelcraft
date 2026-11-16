@@ -4,6 +4,34 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-16 — the hosted site proves its own revision (item 11)
+
+- Every bundle now carries the commit it was built from: `build-info.json` (sha,
+  short sha, ref, build time, sha256 of every emitted file) plus
+  `<meta name="panelcraft-build">` in `index.html`. The identity file is written
+  after the service worker's precache manifest, so it can never be served from the
+  previous build's cache.
+- Publication is gated on the revision instead of on a deploy job going green: the
+  `pages` workflow runs when `ci` finishes for `main`, publishes only on a
+  successful run, checks out that exact SHA, refuses to continue when the checked
+  out HEAD differs, and keeps the documentation-only path filter by diffing the
+  deployed commit against its parent. A manual dispatch must still show a green
+  `ci` run for the dispatched commit before it can publish.
+- A post-deployment evidence step (`scripts/hosted-evidence.mjs`) downloads the
+  served identity, compares it with a fresh rebuild of the same SHA and re-hashes
+  every asset `index.html` references, so a stale upload fails even when the
+  identity file looks right. The record is attached to the run and kept 90 days.
+- A hosted Playwright configuration (`npm run e2e:hosted`) exercises items 7–16
+  against the deployed URL with no local server, in two contexts: a fresh profile,
+  and a client that already has the service worker installed. The upgrading case
+  reads the build identity back out of the worker's cached shell — online and with
+  the network cut — so "which bundle is active" is answered, not assumed; the
+  update/restart lifecycle stays rehearsed locally against the same bundle, since
+  a deployed worker script cannot be rewritten.
+- `bugs.md` is now guidelines only; every item from this round lives under
+  `docs/archive/`. Details:
+  [docs/archive/bugs-hosted-release-verification.md](archive/bugs-hosted-release-verification.md).
+
 ## 2026-11-16 — C4 drill-down and embedded source (item 16)
 
 - A C4 element can now *own* a subordinate diagram. A new object line
