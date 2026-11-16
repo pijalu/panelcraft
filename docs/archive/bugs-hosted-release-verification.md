@@ -259,9 +259,18 @@ published path, so fixing tests did not redeploy the site).
 - **One flake, observed once.** The first full `npx playwright test` run on this
   change reported 198/199 with `FLOW-01: canvas-assisted flow editing (dark)`
   failing under full parallel load; the isolated suite passed, the immediate full
-  re-run passed 199/199, and `--repeat-each=5` passed 10/10. The archived
-  determinism work already removed the races found so far; this one is not
-  reproduced and is recorded rather than claimed fixed.
+  re-run passed 199/199, and `--repeat-each=5` passed 10/10. A second full run
+  later reported 198/199 with `UX08-WP08: object double-click still renames in
+  place` instead — same shape, different test. Both are seeding races in the
+  local suite's document-writing helpers: a select-all that lands while the
+  editor re-renders leaves the previous document in place, and the scenario then
+  asserts against a diagram it did not author. `e2e/ux08-link-properties.spec.ts`
+  now requires the editor to hold focus before the select-all and **verifies the
+  seeded document round-trips** before asserting anything; the file then passed
+  30/30 with `--repeat-each=6` and 8/8 for the specific test, but the same
+  failure was seen once more (28/30) before that, so this is *reduced and now
+  self-detecting*, not proven fixed. The hosted helpers carry the same round-trip
+  guard.
 - **The hosted smoke is a smoke suite, not a second full regression run.** It
   asserts one representative behaviour per item against the deployed build (menu
   geometry, file actions, transport plus camera ceiling, derived flow, default

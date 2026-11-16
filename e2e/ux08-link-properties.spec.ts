@@ -14,17 +14,35 @@ system stock "Stock"
 shop -reads-> stock as L1
 `;
 
+/** Content-only view, for the round-trip check below. */
+function normalise(text: string): string {
+  return text
+    .replace(/\u200b/g, '')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line !== '')
+    .join('\n');
+}
+
 async function seedDoc(page: Page, text: string): Promise<void> {
   await openWorkspacePanels(page, ['code', 'props']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
   });
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
+  const editor = page.locator('.cm-content');
+  await editor.click();
+  // A select-all that misses the editor selects the page instead, leaving the
+  // previous document in place; require the focus before trusting the chord.
+  await expect(editor).toBeFocused();
+  await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(text);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
   });
+  // …and prove the editor holds what was typed: a partially replaced document
+  // parses into a different diagram and would make the scenario lie.
+  const lines = await editor.locator('.cm-line').allInnerTexts();
+  expect(normalise(lines.join('\n')), 'seeded document').toBe(normalise(text));
 }
 
 const route = (page: Page) => page.getByTestId('canvas').locator('g.pc-link[data-id="L1"] path.pc-route');
