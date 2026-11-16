@@ -223,6 +223,17 @@ describe('content box (UX08-WP07)', () => {
     }
   });
 
+  it('treats an unknown icon name as no icon — no invisible reserved band', () => {
+    // A typo or an imported icon name the set does not know must not shift
+    // the label: nothing is drawn for it, so nothing may reserve space.
+    for (const kind of ICON_KINDS) {
+      const withGhostIcon = contentBox(obj(kind, { icon: 'not-a-real-icon', h: 140 }));
+      const withoutIcon = contentBox(obj(kind, { h: 140 }));
+      expect(withGhostIcon.icon, kind).toBeNull();
+      expect(withGhostIcon.label, `${kind} label region`).toEqual(withoutIcon.label);
+    }
+  });
+
   it('groups keep their top-left title instead of a centred block', () => {
     const group = shapeGlyphs(obj('group', { icon: 'cloud' })).find((s) => s.tag === 'text')!;
     expect(Number(group.attrs.x)).toBe(8);

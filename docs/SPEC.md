@@ -487,6 +487,20 @@ camera-containment and dependencies-heading items; active flow actors now have b
 and the dependencies heading names the owning file. The flow-presentation pass subsequently
 added one-beat history fading and production reduced-motion parity, with light/dark review.
 
+Route-editing follow-ups (found in the connection-move review):
+
+* **Bend preservation on channel slides** — sliding a channel whose run contains
+  an explicit bend absorbs the bend into the collinear run: the geometry is kept,
+  but the bend's waypoint handle disappears from the document without a
+  "remove bend" intent.
+* **First bend on a straight link** — only routes that already have an interior
+  channel expose segment handles, so a plain two-point or L-shaped link cannot
+  be bent by dragging; bend creation needs an affordance on the link path itself.
+* **Bend behind a shape** — a bend explicitly dragged behind an endpoint entity
+  (not just past the port line, which is clamped) can still make a leg cross
+  that entity; the router would need to treat endpoint rects as obstacles for
+  that leg, which v1 deliberately avoids.
+
 ---
 
 ## 13. License

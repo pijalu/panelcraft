@@ -8,7 +8,12 @@
 // goldens machine-dependent).
 
 import type { Kind } from '../model/types';
+import { isIcon } from './icons';
 import { contentHeight, rightContentReserve } from './shapes';
+
+/** Only a drawable icon reserves height (an unknown name renders nothing). */
+const hasDrawableIcon = (icon: string | undefined): boolean =>
+  icon !== undefined && isIcon(icon);
 
 export interface TextMetrics2D {
   w: number;
@@ -133,7 +138,7 @@ export function autoSize(
   const reserve = rightContentReserve(input.kind);
   const w = clamp(Math.round(widest + 2 * PADDING.x + reserve), MIN_BOX.w, MAX_BOX.w);
   // UX08-WP07: the icon has its own top band, so it grows the box's height.
-  const h = clamp(contentHeight(input.kind, lines.length, input.icon !== undefined), MIN_BOX.h, MAX_BOX.h);
+  const h = clamp(contentHeight(input.kind, lines.length, hasDrawableIcon(input.icon)), MIN_BOX.h, MAX_BOX.h);
   return { w, h, lines };
 }
 

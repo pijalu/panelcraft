@@ -157,9 +157,11 @@ export class SceneRenderer {
     this.worldEl.setAttribute('class', 'pc-world');
     this.svg.appendChild(this.worldEl);
     this.gridRect = this.makeGrid();
-    this.linksLayer = this.makeLayer('pc-layer-links');
+    // Objects first, links above them: a connection must never be hidden
+    // behind a shape — the arrow is information, the box fill is background.
     this.objectsLayer = this.makeLayer('pc-layer-objects');
-    // UX08-WP10: labels sit above the objects; the routes stay below them.
+    this.linksLayer = this.makeLayer('pc-layer-links');
+    // UX08-WP10: labels sit above both objects and routes.
     this.labelsLayer = this.makeLayer('pc-layer-labels');
     this.overlayLayer = this.makeLayer('pc-layer-overlay');
   }

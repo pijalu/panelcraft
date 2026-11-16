@@ -37,6 +37,7 @@ import {
 import { projectPerimeter } from '../engine/render/perimeter';
 import {
   channels as routeChannels,
+  clampChannelSlide,
   materialize,
   moveChannel,
   snapChannel,
@@ -2095,7 +2096,11 @@ export class CanvasController {
     const raw = (m.axis === 'h' ? p.y - m.startCanvas.y : p.x - m.startCanvas.x);
     if (!m.moved && Math.abs(raw) * this.t.k < DRAG_THRESHOLD) return;
     m.moved = true;
-    const channel = this.snapChannelTo(start[axisKey] + raw, m.axis, e.altKey);
+    const channel = clampChannelSlide(
+      m.startPoints,
+      m.segIndex,
+      this.snapChannelTo(start[axisKey] + raw, m.axis, e.altKey),
+    );
     const moved = moveChannel(m.startPoints, m.segIndex, channel - start[axisKey]);
     if (!moved) return;
     const link = this.applyWaypoints(m.linkId, pointsToWaypoints(materialize(moved)));
@@ -2178,7 +2183,10 @@ export class CanvasController {
     // Only the axis perpendicular to the segment can slide it.
     const delta = axis === 'h' ? dy : dx;
     if (!route || delta === 0) return;
-    const moved = moveChannel(route, segIndex, delta);
+    const channel = routeChannels(route).find((c) => c.from === segIndex);
+    if (!channel) return;
+    const clamped = clampChannelSlide(route, segIndex, channel.at + delta) - channel.at;
+    const moved = moveChannel(route, segIndex, clamped);
     if (!moved) return;
     const before = this.state.links.find((l) => l.id === linkId)?.waypoints;
     this.pushRoutePatch(

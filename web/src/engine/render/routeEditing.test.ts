@@ -7,6 +7,7 @@ import {
   apexes,
   canonicalize,
   channels,
+  clampChannelSlide,
   deleteBend,
   insertBend,
   materialize,
@@ -125,6 +126,14 @@ describe('canonicalisation', () => {
     expect(materialize([p(0, 0), p(10, 0)])).toEqual([]);
     expect(materialize(dogleg).map((w) => [w.x, w.y])).toEqual([[100, 0], [100, 80]]);
   });
+
+  it('never stores a route endpoint as a waypoint', () => {
+    // The collinear run 0,50 → 0,80 → 0,120 collapses under canonicalise; the
+    // slice must use the canonicalised length, or the target anchor (100,120)
+    // leaks into the document as a user waypoint and pins the arrow head.
+    const route = [p(0, 0), p(0, 50), p(0, 80), p(0, 120), p(100, 120)];
+    expect(materialize(route)).toEqual([p(0, 120)]);
+  });
 });
 
 describe('channel snapping (UX08-WP09)', () => {
@@ -237,7 +246,42 @@ describe('channels: collinear runs and doubled-back legs (UX08-WP09)', () => {
     expect(moveChannel([p(0, 0), p(100, 0)], 0, 10)).toBeNull();
   });
 
-  it('is a no-op for an unknown channel index', () => {
-    expect(moveChannel(split, 9, 10)).toBeNull();
+    it('is a no-op for an unknown channel index', () => {
+      expect(moveChannel(split, 9, 10)).toBeNull();
+    });
   });
-});
+
+  describe('channel slide clamping (no legs through endpoints)', () => {
+    // Z-route: A's right port (100,30) → channel → B's left port (400,230).
+    const z: Point[] = [p(100, 30), p(250, 30), p(250, 230), p(400, 230)];
+
+    it('slides freely inside the corridor between the ports', () => {
+      expect(clampChannelSlide(z, 1, 200)).toBe(200);
+    });
+
+    it('stops the channel at the source port instead of reversing the first leg', () => {
+      // Sliding left of x = 100 would send the first leg back through A.
+      expect(clampChannelSlide(z, 1, 40)).toBe(100);
+    });
+
+    it('stops the channel at the target port instead of reversing the last leg', () => {
+      expect(clampChannelSlide(z, 1, 500)).toBe(400);
+    });
+
+    it('leaves middle channels alone — they own no endpoint leg', () => {
+      const wide: Point[] = [p(100, 30), p(200, 30), p(200, 100), p(300, 100), p(300, 230), p(400, 230)];
+      expect(clampChannelSlide(wide, 2, 10)).toBe(10);
+    });
+
+    it('does not clamp when the exit leg is degenerate (zero length)', () => {
+      const stub: Point[] = [p(100, 30), p(100, 30), p(250, 30), p(250, 230), p(400, 230)];
+      expect(clampChannelSlide(stub, 2, 40)).toBe(40);
+    });
+
+    it('clamps a horizontal channel against vertical port lines', () => {
+      // Vertical Z: A's bottom port → channel → B's top port.
+      const vz: Point[] = [p(50, 60), p(50, 150), p(450, 150), p(450, 200)];
+      expect(clampChannelSlide(vz, 1, 20)).toBe(60); // not above A's port
+      expect(clampChannelSlide(vz, 1, 400)).toBe(200); // not below B's port
+    });
+  });

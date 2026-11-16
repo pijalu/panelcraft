@@ -99,7 +99,8 @@ export function apexes(points: readonly Point[]): RouteApex[] {
  * ends belong to the entities, so they are never written to the document.
  */
 export function materialize(points: readonly Point[]): Point[] {
-  return canonicalize(points).slice(1, Math.max(1, points.length - 1));
+  const canonical = canonicalize(points);
+  return canonical.slice(1, Math.max(1, canonical.length - 1));
 }
 
 /**
@@ -213,6 +214,30 @@ export function moveChannel(
   return points.map((point, i) =>
     i >= channel.from && i <= channel.to + 1 ? { ...point, [key]: point[key] + delta } : point,
   );
+}
+
+/**
+ * Clamp a channel slide so a leg touching an endpoint can never reverse into
+ * its entity: the channel stops at the port line instead of sending the leg
+ * back through the shape. The exit/entry direction is read from the current
+ * route, so the clamp needs no model knowledge. Middle channels own no
+ * endpoint leg and stay free.
+ */
+export function clampChannelSlide(points: readonly Point[], from: number, value: number): number {
+  const channel = channels(points).find((c) => c.from === from);
+  if (!channel) return value;
+  const key = channel.axis === 'h' ? 'y' : 'x';
+  let clamped = value;
+  if (channel.from === 1) {
+    const exit = Math.sign(points[1]![key] - points[0]![key]);
+    if (exit !== 0 && Math.sign(value - points[0]![key]) === -exit) clamped = points[0]![key];
+  }
+  if (channel.to + 1 === points.length - 2) {
+    const last = points.at(-1)!;
+    const entry = Math.sign(last[key] - points[points.length - 2]![key]);
+    if (entry !== 0 && Math.sign(last[key] - clamped) === -entry) clamped = last[key];
+  }
+  return clamped;
 }
 
 /** Move one interior vertex (free 2-D, as a bend drag is). */

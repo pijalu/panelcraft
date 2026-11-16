@@ -4,7 +4,7 @@
 // custom properties (STYLE-GUIDE tokens); glyph specs carry class names only.
 
 import type { Kind } from '../model/types';
-import { ICON_BOX, iconGlyphs } from './icons';
+import { ICON_BOX, iconGlyphs, isIcon } from './icons';
 
 export interface ElSpec {
   tag: 'rect' | 'path' | 'circle' | 'text' | 'line';
@@ -77,8 +77,13 @@ function glyphBand(obj: SceneObject): { height: number } {
 }
 
 /** Where the icon goes: stacked in a top band, or inline when the box is short. */
-function iconPlacement(obj: SceneObject, inline: boolean, size: number): ContentBox['icon'] {
-  if (!obj.icon) return null;
+function iconPlacement(
+  obj: SceneObject,
+  iconName: string | undefined,
+  inline: boolean,
+  size: number,
+): ContentBox['icon'] {
+  if (iconName === undefined) return null;
   if (inline) return { x: CONTENT_PAD.x, y: (obj.h - size) / 2, size };
   return { x: (obj.w - size) / 2, y: CONTENT_PAD.top, size };
 }
@@ -122,13 +127,20 @@ function labelTopFor(icon: ContentBox['icon'], inline: boolean, glyphTop: number
   return stacked ? Math.max(icon.y + icon.size + ICON_LABEL_GAP, CONTENT_PAD.top + 6) : CONTENT_PAD.top + 6;
 }
 
+/** The icon name only counts when the set can draw it — otherwise nothing is
+ * rendered, so nothing may reserve space (an invisible band would push the
+ * label off centre). */
+const drawableIcon = (obj: SceneObject): string | undefined =>
+  obj.icon !== undefined && isIcon(obj.icon) ? obj.icon : undefined;
+
 /** Icon placement plus the bands it leaves below it. */
 function verticalBands(obj: SceneObject): Bands {
-  const size = obj.icon ? iconSize(obj) : 0;
+  const iconName = drawableIcon(obj);
+  const size = iconName !== undefined ? iconSize(obj) : 0;
   const text = linesOf(obj).length * LABEL_LINE_HEIGHT;
-  const glyphHeight = glyphBandHeight(obj, obj.icon ? size + 4 : 0, text);
-  const inline = iconIsInline(obj, glyphHeight);
-  const icon = iconPlacement(obj, inline, size);
+  const glyphHeight = glyphBandHeight(obj, iconName !== undefined ? size + 4 : 0, text);
+  const inline = iconName !== undefined && iconIsInline(obj, glyphHeight);
+  const icon = iconPlacement(obj, iconName, inline, size);
   const glyphTop = glyphTopFor(obj, icon, inline);
   return {
     icon,

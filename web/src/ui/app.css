@@ -1204,6 +1204,10 @@ body {
   fill: none;
   stroke: var(--pc-fg);
   stroke-width: 1.5;
+  /* Links paint above shapes (the arrow is never hidden), but shapes still win
+   * the click: hit-testing is geometric (hit-test.ts, object-first), so the
+   * stroke itself stays event-transparent. */
+  pointer-events: none;
 }
 
 .pc-arrow {
@@ -1293,13 +1297,9 @@ marker .pc-arrow[fill='none'] {
   fill: var(--pc-accent);
 }
 
-/* hit slop: invisible widened stroke for link hit-testing (hit-test.ts) */
-.pc-route-hit {
-  fill: none;
-  stroke: transparent;
-  stroke-width: 12;
-  pointer-events: stroke;
-}
+/* Link hit-testing is geometric (hit-test.ts pick, object-first); the visible
+ * stroke is event-transparent so a route painted above a shape never swallows
+ * the shape's click. */
 
 /* ---- M3 workspace chrome ------------------------------------------------ */
 

@@ -42,9 +42,10 @@ describe('renderer scaffolding', () => {
     const worldChildren = [...world.children].map((c) => c.getAttribute('class'));
     expect(worldChildren).toEqual([
       'pc-grid', // hidden by default
-      'pc-layer pc-layer-links',
       'pc-layer pc-layer-objects',
-      // UX08-WP10: labels paint above objects, routes stay below them
+      // Connections paint above shapes: an arrow is never hidden by a fill.
+      'pc-layer pc-layer-links',
+      // UX08-WP10: labels paint above objects and routes.
       'pc-layer pc-layer-labels',
       'pc-layer pc-layer-overlay',
     ]);
@@ -161,14 +162,15 @@ describe('diff-patch (re-render count assertions)', () => {
     expect(order2).toEqual(['c', 'a', 'b']);
   });
 
-  it('sorts explicit z while keeping links in their lower layer', () => {
+  it('sorts explicit z while keeping links in their upper layer', () => {
     r.render(scene([
       obj('auto'), obj('front', { z: 2 }), obj('back', { z: -1 }), obj('tied', { z: 2 }),
     ], [{ id: 'L1', points: poly }]));
     const order = [...svg.querySelectorAll('.pc-layer-objects .pc-obj')].map((el) => el.getAttribute('data-id'));
     expect(order).toEqual(['back', 'auto', 'front', 'tied']);
     const layers = [...svg.querySelector('.pc-world')!.children].map((el) => el.getAttribute('class'));
-    expect(layers.indexOf('pc-layer pc-layer-links')).toBeLessThan(layers.indexOf('pc-layer pc-layer-objects'));
+    // A connection is information, a box fill is background: links paint above.
+    expect(layers.indexOf('pc-layer pc-layer-objects')).toBeLessThan(layers.indexOf('pc-layer pc-layer-links'));
   });
 
   it('equal scene after move reports no reorder', () => {

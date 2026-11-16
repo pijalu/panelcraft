@@ -66,28 +66,62 @@ export function pickSides(a: Rect, b: Rect): [Side, Side] {
 
 /**
  * Route through explicit waypoints: port → each waypoint → port, joined by
- * orthogonal elbows (alternating horizontal-first / vertical-first so a zig-zag
- * stays readable). Obstacles are deliberately ignored (F-19).
+ * orthogonal elbows. Obstacles are deliberately ignored (F-19), but the two
+ * endpoint shapes are not: a leg that would leave or enter a port through
+ * its own entity pays a short outward stub first (the same contract explicit
+ * anchors get). Elbows continue the incoming direction — never an index
+ * parity — so a local edit cannot flip the shape of the whole route.
  */
 function routeThroughWaypoints(input: RouteInput): Polyline {
-  const { a, b } = routeEndpoints(input);
-  const anchors: Point[] = [
-    a,
-    ...(input.waypoints ?? []).map(([x, y]) => ({ x, y })),
-    b,
-  ];
+  const ends = routeEndpoints(input);
+  const waypoints = (input.waypoints ?? []).map(([x, y]) => ({ x, y }));
+  const { anchors, stubB } = waypointAnchors(input, ends, waypoints);
+
   const out: Polyline = [anchors[0]!];
+  let incoming: 'h' | 'v' = horizontalSide(ends.sideA) ? 'h' : 'v';
   for (let i = 1; i < anchors.length; i++) {
     const p = out[out.length - 1]!;
     const q = anchors[i]!;
     if (Math.abs(p.x - q.x) < 0.5 || Math.abs(p.y - q.y) < 0.5) {
       out.push(q);
+      if (Math.abs(p.x - q.x) >= 0.5) incoming = 'h';
+      else if (Math.abs(p.y - q.y) >= 0.5) incoming = 'v';
       continue;
     }
-    const elbow: Point = i % 2 === 1 ? { x: q.x, y: p.y } : { x: p.x, y: q.y };
+    // Final leg with no stub: arrive along the target's port side.
+    const horizontalFirst =
+      i === anchors.length - 1 && !stubB ? !horizontalSide(ends.sideB) : incoming === 'h';
+    const elbow: Point = horizontalFirst ? { x: q.x, y: p.y } : { x: p.x, y: q.y };
     out.push(elbow, q);
+    incoming = horizontalFirst ? 'v' : 'h';
   }
   return out;
+}
+
+const horizontalSide = (side: Side): boolean => side === 'left' || side === 'right';
+
+const inwardOf = (from: Point, to: Point, normal: Point): boolean =>
+  (to.x - from.x) * normal.x + (to.y - from.y) * normal.y < 0;
+
+/** Anchor list with an outward stub where a leg would dive through its entity. */
+function waypointAnchors(
+  input: RouteInput,
+  ends: RouteEndpoints,
+  waypoints: Point[],
+): { anchors: Point[]; stubB: boolean } {
+  const clearance = input.clearance ?? ROUTER_CLEARANCE;
+  const nA = outward(ends.sideA);
+  const nB = outward(ends.sideB);
+  const anchors: Point[] = [ends.a];
+  if (inwardOf(ends.a, waypoints[0]!, nA)) {
+    anchors.push({ x: ends.a.x + nA.x * clearance, y: ends.a.y + nA.y * clearance });
+  }
+  anchors.push(...waypoints);
+  const last = waypoints.at(-1)!;
+  const stubB = inwardOf(ends.b, last, nB);
+  if (stubB) anchors.push({ x: ends.b.x + nB.x * clearance, y: ends.b.y + nB.y * clearance });
+  anchors.push(ends.b);
+  return { anchors, stubB };
 }
 
 function midChannel(a: Point, b: Point, horizontal: boolean): number {

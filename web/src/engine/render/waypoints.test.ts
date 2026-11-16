@@ -47,4 +47,44 @@ describe('routeOrtho with waypoints (F-19)', () => {
     const auto = routeOrtho({ from: A, to: B });
     expect(withWp).toEqual(auto);
   });
+
+  it('elbows continue the incoming direction, not the waypoint index', () => {
+    // Second leg arrives at w2 vertically, so the w2→b elbow must go
+    // vertical-first too: adding or removing an earlier waypoint must not
+    // flip downstream elbows (parity indexing did).
+    const wps: [number, number][] = [
+      [200, 30],
+      [200, 150],
+    ];
+    const pts = routeOrtho({ from: A, to: B, waypoints: wps });
+    const i2 = pts.findIndex((p) => p.x === 200 && p.y === 150);
+    expect(i2).toBeGreaterThan(0);
+    const after = pts[i2 + 1]!;
+    // incoming to w2 is vertical (x stays 200), so the next move turns
+    // horizontal only at w2: the elbow after w2 shares w2's x.
+    expect(after.x).toBe(200);
+  });
+
+  it('leaves the source port outward before turning to an inward waypoint', () => {
+    // A is left of B → port on A's right side. A waypoint placed left of A
+    // must not make the first leg dive back through A: the route pays a
+    // short outward stub first, exactly like an explicit anchor does.
+    const pts = routeOrtho({ from: A, to: B, waypoints: [[-60, 30]] });
+    const a = pts[0]!;
+    expect(a).toEqual({ x: 100, y: 30 });
+    const first = pts[1]!;
+    expect(first.x).toBeGreaterThan(100); // stub goes right, not through A
+    expect(first.y).toBe(30);
+  });
+
+  it('enters the target port outward, not through the shape', () => {
+    // Waypoint above B while the picked side is B's left: the final leg must
+    // approach the left port horizontally, not drop in from above the port.
+    const pts = routeOrtho({ from: A, to: B, waypoints: [[430, 60]] });
+    const b = pts.at(-1)!;
+    expect(b).toEqual({ x: 400, y: 230 });
+    const before = pts.at(-2)!;
+    expect(before.y).toBe(230); // horizontal approach into the left port
+    expect(before.x).toBeLessThan(400);
+  });
 });
