@@ -28,17 +28,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 # To fix
 
-## 5. Support moving the canvas view with the mouse
-
-**Observed behavior:** Moving the canvas view is not available through a direct
-mouse drag gesture; the requested mouse-only workflow is to press a secondary
-mouse button and move the view area.
-
-**Expected behavior:** Support press-and-drag canvas panning with the requested
-secondary/middle mouse-button gesture, without requiring a keyboard modifier.
-The gesture must not select objects, create accidental edits, or trigger the
-context menu, and existing touch, wheel, and keyboard navigation must remain
-available. Schedule and complete this fix in the current bug-fixing session.
 
 ## 6. Fix the failing GitHub CI/CD run — schedule last
 
@@ -66,6 +55,15 @@ the menu anchored without clipping off-screen commands. Schedule this fix after
 the GitHub CI/CD repair.
 
 ## Closed this session
+
+- **Secondary and middle mouse drags now pan the canvas.** Moving either button
+  changes only the viewport, never object geometry, selection, document text, or
+  undo history. A moved secondary drag suppresses the context menu; a stationary
+  right-click preserves it. Space+drag, wheel, keyboard, and primary-pointer
+  navigation remain available. Verified by controller and real-browser
+  regressions, full coverage/static gates, 21 related browser tests,
+  accessibility scans, and light/dark screenshot review.
+  Write-up: `docs/archive/bugs-canvas-mouse-panning.md`.
 
 - **Views are retained with a non-destructive contract.** Creating a view
   snapshots current positions; switching restores only stored positions and

@@ -102,6 +102,46 @@ describe('viewport (FR-C1)', () => {
     expect(ctrl.viewport.k).toBeLessThanOrEqual(4);
   });
 
+  for (const [button, name] of [[1, 'middle'], [2, 'secondary']] as const) {
+    it(`${name}-button drag pans without selecting, editing, or opening a context menu`, () => {
+      ctrl.addObject('system', { x: 280, y: 230 });
+      const beforeObjects = ctrl.snapshot.objects.map((o) => ({ ...o }));
+      const beforeSelection = ctrl.snapshot.selection;
+      const beforeUndo = ctrl.undo.size;
+      const c = center('o1');
+      const down = ptr('pointerdown', c.x, c.y, { button });
+
+      svg.dispatchEvent(down);
+      const nativeMenu = button === 2
+        ? ptr('contextmenu', c.x, c.y, { button: 2 })
+        : undefined;
+      if (nativeMenu) svg.dispatchEvent(nativeMenu);
+      window.dispatchEvent(ptr('pointermove', c.x + 60, c.y + 40, { button }));
+      window.dispatchEvent(ptr('pointerup', c.x + 60, c.y + 40, { button }));
+
+      expect(down.defaultPrevented).toBe(true);
+      expect(ctrl.viewport).toEqual({ x: 60, y: 40, k: 1 });
+      expect(ctrl.snapshot.objects).toEqual(beforeObjects);
+      expect(ctrl.snapshot.selection).toEqual(beforeSelection);
+      expect(ctrl.undo.size).toBe(beforeUndo);
+
+      if (button === 2) expect(nativeMenu?.defaultPrevented).toBe(true);
+    });
+  }
+
+  it('a stationary secondary click defers then preserves the context menu', () => {
+    svg.dispatchEvent(ptr('pointerdown', 100, 100, { button: 2 }));
+    const nativeMenu = ptr('contextmenu', 100, 100, { button: 2 });
+    svg.dispatchEvent(nativeMenu);
+    expect(nativeMenu.defaultPrevented).toBe(true);
+
+    const deferredMenus: MouseEvent[] = [];
+    svg.addEventListener('contextmenu', (event) => deferredMenus.push(event as MouseEvent));
+    window.dispatchEvent(ptr('pointerup', 100, 100, { button: 2 }));
+    expect(deferredMenus).toHaveLength(1);
+    expect(deferredMenus[0]?.defaultPrevented).toBe(false);
+  });
+
   it('space+drag pans; arrows pan; 0 resets', () => {
     window.dispatchEvent(key('keydown', { key: ' ' }));
     svg.dispatchEvent(ptr('pointerdown', 100, 100));

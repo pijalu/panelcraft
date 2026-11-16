@@ -173,7 +173,7 @@ function explicitLines(o: DiagramObject, text: string, measure: TextMeasurer, wi
 
 type Mode =
   | { t: 'idle' }
-  | { t: 'pan'; startScreen: Point; startT: Transform }
+  | { t: 'pan'; button: number; startScreen: Point; startT: Transform }
   | { t: 'drag'; startCanvas: Point; before: PositionRec[]; moved: boolean }
   | { t: 'band'; startCanvas: Point; additive: boolean }
   | { t: 'link'; fromId: string; fromSide: Side }
@@ -192,6 +192,12 @@ type Mode =
     startPoints: Point[];
     moved: boolean;
   };
+
+interface DeferredContextMenu {
+  target: Element;
+  x: number;
+  y: number;
+}
 
 interface PositionRec {
   id: string;
@@ -431,6 +437,7 @@ export class CanvasController {
   private selLinks = new Set<string>();
   private grid: GridSettings = defaultGrid();
   private spaceDown = false;
+  private suppressContextMenu = false;
   private routes = new Map<string, Polyline>();
   private seq = 0;
   /** Set by loadState: the canvas only speaks for a file after it has one
@@ -1237,6 +1244,7 @@ export class CanvasController {
     };
 
     on(svg, 'pointerdown', (e) => this.onPointerDown(e as PointerEvent));
+    on(svg, 'contextmenu', (e) => this.onContextMenu(e as MouseEvent));
     on(window, 'pointermove', (e) => this.onPointerMove(e as PointerEvent));
     on(window, 'pointerup', (e) => this.onPointerUp(e as PointerEvent));
     on(svg, 'wheel', (e) => this.onWheel(e as WheelEvent), { passive: false });
@@ -1245,6 +1253,18 @@ export class CanvasController {
     on(window, 'keyup', (e) => {
       if ((e as KeyboardEvent).key === ' ') this.spaceDown = false;
     });
+  }
+
+  private onContextMenu(e: MouseEvent): void {
+    // Chromium sends the native menu event on secondary pointerdown, before a
+    // drag can be distinguished from a click. Defer that event until pointerup;
+    // also suppress platforms that deliver it after a completed drag.
+    const secondaryPan = this.mode.t === 'pan' && this.mode.button === 2;
+    const latePanMenu = this.suppressContextMenu && e.button === 2;
+    if (!secondaryPan && !latePanMenu) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (!secondaryPan) this.suppressContextMenu = false;
   }
 
   private onWheel(e: WheelEvent): void {
@@ -1603,10 +1623,12 @@ export class CanvasController {
     this.beginBand(e, p);
   }
 
-  /** Pan (middle/space) + halo/link-drag + resize-handle starts. */
+  /** Pan (secondary/middle/space) + halo/link-drag + resize-handle starts. */
   private beginPanOrHalo(e: PointerEvent): boolean {
-    if (e.button === 1 || (e.button === 0 && this.spaceDown)) {
-      this.mode = { t: 'pan', startScreen: this.screenOf(e), startT: this.t };
+    if (e.button === 1 || e.button === 2 || (e.button === 0 && this.spaceDown)) {
+      e.preventDefault();
+      this.suppressContextMenu = false;
+      this.mode = { t: 'pan', button: e.button, startScreen: this.screenOf(e), startT: this.t };
       return true;
     }
     if (e.button !== 0) return false;
@@ -1709,13 +1731,9 @@ export class CanvasController {
   private onPointerMove(e: PointerEvent): void {
     if (this.mode.t === 'idle') this.trackHover(this.toCanvas(e));
     switch (this.mode.t) {
-      case 'pan': {
-        const s = this.screenOf(e);
-        this.setTransform(
-          panBy(this.mode.startT, s.x - this.mode.startScreen.x, s.y - this.mode.startScreen.y),
-        );
+      case 'pan':
+        this.panMove(e);
         break;
-      }
       case 'drag':
         this.dragMove(e);
         break;
@@ -1740,6 +1758,15 @@ export class CanvasController {
       default:
         break;
     }
+  }
+
+  private panMove(e: PointerEvent): void {
+    if (this.mode.t !== 'pan') return;
+    const s = this.screenOf(e);
+    const dx = s.x - this.mode.startScreen.x;
+    const dy = s.y - this.mode.startScreen.y;
+    if (this.mode.button === 2 && (dx !== 0 || dy !== 0)) this.suppressContextMenu = true;
+    this.setTransform(panBy(this.mode.startT, dx, dy));
   }
 
   private dragMove(e: PointerEvent): void {
@@ -1924,6 +1951,7 @@ export class CanvasController {
   }
 
   private onPointerUp(e: PointerEvent): void {
+    const deferredMenu = this.deferredContextMenu(e);
     // UX08-WP09: clicking a channel is not an edit. Skipping the repaint keeps
     // the handle node alive, which is what lets the browser pair two clicks into
     // a `dblclick` — it only fires when both land on the same element.
@@ -1958,6 +1986,27 @@ export class CanvasController {
       this.renderer.elementFor(o.id)?.classList.remove('pc-link-target');
     }
     if (!inert) this.render();
+    this.dispatchDeferredContextMenu(deferredMenu);
+  }
+
+  private deferredContextMenu(e: PointerEvent): DeferredContextMenu | undefined {
+    if (this.mode.t !== 'pan' || this.mode.button !== 2 || this.suppressContextMenu) return undefined;
+    return {
+      target: e.target instanceof Element && this.svg.contains(e.target) ? e.target : this.svg,
+      x: e.clientX,
+      y: e.clientY,
+    };
+  }
+
+  private dispatchDeferredContextMenu(menu: DeferredContextMenu | undefined): void {
+    if (!menu) return;
+    menu.target.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      clientX: menu.x,
+      clientY: menu.y,
+      button: 2,
+    }));
   }
 
   /** F-19: drag one waypoint; the route re-elbows through the new position. */

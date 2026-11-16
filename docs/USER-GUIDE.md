@@ -84,7 +84,9 @@ and the CLI's `--theme` option.
   stagger along the path; a bidirectional (`<->`) link ping-pongs until the step ends,
   while a one-way link completes once. Speed changes only the spark motion, never the
   step delay, and reduced-motion playback shows static emphasis instead.
-- **Pan / zoom**: Space-drag or wheel/trackpad pans; Ctrl/Cmd+wheel zooms.
+- **Pan / zoom**: drag with the secondary (right) or middle mouse button, or
+  Space-drag; wheel/trackpad pans and Ctrl/Cmd+wheel zooms. A secondary-button
+  drag does not open the context menu, while a stationary right-click still does.
   The bottom-right **mini-map** shows the topology and current viewport. Click it
   to center that location; with it focused, arrow keys pan and Home fits the
   diagram. It follows flow-camera movement, hides during presentation and on

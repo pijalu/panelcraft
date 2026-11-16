@@ -100,6 +100,8 @@ play mode, exports PNG/SVG for docs.
 
 * **FR-C1** Pan (space-drag / wheel-drag / trackpad), zoom (wheel/pinch, 10%–400%),
   fit-to-selection, fit-to-diagram, zoom controls, mini-map (M6).
+  Secondary (right) and middle mouse-button drags also pan directly; a moved
+  secondary drag does not open the context menu.
 * **FR-C2** Grid + snap-to-grid (toggleable); alignment guides when dragging. Grid type
   (off/dots/lines) and snapping are independent browser-local editor preferences; the grid is
   editor chrome only (absent from presentation, minimap and SVG/PNG/CLI output).
