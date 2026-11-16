@@ -76,7 +76,8 @@ describe('CX-02 best-effort link avoidance', () => {
     expect(second).not.toEqual(first);
     expect(intersectsSolid(second, obstacles[0]!)).toBe(false);
     expect(second).toEqual([
-      { x: 200, y: 190 }, { x: 200, y: 204 }, { x: 520, y: 204 }, { x: 520, y: 130 },
+      { x: 200, y: 190 }, { x: 212, y: 190 }, { x: 212, y: 204 },
+      { x: 508, y: 204 }, { x: 508, y: 130 }, { x: 520, y: 130 },
     ]);
   });
 

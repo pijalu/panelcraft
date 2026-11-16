@@ -28,21 +28,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 # To fix
 
-## 3. Optimize orthogonal connection endpoints
-
-**Observed behavior:** Orthogonal connections can produce diagonal-looking or
-tangent endpoint segments. In the reported example between **Customer** and
-**Blah**, the arrow runs tangentially at the endpoint instead of entering the
-shape cleanly.
-
-**Expected behavior:**
-
-- Keep orthogonal connections horizontal/vertical, without diagonal segments.
-- For automatic endpoints, choose the endpoint side and final leg so the arrow
-  approaches the shape perpendicularly rather than tangentially.
-- Preserve manually selected or moved endpoints; apply endpoint optimization
-  only when the user has not explicitly set the endpoint.
-
 ## 4. Review or remove the Views feature
 
 **Observed behavior:** The **Views** feature has unclear purpose and can reset
@@ -79,6 +64,12 @@ mouse-panning fix.
 
 ## Closed this session
 
+- **Automatic orthogonal links now approach shapes perpendicularly.** Obstacle
+  detours and avoidance candidates stay axis-aligned with outward endpoint
+  stubs; explicit anchors and waypoints remain authoritative. Verified by
+  regression and render suites, 13 related browser tests, full coverage/static
+  gates, Go race tests, and light/dark screenshot review.
+  Write-up: `docs/archive/bugs-orthogonal-endpoints.md`.
 - **Collapsed panels now share one tab-like column per dock.** All collapsed
   panels keep labelled, keyboard-accessible expand controls, the Code sync chip
   remains visible, and expanding one panel leaves the other tabs available.

@@ -54,6 +54,20 @@ function route(page: Page, id: string) {
   return page.getByTestId('canvas').locator(`g.pc-link[data-id="${id}"] path.pc-route`);
 }
 
+function routePoints(d: string): Array<{ x: number; y: number }> {
+  return (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number).reduce<Array<{ x: number; y: number }>>((points, value, index, values) => {
+    if (index % 2 === 0) points.push({ x: value, y: values[index + 1]! });
+    return points;
+  }, []);
+}
+
+function expectOrthogonalEndpoints(d: string): void {
+  const points = routePoints(d);
+  expect(points.slice(1).every((point, index) => point.x === points[index]!.x || point.y === points[index]!.y)).toBe(true);
+  expect(points[1]!.y).toBe(points[0]!.y);
+  expect(points.at(-2)!.y).toBe(points.at(-1)!.y);
+}
+
 async function selectLink(page: Page, id: string): Promise<void> {
   const path = route(page, id);
   const point = await path.evaluate((el: SVGPathElement) => {
@@ -85,6 +99,8 @@ for (const theme of ['light', 'dark'] as const) {
     expect(first).toContain('192');
     expect(second).toContain('56');
     expect(second).not.toEqual(first);
+    expectOrthogonalEndpoints(first!);
+    expectOrthogonalEndpoints(second!);
     await selectLink(page, 'L2');
     await expect(page.getByTestId('link-allow-overlap')).not.toBeChecked();
     await capture(page, `cx02-automatic-${theme}`);
@@ -136,6 +152,7 @@ for (const theme of ['light', 'dark'] as const) {
     await setDoc(page, DOC.replace('position a (40, 100)', 'position a (40, 160)'));
     await expect(route(page, 'L2')).toHaveAttribute('d', /200[ ,]+190/);
     await expect(route(page, 'L2')).toHaveAttribute('d', /204/);
+    expectOrthogonalEndpoints((await route(page, 'L2').getAttribute('d'))!);
     expect(await route(page, 'L2').getAttribute('d')).not.toBe(await route(page, 'L1').getAttribute('d'));
     await capture(page, `cx02-object-endpoint-edit-${theme}`);
 

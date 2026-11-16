@@ -141,6 +141,17 @@ function nearestEdge(channel: number, lo: number, hi: number): number {
   return Math.abs(lo - channel) < Math.abs(hi - channel) ? lo : hi;
 }
 
+function stubbedRoute(a: Point, b: Point, sideA: Side, sideB: Side, channel: number, clearance: number): Polyline {
+  const normalA = outward(sideA);
+  const normalB = outward(sideB);
+  const outerA = { x: a.x + normalA.x * clearance, y: a.y + normalA.y * clearance };
+  const outerB = { x: b.x + normalB.x * clearance, y: b.y + normalB.y * clearance };
+  if (horizontalSide(sideA)) {
+    return [a, outerA, { x: outerA.x, y: channel }, { x: outerB.x, y: channel }, outerB, b];
+  }
+  return [a, outerA, { x: channel, y: outerA.y }, { x: channel, y: outerB.y }, outerB, b];
+}
+
 /**
  * Orthogonal route v1: straight line when anchors align; else a Z shape with
  * the channel at the mid between anchors. If the channel (or straight run)
@@ -234,10 +245,10 @@ function routeLegacyAuto(input: RouteInput): Polyline {
     // Detour the straight run past the obstacle's near edge.
     if (horizontal) {
       const ny = nearestEdge(a.y, hit.y - clearance, hit.y + hit.h + clearance);
-      return [a, { x: a.x, y: ny }, { x: b.x, y: ny }, b];
+      return stubbedRoute(a, b, sideA, sideB, ny, clearance);
     }
     const nx = nearestEdge(a.x, hit.x - clearance, hit.x + hit.w + clearance);
-    return [a, { x: nx, y: a.y }, { x: nx, y: b.y }, b];
+    return stubbedRoute(a, b, sideA, sideB, nx, clearance);
   }
 
   const ch = midChannel(a, b, horizontal);
@@ -289,14 +300,23 @@ function sharedEndpoint(a: Point, b: Point, c: Point, d: Point, ends: Point[]): 
     (Math.abs(orientation(a, b, c)) > 1e-9 || Math.abs(orientation(a, b, d)) > 1e-9);
 }
 
+function sharedApproach(point: Point, route: RouteObstacle): boolean {
+  return samePoint(point, route.points[0]!) || samePoint(point, route.points[route.points.length - 1]!);
+}
+
 function routeConflictCount(points: Polyline, routes: RouteObstacle[]): number {
   const ends = [points[0]!, points[points.length - 1]!];
   let conflicts = 0;
   for (let i = 1; i < points.length; i++) {
     for (const route of routes) {
       for (let j = 1; j < route.points.length; j++) {
-        if (segmentsTouch(points[i - 1]!, points[i]!, route.points[j - 1]!, route.points[j]!) &&
-          !sharedEndpoint(points[i - 1]!, points[i]!, route.points[j - 1]!, route.points[j]!, ends)) conflicts++;
+        const a = points[i - 1]!;
+        const b = points[i]!;
+        const c = route.points[j - 1]!;
+        const d = route.points[j]!;
+        const approach = points.length > 4 && (i <= 2 || i >= points.length - 2) &&
+          sharedApproach(i <= 2 ? points[0]! : points[points.length - 1]!, route);
+        if (segmentsTouch(a, b, c, d) && !sharedEndpoint(a, b, c, d, ends) && !approach) conflicts++;
       }
     }
   }
@@ -365,6 +385,30 @@ function appendChannelCandidates(candidates: Polyline[], base: Polyline, input: 
   }
 }
 
+function appendStubbedCandidates(candidates: Polyline[], a: Point, b: Point, input: RouteInput): void {
+  const [sideA, sideB] = pickSides(input.from, input.to);
+  const clearance = input.clearance ?? ROUTER_CLEARANCE;
+  const axis = horizontalSide(sideA) ? 'y' : 'x';
+  for (const channel of routeChannels(input, axis)) {
+    candidates.push(stubbedRoute(a, b, sideA, sideB, channel, clearance));
+  }
+}
+
+function validAutomaticCandidate(points: Polyline, input: RouteInput): boolean {
+  const [sideA, sideB] = pickSides(input.from, input.to);
+  if (points.length < 2) return false;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    if (a.x !== b.x && a.y !== b.y) return false;
+  }
+  const first = points[1]!;
+  const a = points[0]!;
+  const b = points[points.length - 1]!;
+  const last = points[points.length - 2]!;
+  return inwardOf(first, a, outward(sideA)) && inwardOf(last, b, outward(sideB));
+}
+
 function routeCandidates(base: Polyline, input: RouteInput): Polyline[] {
   const candidates = [base];
   appendChannelCandidates(candidates, base, input);
@@ -375,7 +419,9 @@ function routeCandidates(base: Polyline, input: RouteInput): Polyline[] {
     candidates.push(direct);
     appendChannelCandidates(candidates, direct, input);
   }
-  return candidates;
+  if (input.fromAnchor !== undefined || input.toAnchor !== undefined) return candidates;
+  appendStubbedCandidates(candidates, a, b, input);
+  return candidates.map(compact).filter((points) => validAutomaticCandidate(points, input));
 }
 
 function avoidRouteConflicts(base: Polyline, input: RouteInput): Polyline {

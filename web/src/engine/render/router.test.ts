@@ -62,23 +62,53 @@ describe('routeOrtho (WP6 v1)', () => {
     expect(pts.at(1)?.y).toBe((40 + 300) / 2);
   });
 
+  it('Customer–Blah obstacle detour enters both automatic endpoints perpendicularly', () => {
+    const pts = routeOrtho({ from: R(0, 0), to: R(300, 0), obstacles: [R(160, 0, 40, 40)] });
+    for (let i = 1; i < pts.length; i++) {
+      expect(pts[i - 1]!.x === pts[i]!.x || pts[i - 1]!.y === pts[i]!.y).toBe(true);
+    }
+    expect(pts[1]!.y).toBe(pts[0]!.y); // right-side exit is horizontal
+    expect(pts.at(-2)!.y).toBe(pts.at(-1)!.y); // left-side entry is horizontal
+  });
+
+  it('automatic avoidance never chooses a diagonal orthogonal shortcut', () => {
+    const pts = routeOrtho({ from: R(0, 0), to: R(120, 40), obstacles: [R(80, 0, 40, 40)] });
+    for (let i = 1; i < pts.length; i++) {
+      expect(pts[i - 1]!.x === pts[i]!.x || pts[i - 1]!.y === pts[i]!.y).toBe(true);
+    }
+  });
+
+  it('preserves explicit endpoint anchors during obstacle avoidance', () => {
+    const pts = routeOrtho({
+      from: R(0, 0), to: R(300, 0), obstacles: [R(160, 0, 40, 40)],
+      fromAnchor: 0.375, toAnchor: 0.875,
+    });
+    expect(pts[0]).toEqual({ x: 80, y: 20 });
+    expect(pts.at(-1)).toEqual({ x: 300, y: 20 });
+  });
+
   it('channel detours around obstacle (horizontal case)', () => {
     const obstacle = R(160, 0, 40, 40); // sits on mid x=190 channel
     const pts = routeOrtho({ from: R(0, 0), to: R(300, 0), obstacles: [obstacle] });
     // straight run y=20 crosses obstacle (y 0..40, x 160..200) → detour
-    expect(pts).toHaveLength(4);
-    const ny = pts.at(1)?.y;
+    expect(pts).toEqual([
+      { x: 80, y: 20 }, { x: 92, y: 20 }, { x: 92, y: 52 },
+      { x: 288, y: 52 }, { x: 288, y: 20 }, { x: 300, y: 20 },
+    ]);
+    // Both endpoint legs stay horizontal; only the interior channel detours.
+    const ny = pts.at(2)?.y;
     expect(ny).toBe(R(0, 0).h + ROUTER_CLEARANCE); // bottom edge + clearance = 52
-    expect(pts.at(2)).toEqual({ x: 300, y: ny });
+    expect(pts.at(3)).toEqual({ x: 288, y: ny });
     // final segment returns to the entry anchor
-    expect(pts.at(3)).toEqual({ x: 300, y: 20 });
+    expect(pts.at(-1)).toEqual({ x: 300, y: 20 });
   });
 
   it('detours the whole Z route around an obstacle, including its endpoint legs', () => {
     const obstacle = R(150, 0, 60, 200); // blocks the vertical channel and both legs
     const pts = routeOrtho({ from: R(0, 0), to: R(300, 100), obstacles: [obstacle] });
     expect(pts).toEqual([
-      { x: 80, y: 20 }, { x: 80, y: -24 }, { x: 300, y: -24 }, { x: 300, y: 120 },
+      { x: 80, y: 20 }, { x: 92, y: 20 }, { x: 92, y: -24 },
+      { x: 288, y: -24 }, { x: 288, y: 120 }, { x: 300, y: 120 },
     ]);
   });
 
