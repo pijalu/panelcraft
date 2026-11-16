@@ -393,6 +393,10 @@ const EN = {
   "in workspace root": "in workspace root",
   "in {dir}": "in {dir}",
   "New flow": "New flow",
+  "Default flow": "Default flow",
+  "from the connections": "from the connections",
+  "Derived from the connections in this diagram. Editing it makes it a real flow.":
+    "Derived from the connections in this diagram. Editing it makes it a real flow.",
   "option {n}": "option {n}",
   "New intro": "New intro",
   "Alternative": "Alternative",

@@ -397,14 +397,40 @@ describe('FlowPane guided authoring (UX08-WP12)', () => {
     expect(out()).toContain('flow "New flow" as flow1');
   });
 
-  it('explains flows and offers New flow when the document has none', () => {
-    mountDoc(FRESH);
+  it('explains flows and offers New flow when the document has none to derive', () => {
+    // No connections means no derivable flow: the guide still explains the feature.
+    mountDoc('pcd 1.0\n\nperson a "Ada"\nsystem b "Web"\n');
     expect(screen.getByTestId('flow-empty').textContent).toContain('guided walkthrough');
     const add = screen.getByTestId('flow-add');
     expect(add.textContent).toBe('New flow');
     fireEvent.click(add);
     expect(screen.queryByTestId('flow-empty')).toBeNull();
     expect(screen.getByTestId('flow-steps')).not.toBeNull();
+  });
+
+  it('offers the derived default flow for a link-only document without writing it', () => {
+    const { out } = mountDoc(FRESH);
+    // Item 10: connections alone make the diagram presentable.
+    expect(screen.queryByTestId('flow-empty')).toBeNull();
+    expect(screen.getByTestId('flow-derived-hint')).not.toBeNull();
+    expect(screen.getByTestId('flow-row-flow1').textContent).toBe('Default flow');
+    expect(screen.getByTestId('step-number-0').textContent).toBe('1');
+    // Everything above is presentation only: the file is untouched.
+    expect(out()).toBe(FRESH);
+    expect(out()).not.toContain('flow');
+  });
+
+  it('materialises the derived flow once on the first real edit', () => {
+    const { out } = mountDoc(FRESH);
+    // Selecting a step and removing it is a real edit: the flow is written once,
+    // as an ordinary undoable command, and the derived hint disappears.
+    fireEvent.click(screen.getByTestId('step-0'));
+    fireEvent.click(screen.getByTestId('step-remove'));
+    expect(out()).toContain('flow');
+    expect(screen.queryByTestId('flow-derived-hint')).toBeNull();
+    expect(screen.getByTestId('flow-row-flow1')).not.toBeNull();
+    // No second copy: the viewer is now an authored flow.
+    expect(out().match(/flow /g) ?? []).toHaveLength(1);
   });
 
   it('names the flow and records its purpose', () => {

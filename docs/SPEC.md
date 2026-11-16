@@ -171,7 +171,11 @@ IcePanel-style visual storytelling over the static diagram.
 * **FR-F1** Multiple named flows per diagram; flow editor: ordered step list, drag to
   reorder, per-step title + description. A flow carries its own one-line `description`,
   and each step may carry a `description` — both live in the file (IR v8), never in a
-  UI-only store.
+  UI-only store. A document with connections and no authored flow has a virtual default
+  flow derived from those connections (stable topological order, labels and parallel links
+  preserved, creation order as the cycle fallback). It is never persisted: opening,
+  presenting, saving and reloading leave the file unchanged, and the first explicit edit
+  materialises it as one undoable command. An authored flow is always authoritative.
 * **FR-F2** Step types (all in v1):
   | Type | Meaning | Visual behavior |
   |---|---|---|

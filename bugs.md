@@ -137,36 +137,6 @@ mid-animation screenshots in light/dark themes at wide and narrow sizes, run
 accessibility checks, then run focused animation/presentation tests followed by
 the full unit, browser, and quality gates.
 
-## 10. Provide a presentable default flow from existing connections
-
-**Observed behavior:** The default C4 context template contains Customer → Shop
-("buys") and Shop → Payment provider ("charges"), but no flow. Those existing
-topological links therefore do not provide an immediately presentable story.
-
-**Expected behavior:** A document with existing connections and no authored flow
-has a deterministic default flow derived from those links. The default C4 example
-is immediately presentable with "buys" followed by "charges". Explicitly created
-or edited flows remain authoritative, parallel links remain distinct, cycles have
-a stable fallback order, and opening or presenting a document must not create
-duplicate flows on repeated saves.
-
-**Research:** This partially reopens a previously closed item. `addFlow` already
-materializes existing connections in stable topological source order
-(`web/src/ui/flows/flowDoc.ts`), and the earlier fix is recorded in
-`docs/archive/bugs-topological-flow-editing.md`. That behavior runs only when the
-user chooses New flow; the C4 template in `web/src/ui/EmptyState.tsx` still has
-only objects and links. The missing piece is automatic availability for a
-link-only document, not the topological ordering algorithm itself.
-
-**Fix plan:** Reuse the existing topological derivation rather than adding a
-second ordering implementation. Add failing tests for the default C4 template, a
-link-only document, repeated presentation/reload, parallel links, and cyclic
-graphs. Provide one default-flow path that preserves connection labels and stable
-link references without duplicating or silently reordering authored flows. Verify
-that the launcher lists the default and that presentation plays "buys" then
-"charges". Add template, persistence, launcher, and end-to-end playback coverage,
-then run the full flow, format, workspace, and quality gates.
-
 ## 11. Verify hosted behavior against the deployed revision
 
 **Observed behavior:** The long-menu and long-filename defects are still visible
@@ -325,6 +295,20 @@ and light/dark/narrow screenshots. Mermaid/static SVG exports must state how lin
 children and source are represented or explicitly reported as unsupported.
 
 ## Closed this session
+
+- **A link-only diagram is presentable straight away.** The default C4 template
+  ships "buys" and "charges" but no flow, so the story needed hand-written PDL.
+  The ordering algorithm was already correct — it only ran on an explicit New
+  flow. The default flow is now derived virtually from the connections (same
+  topological order, labels and parallel links preserved, creation order as the
+  cycle fallback) and offered by both the Flows pane and the presentation
+  launcher, marked "from the connections". Opening, presenting, saving or
+  reloading writes nothing and appends no flow; the first real edit materialises
+  it once as an ordinary undoable command, and an authored flow always wins.
+  Verified by derivation, catalog, pane and browser tests (launcher, playback
+  order, no duplicate after repeated presentation and reload, materialise plus
+  undo), the full unit/coverage/perf/docs gates, and screenshot review.
+  Write-up: `docs/archive/bugs-default-virtual-flow.md`.
 
 - **Entity labels are centred by their rendered bounds again.** Two vertical
   positioning models had been stacked: the SVG `y` carried a 12 px font ascent

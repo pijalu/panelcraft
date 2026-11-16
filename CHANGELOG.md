@@ -192,6 +192,18 @@ under `docs/archive/` with the executed plan, validation and review evidence.
 - **DOC-01** The user guide now documents the context-menu commands the canvas really offers
   and no longer advertises stacking commands that do not exist.
 
+### Added — presentable default flow
+
+- A document that has connections but no authored flow is presentable immediately:
+  the Flows pane and the presentation launcher offer a **Default flow** derived from
+  the connections in the same stable topological order the editor already used, with
+  labels and parallel links preserved and creation order as the cycle fallback. It is
+  virtual: opening, presenting, saving and reloading write nothing into the `.pcd`, and
+  the first explicit edit materialises it as one ordinary undoable command. An authored
+  flow always wins. This closes the gap behind the default C4 template, where "buys"
+  and "charges" existed as links but nothing could present them. See
+  `docs/archive/bugs-default-virtual-flow.md`.
+
 ### Fixed — entity label centering
 
 - Entity labels are centred on their rendered bounds. The SVG `y` carried a font

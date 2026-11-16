@@ -19,6 +19,7 @@ import type { BeatCtx } from '../../engine/anim/engine';
 import type { Clock } from '../../engine/anim/ports';
 import type { Rect, Transform } from '../../engine/render/viewport';
 import type { Doc, Flow } from '../../engine/model/types';
+import { findFlow } from './derivedFlow';
 
 /** Rect lookup the owner (canvas) supplies for actor emphasis/camera. */
 export interface FlowRects {
@@ -109,12 +110,12 @@ export class FlowRunner {
     return this.stack.slice(0, -1).map((f) => f.plan.flowTitle);
   }
 
-  /** Parse `text`, find the flow by id then title. */
+  /** Parse `text`, then resolve the flow: authored first, else the derived one. */
   private findFlow(text: string | null, key: string): { doc: Doc; flow: Flow } | null {
     const { doc } = text === null ? { doc: null } : parsePDL(text);
     if (doc === null) return null;
-    const flow =
-      doc.flows.find((fl) => fl.id === key) ?? doc.flows.find((fl) => fl.title === key) ?? null;
+    // Item 10: a link-only file presents through its derived default flow.
+    const flow = findFlow(doc, key);
     return flow === null ? null : { doc, flow };
   }
 

@@ -157,8 +157,13 @@ and the CLI's `--theme` option.
 1. **Find Flows** in the left rail — the labelled *flow steps* entry is present from the first
    load, so you never have to know a menu path. Open it from the rail (or **View → Flow Steps**);
    it docks, floats, collapses and closes like any other panel.
-2. **Create a flow** and name it: an empty document shows a short explanation and **New flow**.
-   The new flow starts with the diagram's existing connections in topological source order;
+2. **Create a flow** — or present the one you already have. A document with connections but no
+   authored flow shows **Default flow** straight away, derived from those connections in
+   topological source order; the presentation launcher offers it too, marked *from the
+   connections*. Nothing is written into the file until you edit it: opening, presenting,
+   saving and reloading leave the `.pcd` untouched, and the first edit turns it into a real,
+   undoable flow. An authored flow always wins. An empty document keeps the short explanation
+   and **New flow**, whose new flow also starts with the diagram's existing connections;
    creation order breaks ties. Fill in **Flow name** and **Flow purpose** — the purpose is printed
    as the flow's `description`, so it travels with the file instead of living in the UI.
 3. **Add steps from what you selected** — no ids to type. **Add message** needs a selected
