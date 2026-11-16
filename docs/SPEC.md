@@ -103,8 +103,11 @@ play mode, exports PNG/SVG for docs.
   Secondary (right) and middle mouse-button drags also pan directly; a moved
   secondary drag does not open the context menu.
 * **FR-C2** Grid + snap-to-grid (toggleable); alignment guides when dragging. Grid type
-  (off/dots/lines) and snapping are independent browser-local editor preferences; the grid is
-  editor chrome only (absent from presentation, minimap and SVG/PNG/CLI output).
+  (off/dots/lines) and snapping are independent browser-local editor preferences. A
+  profile that has never chosen a grid shows a subtle dots grid with snapping on; a
+  saved explicit choice (including off) is preserved across upgrades and never
+  overwritten. The grid is editor chrome only (absent from presentation, minimap and
+  SVG/PNG/CLI output).
 * **FR-C3** Stencil palette (C4 types): Person, Software System, External System,
   Container, Component, Data Store, Queue/Topic, Group/Boundary, Note.
   Drag-drop or click-to-place.

@@ -192,6 +192,18 @@ under `docs/archive/` with the executed plan, validation and review evidence.
 - **DOC-01** The user guide now documents the context-menu commands the canvas really offers
   and no longer advertises stacking commands that do not exist.
 
+### Changed — visible default grid
+
+- A profile that has never chosen a canvas grid now shows a subtle dots grid
+  with snapping on, instead of an empty canvas. The new default is safe to ship
+  because the migration decision is made per field: a stored, valid grid type is
+  an explicit choice and is kept verbatim (including `off`), while a missing or
+  corrupt field is a missing preference and takes the new default. Snapping stays
+  independent of visibility, the last-visible-type memory behind the `G` shortcut
+  and the sub-50 % zoom suppression are unchanged, and the grid remains editor
+  chrome that never reaches the document, the minimap, presentation mode or an
+  export. See `docs/archive/bugs-visible-default-grid.md`.
+
 ### Fixed — review pass 2 (docs/FIX-PLAN.md)
 
 - **F-01** Canvas edits no longer rewrite the file as an objects+links

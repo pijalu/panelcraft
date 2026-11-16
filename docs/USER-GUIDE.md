@@ -23,10 +23,14 @@ and the CLI's `--theme` option.
 - **Palette** (left): grouped by C4 level (Context/Container/Component, plus
   Structure for group/note). Click a kind — or press `1`–`9` — then click the
   canvas; dragging a palette row onto the canvas also places it.
-- **Grid**: *Application menu → View* offers **Grid: off / dots / lines** and a separate
-  **Snap to grid** checkbox. The two are independent browser-local preferences (the grid is
-  editor chrome: it is never written into a `.pcd` view and never appears in an SVG/PNG export).
-  `G` toggles visibility and brings back the last visible type.
+- **Grid**: a fresh profile shows a subtle dots grid with snapping on. *Application
+  menu → View* offers **Grid: off / dots / lines** and a separate **Snap to grid**
+  checkbox. The two are independent browser-local preferences (the grid is editor
+  chrome: it is never written into a `.pcd` view and never appears in an SVG/PNG export).
+  A grid choice you make yourself is remembered and is never replaced by the default
+  when the app is upgraded; below 50% zoom the pattern is hidden so it cannot turn into
+  a tint, and zooming back in restores it. `G` toggles visibility and brings back the
+  last visible type.
 - **Select**: click; Shift-click adds to the selection. Drag moves (snaps to
   the grid). **Rename** an object in place with `F2` or double-click; Enter commits,
   Escape cancels.

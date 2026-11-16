@@ -5,7 +5,6 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { WorkspaceManager } from '../workspace/workspace';
 import {
-  defaultGrid,
   normaliseGrid,
   setGridSnap,
   setGridType,
@@ -32,7 +31,9 @@ export function useCanvasGrid(
   ready: boolean,
   version: number,
 ): CanvasGridHandle {
-  const [grid, setGrid] = useState<GridSettings>(() => defaultGrid());
+  // Start from whatever the manager already holds so an explicit `off` choice
+  // cannot flash the default grid on the first frame after a load.
+  const [grid, setGrid] = useState<GridSettings>(() => normaliseGrid(manager.settings.canvasGrid));
   const gridRef = useRef<GridSettings>(grid);
   const adoptedFrom = useRef<unknown>(undefined);
   const touched = useRef(false);
