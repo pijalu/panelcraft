@@ -54,6 +54,22 @@ the visible menu area. Preserve pointer, touch, and keyboard navigation, and kee
 the menu anchored without clipping off-screen commands. Schedule this fix after
 the GitHub CI/CD repair.
 
+## 8. Keep long filenames and file actions reachable — schedule after long-menu fix
+
+**Observed behavior:** In the Files panel, an overly long filename pushes the
+file-action icons out of view.
+
+**Expected behavior:** Wrap long filenames across lines so the visible action
+icons remain reachable, and provide a context menu as an alternative way to
+invoke the file actions. Preserve pointer, touch, and keyboard operation without
+horizontal overflow.
+
+**Fix plan:** Add component and browser regressions using a long filename in a
+narrow Files panel. Verify the filename wraps, every action stays visible and
+operable, the context menu exposes the same actions, and keyboard focus remains
+usable. Review light/dark and narrow-viewport screenshots, then run the full
+unit, end-to-end, accessibility, and quality gates.
+
 ## Closed this session
 
 - **Secondary and middle mouse drags now pan the canvas.** Moving either button
