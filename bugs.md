@@ -28,16 +28,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 # To fix
 
-## 4. Review or remove the Views feature
-
-**Observed behavior:** The **Views** feature has unclear purpose and can reset
-the current drawing instead of preserving the user's work.
-
-**Expected behavior:** Review whether Views provides a useful, distinct
-capability. If retained, switching or creating a view must never reset or replace
-the drawing unexpectedly, and its behavior must be clear to users. If it cannot
-meet that contract, remove the feature and its associated controls.
-
 ## 5. Support moving the canvas view with the mouse
 
 **Observed behavior:** Moving the canvas view is not available through a direct
@@ -64,6 +54,12 @@ mouse-panning fix.
 
 ## Closed this session
 
+- **Views are retained with a non-destructive contract.** Creating a view
+  snapshots current positions; switching restores only stored positions and
+  never recomputes layout. Explicit apply/reset commands remain unchanged.
+  Verified by component and browser regressions, full coverage/static gates,
+  13 related browser tests, accessibility scans, and light/dark screenshots.
+  Write-up: `docs/archive/bugs-views-non-destructive.md`.
 - **Automatic orthogonal links now approach shapes perpendicularly.** Obstacle
   detours and avoidance candidates stay axis-aligned with outward endpoint
   stubs; explicit anchors and waypoints remain authoritative. Verified by

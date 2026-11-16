@@ -51,9 +51,9 @@ function layoutPositions(
   return dagreLayoutEngine().layout(nodes, edges, { dir: e.layout.dir });
 }
 
-/** Session-only positioning for a view (view switch — never persisted). */
-function applyViewLayout(d: Doc, ctrl: CanvasController, e: EffectiveView): void {
-  ctrl.applyPositions(layoutPositions(d, ctrl, e));
+/** Session-only restore: switching never computes layout or replaces unspecified positions. */
+function applyViewLayout(ctrl: CanvasController, e: EffectiveView): void {
+  ctrl.applyPositions(Object.fromEntries(e.positions));
 }
 
 /** Distinct sorted tag names across objects + links (chip bar). */
@@ -110,7 +110,7 @@ export function ViewBar(props: ViewBarProps) {
   const addNewView = (): void => {
     let n = 1;
     while (viewNames(doc).includes(s('View {n}', { n }))) n++;
-    commit((d) => addView(d, s('View {n}', { n })));
+    commit((d) => addView(d, s('View {n}', { n }), props.ctrl?.currentPositions()));
     props.onView(s('View {n}', { n }));
   };
 
@@ -123,10 +123,11 @@ export function ViewBar(props: ViewBarProps) {
         {s("view")}{' '}<select
           data-testid="view-select"
           value={props.viewName ?? ''}
+          title={s("Switch filters and saved positions; never recomputes layout")}
           onChange={(e) => {
             const v = (e.target as HTMLSelectElement).value;
             props.onView(v === '' ? undefined : v);
-            applyViewLayout(doc, props.ctrl!, effectiveView(doc, v === '' ? undefined : v));
+            applyViewLayout(props.ctrl!, effectiveView(doc, v === '' ? undefined : v));
           }}
         >
           <option value="">{s("(default)")}</option>
@@ -134,7 +135,7 @@ export function ViewBar(props: ViewBarProps) {
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
-        <button type="button" data-testid="view-add" onClick={addNewView} title={s("Add view")}>{s("+ view")}</button>
+        <button type="button" data-testid="view-add" onClick={addNewView} title={s("Create a view with current positions; drawing stays unchanged")}>{s("+ view")}</button>
         <button
           type="button"
           data-testid="view-del"
@@ -179,7 +180,7 @@ export function ViewBar(props: ViewBarProps) {
           const cleared = clearPositions(doc, props.viewName);
           props.onChangeText(printDoc(cleared));
           const evNext = effectiveView(cleared, props.viewName);
-          applyViewLayout(cleared, ctrl, evNext);
+          ctrl.applyPositions(layoutPositions(cleared, ctrl, evNext));
         }}
         onToggleMode={() =>
           commit((d) =>

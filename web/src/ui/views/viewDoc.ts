@@ -65,10 +65,15 @@ export function viewNames(doc: Doc): string[] {
   return doc.views.map((v) => v.name);
 }
 
-/** Add a view (no-op when the name exists — names are the lookup key). */
-export function addView(doc: Doc, name: string): void {
+/** Add a view, optionally snapshotting the current geometry so creation cannot reset it. */
+export function addView(doc: Doc, name: string, positions: Record<string, { x: number; y: number }> = {}): void {
   if (doc.views.some((v) => v.name === name)) return;
-  doc.views.push({ name, lines: [], pos: { line: 0, col: 0 } });
+  const lines: ViewLine[] = [];
+  for (const object of doc.objects) {
+    const point = positions[object.id];
+    if (point) lines.push({ type: 'position', id: object.id, x: point.x, y: point.y, pos: { line: 0, col: 0 } });
+  }
+  doc.views.push({ name, lines, pos: { line: 0, col: 0 } });
 }
 
 export function deleteView(doc: Doc, name: string): void {

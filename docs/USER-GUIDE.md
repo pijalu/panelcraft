@@ -134,9 +134,11 @@ and the CLI's `--theme` option.
 ### Views & tags (M6)
 - **Tags** (`tag core` lines): toggle via the chips above the canvas — hidden
   tags fade their objects (both endpoints must fade for a link to fade).
-- **Named views**: store per-view hide rules *and* saved positions; switch
-  from the view bar; *apply layout* runs dagre and commits positions to the
-  active view. Pin objects to opt them out of re-layout.
+- **Named views**: store per-view hide rules *and* saved positions. Creating a
+  view snapshots the current arrangement; switching restores stored positions
+  without recomputing layout, and objects without stored positions stay put.
+  *apply layout* explicitly runs dagre and commits positions to the active view.
+  Pin objects to opt them out of re-layout.
 - **Dependencies panel**: select an object to see incoming/outgoing links and
   focus it (everything else fades).
 

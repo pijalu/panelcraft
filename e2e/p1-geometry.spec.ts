@@ -3,6 +3,8 @@
 // the active view (debounced), opening/switching never re-positions, and only
 // Auto-layout / Reset layout reorganise — both undoable.
 import { expect, test, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
@@ -94,6 +96,34 @@ test('F-14: opening and switching files never re-positions', async ({ page }) =>
   await page.getByTestId('tab-untitled.pcd').click();
   await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
   expect(await transforms(page)).toEqual(before);
+});
+
+test('Views preserve drawing geometry when created and switched', async ({ page }) => {
+  await page.goto('/');
+  await seedDoc(page, `${DOC}view "Default" {\n  layout saved\n  position a (40, 40)\n  position b (260, 40)\n  position c (480, 40)\n}\n`);
+  const canvas = page.getByTestId('canvas');
+  await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
+  const before = await transforms(page);
+
+  await page.getByTestId('view-add').click();
+  await expect(page.getByTestId('view-select')).toHaveValue('View 1');
+  expect(await transforms(page)).toEqual(before);
+  await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
+  await expect(canvas.locator('g.pc-link')).toHaveCount(2);
+
+  await page.getByTestId('view-select').selectOption('');
+  await page.getByTestId('view-select').selectOption('View 1');
+  expect(await transforms(page)).toEqual(before);
+  await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
+  await expect(canvas.locator('g.pc-link')).toHaveCount(2);
+  await expect(page.locator('.cm-content')).toContainText('position a (40, 40)');
+
+  for (const theme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: theme });
+    await capture(page, `views-non-destructive-${theme}`);
+    const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    expect(result.violations).toEqual([]);
+  }
 });
 
 test('F-14: Auto-layout reorganises, undo restores, reset clears positions', async ({ page }) => {

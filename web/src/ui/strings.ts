@@ -167,6 +167,8 @@ const EN = {
   "view": "view",
   "(default)": "(default)",
   "Add view": "Add view",
+  "Switch filters and saved positions; never recomputes layout": "Switch filters and saved positions; never recomputes layout",
+  "Create a view with current positions; drawing stays unchanged": "Create a view with current positions; drawing stays unchanged",
   "+ view": "+ view",
   "Delete active view": "Delete active view",
   "del": "del",

@@ -119,6 +119,28 @@ describe('ViewBar', () => {
     expect(screen.getByTestId('view-out').textContent).toBe('(default)');
   });
 
+  it('position-free auto view switch preserves the current drawing geometry', () => {
+    const ctrl = fakeCtrl();
+    render(<Harness ctrl={ctrl} text={`${DOC}view "Fresh" {\n  layout auto LR\n}\n`} />);
+    fireEvent.change(screen.getByTestId('view-select'), { target: { value: 'Fresh' } });
+    expect(ctrl.applyPositions).toHaveBeenCalledWith({});
+    expect(out()).toContain('system api "API"');
+    expect(out()).toContain('api -> db as L1');
+  });
+
+  it('creating a view keeps the current drawing and does not run layout', () => {
+    const ctrl = fakeCtrl();
+    render(<Harness ctrl={ctrl} />);
+    fireEvent.click(screen.getByTestId('view-add'));
+    expect(ctrl.applyPositions).not.toHaveBeenCalled();
+    expect(out()).toContain('system api "API"');
+    expect(out()).toContain('api -> db as L1');
+    const view = out().split('view "View 1" {')[1] ?? '';
+    expect(view).toContain('position api (0, 0)');
+    expect(view).toContain('position db (100, 0)');
+    expect(view).toContain('position web (200, 0)');
+  });
+
   it('view switch applies saved positions to the controller (session only, no text change)', () => {
     const ctrl = fakeCtrl();
     render(<Harness ctrl={ctrl} />);
