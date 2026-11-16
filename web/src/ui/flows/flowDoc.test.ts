@@ -10,6 +10,7 @@ import {
   addBranch,
   addFlow,
   addLane,
+  hiddenLinks,
   duplicateStep,
   appendStep,
   flatSteps,
@@ -19,6 +20,8 @@ import {
   patchStep,
   removeAt,
   retext,
+  showFlowLink,
+  topologicalLinks,
 } from './flowDoc';
 
 const FLOW_TEXT = `pcd 1.0
@@ -54,6 +57,11 @@ const roundTrip = (text: string): Doc => {
   return doc;
 };
 
+const fresh = (): Doc => parse('pcd 1.0');
+const pos = { line: 0, col: 0 };
+const obj = (id: string) => ({ id, name: id, kind: 'system' as const, pos });
+const link = (from: string, to: string, label?: string) => ({ from, to, label, pos });
+
 const flow0 = (d: Doc): Flow => {
   const f = d.flows[0];
   if (f === undefined) throw new Error('no flow');
@@ -80,6 +88,56 @@ describe('retext (parse → mutate → print)', () => {
     const d = roundTrip(out as string);
     const last = flow0(d).steps.at(-1);
     expect(last?.type).toBe('conclusion');
+  });
+});
+
+describe('connection-backed flow editing', () => {
+  it('creates a flow from existing connections in stable topological order', () => {
+    const doc: Doc = {
+      ...fresh(),
+      objects: [obj('C'), obj('A'), obj('B')],
+      links: [
+        link('B', 'C'),
+        link('A', 'B', 'first'),
+        link('A', 'B', 'second'),
+      ],
+    };
+    expect(topologicalLinks(doc).map(({ link }) => link.label)).toEqual(['first', 'second', undefined]);
+    addFlow(doc, 'Flow', 1);
+    expect(doc.flows[0]?.steps.map((s) => s.type === 'msg' && s.linkRef)).toEqual(['L2', 'L3', 'L1']);
+    expect(doc.links.map((l) => l.id)).toEqual(['L1', 'L2', 'L3']);
+  });
+
+  it('uses creation order for independent branches and cyclic leftovers', () => {
+    const doc: Doc = {
+      ...fresh(),
+      objects: ['D', 'C', 'B', 'A'].map(obj),
+      links: [
+        link('C', 'D', 'cycle-out'),
+        link('D', 'C', 'cycle-back'),
+        link('A', 'C', 'root'),
+      ],
+    };
+    expect(topologicalLinks(doc).map(({ link }) => link.label)).toEqual(['root', 'cycle-back', 'cycle-out']);
+  });
+
+  it('derives and restores hidden links without deleting diagram connections', () => {
+    const original: Doc = {
+      ...fresh(),
+      objects: ['A', 'B'].map(obj),
+      links: [link('A', 'B', 'request')],
+      flows: [{ id: 'f', title: 'Flow', steps: [{ type: 'msg', from: 'A', to: 'B', label: 'request', pos }], pos }],
+    };
+    const flow = flow0(original);
+    expect(hiddenLinks(original, flow)).toEqual([]);
+    removeAt(flow, [0]);
+    expect(original.links).toEqual([link('A', 'B', 'request')]);
+    expect(hiddenLinks(original, flow).map(({ index }) => index)).toEqual([0]);
+    showFlowLink(original, 'f', 0);
+    expect(original.links[0]?.id).toBe('L1');
+    expect(flow.steps).toEqual([
+      { type: 'msg', from: 'A', to: 'B', label: 'request', linkRef: 'L1', pos },
+    ]);
   });
 });
 
@@ -177,13 +235,14 @@ describe('editing operations', () => {
 });
 
 describe('addFlow / doc-level edits', () => {
-  it('adds an empty flow with a generated id', () => {
+  it('adds a connection-backed flow with a generated id', () => {
     const out = retext(FLOW_TEXT, (doc) => {
       addFlow(doc, 'Refund', 2);
     });
     const d = roundTrip(out as string);
     expect(d.flows.length).toBe(2);
-    expect(d.flows[1]).toMatchObject({ title: 'Refund', id: 'flow2', steps: [] });
+    expect(d.flows[1]).toMatchObject({ title: 'Refund', id: 'flow2' });
+    expect(d.flows[1]?.steps).toHaveLength(1);
   });
 
   it('printed flow text round-trips ids (as <id> only when set)', () => {

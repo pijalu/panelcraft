@@ -165,6 +165,19 @@ describe('FlowPane flow list (M5-WP4)', () => {
     expect(out()).toContain('flow "New flow" as flow2');
     fireEvent.click(screen.getByTestId('flow-row-flow2'));
     expect(screen.getByTestId('flow-steps')).not.toBeNull();
+    expect(screen.getByTestId('step-0').textContent).toContain('Ada');
+  });
+
+  it('hides and restores a connection without removing it from the diagram', () => {
+    const { out } = mount();
+    fireEvent.click(screen.getByTestId('flow-add'));
+    fireEvent.click(screen.getByTestId('hide-connection-0'));
+    expect(screen.getByTestId('flow-hidden-links').textContent).toContain('Ada');
+    expect(screen.queryByTestId('step-0')).toBeNull();
+    expect(out()).toContain('a -> b as ab');
+    fireEvent.click(screen.getByTestId('show-flow-link-0'));
+    expect(screen.queryByTestId('flow-hidden-links')).toBeNull();
+    expect(screen.getByTestId('step-0').textContent).toContain('Ada');
   });
 });
 

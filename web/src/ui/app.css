@@ -2840,6 +2840,37 @@ marker .pc-arrow[fill='none'] {
   padding: 3px 6px;
 }
 
+.flow-hidden {
+  margin: 6px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-sm);
+}
+
+.flow-hidden h3 {
+  margin: 0;
+  font-size: var(--pc-text-sm);
+}
+
+.flow-hidden-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 30px;
+  font-size: var(--pc-text-sm);
+}
+
+.flow-hidden-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.flow-hidden-row button {
+  flex: 0 0 auto;
+  min-height: 28px;
+}
+
 .flow-actions {
   display: flex;
   flex-wrap: wrap;

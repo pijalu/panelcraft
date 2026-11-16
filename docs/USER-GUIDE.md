@@ -150,8 +150,9 @@ and the CLI's `--theme` option.
    load, so you never have to know a menu path. Open it from the rail (or **View → Flow Steps**);
    it docks, floats, collapses and closes like any other panel.
 2. **Create a flow** and name it: an empty document shows a short explanation and **New flow**.
-   Fill in **Flow name** and **Flow purpose** — the purpose is printed as the flow's
-   `description`, so it travels with the file instead of living in the UI.
+   The new flow starts with the diagram's existing connections in topological source order;
+   creation order breaks ties. Fill in **Flow name** and **Flow purpose** — the purpose is printed
+   as the flow's `description`, so it travels with the file instead of living in the UI.
 3. **Add steps from what you selected** — no ids to type. **Add message** needs a selected
    connector and takes both endpoints from it; **Add process** needs exactly one selected shape;
    **Add note**, **Add introduction** and **Add conclusion** are always available. An impossible
@@ -160,9 +161,11 @@ and the CLI's `--theme` option.
    names (never raw ids) and any step description. A step that points at a shape the diagram does
    not define shows the problem on the card; repair it from the inspector (or by selecting the
    connector again) and the warning disappears.
-5. **Describe and reorder**: the inspector edits every kind (message label, process target, note
-   text, branch/lane labels, `goto` target) plus a **Description** for the step; reorder by drag,
-   with the ↑/↓ buttons, or with `Alt+↑`/`Alt+↓` on a focused card; duplicate or delete per card.
+5. **Describe, reorder and hide**: the inspector edits every kind (message label, process target,
+   note text, branch/lane labels, `goto` target) plus a **Description** for the step; reorder by
+   drag, with the ↑/↓ buttons, or with `Alt+↑`/`Alt+↓` on a focused card; duplicate or delete per
+   card. A message's × hides that connection from this flow without changing the canvas. **Hidden
+   connections** lists those links and **Show** appends a card for the original connection again.
    Every edit is a normal file edit, so undo/redo and the code view stay in step.
 6. **Advanced step** keeps `alt`, `par` and `goto` one disclosure away, with the same nested
    editing. Selecting a card highlights its participants on the canvas and fades the rest.

@@ -61,10 +61,7 @@ async function seedFlow(page: Page): Promise<void> {
   await settle(page);
   await page.getByTestId('flow-description').fill('How an order reaches the shop');
   await settle(page);
-  await page.locator('g.pc-link path.pc-route').first().click();
-  await expect(page.getByTestId('add-msg')).toBeEnabled();
-  await page.getByTestId('add-msg').click();
-  await settle(page);
+  await expect(page.getByTestId('step-0')).toContainText('msg');
 }
 
 test.describe('UX08-WP13 flow presentation', () => {

@@ -25,6 +25,7 @@ import {
   duplicateStep,
   flatSteps,
   getAt,
+  hiddenLinks,
   moveStep,
   newStep,
   patchFlow,
@@ -32,6 +33,7 @@ import {
   removeAt,
   retext,
   setStepCamera,
+  showFlowLink,
   type FlatStep,
 } from './flowDoc';
 
@@ -519,6 +521,7 @@ export interface StepOps {
   /** Move the step at `path` to sibling index `to` (drag-reorder). */
   move(path: number[], to: number): void;
   duplicate(path: number[]): void;
+  hide(path: number[]): void;
   /** Per-step dwell; undefined clears it (F-18 format attribute). */
   delay(path: number[], ms: number | undefined): void;
   /** Start playback at this step (1-based beat-ish index). */
@@ -579,6 +582,18 @@ function StepCard(props: { row: FlatStep; index: number; selected: boolean; ops:
           <span class="flow-step-desc" data-testid={`step-desc-${index}`}>{row.step.description}</span>
         )}
       </button>
+      {row.step.type === 'msg' && (
+        <button
+          type="button"
+          class="flow-step-btn"
+          data-testid={`hide-connection-${index}`}
+          title={s('Hide connection in this flow')}
+          aria-label={s('Hide connection at step {n}', { n: index + 1 })}
+          onClick={() => ops.hide(row.path)}
+        >
+          <CloseIcon />
+        </button>
+      )}
       <button
         type="button"
         class="flow-step-btn"
@@ -638,6 +653,30 @@ function StepList(props: { steps: FlatStep[]; sel: number[]; ops: StepOps; names
         />
       ))}
     </ol>
+  );
+}
+
+function HiddenConnections(props: {
+  doc: Doc;
+  flow: Flow;
+  names: Names;
+  onShow(index: number): void;
+}) {
+  const hidden = hiddenLinks(props.doc, props.flow);
+  if (hidden.length === 0) return null;
+  return (
+    <section class="flow-hidden" data-testid="flow-hidden-links" aria-label={s('Hidden connections')}>
+      <h3>{s('Hidden connections')}</h3>
+      <p class="flow-hint">{s('Hidden here only; the diagram connection is unchanged.')}</p>
+      {hidden.map(({ link, index }) => (
+        <div class="flow-hidden-row" key={link.id ?? index}>
+          <span>{nameOf(props.names, link.from)} → {nameOf(props.names, link.to)}{link.label === undefined ? '' : `: ${link.label}`}</span>
+          <button type="button" data-testid={`show-flow-link-${index}`} onClick={() => props.onShow(index)}>
+            {s('Show')}
+          </button>
+        </div>
+      ))}
+    </section>
   );
 }
 
@@ -952,6 +991,7 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
     },
     move: (p, to) => withFlow((f) => moveStep(f, p, to)),
     duplicate: (p) => withFlow((f) => duplicateStep(f, p)),
+    hide: (p) => withFlow((f) => removeAt(f, p)),
     delay: (p, ms) => withFlow((f) => patchStep(f, p, { delayMs: ms })),
     playFrom: (i) => pane.onPlayFrom?.(selKey, i + 1),
   };
@@ -1025,6 +1065,7 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
             }}
           />
           <StepList steps={flat} sel={selStep} ops={ops} names={names} />
+          <HiddenConnections doc={doc} flow={flow} names={names} onShow={(index) => apply((d) => showFlowLink(d, selKey, index))} />
           <ActionBar ready={ready} onAdd={(kind) => addKindStep(apply, selKey, kind, pane.canvas)} />
           {step !== null && <StepInspector step={step} a={actions} canvas={pane.canvas} {...(pane.currentView === undefined ? {} : { view: pane.currentView })} />}
         </>

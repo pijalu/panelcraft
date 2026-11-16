@@ -28,26 +28,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 # To fix
 
-## 2. Make flows topology-derived and easy to edit
-
-**Observed behavior:** Flow creation and editing require too much manual work,
-and the flow panel does not provide a simple ordering and annotation workflow
-for existing connections.
-
-**Expected behavior:**
-
-- Treat a flow as the ordering and annotation of existing connections rather
-  than a separate connection topology.
-- Derive the default flow order topologically. Where connections have the same
-  topological rank, order them by creation index.
-- Let users change the order directly in the flow panel with drag and drop.
-- Let users add and edit descriptions/details for the flow and its connection
-  entries.
-- Let users hide individual entries without deleting the underlying connection.
-- Make the editing experience comparable to PowerPoint's animation pane and
-  slide ordering: a simple ordered list with drag-and-drop reordering and
-  visibility controls.
-
 ## 3. Optimize orthogonal connection endpoints
 
 **Observed behavior:** Orthogonal connections can produce diagonal-looking or
@@ -105,6 +85,13 @@ mouse-panning fix.
   Verified by component tests, full unit/coverage gates, 16 targeted browser
   tests, and light/dark screenshot review.
   Write-up: `docs/archive/bugs-collapsed-panel-rails.md`.
+- **Flows now start from existing connections and support non-destructive
+  visibility controls.** Stable topological source order uses creation index
+  for ties; manual drag/drop remains authoritative. Hide removes only the
+  flow's message card, while Hidden connections can Show the original link
+  again. Descriptions, keyboard ordering, parallel-link references, and
+  light/dark accessibility are covered.
+  Write-up: `docs/archive/bugs-topological-flow-editing.md`.
 - **BUG-08 — undo from the History dialog could revert far more than the last
   edit** (the connector-style end-to-end test went red on the shared CI runner,
   green locally). Fixed by removing the test's dependence on same-link command

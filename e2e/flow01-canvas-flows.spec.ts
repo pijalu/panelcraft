@@ -74,6 +74,14 @@ for (const theme of ['light', 'dark'] as const) {
     // Create a flow, then build a message step from the selected connector.
     await page.getByTestId('flow-add').click();
     await expect(page.getByTestId('flow-pane')).toContainText('New flow');
+    // New flows snapshot existing links. Hide both cards to exercise the explicit
+    // canvas-selection authoring path from an empty message projection.
+    await expect(page.getByTestId('step-0')).toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('hide-connection-0').click();
+    await expect(page.getByTestId('step-row-0')).toHaveCount(1, { timeout: 15_000 });
+    await settle(page);
+    await page.getByTestId('hide-connection-0').click();
+    await expect(page.getByTestId('step-row-0')).toHaveCount(0, { timeout: 15_000 });
     // A flow edit reloads the canvas, which clears the connector selection.
     await settle(page);
     await page.getByTestId('canvas').locator('g.pc-link[data-id="L2"] path.pc-route').click({ force: true });

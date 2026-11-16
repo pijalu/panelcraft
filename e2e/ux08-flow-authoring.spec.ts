@@ -112,12 +112,13 @@ for (const theme of THEMES) {
     await page.keyboard.type('Checkout');
     await settle(page);
 
-    // A message step cannot be invented: it needs the selected connector.
+    // The existing connector becomes the initial message automatically. Adding
+    // another still requires selecting that connector; none is invented.
+    await expect(page.getByTestId('step-0')).toContainText('msg', { timeout: 15_000 });
     await expect(page.getByTestId('add-msg')).toBeDisabled();
     await expect(page.getByTestId('flow-needs-link')).toContainText('connector');
     await page.getByTestId('canvas').locator('g.pc-link path.pc-route').click({ force: true });
     await expect(page.getByTestId('add-msg')).toBeEnabled();
-    await page.getByTestId('add-msg').click();
 
     // Cards number the steps and name the shapes instead of their ids.
     await expect(page.getByTestId('step-0')).toContainText('msg', { timeout: 15_000 });
@@ -132,6 +133,18 @@ for (const theme of THEMES) {
     await page.getByTestId('insp-description').focus();
     await page.keyboard.type('Order placed');
     await expect(page.getByTestId('step-desc-0')).toContainText('Order placed', { timeout: 15_000 });
+    await settle(page);
+
+    // Visibility belongs to this flow only. The canvas connector survives Hide,
+    // and Show restores the same connection at the end of the manual order.
+    await page.getByTestId('hide-connection-0').click();
+    await expect(page.getByTestId('flow-hidden-links')).toContainText('Hidden connections');
+    await expect(page.getByTestId('step-0')).toHaveCount(0);
+    await expect(page.getByTestId('canvas').locator('g.pc-link')).toHaveCount(1);
+    await capture(page, `ux08-flow-authoring-hidden-${theme}`);
+    await page.getByTestId('show-flow-link-0').click();
+    await expect(page.getByTestId('step-0')).toContainText('msg', { timeout: 15_000 });
+    await expect(page.getByTestId('flow-hidden-links')).toHaveCount(0);
     await settle(page);
 
     // A process step comes from the selected shape.
@@ -161,9 +174,8 @@ for (const theme of THEMES) {
     await page.getByTestId('insp-pick-to').click();
     await expect(page.getByTestId('step-warn-0')).toHaveCount(0, { timeout: 15_000 });
 
-    // Reorder with the inspector arrows (keyboard-reachable buttons).
-    await page.getByTestId('step-1').click();
-    await page.getByTestId('step-up').click();
+    // Reorder with the same pointer drag/drop interaction used for manual flows.
+    await page.getByTestId('step-row-1').dragTo(page.getByTestId('step-row-0'));
     await expect(page.getByTestId('step-0')).toContainText('process');
 
     // Present plays the flow that is being edited.

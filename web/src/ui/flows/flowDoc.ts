@@ -10,7 +10,8 @@
 // retext() owns the parse/print lifecycle.
 import { parsePDL } from '../../engine/format/parser';
 import { printDoc } from '../../engine/format/printer';
-import type { Branch, CameraSpec, Doc, Flow, FlowStep } from '../../engine/model/types';
+import type { Branch, CameraSpec, Doc, Flow, FlowStep, Link } from '../../engine/model/types';
+import { resolveMsg } from '../../engine/flows/plan';
 import { s } from '../strings';
 
 type StepList = FlowStep[];
@@ -193,8 +194,90 @@ export function addLane(flow: Flow, parPath: number[]): void {
 
 // --- doc-level ---------------------------------------------------------------
 
+export interface IndexedLink {
+  link: Link;
+  index: number;
+}
+
+/** Stable entity ranks: creation order breaks ties, and cyclic leftovers retain
+ * their original order. Flow order is a default snapshot, never a live resort. */
+function entityRanks(doc: Doc): Map<string, number> {
+  const remaining = new Set(doc.objects.map((obj) => obj.id));
+  const ordered: string[] = [];
+  while (remaining.size > 0) {
+    const next = doc.objects.find((obj) =>
+      remaining.has(obj.id) && !doc.links.some((link) =>
+        link.to === obj.id && link.from !== obj.id && remaining.has(link.from),
+      ),
+    );
+    if (next === undefined) {
+      ordered.push(...doc.objects.filter((obj) => remaining.has(obj.id)).map((obj) => obj.id));
+      break;
+    }
+    ordered.push(next.id);
+    remaining.delete(next.id);
+  }
+  return new Map(ordered.map((id, index) => [id, index]));
+}
+
+/** Existing connections in topological source order, then creation order. */
+export function topologicalLinks(doc: Doc): IndexedLink[] {
+  const ranks = entityRanks(doc);
+  return doc.links
+    .map((link, index) => ({ link, index }))
+    .sort((a, b) =>
+      (ranks.get(a.link.from) ?? 0) - (ranks.get(b.link.from) ?? 0) || a.index - b.index,
+    );
+}
+
+/** Explicit references keep parallel links distinct when steps are restored. */
+function ensureLinkIds(doc: Doc): void {
+  const used = new Set(doc.links.flatMap((link) => link.id === undefined ? [] : [link.id]));
+  let seq = 1;
+  doc.links.forEach((link) => {
+    if (link.id !== undefined) return;
+    while (used.has(`L${seq}`)) seq += 1;
+    link.id = `L${seq}`;
+    used.add(link.id);
+    seq += 1;
+  });
+}
+
+function connectionStep(link: Link): FlowStep {
+  return {
+    type: 'msg',
+    from: link.from,
+    to: link.to,
+    ...(link.label === undefined ? {} : { label: link.label }),
+    ...(link.id === undefined ? {} : { linkRef: link.id }),
+    pos: { line: 0, col: 0 },
+  };
+}
+
+/** Diagram connections absent from this flow's message projection. */
+export function hiddenLinks(doc: Doc, flow: Flow): IndexedLink[] {
+  const visible = new Set(
+    flatSteps(flow)
+      .filter(({ step }) => step.type === 'msg')
+      .map(({ step }) => step.type === 'msg' ? resolveMsg(doc, step)?.index : undefined)
+      .filter((index) => index !== undefined),
+  );
+  return doc.links.flatMap((link, index) => visible.has(index) ? [] : [{ link, index }]);
+}
+
+/** Restore a hidden connection at the end of the manually ordered flow. */
+export function showFlowLink(doc: Doc, flowId: string, linkIndex: number): void {
+  const flow = doc.flows.find((candidate) => (candidate.id ?? candidate.title) === flowId);
+  if (flow === undefined) return;
+  ensureLinkIds(doc);
+  const link = doc.links[linkIndex];
+  if (link !== undefined) appendStep(flow, connectionStep(link));
+}
+
 export function addFlow(doc: Doc, title: string, seq: number): void {
-  doc.flows.push({ title, id: `flow${seq}`, steps: [], pos: { line: 0, col: 0 } });
+  ensureLinkIds(doc);
+  const steps = topologicalLinks(doc).map(({ link }) => connectionStep(link));
+  doc.flows.push({ title, id: `flow${seq}`, steps, pos: { line: 0, col: 0 } });
 }
 
 /**
