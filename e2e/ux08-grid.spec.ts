@@ -21,9 +21,9 @@ async function ready(page: Page): Promise<void> {
   await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
   await openWorkspacePanels(page, ['code']);
   const editor = page.locator('.cm-content');
-  await editor.click();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText('pcd 1.0\n\nsystem api "API"\nsystem db "DB"\n\napi -> db as L1\n');
+  // Replace the contenteditable atomically so a re-render cannot clear the
+  // select-all selection between the shortcut and text insertion.
+  await editor.fill('pcd 1.0\n\nsystem api "API"\nsystem db "DB"\n\napi -> db as L1\n');
   await expect(page.locator('svg[data-testid="canvas"] g.pc-obj')).toHaveCount(2);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
 }

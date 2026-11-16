@@ -29,17 +29,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 # To fix
 
 
-## 6. Fix the failing GitHub CI/CD run — schedule last
-
-**Observed behavior:** GitHub Actions run
-[43828484739](https://github.com/pijalu/panelcraft/actions/runs/43828484739)
-is failing.
-
-**Expected behavior:** Inspect the run logs, identify the root cause, and restore
-a green CI/CD pipeline without weakening tests or skipping required quality
-gates. Add regression coverage where the failure exposes a repository or workflow
-defect. Plan this item last in the current bug-fixing session, after the canvas
-mouse-panning fix.
 
 ## 7. Keep long menus inside the visible viewport — schedule after CI/CD
 
@@ -71,6 +60,17 @@ usable. Review light/dark and narrow-viewport screenshots, then run the full
 unit, end-to-end, accessibility, and quality gates.
 
 ## Closed this session
+
+- **The CI/CD browser setup is deterministic again.** Flow creation now waits
+  for the canvas-to-file write to settle, and grid fixtures replace the editor
+  contents atomically instead of racing select-all against re-renders. The five
+  presentation timeouts came from clicking intentionally pointer-transparent
+  route strokes; the current connection-derived flow setup avoids that invalid
+  test action. The exact failing revision reproduced five failures and passed
+  all 10 targeted tests with the repairs. Current targeted coverage passed
+  20/20, the full browser suite passed 160/160, and all unit, coverage, static,
+  race, build, and accessibility gates remained green.
+  Write-up: `docs/archive/bugs-ci-e2e-determinism.md`.
 
 - **Secondary and middle mouse drags now pan the canvas.** Moving either button
   changes only the viewport, never object geometry, selection, document text, or

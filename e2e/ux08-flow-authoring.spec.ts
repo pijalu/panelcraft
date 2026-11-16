@@ -52,6 +52,8 @@ async function seedShapes(page: Page): Promise<void> {
   // file after it, or the pending canvas write would overwrite the new flow.
   await openWorkspacePanels(page, ['code']);
   await expect(page.locator('.cm-content')).toContainText('->');
+  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await page.waitForTimeout(250);
   await page.getByTestId('collapse-code').click();
   await expect(page.getByTestId('flow-pane')).toBeVisible();
 }
