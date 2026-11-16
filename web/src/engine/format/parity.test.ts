@@ -11,6 +11,15 @@ import { parsePDL } from './parser';
 import { printDoc } from './printer';
 import { validateDoc } from '../model/validate';
 import { serializeDoc } from '../model/serialize';
+import { encodeIconSvg } from './iconSvg';
+
+// Icon payloads are Base64 of an SVG, and every payload therefore begins with
+// the same four letters — which happen to look exactly like this repo's short
+// work-item tags — so the fixtures build their payloads from readable markup
+// instead of embedding the encoded blob.
+const SVG_SQUARE = encodeIconSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>');
+const SVG_CIRCLE = encodeIconSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#0af"/></svg>');
+const SVG_EVIL = encodeIconSvg('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><path d="M0 0h1v1H0z" onload="x()" xlink:href="http://evil.example/x"/></svg>');
 
 interface Case {
   name: string;
@@ -312,6 +321,92 @@ person a "A" {
   },
   { name: 'empty-strings', src: `pcd 1.0\ntitle ""\nimport i0 as ""\nperson a "" {\n  description ""\n  property k ""\n}\nperson b "B"\na -> b\nflow "" {\n  intro ""\n  a -> b : ""\n  alt "" {\n    "" {\n      process a ""\n    }\n  }\n}\nview "" {\n}\n` },
   { name: 'goto-empty-parts', src: 'pcd 1.0\nflow {\n goto "#f"\n goto "f#"\n}\n' },
+  // --- document icons (IR v9, FILE-FORMAT §3.1) ---
+  {
+    name: 'icons-full',
+    src: `pcd 1.0
+icon brand {
+  label "Company mark"
+  media "image/svg+xml"
+  data "${SVG_SQUARE}"
+}
+icon badge {
+  media "image/svg+xml"
+  data "${SVG_CIRCLE}"
+}
+# a comment that belongs to the object, not the icon above it
+system api "API" {
+  icon brand
+}
+system web "Web" {
+  icon badge
+}
+`,
+  },
+  {
+    name: 'icon-comments-and-order',
+    src: `pcd 1.0
+# leading comment
+icon mark {
+  data "${SVG_SQUARE}"
+  media "image/svg+xml"
+  label "Mark"
+}
+`,
+  },
+  {
+    name: 'icon-duplicate-handle',
+    src: `pcd 1.0
+icon dup {
+  media "image/svg+xml"
+  data "${SVG_SQUARE}"
+}
+icon dup {
+  media "image/svg+xml"
+  data "${SVG_CIRCLE}"
+}
+`,
+  },
+  {
+    name: 'icon-builtin-collision',
+    src: `pcd 1.0
+icon cloud {
+  media "image/svg+xml"
+  data "${SVG_SQUARE}"
+}
+person p "P" {
+  icon cloud
+}
+`,
+  },
+  {
+    name: 'icon-unsafe-svg',
+    src: `pcd 1.0
+icon evil {
+  media "image/svg+xml"
+  data "${SVG_EVIL}"
+}
+person p "P" {
+  icon evil
+}
+`,
+  },
+  { name: 'icon-unknown-ref', src: 'pcd 1.0\nperson p "P" {\n  icon nope\n}\n' },
+  {
+    name: 'icon-unsupported-media',
+    src: `pcd 1.0
+icon pic {
+  media "image/png"
+  data "${SVG_SQUARE}"
+}
+`,
+  },
+  { name: 'icon-bad-base64', src: 'pcd 1.0\nicon bad {\n  media "image/svg+xml"\n  data "not base64!"\n}\n' },
+  { name: 'icon-missing-media', src: 'pcd 1.0\nicon m {\n  data "AAAA"\n}\n' },
+  { name: 'icon-missing-data', src: 'pcd 1.0\nicon m {\n  media "image/svg+xml"\n}\n' },
+  { name: 'icon-unknown-line', src: 'pcd 1.0\nicon m {\n  sparkle yes\n}\n' },
+  { name: 'icon-duplicate-line', src: 'pcd 1.0\nicon m {\n  media "image/svg+xml"\n  media "image/svg+xml"\n}\n' },
+  { name: 'icon-unclosed', src: 'pcd 1.0\nicon m {\n  media "image/svg+xml"\n' },
   // --- error cases (doc = null; lexer-only errors keep the doc) ---
   { name: 'missing-magic', src: 'person a "A"\n' },
   { name: 'unsupported-major', src: 'pcd 2.0\n' },

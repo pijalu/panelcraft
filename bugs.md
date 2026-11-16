@@ -63,31 +63,6 @@ from a clean first visit so an old cached client cannot be confused with a faile
 deployment. Make the release process require the relevant continuous-integration
 checks before publication, and retain the hosted test output as release evidence.
 
-## 15. Icon management is limited to eight built-ins
-
-**Observed.** Objects can select only `cloud`, `database`, `gear`, `lock`, `mail`,
-`user`, `chart`, and `code`. There is no project icon registry, no way to declare a
-Base64 icon under a stable handle, and no searchable technical icon picker.
-
-**Expected.** Ship a broader offline C4/technical set (person, system, container,
-component, server, browser, mobile, API/gateway, queue, topic, function, file,
-network, and security variants) and let a diagram declare custom icons whose handles
-work with the existing object `icon name` property. A suggested PDL form is a
-named document-scoped declaration with an explicit media type and Base64 payload;
-the exact grammar needs a format review. Icons must remain embedded and portable in
-`.pcd`, ZIP, SVG export, browser reload, and CLI rendering. No icon font, CDN, or
-runtime fetch.
-
-**Fix / test plan.** Specify the registry, handle namespace/collision rules, size
-limits, canonical Base64 printing, and unknown/malformed icon diagnostics. Sanitize
-SVG (no scripts, event handlers, external references, or unsafe CSS), make icon
-accessibility decorative unless it carries meaning, and record asset licenses. Add
-a searchable picker plus add/preview/rename/remove project-icon management with
-usage checks. Land grammar + parser + printer + IR + docs + regenerated corpus and
-TypeScript/Go parity atomically. Test persistence, ZIP/SVG export, invalid and
-oversized payloads, deterministic output, and light/dark/high-contrast screenshots.
-Document any Mermaid-export loss instead of silently dropping custom icons.
-
 ## 16. No true C4 drill-down or embedded source view
 
 **Observed.** Imported objects appear as read-only ghosts and open their source
@@ -115,6 +90,26 @@ and light/dark/narrow screenshots. Mermaid/static SVG exports must state how lin
 children and source are represented or explicitly reported as unsupported.
 
 ## Closed this session
+
+- **Icons: 43 built-ins plus project-defined, portable, sanitized icons.**
+  Objects could only pick one of eight built-in glyphs and there was no way to
+  give a diagram its own asset. A document can now declare
+  `icon <handle> { label "…" media "image/svg+xml" data "<canonical Base64>" }`
+  and reference it through the existing `icon name` property, so the `.pcd` stays
+  self-contained through ZIP, SVG/PNG export, browser reload and CLI rendering —
+  no sidecar file, no icon font, no CDN, no fetch. Grammar, IR v9, printer,
+  TypeScript and Go parser/validator, corpus seeds and FILE-FORMAT landed
+  together with a shared TS⇄Go fixture, so round-trip and parity stay byte-exact;
+  new syntax codes `E114`/`E115` and validation `P206`–`P210` cover malformed
+  payloads, handle collisions with the reserved built-in namespace, the size
+  limits, unsafe SVG and unresolved names. Payloads are sanitized on ingest
+  (allowlist reconstruction) and checked again at render, where they are embedded
+  as a `data:` URI so an SVG-as-image runs in static mode. The built-in set grew
+  to 43 vendor-neutral glyphs with a provenance/licensing record, and the
+  properties panel gained a searchable picker plus project-icon management whose
+  rename rewrites every reference in one undoable step and whose removal reports
+  usages before clearing them. Mermaid export declares `icons` dropped either
+  way. Details: [docs/archive/bugs-project-icon-registry.md](docs/archive/bugs-project-icon-registry.md).
 
 - **Routes are validated as a whole polyline, and an intentional detour survives.**
   The report showed `Shop → Payment provider` cutting through its own shape and

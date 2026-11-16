@@ -28,6 +28,10 @@ export const E = {
   invalidColor: 'E111',
   nestingTooDeep: 'E112',
   invalidGoto: 'E113',
+  /** Icon declaration payload is not canonical Base64 (IR v9, §3.1). */
+  invalidIconData: 'E114',
+  /** Icon declaration names a media type this version cannot draw (§3.1). */
+  invalidIconMedia: 'E115',
 } as const;
 
 export const diag = (

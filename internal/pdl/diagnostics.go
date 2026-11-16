@@ -43,6 +43,10 @@ const (
 	ErrInvalidColor    = "E111"
 	ErrNestingTooDeep  = "E112"
 	ErrInvalidGoto     = "E113"
+	// ErrInvalidIconData: icon payload is not canonical Base64 (IR v9, §3.1).
+	ErrInvalidIconData = "E114"
+	// ErrInvalidIconMedia: icon names a media type this version cannot draw.
+	ErrInvalidIconMedia = "E115"
 )
 
 // Semantic warning codes mirrored from TS validate.ts.

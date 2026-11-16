@@ -206,6 +206,8 @@ func (p *parser) statement(doc *ir.Doc) {
 		p.parseMeta(doc, t.Text)
 	case "import":
 		doc.Imports = append(doc.Imports, p.parseImport())
+	case "icon":
+		doc.Icons = append(doc.Icons, p.parseIcon())
 	case "flow":
 		doc.Flows = append(doc.Flows, p.parseFlow())
 	case "view":
@@ -273,6 +275,67 @@ func (p *parser) parseImport() ir.ImportStmt {
 	p.expect(TokIdent, "as")
 	path := p.expect(TokString, "").Value
 	return ir.ImportStmt{Alias: alias, Path: path, Comments: comments, Pos: tokPos(t0)}
+}
+
+// parseIcon reads a document icon declaration (§3.1): the payload's media
+// type and Base64 are syntax, not semantics — a declaration that cannot be
+// decoded can never be rendered, so it aborts the file like any other grammar
+// error instead of round-tripping as unusable data.
+func (p *parser) parseIcon() ir.IconDecl {
+	t0 := p.next()
+	comments := p.takeComments()
+	id := p.ident()
+	pos := tokPos(t0)
+	var label, mediaType, data *string
+	seen := map[string]bool{}
+	p.expect(TokPunct, "{")
+	for {
+		p.skipComments()
+		t := p.peek()
+		if t.Type == TokEOF {
+			p.fail(t0, ErrUnclosedBlock, "unclosed icon block")
+		}
+		if t.Type == TokPunct && t.Text == "}" {
+			p.next()
+			break
+		}
+		kw := p.expect(TokIdent, "")
+		switch kw.Text {
+		case "label":
+			p.once(seen, kw, "label")
+			v := p.str()
+			label = &v
+		case "media":
+			p.once(seen, kw, "media")
+			v := p.str()
+			mediaType = &v
+		case "data":
+			p.once(seen, kw, "data")
+			v := p.str()
+			data = &v
+		default:
+			p.fail(kw, ErrUnexpected, fmt.Sprintf("unknown icon line '%s'", kw.Text))
+		}
+	}
+	if mediaType == nil {
+		p.fail(t0, ErrUnexpected, "icon declaration requires a media line")
+	}
+	supported := false
+	for _, mt := range ir.IconMediaTypes {
+		if mt == *mediaType {
+			supported = true
+		}
+	}
+	if !supported {
+		p.fail(t0, ErrInvalidIconMedia, fmt.Sprintf("unsupported icon media type '%s'", *mediaType))
+	}
+	if data == nil {
+		p.fail(t0, ErrUnexpected, "icon declaration requires a data line")
+	}
+	if !ir.IsCanonicalBase64(*data) {
+		p.fail(t0, ErrInvalidIconData, "icon data must be canonical Base64 (standard alphabet, padding, no whitespace)")
+	}
+	return ir.IconDecl{ID: id, Label: label, MediaType: *mediaType, Data: *data, Comments: comments, Pos: pos}
 }
 
 func (p *parser) parseObject() ir.Obj {

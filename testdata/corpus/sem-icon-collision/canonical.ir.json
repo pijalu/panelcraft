@@ -1,0 +1,65 @@
+{
+  "irVersion": 9,
+  "formatVersion": "1.0",
+  "icons": [
+    {
+      "id": "cloud",
+      "mediaType": "image/svg+xml",
+      "data": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==",
+      "pos": {
+        "line": 3,
+        "col": 1
+      }
+    },
+    {
+      "id": "cloud2",
+      "mediaType": "image/svg+xml",
+      "data": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg==",
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    },
+    {
+      "id": "cloud2",
+      "mediaType": "image/svg+xml",
+      "data": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg==",
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    }
+  ],
+  "objects": [
+    {
+      "kind": "person",
+      "id": "p",
+      "name": "P",
+      "icon": "cloud",
+      "pos": {
+        "line": 16,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "s",
+      "name": "S",
+      "icon": "missing-handle",
+      "pos": {
+        "line": 19,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "p",
+      "to": "s",
+      "pos": {
+        "line": 23,
+        "col": 1
+      }
+    }
+  ]
+}

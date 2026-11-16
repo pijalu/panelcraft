@@ -3793,3 +3793,228 @@ marker .pc-arrow[fill='none'] {
     box-shadow: 0 0 24px rgb(0 0 0 / 35%);
   }
 }
+
+/* IR v9 project icons: field + picker + manager (FILE-FORMAT §3.1).
+   The picker is a real listbox over `--pc-*` tokens, so both themes and high
+   contrast get the same geometry; icons are 16px glyphs in one column. */
+.icon-field {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.icon-field > input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.icon-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  color: var(--pc-fg);
+  cursor: pointer;
+}
+
+.icon-thumb {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  fill: currentColor;
+  stroke: none;
+}
+
+.icon-thumb-broken,
+.icon-thumb-none {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+}
+
+.icon-picker {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(320px, 80vw);
+  max-height: 340px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
+}
+
+.icon-picker-search {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.icon-picker-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.icon-group {
+  padding: 6px 6px 2px;
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.icon-option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 4px 6px;
+  background: none;
+  border: 0;
+  border-radius: var(--pc-radius-sm);
+  color: var(--pc-fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.icon-option:hover,
+.icon-option:focus-visible {
+  background: var(--pc-canvas);
+}
+
+.icon-option[aria-selected='true'] {
+  outline: 1px solid var(--pc-accent);
+}
+
+.icon-option-label {
+  flex: 1 1 auto;
+  font-size: var(--pc-text-sm);
+}
+
+.icon-option-meta {
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+}
+
+.icon-empty {
+  padding: 8px 6px;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-muted);
+}
+
+.icon-picker-actions {
+  border-top: 1px solid var(--pc-border);
+  padding-top: 6px;
+  margin-top: 4px;
+}
+
+.icon-manager {
+  width: min(720px, 94vw);
+}
+
+.icon-manager-list {
+  max-height: 40vh;
+  overflow-y: auto;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.icon-manager-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--pc-border);
+}
+
+.icon-manager-name {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-manager-refs {
+  font-size: var(--pc-text-xs);
+}
+
+.icon-manager-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* A file picker that reads as a button: the native control truncates its own
+   label ("Choose File … N…en"), which looked like broken text next to the
+   handle. The input stays in the DOM (focusable through the label) but invisible. */
+.icon-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: var(--pc-text-xs);
+  color: var(--pc-fg);
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  cursor: pointer;
+}
+
+.icon-file:hover,
+.icon-file:focus-within {
+  border-color: var(--pc-accent);
+}
+
+.icon-file:focus-within {
+  outline: 2px solid var(--pc-accent);
+  outline-offset: 1px;
+}
+
+.icon-file input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.icon-manager-add {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  border-top: 1px solid var(--pc-border);
+  padding-top: 10px;
+}
+
+.icon-manager-add .field,
+.icon-manager-add textarea {
+  width: 100%;
+}
+
+.icon-manager-error {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-fg);
+  background: var(--pc-warn);
+  border-radius: var(--pc-radius-sm);
+}

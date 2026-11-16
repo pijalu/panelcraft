@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 8
+const IRVersion = 9
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -57,6 +57,18 @@ type ImportStmt struct {
 	Path     string   `json:"path"`
 	Comments []string `json:"comments,omitempty"`
 	Pos      Pos      `json:"pos"`
+}
+
+// IconDecl is a document-scoped icon declaration (IR v9, FILE-FORMAT §3.1):
+// an explicit media type plus a canonical Base64 payload, referenced by the
+// existing object `icon name` property. Label is the picker name and optional.
+type IconDecl struct {
+	ID        string   `json:"id"`
+	Label     *string  `json:"label,omitempty"`
+	MediaType string   `json:"mediaType"`
+	Data      string   `json:"data"`
+	Comments  []string `json:"comments,omitempty"`
+	Pos       Pos      `json:"pos"`
 }
 
 // ObjSize is explicit canvas geometry (`size <w> <h>`, F-13).
@@ -204,6 +216,7 @@ type Doc struct {
 	Theme         string       `json:"theme,omitempty"`
 	Comments      []string     `json:"comments,omitempty"`
 	Imports       []ImportStmt `json:"imports,omitempty"`
+	Icons         []IconDecl   `json:"icons,omitempty"`
 	Objects       []Obj        `json:"objects,omitempty"`
 	Links         []Link       `json:"links,omitempty"`
 	Flows         []Flow       `json:"flows,omitempty"`

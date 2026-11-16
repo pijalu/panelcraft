@@ -4,11 +4,12 @@
 // semantic problems defer to engine/model validation (P-codes).
 import { lex, type ArrowInfo, type Token } from './lexer';
 import { E, diag, type Diagnostic } from './diagnostics';
+import { ICON_MEDIA_TYPES, decodeIconBase64, isCanonicalBase64 } from './iconSvg';
 import {
   FORMAT_VERSION, IR_VERSION,
   type Branch, type CameraSpec, type Comments, type Doc, type Flow, type FlowStep,
-  type ImportStmt, type Kind, type Link, type Obj, type Pos, type StyleBlock,
-  type StyleStmt, type View, type ViewLine,
+  type IconDecl, type ImportStmt, type Kind, type Link, type Obj, type Pos,
+  type StyleBlock, type StyleStmt, type View, type ViewLine,
 } from '../model/types';
 
 export interface ParseResult {
@@ -112,7 +113,7 @@ class Parser {
     const doc: Doc = {
       irVersion: IR_VERSION,
       formatVersion: ver.text || FORMAT_VERSION,
-      imports: [], objects: [], links: [], flows: [], views: [], styles: [],
+      imports: [], icons: [], objects: [], links: [], flows: [], views: [], styles: [],
     };
     // Pre-magic comments are doc-level (D-M1-2): the magic line is canonical first.
     const lead = this.takeComments();
@@ -176,6 +177,7 @@ class Parser {
           this.parseMeta(d, kw);
         };
       case 'import': return (d) => d.imports.push(this.parseImport());
+      case 'icon': return (d) => d.icons.push(this.parseIcon());
       case 'flow': return (d) => d.flows.push(this.parseFlow());
       case 'view': return (d) => d.views.push(this.parseView());
       case 'style': return (d) => d.styles.push(this.parseStyleStmt());
@@ -210,6 +212,72 @@ class Parser {
     const path = this.expect('string').value ?? '';
     const pos = tokPos(t0);
     return comments.length ? { alias, path, comments, pos } : { alias, path, pos };
+  }
+
+  /**
+   * Document icon declaration (§3.1): `icon <id> { label "…" media "…" data "…" }`.
+   * Media type and payload are required and checked here, because a declaration
+   * that cannot be decoded is a syntax problem, not a semantic one: it can never
+   * be rendered, and the canonical printer would emit an unusable file.
+   */
+  private parseIcon(): IconDecl {
+    const t0 = this.next();
+    const comments = this.takeComments();
+    const id = this.ident();
+    const block = this.iconBlock(t0);
+    const mediaType = this.iconMedia(t0, block.mediaType);
+    const data = block.data;
+    if (data === undefined) this.fail(t0, E.unexpected, 'icon declaration requires a data line');
+    if (!isCanonicalBase64(data) || decodeIconBase64(data) === null) {
+      this.fail(t0, E.invalidIconData, 'icon data must be canonical Base64 (standard alphabet, padding, no whitespace)');
+    }
+    const ic: IconDecl = { id, mediaType, data, pos: tokPos(t0) };
+    if (block.label !== undefined) ic.label = block.label;
+    if (comments.length > 0) ic.comments = comments;
+    return ic;
+  }
+
+  /** Body of an icon block (order-free, each line at most once). */
+  private iconBlock(t0: Token): { label?: string; mediaType?: string; data?: string } {
+    const block: { label?: string; mediaType?: string; data?: string } = {};
+    const seen = new Set<string>();
+    this.expect('punct', '{');
+    for (;;) {
+      this.skipComments();
+      const t = this.peek();
+      if (t.type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed icon block');
+      if (t.type === 'punct' && t.text === '}') {
+        this.next();
+        return block;
+      }
+      this.iconLine(this.expect('ident'), seen, block);
+    }
+  }
+
+  /** One `label`/`media`/`data` line of an icon block. */
+  private iconLine(
+    kw: Token,
+    seen: Set<string>,
+    block: { label?: string; mediaType?: string; data?: string },
+  ): void {
+    const key = kw.text;
+    if (key !== 'label' && key !== 'media' && key !== 'data') {
+      this.fail(kw, E.unexpected, `unknown icon line '${key}'`);
+    }
+    this.once(seen, kw, key);
+    const value = this.str();
+    if (key === 'label') block.label = value;
+    else if (key === 'media') block.mediaType = value;
+    else block.data = value;
+  }
+
+  /** Required media line: this version draws SVG only, so anything else aborts. */
+  private iconMedia(t0: Token, declared: string | undefined): string {
+    if (declared === undefined) this.fail(t0, E.unexpected, 'icon declaration requires a media line');
+    if (!ICON_MEDIA_TYPES.includes(declared)) {
+      this.fail(t0, E.invalidIconMedia, `unsupported icon media type '${declared}'`);
+    }
+    return declared;
   }
 
   private parseObject(): Obj {

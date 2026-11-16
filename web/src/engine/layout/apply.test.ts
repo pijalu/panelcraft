@@ -13,6 +13,7 @@ function doc(views: Doc['views']): Doc {
   return {
     irVersion: 1,
     formatVersion: '1.0',
+    icons: [],
     imports: [],
     objects: [obj('api'), obj('db'), obj('web')],
     links: [],

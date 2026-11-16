@@ -1,0 +1,100 @@
+{
+  "irVersion": 9,
+  "formatVersion": "1.0",
+  "title": "Project icons",
+  "level": "container",
+  "icons": [
+    {
+      "id": "brand",
+      "label": "Company mark",
+      "mediaType": "image/svg+xml",
+      "data": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==",
+      "comments": [
+        "Project icons travel inside the file: explicit media type + canonical Base64."
+      ],
+      "pos": {
+        "line": 6,
+        "col": 1
+      }
+    },
+    {
+      "id": "badge",
+      "mediaType": "image/svg+xml",
+      "data": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg==",
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    }
+  ],
+  "objects": [
+    {
+      "kind": "person",
+      "id": "shopper",
+      "name": "Shopper",
+      "pos": {
+        "line": 16,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "shop",
+      "name": "Webshop",
+      "icon": "brand",
+      "pos": {
+        "line": 17,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "cdn",
+      "name": "Edge cache",
+      "icon": "badge",
+      "pos": {
+        "line": 20,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "legacy",
+      "name": "Built-in icon still works",
+      "icon": "database",
+      "pos": {
+        "line": 23,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "shopper",
+      "to": "shop",
+      "label": "browse",
+      "pos": {
+        "line": 27,
+        "col": 1
+      }
+    },
+    {
+      "from": "shop",
+      "to": "cdn",
+      "label": "assets",
+      "pos": {
+        "line": 28,
+        "col": 1
+      }
+    },
+    {
+      "from": "cdn",
+      "to": "legacy",
+      "label": "miss",
+      "pos": {
+        "line": 29,
+        "col": 1
+      }
+    }
+  ]
+}

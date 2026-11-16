@@ -117,7 +117,7 @@ play mode, exports PNG/SVG for docs.
 * **FR-C4** Objects: select, multi-select (rubber band, shift-click), drag, resize
   (groups/boundaries), rotate *not* supported (C4 shapes are axis-aligned).
 * **FR-C5** Inline rename (double-click), description tooltip, icon per object
-  (built-in icon set, M5).
+  (built-in icon set plus document-declared project icons, M5 / FILE-FORMAT §3.1).
 * **FR-C6** Properties panel: name, description, technology, tags (multi),
   custom key-value properties, style overrides (fill, border, text color, icon).
 * **FR-C7** Connections: drag from port/edge halo to target; typed links

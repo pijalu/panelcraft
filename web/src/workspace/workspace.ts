@@ -24,6 +24,7 @@ import { printDoc } from '../engine/format/printer';
 import { DEFAULT_SHAPE } from '../ui/CanvasController';
 import { applyCanvasState } from '../engine/model/merge';
 import { isImportRef, resolveImportGhosts, type ImportError } from '../engine/model/imports';
+
 import {
   IR_VERSION, FORMAT_VERSION,
   type Doc, type Kind, type Link, type Obj, type StyleBlock,
@@ -167,6 +168,7 @@ export function stateToDoc(state: CanvasState): Doc {
     formatVersion: FORMAT_VERSION,
     objects,
     links,
+    icons: [],
     imports: [],
     flows: [],
     views: [],

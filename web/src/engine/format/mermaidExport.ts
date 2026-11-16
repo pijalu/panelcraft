@@ -160,6 +160,11 @@ const linkDrops = (doc: Doc): string[] => {
   return d;
 };
 
+/** Any icon at all — built-in selection, style override, or a declaration. */
+const usesIcons = (doc: Doc): boolean =>
+  doc.icons.length > 0 ||
+  doc.objects.some((o) => o.icon !== undefined || o.style?.icon !== undefined);
+
 const bodyDrops = (doc: Doc): string[] => {
   const d: string[] = [];
   if (doc.flows.length > 0) d.push('flows');
@@ -169,7 +174,9 @@ const bodyDrops = (doc: Doc): string[] => {
   if (doc.objects.some((o) => o.attributes?.length) || doc.links.some((l) => l.attributes?.length)) {
     d.push('unknown attributes');
   }
-  if (doc.objects.some((o) => o.icon)) d.push('icons');
+  // Icons are a declared drop whether they are built-in or declared in the file:
+  // mermaid has no equivalent, and a project icon would otherwise vanish silently.
+  if (usesIcons(doc)) d.push('icons');
   if (doc.objects.some((o) => o.z !== undefined)) d.push('object stacking order');
   if (doc.objects.some((o) => o.kind === 'note' && o.attach)) d.push('note anchors (detach)');
   if (doc.objects.some((o) => o.style && styleExtras(o.style)) || doc.styles.some((s) => styleExtras(s.style))) {

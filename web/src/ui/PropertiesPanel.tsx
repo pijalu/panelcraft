@@ -14,6 +14,8 @@ import { CollapseButton } from './PanelChrome';
 import { LINE_OPTIONS, MARKER_OPTIONS, ROUTE_OPTIONS, WIDTH_OPTIONS } from './connectorOptions';
 import { VisualPicker } from './VisualPicker';
 import { CloseIcon, DisclosureClosedIcon, DisclosureOpenIcon } from './icons';
+import { IconField } from './IconPicker';
+import type { IconDecl } from '../engine/model/types';
 import { anchorToChoice, choiceToAnchor, ANCHOR_SIDES, type AnchorSide } from '../engine/render/anchorControls';
 import { s } from './strings';
 
@@ -38,6 +40,10 @@ export interface PropertiesPanelProps {
   onFit?: () => void;
   /** F-10: collapse this panel into its rail. */
   onCollapse?: () => void;
+  /** IR v9: icons declared in this file (picker source). */
+  projectIcons?: IconDecl[];
+  /** IR v9: open the project-icon manager. */
+  onManageIcons?: () => void;
   /** F-11: expanded state per section (persisted with the layout). */
   sections?: Record<string, boolean>;
   onToggleSection?: (section: string) => void;
@@ -145,7 +151,12 @@ function PropertiesEditor(props: { obj: DiagramObject; onChange: ObjectChange })
 }
 
 /** Style override controls (F-11): fill/stroke/text colours + icon name. */
-function StyleControls(props: { obj: DiagramObject; onChange: ObjectChange }) {
+function StyleControls(props: {
+  obj: DiagramObject;
+  onChange: ObjectChange;
+  projectIcons?: IconDecl[];
+  onManageIcons?: () => void;
+}) {
   const style = props.obj.style ?? {};
   const set = (patch: Partial<NonNullable<DiagramObject['style']>>): void => {
     props.onChange(props.obj.id, { style: { ...style, ...patch } });
@@ -174,14 +185,22 @@ function StyleControls(props: { obj: DiagramObject; onChange: ObjectChange }) {
         </Field>
       ))}
       <Field label={s("Icon")}>
-        <input
-          data-testid="prop-style-icon"
-          value={style.icon ?? ''}
-          placeholder={s("(none)")}
-          onInput={(e) => {
-            const v = (e.target as HTMLInputElement).value.trim();
-            set({ icon: v === '' ? undefined : v });
+        {/* IR v9: the field shows the icon that is actually drawn (style override
+            or the object's own `icon name`) and writes back to the object, so the
+            picker and the canvas can never disagree; a legacy `style { icon … }`
+            override is cleared in the same patch instead of being kept as a
+            second, invisible source of truth. */}
+        <IconField
+          value={style.icon ?? props.obj.icon}
+          project={props.projectIcons ?? []}
+          onChange={(icon) => {
+            if (style.icon !== undefined) {
+              props.onChange(props.obj.id, { style: { ...style, icon: undefined }, icon });
+              return;
+            }
+            props.onChange(props.obj.id, { icon });
           }}
+          onManage={() => props.onManageIcons?.()}
         />
       </Field>
     </>
@@ -197,6 +216,8 @@ function ObjectFields(props: {
   onCollapse?: () => void;
   sections: Record<string, boolean>;
   onToggleSection?: (s: string) => void;
+  projectIcons?: IconDecl[];
+  onManageIcons?: () => void;
 }) {
   const { obj, onChange, sections, onToggleSection } = props;
   const open = (id: string): boolean => sections[id] !== false;
@@ -253,7 +274,12 @@ function ObjectFields(props: {
         <PropertiesEditor obj={obj} onChange={onChange} />
       </Section>
       <Section id="style" title={s("Style")} open={open('style')} onToggle={onToggleSection}>
-        <StyleControls obj={obj} onChange={onChange} />
+        <StyleControls
+          obj={obj}
+          onChange={onChange}
+          projectIcons={props.projectIcons}
+          onManageIcons={props.onManageIcons}
+        />
       </Section>
       <Section id="advanced" title={s("Advanced")} open={open('advanced')} onToggle={onToggleSection}>
         <Field label={s("Stacking order")}>
@@ -591,6 +617,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         onCollapse={onCollapse}
         sections={sections}
         onToggleSection={props.onToggleSection}
+        projectIcons={props.projectIcons}
+        onManageIcons={props.onManageIcons}
       />
     );
   }

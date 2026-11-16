@@ -11,7 +11,7 @@
 // - links: path d + label repositioned in place
 // - removals/order changes → remove nodes / re-append in z order
 
-import { shapeGlyphs, type ElSpec, type SceneObject } from './shapes';
+import { iconStructuralKey, shapeGlyphs, type ElSpec, type SceneObject } from './shapes';
 import type { Polyline, RouteMode } from './router';
 import { routeToPath } from './routePath';
 import {
@@ -110,6 +110,8 @@ export function structuralKey(o: SceneObject): string {
   return [
     o.kind, o.w, o.h, o.name ?? '', o.dashed ? 1 : 0,
     o.labelLines?.join('\u0001') ?? '', styleKey, o.ghost ? 'ghost' : '',
+    // the drawn icon is part of the shape: changing it must rebuild the node
+    iconStructuralKey(o),
   ].join('|');
 }
 

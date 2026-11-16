@@ -1,0 +1,10 @@
+pcd 1.0
+
+icon evil {
+  media "image/svg+xml"
+  data "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxzY3JpcHQ+YWxlcnQoMSk8L3NjcmlwdD48cGF0aCBkPSJNMCAwaDF2MUgweiIgb25sb2FkPSJ4KCkiIHhsaW5rOmhyZWY9Imh0dHA6Ly9ldmlsLmV4YW1wbGUveCIvPjwvc3ZnPg=="
+}
+
+person p "P" {
+  icon evil
+}

@@ -123,6 +123,7 @@ const genDoc = (rng: Rng): Doc => {
     direction: optOf(rng, ['LR', 'TB', 'RL', 'BT'] as const),
     theme: optOf(rng, ['dark']),
     comments: hasTitle && rng.bool(0.4) ? ['doc note', 'second'] : undefined,
+    icons: [],
     imports: rng.bool(0.4) ? [genImport(rng)] : [],
     objects: uniq.map((id) => genObject(rng, id)),
     links: uniq.length > 1 ? [genLink(rng, uniq)] : [],

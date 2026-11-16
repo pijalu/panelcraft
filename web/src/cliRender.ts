@@ -6,6 +6,7 @@ import { dagreLayoutGeometry } from './engine/layout/dagre';
 import { fitRect, unionRects } from './engine/render/viewport';
 import { CanvasController, DEFAULT_SHAPE } from './ui/CanvasController';
 import { docToState } from './workspace/workspace';
+import { iconAssetsOf } from './engine/render/iconAssets';
 import { exportSvg } from './workspace/io';
 import { effectiveView, fadeSets, findView } from './ui/views/viewDoc';
 
@@ -100,6 +101,7 @@ function renderDiagramInTheme(source: string, options: CliRenderOptions): CliRen
   document.body.appendChild(root);
 
   const ctrl = new CanvasController(svg);
+  ctrl.setIconAssets(iconAssetsOf(doc)); // IR v9: document icons render in exports
   try {
     ctrl.loadState(docToState(doc, options.view));
     const ev = effectiveView(doc, options.view);

@@ -5,9 +5,10 @@
 
 import type { Kind } from '../model/types';
 import { ICON_BOX, iconGlyphs, isIcon } from './icons';
+import { iconDataUri, type IconAsset } from './iconAssets';
 
 export interface ElSpec {
-  tag: 'rect' | 'path' | 'circle' | 'text' | 'line';
+  tag: 'rect' | 'path' | 'circle' | 'text' | 'line' | 'image';
   attrs: Record<string, number | string>;
   text?: string;
 }
@@ -26,6 +27,8 @@ export interface SceneObject {
   dashed?: boolean;
   /** inline icon name (M5-WP7, engine/render/icons.ts) */
   icon?: string;
+  /** Project icon payload for that name, when the document declares one (IR v9). */
+  iconAsset?: IconAsset;
   /** Pre-wrapped label lines; auto-fit uses two, explicit narrow shapes may use more. */
   labelLines?: string[];
   /** Style overrides from the property panel (F-11). */
@@ -127,11 +130,14 @@ function labelTopFor(icon: ContentBox['icon'], inline: boolean, glyphTop: number
   return stacked ? Math.max(icon.y + icon.size + ICON_LABEL_GAP, CONTENT_PAD.top + 6) : CONTENT_PAD.top + 6;
 }
 
-/** The icon name only counts when the set can draw it — otherwise nothing is
- * rendered, so nothing may reserve space (an invisible band would push the
- * label off centre). */
-const drawableIcon = (obj: SceneObject): string | undefined =>
-  obj.icon !== undefined && isIcon(obj.icon) ? obj.icon : undefined;
+/** The icon name only counts when something can draw it — a built-in glyph or a
+ * document icon the loader accepted — otherwise nothing is rendered, so nothing
+ * may reserve space (an invisible band would push the label off centre). */
+const drawableIcon = (obj: SceneObject): string | undefined => {
+  if (obj.icon === undefined) return undefined;
+  if (obj.iconAsset !== undefined) return obj.icon;
+  return isIcon(obj.icon) ? obj.icon : undefined;
+};
 
 /** Icon placement plus the bands it leaves below it. */
 function verticalBands(obj: SceneObject): Bands {
@@ -375,10 +381,32 @@ function ghostBadge(obj: SceneObject): ElSpec {
   };
 }
 
+/**
+ * Identity of the icon an object draws, for the renderer's structural key: the
+ * *name* and, for a project icon, the payload it resolves to. Without this an
+ * icon change took the move-only patch path and the old glyph stayed on screen.
+ */
+export const iconStructuralKey = (obj: SceneObject): string =>
+  `${obj.icon ?? ''}#${obj.iconAsset?.key ?? ''}`;
+
 /** Keep the icon in the shared top-center band (UX08-WP07). */
 function withIcon(obj: SceneObject, glyphs: ElSpec[]): ElSpec[] {
   const box = contentBox(obj);
   if (box.icon === null) return glyphs;
+  // A project icon is embedded as a data URI of its sanitized source: local
+  // bytes (never a fetch), and the browser draws an SVG served as an image in
+  // static mode, where scripts and external references cannot run anyway.
+  if (obj.iconAsset !== undefined) {
+    const { x, y, size } = box.icon;
+    return glyphs.concat([{
+      tag: 'image',
+      attrs: {
+        x, y, width: size, height: size, href: iconDataUri(obj.iconAsset),
+        class: 'pc-glyph-icon pc-glyph-project',
+        preserveAspectRatio: 'xMidYMid meet',
+      },
+    }]);
+  }
   const specs = iconGlyphs(obj.icon ?? '', box.icon.x, box.icon.y, box.icon.size) as unknown as ElSpec[];
   return glyphs.concat(specs);
 }

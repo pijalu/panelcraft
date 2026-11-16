@@ -1,0 +1,23 @@
+pcd 1.0
+
+icon cloud {
+  media "image/svg+xml"
+  data "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg=="
+}
+icon cloud2 {
+  media "image/svg+xml"
+  data "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg=="
+}
+icon cloud2 {
+  media "image/svg+xml"
+  data "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg=="
+}
+
+person p "P" {
+  icon cloud
+}
+
+system s "S" {
+  icon missing-handle
+}
+p -> s

@@ -3,7 +3,7 @@
 // Normative shape: docs/FILE-FORMAT.md §7 + docs/milestones/M1.md decisions.
 // Versioning rule: `irVersion` (int) bumps on any schema change; forward-only.
 
-export const IR_VERSION = 8;
+export const IR_VERSION = 9;
 export const FORMAT_VERSION = '1.0';
 
 /** 1-based source position attached to every statement (FILE-FORMAT §10). */
@@ -33,6 +33,26 @@ export type Theme = 'light' | 'dark';
 export interface ImportStmt {
   alias: string;
   path: string;
+  comments?: Comments;
+  pos: Pos;
+}
+
+/**
+ * Document-scoped icon declaration (IR v9, `icon <id> { … }`): the portable
+ * way to carry a project icon inside the file itself. The payload is canonical
+ * Base64 of the *sanitized* asset, and the media type is explicit so a reader
+ * never has to guess. Declared handles are referenced by the existing object
+ * `icon name` property, which resolves document icons first and falls back to
+ * the built-in set (docs/FILE-FORMAT.md §3.1).
+ */
+export interface IconDecl {
+  id: string;
+  /** Human label for the picker; absent = the handle is shown as-is. */
+  label?: string;
+  /** Explicit media type. v1 accepts `image/svg+xml` only (FILE-FORMAT §3.1). */
+  mediaType: string;
+  /** Canonical Base64 (standard alphabet, padding, no whitespace). */
+  data: string;
   comments?: Comments;
   pos: Pos;
 }
@@ -218,6 +238,8 @@ export interface Doc {
   /** Comments preceding the first meta directive (canonical: after magic line). */
   comments?: Comments;
   imports: ImportStmt[];
+  /** Document icon declarations in document order (IR v9). */
+  icons: IconDecl[];
   objects: Obj[];
   links: Link[];
   flows: Flow[];

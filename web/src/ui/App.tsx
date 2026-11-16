@@ -26,23 +26,23 @@ import { useAppTheme } from './useAppTheme';
 import { useCanvasGrid } from './useCanvasGrid';
 import { useHistory } from './useHistory';
 import { useViewSession } from './useViewSession';
-import type { HoverInfo } from './hoverInfo';
+import { useShellUi } from './useShellUi';
 import { layoutStyle, PANELS, type DockId, type PanelId } from './uiLayout';
 import { CollapseButton, PanelRail } from './PanelChrome';
 import { CanvasMenu } from './CanvasMenu';
 import { MiniMap } from './MiniMap';
 import { s } from './strings';
+import type { IconDecl } from '../engine/model/types';
+import { useDocumentPipeline } from './useDocumentPipeline';
 import { ShellBanners } from './ShellBanners';
 import { DropZone, HostedPanel } from './WorkspacePanels';
 import { useCanvasRevealPort } from './useCanvasReveal';
 import type { IllustrationId } from '../engine/anim/illustrations';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
-import { useCodeSync } from './useCodeSync';
 import { useShellLifecycle } from './useShellLifecycle';
 import type { useDivergedClose } from './useDivergedClose';
 import { useFlowStage } from './useFlowStage';
 import { useDrawer } from './useDrawer';
-import { useAppCanvas } from './useAppCanvas';
 import { useShellDialogs } from './useShellDialogs';
 
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
@@ -440,6 +440,8 @@ function propsSlot(p: {
   activePath: string | null;
   viewName: string | undefined;
   linkLabelRef: { current: HTMLInputElement | null };
+  projectIcons?: IconDecl[];
+  onManageIcons?: () => void;
 }): ComponentChildren {
   const ctrl = p.canvas.ctrlRef.current;
   return (
@@ -462,6 +464,8 @@ function propsSlot(p: {
       ctrl={ctrl}
       sections={p.ui.layout.sections}
       onToggleSection={p.ui.toggleSection}
+      projectIcons={p.projectIcons}
+      onManageIcons={p.onManageIcons}
     />
   );
 }
@@ -518,6 +522,9 @@ function AppBody(p: {
   revealRef: { current: ((id: string) => void) | null };
   /** UX08-WP08: link Label field, focused when a link is inspected. */
   linkLabelRef: { current: HTMLInputElement | null };
+  /** IR v9: icons declared in the open file, and the manager trigger. */
+  projectIcons: IconDecl[];
+  onManageIcons: () => void;
 }) {
   const { ws, canvas, code, ui, player, activePath, viewName } = p;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -559,6 +566,8 @@ function AppBody(p: {
       activePath,
       viewName,
       linkLabelRef: p.linkLabelRef,
+      projectIcons: p.projectIcons,
+      onManageIcons: p.onManageIcons,
     }),
   };
   const docked = (dock: DockId) => dockedPanels(dock, ui, content);
@@ -661,37 +670,23 @@ export function App() {
   const ws = useWorkspace();
   const activePath = ws.ready ? ws.manager.activePath : null;
   const view = useViewSession(activePath);
-  const [renaming, setRenaming] = useState<string | null>(null); // F-15 inline rename
-  const [hover, setHover] = useState<HoverInfo | null>(null);
+  const shell = useShellUi();
+  const { renaming, setRenaming, hover, setHover, illustration, setIllustration } = shell;
+  const { flowSelection, setFlowSelection, historyOpen, setHistoryOpen } = shell;
   const grid = useCanvasGrid(ws.manager, ws.ready, ws.version);
   const ui = useUiLayout(ws.manager, ws.ready, ws.version);
-  const { canvas, inspect } = useAppCanvas({
-    ws,
-    view,
-    ui,
-    grid,
-    onRename: (id) => setRenaming(id),
+  // controller → code-sync → project icons: one pipeline, one file writer
+  const { canvas, inspect, code, icons } = useDocumentPipeline({
+    ws, view, ui, grid, activePath,
+    onRename: setRenaming, // inline rename request from the canvas
     onGhostOpen: (path) => ws.manager.openFile(path), // F-20
-    onHover: (info) => setHover(info), // F-25
+    onHover: setHover, // hover card content
   });
   const { manager } = ws;
   const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = useShellDialogs();
-  const code = useCodeSync({
-    manager: ws.manager,
-    ready: ws.ready,
-    activePath,
-    version: ws.version,
-    ctrlRef: canvas.ctrlRef,
-    snap: canvas.snap,
-    viewRef: view.viewNameRef,
-  });
-  view.commitDocRef.current = code.commitDoc;
-  const [illustration, setIllustration] = useState<IllustrationId | 'auto'>('auto');
-  const [flowSelection, setFlowSelection] = useState<FlowSelection | null>(null);
   const player = useFlowStage({ manager, canvas, activePath, illustration });
   const appTheme = useAppTheme(manager, ws.ready, ws.version);
   const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null, setFlash);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
   const sel = selections(canvas.snap);
   const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
@@ -746,6 +741,8 @@ export function App() {
         onFlowSelection={setFlowSelection}
         revealRef={revealRef}
         linkLabelRef={inspect.linkLabelRef}
+        projectIcons={icons.projectIcons}
+        onManageIcons={icons.openManager}
       />
       <AppOverlays
         hover={hover}
@@ -772,6 +769,10 @@ export function App() {
         {...{ historyOpen, history, onHistoryClose: () => setHistoryOpen(false) }}
         snapsOpen={snapsOpen}
         onSnapsClose={() => setSnapsOpen(false)}
+        iconsOpen={icons.managerOpen}
+        iconDoc={icons.doc}
+        onIconsClose={icons.closeManager}
+        onIconsCommit={icons.commit}
       />
     </div>
   );

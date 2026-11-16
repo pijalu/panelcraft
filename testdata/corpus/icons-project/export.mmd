@@ -1,0 +1,8 @@
+flowchart TD
+  shopper((Shopper))
+  shop[Webshop]
+  cdn[Edge cache]
+  legacy[Built-in icon still works]
+  shopper -->|browse| shop
+  shop -->|assets| cdn
+  cdn -->|miss| legacy

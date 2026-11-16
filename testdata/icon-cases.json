@@ -1,0 +1,229 @@
+{
+  "version": 1,
+  "builtinIcons": [
+    "alert",
+    "api",
+    "backup",
+    "browser",
+    "cache",
+    "cdn",
+    "certificate",
+    "chart",
+    "clock",
+    "cloud",
+    "cluster",
+    "code",
+    "container",
+    "database",
+    "deploy",
+    "document",
+    "external",
+    "folder",
+    "function",
+    "gateway",
+    "gear",
+    "git",
+    "group",
+    "key",
+    "loadbalancer",
+    "lock",
+    "logs",
+    "mail",
+    "mobile",
+    "monitor",
+    "network",
+    "package",
+    "proxy",
+    "queue",
+    "search",
+    "server",
+    "shield",
+    "storage",
+    "stream",
+    "terminal",
+    "user",
+    "users",
+    "workflow"
+  ],
+  "base64": [
+    {
+      "value": "",
+      "canonical": false
+    },
+    {
+      "value": "AAAA",
+      "canonical": true
+    },
+    {
+      "value": "AAA",
+      "canonical": false
+    },
+    {
+      "value": "not base64!",
+      "canonical": false
+    },
+    {
+      "value": "AAA=",
+      "canonical": true
+    },
+    {
+      "value": "AA==",
+      "canonical": true
+    },
+    {
+      "value": "AB==",
+      "canonical": true
+    },
+    {
+      "value": "PGEvPg==",
+      "canonical": true
+    },
+    {
+      "value": "PGEvPg",
+      "canonical": false
+    },
+    {
+      "value": "PGEv Pg==",
+      "canonical": false
+    },
+    {
+      "value": "####",
+      "canonical": false
+    }
+  ],
+  "cases": [
+    {
+      "name": "plain-path",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path d=\"M4 4h16v16H4z\"/></svg>",
+      "issues": []
+    },
+    {
+      "name": "groups-and-gradients",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><defs><linearGradient id=\"g\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"0\" x2=\"24\" y2=\"24\"><stop offset=\"0\" stop-color=\"#0af\" stop-opacity=\"1\"/></linearGradient></defs><g transform=\"translate(1 1)\" fill=\"url(#g)\"><rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" rx=\"2\"/></g></svg>",
+      "issues": [
+        "unsafe-css"
+      ]
+    },
+    {
+      "name": "text-and-title",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><title>API</title><text x=\"2\" y=\"18\" font-size=\"12\" text-anchor=\"start\">A</text></svg>",
+      "issues": []
+    },
+    {
+      "name": "script-element",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>",
+      "issues": [
+        "script"
+      ]
+    },
+    {
+      "name": "event-handler",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" onload=\"alert(1)\"><path d=\"M0 0h1v1z\"/></svg>",
+      "issues": [
+        "event-handler"
+      ]
+    },
+    {
+      "name": "external-href",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M0 0h1v1z\" xlink:href=\"https://example.com/x.svg\"/></svg>",
+      "issues": []
+    },
+    {
+      "name": "fragment-href-ok",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><defs><path id=\"p\" d=\"M0 0h1v1z\"/></defs><use href=\"#p\"/></svg>",
+      "issues": []
+    },
+    {
+      "name": "foreign-object",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><foreignObject><b>x</b></foreignObject></svg>",
+      "issues": [
+        "foreign-content",
+        "unknown-element"
+      ]
+    },
+    {
+      "name": "css-url",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect style=\"fill:url(http://x/y)\" width=\"1\" height=\"1\"/></svg>",
+      "issues": [
+        "unsafe-css",
+        "unknown-attribute"
+      ]
+    },
+    {
+      "name": "javascript-url",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><a href=\"javascript:alert(1)\"><rect width=\"1\" height=\"1\"/></a></svg>",
+      "issues": [
+        "external-ref",
+        "javascript-url",
+        "unknown-element"
+      ]
+    },
+    {
+      "name": "style-element",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><style>rect{fill:red}</style><rect width=\"1\" height=\"1\"/></svg>",
+      "issues": [
+        "unknown-element"
+      ]
+    },
+    {
+      "name": "animate",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"1\" height=\"1\"><animate attributeName=\"x\" to=\"5\"/></rect></svg>",
+      "issues": [
+        "unknown-element",
+        "unknown-attribute"
+      ]
+    },
+    {
+      "name": "image-embed",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><image href=\"data:image/png;base64,AAAA\"/></svg>",
+      "issues": [
+        "external-ref",
+        "unknown-element"
+      ]
+    },
+    {
+      "name": "doctype",
+      "svg": "<!DOCTYPE svg><svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"1\" height=\"1\"/></svg>",
+      "issues": [
+        "malformed"
+      ]
+    },
+    {
+      "name": "entity-trick",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><text>&#106;avascript:</text></svg>",
+      "issues": []
+    },
+    {
+      "name": "unknown-attribute",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"1\" height=\"1\" onclick=\"x()\"/></svg>",
+      "issues": [
+        "event-handler"
+      ]
+    },
+    {
+      "name": "bare-markup",
+      "svg": "<div>not an icon</div>",
+      "issues": [
+        "malformed",
+        "unknown-element"
+      ]
+    },
+    {
+      "name": "empty",
+      "svg": "",
+      "issues": [
+        "malformed"
+      ]
+    },
+    {
+      "name": "data-attrs-and-aria-ok",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Logo\" data-name=\"x\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\" fill=\"currentColor\"/></svg>",
+      "issues": []
+    },
+    {
+      "name": "comment-inside-ok",
+      "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><!-- drawn in repo --><path d=\"M0 0h2v2z\"/></svg>",
+      "issues": []
+    }
+  ]
+}

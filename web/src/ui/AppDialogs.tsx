@@ -8,6 +8,8 @@ import type { HistoryHandle } from './useHistory';
 import { ClearDataDialog } from './ClearDataDialog';
 import { DivergedDialog } from './DivergedDialog';
 import { SnapshotsDialog } from './SnapshotsDialog';
+import { IconManagerDialog } from './IconPicker';
+import type { Doc } from '../engine/model/types';
 import { SearchDialog } from './search/SearchDialog';
 import { useQuickSearch } from './useQuickSearch';
 import { useSnapshotStore } from './useSnapshotStore';
@@ -30,6 +32,11 @@ export function AppDialogs(props: {
   onFlashDismiss(): void;
   snapsOpen: boolean;
   onSnapsClose(): void;
+  /** IR v9: project-icon manager (add/rename/remove with usage checks). */
+  iconsOpen: boolean;
+  iconDoc: Doc | null;
+  onIconsClose(): void;
+  onIconsCommit(next: Doc, label: string): void;
   /** F-24: unified history affordance. */
   historyOpen: boolean;
   history: HistoryHandle;
@@ -50,6 +57,13 @@ export function AppDialogs(props: {
         />
       )}
       {props.clearOpen && <ClearDataDialog onConfirm={props.clearData} onCancel={props.onClearCancel} />}
+      {props.iconsOpen && props.iconDoc !== null && (
+        <IconManagerDialog
+          doc={props.iconDoc}
+          onCommit={props.onIconsCommit}
+          onClose={props.onIconsClose}
+        />
+      )}
       {props.diverged.prompt !== null && (
         <DivergedDialog
           path={props.diverged.prompt.path}

@@ -11,6 +11,12 @@ import {
   type Scene,
   type SceneLink,
 } from '../engine/render/scenegraph';
+import {
+  assetFor,
+  sameIconAssets,
+  type IconAsset,
+  type IconAssets,
+} from '../engine/render/iconAssets';
 import { routeLink, invalidWaypoints, crossingEntities, portPoint, type Side, type Polyline } from '../engine/render/router';
 import {
   invert,
@@ -76,7 +82,7 @@ import {
   type ResizeHandle,
 } from '../engine/render/overlay';
 import { ValueChange, UndoStack, type CoalescableCommand } from '../workspace/undo';
-import type { Kind } from '../engine/model/types';
+import type { Doc, Kind } from '../engine/model/types';
 import { s, type StringKey } from './strings';
 
 export interface DiagramObject {
@@ -428,6 +434,31 @@ function resizeTarget(e: Event): { id: string; handle: ResizeHandle } | null {
   return id && handle ? { id, handle } : null;
 }
 
+/**
+ * IR v9: a document-level edit that is not canvas state (icon declarations, and
+ * any future non-object statement). The controller owns the history entry only —
+ * `write` is the caller's normal persist path, so undo and redo replay exactly
+ * the same write and the code view can never drift from the file.
+ */
+class DocChange implements CoalescableCommand {
+  readonly coalesceKey = undefined;
+  constructor(
+    private readonly write: (doc: Doc) => void,
+    private readonly before: Doc,
+    private readonly after: Doc,
+    readonly label: string,
+  ) {}
+  undo(): void {
+    this.write(this.before);
+  }
+  redo(): void {
+    this.write(this.after);
+  }
+  coalesce(): CoalescableCommand | null {
+    return null;
+  }
+}
+
 export class CanvasController {
   readonly undo: UndoStack;
   private readonly svg: SVGSVGElement;
@@ -438,6 +469,12 @@ export class CanvasController {
   private selObjects = new Set<string>();
   private selLinks = new Set<string>();
   private grid: GridSettings = defaultGrid();
+  /**
+   * IR v9: payloads of the open document, keyed by handle. The canvas resolves an
+   * object's icon *here* (by its current name) instead of carrying a copy on the
+   * object, so changing the name can never draw the previous icon.
+   */
+  private iconAssets: IconAssets = new Map();
   private spaceDown = false;
   private suppressContextMenu = false;
   private routes = new Map<string, Polyline>();
@@ -546,7 +583,10 @@ export class CanvasController {
   private fitted(o: DiagramObject): DiagramObject {
     const text = o.name && o.name.length > 0 ? o.name : o.id;
     if (o.size !== undefined) return { ...o, lines: explicitLines(o, text, this.measure) };
-    const fit = autoSize({ text, kind: o.kind, icon: objectIcon(o) }, this.measure);
+    const fit = autoSize(
+      { text, kind: o.kind, icon: objectIcon(o), iconAsset: this.iconAssetFor(o) },
+      this.measure,
+    );
     // grow-only: a short label keeps the kind's default box, a long one gets
     // the room it needs (never shrink below what the shape language defines)
     return {
@@ -560,9 +600,12 @@ export class CanvasController {
   /** Apply a properties patch; label/icon changes refit unless size is explicit. */
   private patched(o: DiagramObject, patch: Partial<DiagramObject>): DiagramObject {
     const next = { ...o, ...patch };
-    if (patch.name !== undefined || patch.style?.icon !== undefined) {
+    if (patch.name !== undefined || patch.icon !== undefined || patch.style?.icon !== undefined) {
       const text = next.name && next.name.length > 0 ? next.name : o.id;
-      const fit = autoSize({ text, kind: o.kind, icon: objectIcon(next) }, this.measure);
+      const fit = autoSize(
+        { text, kind: o.kind, icon: objectIcon(next), iconAsset: this.iconAssetFor(next) },
+        this.measure,
+      );
       next.lines = o.size === undefined ? fit.lines : explicitLines(next, text, this.measure);
       if (o.size === undefined) {
         // grow-only on rename too: a shorter name must not shrink the box the
@@ -703,6 +746,28 @@ export class CanvasController {
     this.render();
   }
 
+  /**
+   * IR v9: publish the document's icon payloads. Called whenever the open file's
+   * declarations change, so `icon name` always resolves against what the file says.
+   */
+  setIconAssets(assets: IconAssets): void {
+    // Publishing is idempotent: callers do it from a render effect, and an
+    // unconditional repaint there is an infinite loop (repaint → render effect).
+    if (sameIconAssets(this.iconAssets, assets)) return;
+    this.iconAssets = assets;
+    this.render();
+  }
+
+  /** Payload for the object's *current* icon name, or `undefined`. */
+  private iconAssetFor(o: DiagramObject): IconAsset | undefined {
+    return assetFor(objectIcon(o), this.iconAssets);
+  }
+
+  /** Push an atomic, undoable document edit (IR v9 project icons). */
+  pushDocCommand(label: string, write: (doc: Doc) => void, before: Doc, after: Doc): void {
+    this.undo.push(new DocChange(write, before, after, label));
+  }
+
   fitSelection(): void {
     const targets = this.state.objects.filter((o) => this.selObjects.has(o.id));
     if (targets.length === 0) return;
@@ -756,7 +821,15 @@ export class CanvasController {
     patch: Partial<
       Pick<
         DiagramObject,
-        'name' | 'description' | 'technology' | 'tags' | 'dashed' | 'properties' | 'style' | 'z'
+        | 'name'
+        | 'description'
+        | 'technology'
+        | 'tags'
+        | 'dashed'
+        | 'properties'
+        | 'style'
+        | 'icon'
+        | 'z'
       >
     >,
   ): void {
@@ -1186,6 +1259,7 @@ export class CanvasController {
           z: o.z,
           dashed: o.dashed,
           icon: objectIcon(o),
+          iconAsset: this.iconAssetFor(o),
           labelLines: o.lines,
           style: o.style,
         })),

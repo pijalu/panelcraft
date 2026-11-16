@@ -7,6 +7,7 @@ package pdl
 // link ids are data and always emitted (D-M1-16), blank line between sections,
 // comments re-attached above their statement (D-M1-10/12).
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -448,6 +449,19 @@ func printImport(imp ir.ImportStmt, p *printer) {
 	p.add("import " + imp.Alias + " as " + Quote(imp.Path))
 }
 
+// printIcon prints a document icon declaration (§3.1): canonical order label,
+// media, data; media and data are mandatory in the grammar so they always print.
+func printIcon(ic ir.IconDecl, p *printer) {
+	p.comment(ic.Comments, 0)
+	p.add(fmt.Sprintf("icon %s {", ic.ID))
+	if ic.Label != nil {
+		p.add(fmt.Sprintf("%slabel %s", indent, Quote(*ic.Label)))
+	}
+	p.add(fmt.Sprintf("%smedia %s", indent, Quote(ic.MediaType)))
+	p.add(fmt.Sprintf("%sdata %s", indent, Quote(ic.Data)))
+	p.add("}")
+}
+
 func printSection[T any](p *printer, items []T, print func(x T, pp *printer)) {
 	if len(items) == 0 {
 		return
@@ -477,6 +491,7 @@ func PrintDoc(doc *ir.Doc) string {
 		p.add("theme " + doc.Theme)
 	}
 	printSection(p, doc.Imports, printImport)
+	printSection(p, doc.Icons, printIcon)
 	printSection(p, doc.Objects, printObject)
 	printSection(p, doc.Links, printLink)
 	printSection(p, doc.Flows, printFlow)

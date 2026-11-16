@@ -179,6 +179,88 @@ func checkObjects(doc *ir.Doc, s ids, out []Diagnostic) []Diagnostic {
 	return out
 }
 
+// --- P206–P210 (document icons, IR v9 §3.1) ----------------------------------
+
+// iconHandles are the handles a document may reference: built-ins plus its own
+// declarations.
+func iconHandles(doc *ir.Doc) map[string]bool {
+	handles := map[string]bool{}
+	for name := range ir.BuiltinIconNames {
+		handles[name] = true
+	}
+	for i := range doc.Icons {
+		handles[doc.Icons[i].ID] = true
+	}
+	return handles
+}
+
+func checkIcons(doc *ir.Doc, out []Diagnostic) []Diagnostic {
+	seen := map[string]bool{}
+	total := 0
+	for i := range doc.Icons {
+		ic := &doc.Icons[i]
+		if seen[ic.ID] {
+			out = append(out, diag("P206", fmt.Sprintf("duplicate icon handle \"%s\"", ic.ID), ic.Pos.Line, ic.Pos.Col))
+			continue
+		}
+		seen[ic.ID] = true
+		// Built-in handles are reserved: shadowing one would make the same
+		// `icon name` mean different things per file with no visible cue.
+		if ir.IsBuiltinIcon(ic.ID) {
+			out = append(out, diag("P207",
+				fmt.Sprintf("icon handle \"%s\" collides with the built-in icon of the same name", ic.ID),
+				ic.Pos.Line, ic.Pos.Col))
+		}
+		bytes := len(ir.DecodeIconBase64(ic.Data))
+		total += bytes
+		if bytes > ir.IconMaxBytes {
+			out = append(out, diag("P208",
+				fmt.Sprintf("icon \"%s\" payload is %d bytes (limit %d)", ic.ID, bytes, ir.IconMaxBytes),
+				ic.Pos.Line, ic.Pos.Col))
+		}
+		svg := ir.DecodeIconSvg(ic.Data)
+		if svg == nil {
+			out = append(out, diag("P209", fmt.Sprintf("icon \"%s\" payload is not valid UTF-8", ic.ID), ic.Pos.Line, ic.Pos.Col))
+			continue
+		}
+		if issues := ir.SvgIssues(*svg); len(issues) > 0 {
+			out = append(out, diag("P209",
+				fmt.Sprintf("icon \"%s\" has unsafe or unsupported SVG content: %s", ic.ID, strings.Join(issues, ", ")),
+				ic.Pos.Line, ic.Pos.Col))
+		}
+	}
+	if len(doc.Icons) > ir.IconMaxCount {
+		out = append(out, diag("P208",
+			fmt.Sprintf("document declares %d icons (limit %d)", len(doc.Icons), ir.IconMaxCount), 1, 1))
+	}
+	if total > ir.IconTotalMaxBytes {
+		out = append(out, diag("P208",
+			fmt.Sprintf("document icon payloads total %d bytes (limit %d)", total, ir.IconTotalMaxBytes), 1, 1))
+	}
+	return out
+}
+
+func checkIconRefs(doc *ir.Doc, out []Diagnostic) []Diagnostic {
+	handles := iconHandles(doc)
+	unknown := func(name string, line, col int) []Diagnostic {
+		if handles[name] {
+			return out
+		}
+		return append(out, diagSev("P210",
+			fmt.Sprintf("unknown icon \"%s\" (declare it or use a built-in)", name), line, col, SevWarning))
+	}
+	for i := range doc.Objects {
+		o := &doc.Objects[i]
+		if o.Icon != "" {
+			out = unknown(o.Icon, o.Pos.Line, o.Pos.Col)
+		}
+		if o.Style != nil && o.Style.Icon != "" {
+			out = unknown(o.Style.Icon, o.Pos.Line, o.Pos.Col)
+		}
+	}
+	return out
+}
+
 // --- flow step walk (P101 endpoints, P104 pair) --------------------------------
 
 func isVisualStep(s *ir.Step) bool {
@@ -406,6 +488,8 @@ func Validate(doc *ir.Doc, opts Options) []Diagnostic {
 	out := []Diagnostic{}
 	s := collectIds(doc)
 	out = checkDupIds(doc, out)
+	out = checkIcons(doc, out)
+	out = checkIconRefs(doc, out)
 	out = checkFlowSteps(doc, s, out)
 	if opts.Imports != nil {
 		out = checkImports(doc, opts.File, opts.Imports, out)

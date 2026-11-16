@@ -43,6 +43,7 @@ direction LR                 ← auto-layout hint: LR | TB | RL | BT
 theme dark                   ← light | dark (render hint only)
 
 import billing as "../billing/system.pcd"    ← 0..n, see §5
+<icons>                      ← 0..n, see §3.1
 
 <objects>                    ← 0..n, see §3
 <links>                      ← 0..n, see §4
@@ -121,6 +122,59 @@ queue events "order.events" { technology "Kafka" }
 group ctx "Checkout context" { contains api db }
 note n1 "PCI scope ends at PSP" { attach erp }
 ```
+
+### 3.1 Document icons (IR v9)
+
+An object's `icon name` property first pointed only at the built-in set. A file
+may now carry its **own** icons, so a diagram stays self-contained when it is
+mailed, committed or rendered by the CLI — no sidecar file, no network, no icon
+font (the offline-only rule). A declaration is a top-level statement:
+
+```
+IconStmt := "icon" Id "{" IconLine* "}"
+IconLine := "label" QuotedText      ← 0..1 human label (the picker name)
+          | "media" QuotedText      ← REQUIRED, this version: "image/svg+xml"
+          | "data"  QuotedText      ← REQUIRED, canonical Base64 of the SVG
+```
+
+```
+icon brand {
+  label "Company mark"
+  media "image/svg+xml"
+  data "<Base64 of the SVG, one line>"
+}
+```
+
+* **Handles** follow the identifier rule (§1). The built-in namespace is
+  **reserved**: reusing a built-in handle is an error (`P207`), so `icon cloud`
+  never means two different pictures in two files. Duplicate handles are `P206`.
+* **Resolution order**: built-ins are always available; a `P210` warning marks a
+  name that resolves to nothing, and the object then draws without an icon (no
+  silent substitution, no broken band in the layout).
+* **Payload**: canonical Base64 only — standard alphabet, `=` padding, no
+  whitespace, length a multiple of four (`E114` when it is not). The decoded
+  bytes must be UTF-8 SVG; a non-SVG media type is a syntax error (`E115`),
+  because this version cannot draw it and the printer would emit an unusable file.
+* **Safety** (`P209`): the SVG is checked against an element/attribute allowlist —
+  no `<script>`, no event handlers, no `<foreignObject>`, no `<style>`, no
+  embedded `<image>`, no external `href`, no `url()`/`@import`/`javascript:` — and
+  the same rule table runs in the browser engine and the Go CLI, gated by one
+  shared fixture. Anything that fails is reported, never executed and never
+  fetched: the renderer embeds the payload as a `data:` URI, and an SVG drawn as
+  an image runs in static mode.
+* **Limits** (`P208`): 64 KiB decoded per icon, 256 KiB per document, 64
+  declarations per document.
+* **Printing**: declarations come after imports and before objects, in document
+  order, with the canonical line order label → media → data and the payload
+  untouched (it is already canonical), so `parse → print → parse` is byte-stable.
+* **Management is a document operation**: renaming a handle rewrites every
+  reference (`icon name` on objects, `style { icon … }`, top-level `style`
+  statements) in one undoable step; removal reports the usages and clears them
+  only when the author confirms. Deleting an icon never leaves a dangling
+  reference behind by accident.
+* **Exports**: the payload is local bytes, so SVG/PNG and the CLI renderer carry
+  it as-is. Mermaid has no equivalent and declares `icons` dropped (§9).
+* Provenance and licensing of the built-in set: [ICONS.md](ICONS.md).
 
 ## 4. Links
 
@@ -429,7 +483,7 @@ nested subgraph ids): warning + skipped, never silent.
 
 **Dropped (declared, per SPEC FR-M4):** flows, positions/layout, views, imports
 (exported file is flattened: imported objects inlined and marked via comment `%%
-imported from …`), properties, notes detach, icons, endpoint perimeter anchors,
+imported from …`), properties, notes detach, icons (built-in and document-declared), endpoint perimeter anchors,
 waypoints, overlap overrides, object stacking order, custom shapes.
 C4 export mode (`--c4`): emits C4Context/Container statements when kinds fit, else
 fallback flowchart.
@@ -450,6 +504,11 @@ fallback flowchart.
 | P202 | warning | empty flow / flow without visual steps |
 | P203 | warning | `style` targets non-existent id |
 | P204 | info | position overlaps (view-time concern; reported, not fixed) |
+| P206 | error | duplicate document icon handle |
+| P207 | error | document icon handle collides with a built-in icon |
+| P208 | error | icon payload/declaration count over the §3.1 limits |
+| P209 | error | icon payload is not valid UTF-8 or fails the SVG allowlist |
+| P210 | warning | `icon` name resolves to no built-in and no declared icon |
 
 Exit codes per SPEC FR-X. All findings carry `line:col` of the offending token.
 
@@ -473,9 +532,10 @@ Exit codes per SPEC FR-X. All findings carry `line:col` of the offending token.
 ```ebnf
 file        = "pcd" version , { stmt } ;
 version     = number , [ "." number ] ;
-stmt        = meta | import | object | link | flow | view | style ;
+stmt        = meta | import | icon | object | link | flow | view | style ;
 meta        = ("title" string) | ("level" ident) | ("direction" ident) | ("theme" ident) ;
 import      = "import" ident "as" path ;
+icon        = "icon" ident "{" , [ "label" string ] , "media" string , "data" string , "}" ;
 object      = kind ident , [ string ] , [ "{" , { attr } , "}" ] ;
 attr        = ("description" , string) | ("technology" , string) | ("tag" , ident { ident })
             | ("property" , ident , string) | ("contains" , ident { ident })
@@ -604,7 +664,11 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   { attr } , "}" ]`), so an attribute-less object prints as `person a "A"` and
   a `{}` style block parses to "no style" and is omitted (§3, §11).
 - E-14 Nesting limit: 32 levels, deeper = E112 (§6).
-- E-15 Syntax errors (E100–E113) abort the whole file (doc = null + diagnostics);
+- E-14a Icon payload syntax (§3.1): `E114` = the `data` string is not canonical
+  Base64; `E115` = the `media` string names a type this version cannot draw.
+  Both abort the file: the declaration could never be rendered, and re-printing
+  it would emit a file the app refuses to load.
+- E-15 Syntax errors (E100–E115) abort the whole file (doc = null + diagnostics);
   semantic findings never abort (§10, §14 sample).
 
 **Validation**

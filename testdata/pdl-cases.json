@@ -4,7 +4,7 @@
     {
       "name": "magic-only",
       "src": "pcd 1.0\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\"\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\"\n}",
       "print": "pcd 1.0\n",
       "parseDiags": [],
       "validateDiags": []
@@ -12,7 +12,7 @@
     {
       "name": "lead-comments",
       "src": "# hello\n// SPDX-License-Identifier: GPL-3.0-only\npcd 1.0\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"comments\": [\n    \"hello\",\n    \"SPDX-License-Identifier: GPL-3.0-only\"\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"comments\": [\n    \"hello\",\n    \"SPDX-License-Identifier: GPL-3.0-only\"\n  ]\n}",
       "print": "pcd 1.0\n# hello\n# SPDX-License-Identifier: GPL-3.0-only\n",
       "parseDiags": [],
       "validateDiags": []
@@ -20,7 +20,7 @@
     {
       "name": "metas",
       "src": "pcd 1.0\ntitle \"Demo\"\nlevel container\ndirection LR\ntheme dark\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"Demo\",\n  \"level\": \"container\",\n  \"direction\": \"LR\",\n  \"theme\": \"dark\"\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"Demo\",\n  \"level\": \"container\",\n  \"direction\": \"LR\",\n  \"theme\": \"dark\"\n}",
       "print": "pcd 1.0\ntitle \"Demo\"\nlevel container\ndirection LR\ntheme dark\n",
       "parseDiags": [],
       "validateDiags": []
@@ -28,7 +28,7 @@
     {
       "name": "duplicate-meta-warns",
       "src": "pcd 1.0\nlevel container\nlevel context\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"level\": \"container\"\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"level\": \"container\"\n}",
       "print": "pcd 1.0\nlevel container\n",
       "parseDiags": [
         {
@@ -60,7 +60,7 @@
     {
       "name": "object-no-block",
       "src": "pcd 1.0\nperson a \"A\"\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\n",
       "parseDiags": [],
       "validateDiags": [
@@ -76,7 +76,7 @@
     {
       "name": "object-size",
       "src": "pcd 1.0\nsystem a \"A\" {\n  size 200 96\n}\nsystem b \"B\" {\n  size 48.5 32\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"size\": {\n        \"w\": 200,\n        \"h\": 96\n      },\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"size\": {\n        \"w\": 48.5,\n        \"h\": 32\n      },\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"size\": {\n        \"w\": 200,\n        \"h\": 96\n      },\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"size\": {\n        \"w\": 48.5,\n        \"h\": 32\n      },\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nsystem a \"A\" {\n  size 200 96\n}\nsystem b \"B\" {\n  size 48.5 32\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -115,7 +115,7 @@
     {
       "name": "object-stacking-z",
       "src": "pcd 1.0\nsystem auto \"Auto\"\nsystem back \"Back\" {\n  z -2\n}\nsystem zero \"Zero\" {\n  z 0\n}\nsystem front \"Front\" {\n  z 4\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"auto\",\n      \"name\": \"Auto\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"back\",\n      \"name\": \"Back\",\n      \"z\": -2,\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"zero\",\n      \"name\": \"Zero\",\n      \"z\": 0,\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"front\",\n      \"name\": \"Front\",\n      \"z\": 4,\n      \"pos\": {\n        \"line\": 9,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"auto\",\n      \"name\": \"Auto\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"back\",\n      \"name\": \"Back\",\n      \"z\": -2,\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"zero\",\n      \"name\": \"Zero\",\n      \"z\": 0,\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"front\",\n      \"name\": \"Front\",\n      \"z\": 4,\n      \"pos\": {\n        \"line\": 9,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nsystem auto \"Auto\"\nsystem back \"Back\" {\n  z -2\n}\nsystem zero \"Zero\" {\n  z 0\n}\nsystem front \"Front\" {\n  z 4\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -168,7 +168,7 @@
     {
       "name": "link-sparks",
       "src": "pcd 1.0\nperson a \"A\"\nsystem b \"B\"\na -requests-> b as L1 {\n  style {\n    sparks 3\n    speed 2\n  }\n}\nb <-> a as L2\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"type\": \"requests\",\n      \"style\": {\n        \"sparks\": 3,\n        \"speed\": 2\n      },\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"L2\",\n      \"from\": \"b\",\n      \"to\": \"a\",\n      \"bidir\": true,\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"type\": \"requests\",\n      \"style\": {\n        \"sparks\": 3,\n        \"speed\": 2\n      },\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"L2\",\n      \"from\": \"b\",\n      \"to\": \"a\",\n      \"bidir\": true,\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\nsystem b \"B\"\n\na -requests-> b as L1 {\n  style {\n    sparks 3\n    speed 2\n  }\n}\nb <-> a as L2\n",
       "parseDiags": [],
       "validateDiags": []
@@ -208,7 +208,7 @@
     {
       "name": "link-style-model",
       "src": "pcd 1.0\nsystem a \"A\"\nsystem b \"B\"\na -requests-> b as L1 {\n  style {\n    head diamond\n    tail circle\n    line dotted\n    route curved\n    width 2.5\n  }\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"type\": \"requests\",\n      \"style\": {\n        \"head\": \"diamond\",\n        \"tail\": \"circle\",\n        \"line\": \"dotted\",\n        \"route\": \"curved\",\n        \"width\": 2.5\n      },\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"type\": \"requests\",\n      \"style\": {\n        \"head\": \"diamond\",\n        \"tail\": \"circle\",\n        \"line\": \"dotted\",\n        \"route\": \"curved\",\n        \"width\": 2.5\n      },\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nsystem a \"A\"\nsystem b \"B\"\n\na -requests-> b as L1 {\n  style {\n    head diamond\n    tail circle\n    line dotted\n    route curved\n    width 2.5\n  }\n}\n",
       "parseDiags": [],
       "validateDiags": []
@@ -216,7 +216,7 @@
     {
       "name": "link-endpoint-anchors",
       "src": "pcd 1.0\nsystem a \"A\"\nsystem b \"B\"\na -> b as L1 {\n  anchor from 0.25\n  anchor to 0.875\n  waypoint (180, 100)\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"waypoints\": [\n        [\n          180,\n          100\n        ]\n      ],\n      \"fromAnchor\": 0.25,\n      \"toAnchor\": 0.875,\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"waypoints\": [\n        [\n          180,\n          100\n        ]\n      ],\n      \"fromAnchor\": 0.25,\n      \"toAnchor\": 0.875,\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nsystem a \"A\"\nsystem b \"B\"\n\na -> b as L1 {\n  anchor from 0.25\n  anchor to 0.875\n  waypoint (180, 100)\n}\n",
       "parseDiags": [],
       "validateDiags": []
@@ -224,7 +224,7 @@
     {
       "name": "link-endpoint-anchor-partial",
       "src": "pcd 1.0\na -> b {\n  anchor from 0\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"fromAnchor\": 0,\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"fromAnchor\": 0,\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\na -> b {\n  anchor from 0\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -256,7 +256,7 @@
     {
       "name": "link-allow-overlap",
       "src": "pcd 1.0\nsystem a \"A\"\nsystem b \"B\"\na -> b as L1 {\n  allow overlap\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"allowOverlap\": true,\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"allowOverlap\": true,\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nsystem a \"A\"\nsystem b \"B\"\n\na -> b as L1 {\n  allow overlap\n}\n",
       "parseDiags": [],
       "validateDiags": []
@@ -312,7 +312,7 @@
     {
       "name": "links-and-arrows",
       "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b : \"hello\" as l1\nb <- a\na -requests-> b\na <-> b\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"label\": \"hello\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"type\": \"requests\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"bidir\": true,\n      \"pos\": {\n        \"line\": 7,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"label\": \"hello\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"type\": \"requests\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    },\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"bidir\": true,\n      \"pos\": {\n        \"line\": 7,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\nperson b \"B\"\n\na -> b : \"hello\" as l1\na -> b\na -requests-> b\na <-> b\n",
       "parseDiags": [],
       "validateDiags": []
@@ -320,7 +320,7 @@
     {
       "name": "link-block",
       "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b : \"label\" as l1 {\n  tag sync critical\n  tag sync\n  style {\n    stroke #333\n    dashed\n  }\n  waypoint (10, 20)\n  waypoint (30.5, 40)\n  glow \"on\"\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"label\": \"label\",\n      \"tags\": [\n        \"sync\",\n        \"critical\",\n        \"sync\"\n      ],\n      \"style\": {\n        \"stroke\": \"#333\",\n        \"dashed\": true\n      },\n      \"waypoints\": [\n        [\n          10,\n          20\n        ],\n        [\n          30.5,\n          40\n        ]\n      ],\n      \"attributes\": [\n        {\n          \"raw\": \"glow \\\"on\\\"\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"label\": \"label\",\n      \"tags\": [\n        \"sync\",\n        \"critical\",\n        \"sync\"\n      ],\n      \"style\": {\n        \"stroke\": \"#333\",\n        \"dashed\": true\n      },\n      \"waypoints\": [\n        [\n          10,\n          20\n        ],\n        [\n          30.5,\n          40\n        ]\n      ],\n      \"attributes\": [\n        {\n          \"raw\": \"glow \\\"on\\\"\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\nperson b \"B\"\n\na -> b : \"label\" as l1 {\n  tag sync critical sync\n  style {\n    stroke #333\n    dashed\n  }\n  waypoint (10, 20)\n  waypoint (30.5, 40)\n  glow \"on\"\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -336,7 +336,7 @@
     {
       "name": "flow-full",
       "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b as l1\nflow \"Checkout\" as checkout {\n  intro \"Welcome\"\n  a -> b : \"click\"\n  b -> a flip\n  a -> b : \"m1\" as l1 flip\n  process a\n  process b \"processing\"\n  info \"note\"\n  conclusion \"done\"\n  goto other\n  goto \"other.pcd#other\" return here\n  goto pay return end\n  alt \"path?\" {\n    \"yes\" {\n      a -> b\n    }\n    \"no\" {\n      # nothing\n      info \"skip\"\n    }\n  }\n  par {\n    { a -> b }\n    { info \"lane2\" }\n  }\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"checkout\",\n      \"title\": \"Checkout\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"Welcome\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"click\",\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"b\",\n          \"to\": \"a\",\n          \"flip\": true,\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"m1\",\n          \"linkRef\": \"l1\",\n          \"flip\": true,\n          \"pos\": {\n            \"line\": 9,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"target\": \"a\",\n          \"pos\": {\n            \"line\": 10,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"text\": \"processing\",\n          \"target\": \"b\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"info\",\n          \"text\": \"note\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"conclusion\",\n          \"text\": \"done\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"flow\": \"other\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"file\": \"other.pcd\",\n          \"flow\": \"other\",\n          \"ret\": \"here\",\n          \"pos\": {\n            \"line\": 15,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"flow\": \"pay\",\n          \"pos\": {\n            \"line\": 16,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"alt\",\n          \"label\": \"path?\",\n          \"branches\": [\n            {\n              \"label\": \"yes\",\n              \"steps\": [\n                {\n                  \"type\": \"msg\",\n                  \"from\": \"a\",\n                  \"to\": \"b\",\n                  \"pos\": {\n                    \"line\": 19,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 18,\n                \"col\": 5\n              }\n            },\n            {\n              \"label\": \"no\",\n              \"steps\": [\n                {\n                  \"type\": \"info\",\n                  \"text\": \"skip\",\n                  \"comments\": [\n                    \"nothing\"\n                  ],\n                  \"pos\": {\n                    \"line\": 23,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 21,\n                \"col\": 5\n              }\n            }\n          ],\n          \"pos\": {\n            \"line\": 17,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"par\",\n          \"lanes\": [\n            [\n              {\n                \"type\": \"msg\",\n                \"from\": \"a\",\n                \"to\": \"b\",\n                \"pos\": {\n                  \"line\": 27,\n                  \"col\": 7\n                }\n              }\n            ],\n            [\n              {\n                \"type\": \"info\",\n                \"text\": \"lane2\",\n                \"pos\": {\n                  \"line\": 28,\n                  \"col\": 7\n                }\n              }\n            ]\n          ],\n          \"pos\": {\n            \"line\": 26,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"l1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"checkout\",\n      \"title\": \"Checkout\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"Welcome\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"click\",\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"b\",\n          \"to\": \"a\",\n          \"flip\": true,\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"m1\",\n          \"linkRef\": \"l1\",\n          \"flip\": true,\n          \"pos\": {\n            \"line\": 9,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"target\": \"a\",\n          \"pos\": {\n            \"line\": 10,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"text\": \"processing\",\n          \"target\": \"b\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"info\",\n          \"text\": \"note\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"conclusion\",\n          \"text\": \"done\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"flow\": \"other\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"file\": \"other.pcd\",\n          \"flow\": \"other\",\n          \"ret\": \"here\",\n          \"pos\": {\n            \"line\": 15,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"flow\": \"pay\",\n          \"pos\": {\n            \"line\": 16,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"alt\",\n          \"label\": \"path?\",\n          \"branches\": [\n            {\n              \"label\": \"yes\",\n              \"steps\": [\n                {\n                  \"type\": \"msg\",\n                  \"from\": \"a\",\n                  \"to\": \"b\",\n                  \"pos\": {\n                    \"line\": 19,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 18,\n                \"col\": 5\n              }\n            },\n            {\n              \"label\": \"no\",\n              \"steps\": [\n                {\n                  \"type\": \"info\",\n                  \"text\": \"skip\",\n                  \"comments\": [\n                    \"nothing\"\n                  ],\n                  \"pos\": {\n                    \"line\": 23,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 21,\n                \"col\": 5\n              }\n            }\n          ],\n          \"pos\": {\n            \"line\": 17,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"par\",\n          \"lanes\": [\n            [\n              {\n                \"type\": \"msg\",\n                \"from\": \"a\",\n                \"to\": \"b\",\n                \"pos\": {\n                  \"line\": 27,\n                  \"col\": 7\n                }\n              }\n            ],\n            [\n              {\n                \"type\": \"info\",\n                \"text\": \"lane2\",\n                \"pos\": {\n                  \"line\": 28,\n                  \"col\": 7\n                }\n              }\n            ]\n          ],\n          \"pos\": {\n            \"line\": 26,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\nperson b \"B\"\n\na -> b as l1\n\nflow \"Checkout\" as checkout {\n  intro \"Welcome\"\n  a -> b : \"click\"\n  b -> a flip\n  a -> b : \"m1\" as l1 flip\n  process a\n  process b \"processing\"\n  info \"note\"\n  conclusion \"done\"\n  goto other\n  goto \"other.pcd#other\" return here\n  goto pay\n  alt \"path?\" {\n    \"yes\" {\n      a -> b\n    }\n    \"no\" {\n      # nothing\n      info \"skip\"\n    }\n  }\n  par {\n    {\n      a -> b\n    }\n    {\n      info \"lane2\"\n    }\n  }\n}\n",
       "parseDiags": [],
       "validateDiags": []
@@ -376,7 +376,7 @@
     {
       "name": "presentation-flow-description",
       "src": "pcd 1.0\nflow \"Checkout\" as checkout {\n  description \"A customer submits an order.\"\n  intro \"Start\"\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"id\": \"checkout\",\n      \"title\": \"Checkout\",\n      \"description\": \"A customer submits an order.\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"Start\",\n          \"pos\": {\n            \"line\": 4,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"id\": \"checkout\",\n      \"title\": \"Checkout\",\n      \"description\": \"A customer submits an order.\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"Start\",\n          \"pos\": {\n            \"line\": 4,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nflow \"Checkout\" as checkout {\n  description \"A customer submits an order.\"\n  intro \"Start\"\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -392,7 +392,7 @@
     {
       "name": "presentation-all-step-kinds",
       "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b as L\nflow \"F\" as f {\n  intro \"Welcome\" presentation {\n    description \"Intro text\"\n  }\n  info \"Note\" presentation {\n    description \"Info text\"\n  }\n  conclusion \"Done\" presentation {\n    description \"Conclusion text\"\n  }\n  process a \"work\" presentation {\n    description \"Process text\"\n  }\n  a -> b : \"call\" as L presentation {\n    description \"Message text\"\n  }\n  goto f return here presentation {\n    description \"Goto text\"\n  }\n  alt \"path?\" {\n    \"yes\" {\n      info \"y\"\n    }\n  } presentation {\n    description \"Alt text\"\n  }\n  par {\n    { info \"lane\" }\n  } presentation {\n    description \"Par text\"\n  }\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"f\",\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"Welcome\",\n          \"description\": \"Intro text\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"info\",\n          \"text\": \"Note\",\n          \"description\": \"Info text\",\n          \"pos\": {\n            \"line\": 9,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"conclusion\",\n          \"text\": \"Done\",\n          \"description\": \"Conclusion text\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"text\": \"work\",\n          \"target\": \"a\",\n          \"description\": \"Process text\",\n          \"pos\": {\n            \"line\": 15,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"call\",\n          \"linkRef\": \"L\",\n          \"description\": \"Message text\",\n          \"pos\": {\n            \"line\": 18,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"flow\": \"f\",\n          \"ret\": \"here\",\n          \"description\": \"Goto text\",\n          \"pos\": {\n            \"line\": 21,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"alt\",\n          \"label\": \"path?\",\n          \"branches\": [\n            {\n              \"label\": \"yes\",\n              \"steps\": [\n                {\n                  \"type\": \"info\",\n                  \"text\": \"y\",\n                  \"pos\": {\n                    \"line\": 26,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 25,\n                \"col\": 5\n              }\n            }\n          ],\n          \"description\": \"Alt text\",\n          \"pos\": {\n            \"line\": 24,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"par\",\n          \"lanes\": [\n            [\n              {\n                \"type\": \"info\",\n                \"text\": \"lane\",\n                \"pos\": {\n                  \"line\": 32,\n                  \"col\": 7\n                }\n              }\n            ]\n          ],\n          \"description\": \"Par text\",\n          \"pos\": {\n            \"line\": 31,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"f\",\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"Welcome\",\n          \"description\": \"Intro text\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"info\",\n          \"text\": \"Note\",\n          \"description\": \"Info text\",\n          \"pos\": {\n            \"line\": 9,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"conclusion\",\n          \"text\": \"Done\",\n          \"description\": \"Conclusion text\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"text\": \"work\",\n          \"target\": \"a\",\n          \"description\": \"Process text\",\n          \"pos\": {\n            \"line\": 15,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"call\",\n          \"linkRef\": \"L\",\n          \"description\": \"Message text\",\n          \"pos\": {\n            \"line\": 18,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"flow\": \"f\",\n          \"ret\": \"here\",\n          \"description\": \"Goto text\",\n          \"pos\": {\n            \"line\": 21,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"alt\",\n          \"label\": \"path?\",\n          \"branches\": [\n            {\n              \"label\": \"yes\",\n              \"steps\": [\n                {\n                  \"type\": \"info\",\n                  \"text\": \"y\",\n                  \"pos\": {\n                    \"line\": 26,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 25,\n                \"col\": 5\n              }\n            }\n          ],\n          \"description\": \"Alt text\",\n          \"pos\": {\n            \"line\": 24,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"par\",\n          \"lanes\": [\n            [\n              {\n                \"type\": \"info\",\n                \"text\": \"lane\",\n                \"pos\": {\n                  \"line\": 32,\n                  \"col\": 7\n                }\n              }\n            ]\n          ],\n          \"description\": \"Par text\",\n          \"pos\": {\n            \"line\": 31,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\nperson b \"B\"\n\na -> b as L\n\nflow \"F\" as f {\n  intro \"Welcome\" presentation {\n    description \"Intro text\"\n  }\n  info \"Note\" presentation {\n    description \"Info text\"\n  }\n  conclusion \"Done\" presentation {\n    description \"Conclusion text\"\n  }\n  process a \"work\" presentation {\n    description \"Process text\"\n  }\n  a -> b : \"call\" as L presentation {\n    description \"Message text\"\n  }\n  goto f return here presentation {\n    description \"Goto text\"\n  }\n  alt \"path?\" {\n    \"yes\" {\n      info \"y\"\n    }\n  } presentation {\n    description \"Alt text\"\n  }\n  par {\n    {\n      info \"lane\"\n    }\n  } presentation {\n    description \"Par text\"\n  }\n}\n",
       "parseDiags": [],
       "validateDiags": []
@@ -400,7 +400,7 @@
     {
       "name": "presentation-camera-modes",
       "src": "pcd 1.0\nflow \"F\" {\n  intro \"A\" presentation {\n    camera auto\n    duration 300\n  }\n  info \"B\" presentation {\n    camera hold\n  }\n  conclusion \"C\" presentation {\n    camera focus (420, 180) zoom 1.25\n  }\n  intro \"D\" presentation {\n    camera focus (10.5, 20.25) zoom 0.1 duration 0\n  }\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"A\",\n          \"camera\": {\n            \"mode\": \"auto\",\n            \"durationMs\": 300\n          },\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"info\",\n          \"text\": \"B\",\n          \"camera\": {\n            \"mode\": \"hold\"\n          },\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"conclusion\",\n          \"text\": \"C\",\n          \"camera\": {\n            \"mode\": \"focus\",\n            \"x\": 420,\n            \"y\": 180,\n            \"zoom\": 1.25\n          },\n          \"pos\": {\n            \"line\": 10,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"intro\",\n          \"text\": \"D\",\n          \"camera\": {\n            \"mode\": \"focus\",\n            \"x\": 10.5,\n            \"y\": 20.25,\n            \"zoom\": 0.1,\n            \"durationMs\": 0\n          },\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"A\",\n          \"camera\": {\n            \"mode\": \"auto\",\n            \"durationMs\": 300\n          },\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"info\",\n          \"text\": \"B\",\n          \"camera\": {\n            \"mode\": \"hold\"\n          },\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"conclusion\",\n          \"text\": \"C\",\n          \"camera\": {\n            \"mode\": \"focus\",\n            \"x\": 420,\n            \"y\": 180,\n            \"zoom\": 1.25\n          },\n          \"pos\": {\n            \"line\": 10,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"intro\",\n          \"text\": \"D\",\n          \"camera\": {\n            \"mode\": \"focus\",\n            \"x\": 10.5,\n            \"y\": 20.25,\n            \"zoom\": 0.1,\n            \"durationMs\": 0\n          },\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nflow \"F\" {\n  intro \"A\" presentation {\n    camera auto\n    duration 300\n  }\n  info \"B\" presentation {\n    camera hold\n  }\n  conclusion \"C\" presentation {\n    camera focus (420, 180) zoom 1.25\n  }\n  intro \"D\" presentation {\n    camera focus (10.5, 20.25) zoom 0.1\n    duration 0\n  }\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -416,7 +416,7 @@
     {
       "name": "presentation-order-and-delay",
       "src": "pcd 1.0\nflow \"F\" {\n  intro \"A\" presentation {\n    duration 200\n    camera auto\n    description \"D\"\n  }\n  info \"B\" delay 100 presentation {\n    camera hold\n  }\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"A\",\n          \"description\": \"D\",\n          \"camera\": {\n            \"mode\": \"auto\",\n            \"durationMs\": 200\n          },\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"info\",\n          \"text\": \"B\",\n          \"delayMs\": 100,\n          \"camera\": {\n            \"mode\": \"hold\"\n          },\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"A\",\n          \"description\": \"D\",\n          \"camera\": {\n            \"mode\": \"auto\",\n            \"durationMs\": 200\n          },\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"info\",\n          \"text\": \"B\",\n          \"delayMs\": 100,\n          \"camera\": {\n            \"mode\": \"hold\"\n          },\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nflow \"F\" {\n  intro \"A\" presentation {\n    description \"D\"\n    camera auto\n    duration 200\n  }\n  info \"B\" delay 100 presentation {\n    camera hold\n  }\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -432,7 +432,7 @@
     {
       "name": "presentation-empty-block",
       "src": "pcd 1.0\nflow \"F\" {\n  intro \"A\" presentation {\n  }\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"A\",\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"A\",\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nflow \"F\" {\n  intro \"A\"\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -576,7 +576,7 @@
     {
       "name": "import-qualified-refs",
       "src": "pcd 1.0\n\nimport shared as \"../shared/actors.pcd\"\n\nsystem api \"API\"\nperson a2 \"A2\"\n\napi -> shared.psp : \"call\" as L1\n\na2 <- shared.auth as L2\n\nflow \"F\" {\n  intro \"x\"\n  api -> shared.psp\n  process shared.psp\n}\n\nnote n1 \"memo\" {\n  attach shared.psp\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"imports\": [\n    {\n      \"alias\": \"shared\",\n      \"path\": \"../shared/actors.pcd\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"api\",\n      \"name\": \"API\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"a2\",\n      \"name\": \"A2\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"note\",\n      \"id\": \"n1\",\n      \"name\": \"memo\",\n      \"attach\": \"shared.psp\",\n      \"pos\": {\n        \"line\": 18,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"api\",\n      \"to\": \"shared.psp\",\n      \"label\": \"call\",\n      \"pos\": {\n        \"line\": 8,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"L2\",\n      \"from\": \"shared.auth\",\n      \"to\": \"a2\",\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"x\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"api\",\n          \"to\": \"shared.psp\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"target\": \"shared.psp\",\n          \"pos\": {\n            \"line\": 15,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 12,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"imports\": [\n    {\n      \"alias\": \"shared\",\n      \"path\": \"../shared/actors.pcd\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"api\",\n      \"name\": \"API\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"a2\",\n      \"name\": \"A2\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"note\",\n      \"id\": \"n1\",\n      \"name\": \"memo\",\n      \"attach\": \"shared.psp\",\n      \"pos\": {\n        \"line\": 18,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"api\",\n      \"to\": \"shared.psp\",\n      \"label\": \"call\",\n      \"pos\": {\n        \"line\": 8,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"L2\",\n      \"from\": \"shared.auth\",\n      \"to\": \"a2\",\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"title\": \"F\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"x\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"api\",\n          \"to\": \"shared.psp\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"target\": \"shared.psp\",\n          \"pos\": {\n            \"line\": 15,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 12,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nimport shared as \"../shared/actors.pcd\"\n\nsystem api \"API\"\nperson a2 \"A2\"\nnote n1 \"memo\" {\n  attach shared.psp\n}\n\napi -> shared.psp : \"call\" as L1\nshared.auth -> a2 as L2\n\nflow \"F\" {\n  intro \"x\"\n  api -> shared.psp\n  process shared.psp\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -592,7 +592,7 @@
     {
       "name": "flow-minimal-msg",
       "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\nflow {\n a -> b\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\nperson b \"B\"\n\nflow {\n  a -> b\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -608,7 +608,7 @@
     {
       "name": "view-full",
       "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b\nview \"Main\" as main {\n  layout auto LR\n  layout saved\n  hide a\n  hide tag admin\n  position a (10, 20)\n  position b (10, 20)\n  pin b\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"id\": \"main\",\n      \"name\": \"Main\",\n      \"lines\": [\n        {\n          \"type\": \"layout\",\n          \"mode\": \"auto\",\n          \"dir\": \"LR\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"layout\",\n          \"mode\": \"saved\",\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"hide\",\n          \"id\": \"a\",\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"hideTag\",\n          \"id\": \"admin\",\n          \"pos\": {\n            \"line\": 9,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"a\",\n          \"x\": 10,\n          \"y\": 20,\n          \"pos\": {\n            \"line\": 10,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"b\",\n          \"x\": 10,\n          \"y\": 20,\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"pin\",\n          \"id\": \"b\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"id\": \"main\",\n      \"name\": \"Main\",\n      \"lines\": [\n        {\n          \"type\": \"layout\",\n          \"mode\": \"auto\",\n          \"dir\": \"LR\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"layout\",\n          \"mode\": \"saved\",\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"hide\",\n          \"id\": \"a\",\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"hideTag\",\n          \"id\": \"admin\",\n          \"pos\": {\n            \"line\": 9,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"a\",\n          \"x\": 10,\n          \"y\": 20,\n          \"pos\": {\n            \"line\": 10,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"b\",\n          \"x\": 10,\n          \"y\": 20,\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"pin\",\n          \"id\": \"b\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\nperson b \"B\"\n\na -> b\n\nview \"Main\" as main {\n  layout auto LR\n  layout saved\n  hide a\n  hide tag admin\n  position a (10, 20)\n  position b (10, 20)\n  pin b\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -624,7 +624,7 @@
     {
       "name": "style-stmt",
       "src": "pcd 1.0\nperson a \"A\"\nstyle a {\n  fill #abcdef\n  shape rounded\n  glow \"x\"\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"styles\": [\n    {\n      \"target\": \"a\",\n      \"style\": {\n        \"fill\": \"#abcdef\",\n        \"shape\": \"rounded\",\n        \"raw\": [\n          {\n            \"raw\": \"glow \\\"x\\\"\",\n            \"pos\": {\n              \"line\": 6,\n              \"col\": 3\n            }\n          }\n        ]\n      },\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"styles\": [\n    {\n      \"target\": \"a\",\n      \"style\": {\n        \"fill\": \"#abcdef\",\n        \"shape\": \"rounded\",\n        \"raw\": [\n          {\n            \"raw\": \"glow \\\"x\\\"\",\n            \"pos\": {\n              \"line\": 6,\n              \"col\": 3\n            }\n          }\n        ]\n      },\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\n\nstyle a {\n  fill #abcdef\n  shape rounded\n  glow \"x\"\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -640,7 +640,7 @@
     {
       "name": "empty-style-block-omitted",
       "src": "pcd 1.0\nperson a \"A\" {\n  style {\n  }\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\n",
       "parseDiags": [],
       "validateDiags": [
@@ -656,7 +656,7 @@
     {
       "name": "import",
       "src": "pcd 1.0\nimport auth as \"../auth/auth.pcd\"\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"imports\": [\n    {\n      \"alias\": \"auth\",\n      \"path\": \"../auth/auth.pcd\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"imports\": [\n    {\n      \"alias\": \"auth\",\n      \"path\": \"../auth/auth.pcd\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nimport auth as \"../auth/auth.pcd\"\n",
       "parseDiags": [],
       "validateDiags": []
@@ -664,7 +664,7 @@
     {
       "name": "color-vs-comment",
       "src": "pcd 1.0\nperson a \"A\" {\n  style {\n    fill #f00\n  }\n}\n# not a color\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"style\": {\n        \"fill\": \"#f00\"\n      },\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"style\": {\n        \"fill\": \"#f00\"\n      },\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\" {\n  style {\n    fill #f00\n  }\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -680,7 +680,7 @@
     {
       "name": "empty-strings",
       "src": "pcd 1.0\ntitle \"\"\nimport i0 as \"\"\nperson a \"\" {\n  description \"\"\n  property k \"\"\n}\nperson b \"B\"\na -> b\nflow \"\" {\n  intro \"\"\n  a -> b : \"\"\n  alt \"\" {\n    \"\" {\n      process a \"\"\n    }\n  }\n}\nview \"\" {\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"\",\n  \"imports\": [\n    {\n      \"alias\": \"i0\",\n      \"path\": \"\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"\",\n      \"description\": \"\",\n      \"properties\": [\n        {\n          \"key\": \"k\",\n          \"value\": \"\"\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 8,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 9,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"title\": \"\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"alt\",\n          \"label\": \"\",\n          \"branches\": [\n            {\n              \"label\": \"\",\n              \"steps\": [\n                {\n                  \"type\": \"process\",\n                  \"text\": \"\",\n                  \"target\": \"a\",\n                  \"pos\": {\n                    \"line\": 15,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 14,\n                \"col\": 5\n              }\n            }\n          ],\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"name\": \"\",\n      \"pos\": {\n        \"line\": 19,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"\",\n  \"imports\": [\n    {\n      \"alias\": \"i0\",\n      \"path\": \"\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"\",\n      \"description\": \"\",\n      \"properties\": [\n        {\n          \"key\": \"k\",\n          \"value\": \"\"\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 8,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 9,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"title\": \"\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"alt\",\n          \"label\": \"\",\n          \"branches\": [\n            {\n              \"label\": \"\",\n              \"steps\": [\n                {\n                  \"type\": \"process\",\n                  \"text\": \"\",\n                  \"target\": \"a\",\n                  \"pos\": {\n                    \"line\": 15,\n                    \"col\": 7\n                  }\n                }\n              ],\n              \"pos\": {\n                \"line\": 14,\n                \"col\": 5\n              }\n            }\n          ],\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"name\": \"\",\n      \"pos\": {\n        \"line\": 19,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\ntitle \"\"\n\nimport i0 as \"\"\n\nperson a \"\" {\n  description \"\"\n  property k \"\"\n}\nperson b \"B\"\n\na -> b\n\nflow \"\" {\n  intro \"\"\n  a -> b : \"\"\n  alt \"\" {\n    \"\" {\n      process a \"\"\n    }\n  }\n}\n\nview \"\" {\n}\n",
       "parseDiags": [],
       "validateDiags": []
@@ -688,9 +688,237 @@
     {
       "name": "goto-empty-parts",
       "src": "pcd 1.0\nflow {\n goto \"#f\"\n goto \"f#\"\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"goto\",\n          \"file\": \"\",\n          \"flow\": \"f\",\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 2\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"file\": \"f\",\n          \"flow\": \"\",\n          \"pos\": {\n            \"line\": 4,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"goto\",\n          \"file\": \"\",\n          \"flow\": \"f\",\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 2\n          }\n        },\n        {\n          \"type\": \"goto\",\n          \"file\": \"f\",\n          \"flow\": \"\",\n          \"pos\": {\n            \"line\": 4,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nflow {\n  goto \"#f\"\n  goto \"f#\"\n}\n",
       "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "icons-full",
+      "src": "pcd 1.0\nicon brand {\n  label \"Company mark\"\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\"\n}\nicon badge {\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg==\"\n}\n# a comment that belongs to the object, not the icon above it\nsystem api \"API\" {\n  icon brand\n}\nsystem web \"Web\" {\n  icon badge\n}\n",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"icons\": [\n    {\n      \"id\": \"brand\",\n      \"label\": \"Company mark\",\n      \"mediaType\": \"image/svg+xml\",\n      \"data\": \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"badge\",\n      \"mediaType\": \"image/svg+xml\",\n      \"data\": \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg==\",\n      \"pos\": {\n        \"line\": 7,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"api\",\n      \"name\": \"API\",\n      \"icon\": \"brand\",\n      \"comments\": [\n        \"a comment that belongs to the object, not the icon above it\"\n      ],\n      \"pos\": {\n        \"line\": 12,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"web\",\n      \"name\": \"Web\",\n      \"icon\": \"badge\",\n      \"pos\": {\n        \"line\": 15,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nicon brand {\n  label \"Company mark\"\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\"\n}\nicon badge {\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg==\"\n}\n\n# a comment that belongs to the object, not the icon above it\nsystem api \"API\" {\n  icon brand\n}\nsystem web \"Web\" {\n  icon badge\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P201",
+          "message": "\"api\" is orphaned (no links, no flow references)",
+          "line": 12,
+          "col": 1,
+          "severity": "warning"
+        },
+        {
+          "code": "P201",
+          "message": "\"web\" is orphaned (no links, no flow references)",
+          "line": 15,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "icon-comments-and-order",
+      "src": "pcd 1.0\n# leading comment\nicon mark {\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\"\n  media \"image/svg+xml\"\n  label \"Mark\"\n}\n",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"icons\": [\n    {\n      \"id\": \"mark\",\n      \"label\": \"Mark\",\n      \"mediaType\": \"image/svg+xml\",\n      \"data\": \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\",\n      \"comments\": [\n        \"leading comment\"\n      ],\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\n# leading comment\nicon mark {\n  label \"Mark\"\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\"\n}\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "icon-duplicate-handle",
+      "src": "pcd 1.0\nicon dup {\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\"\n}\nicon dup {\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg==\"\n}\n",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"icons\": [\n    {\n      \"id\": \"dup\",\n      \"mediaType\": \"image/svg+xml\",\n      \"data\": \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"dup\",\n      \"mediaType\": \"image/svg+xml\",\n      \"data\": \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg==\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nicon dup {\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\"\n}\nicon dup {\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg==\"\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P206",
+          "message": "duplicate icon handle \"dup\"",
+          "line": 6,
+          "col": 1,
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "name": "icon-builtin-collision",
+      "src": "pcd 1.0\nicon cloud {\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\"\n}\nperson p \"P\" {\n  icon cloud\n}\n",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"icons\": [\n    {\n      \"id\": \"cloud\",\n      \"mediaType\": \"image/svg+xml\",\n      \"data\": \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"p\",\n      \"name\": \"P\",\n      \"icon\": \"cloud\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nicon cloud {\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\"\n}\n\nperson p \"P\" {\n  icon cloud\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P207",
+          "message": "icon handle \"cloud\" collides with the built-in icon of the same name",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        },
+        {
+          "code": "P201",
+          "message": "\"p\" is orphaned (no links, no flow references)",
+          "line": 6,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "icon-unsafe-svg",
+      "src": "pcd 1.0\nicon evil {\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxzY3JpcHQ+YWxlcnQoMSk8L3NjcmlwdD48cGF0aCBkPSJNMCAwaDF2MUgweiIgb25sb2FkPSJ4KCkiIHhsaW5rOmhyZWY9Imh0dHA6Ly9ldmlsLmV4YW1wbGUveCIvPjwvc3ZnPg==\"\n}\nperson p \"P\" {\n  icon evil\n}\n",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"icons\": [\n    {\n      \"id\": \"evil\",\n      \"mediaType\": \"image/svg+xml\",\n      \"data\": \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxzY3JpcHQ+YWxlcnQoMSk8L3NjcmlwdD48cGF0aCBkPSJNMCAwaDF2MUgweiIgb25sb2FkPSJ4KCkiIHhsaW5rOmhyZWY9Imh0dHA6Ly9ldmlsLmV4YW1wbGUveCIvPjwvc3ZnPg==\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"p\",\n      \"name\": \"P\",\n      \"icon\": \"evil\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nicon evil {\n  media \"image/svg+xml\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxzY3JpcHQ+YWxlcnQoMSk8L3NjcmlwdD48cGF0aCBkPSJNMCAwaDF2MUgweiIgb25sb2FkPSJ4KCkiIHhsaW5rOmhyZWY9Imh0dHA6Ly9ldmlsLmV4YW1wbGUveCIvPjwvc3ZnPg==\"\n}\n\nperson p \"P\" {\n  icon evil\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P209",
+          "message": "icon \"evil\" has unsafe or unsupported SVG content: script, event-handler",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        },
+        {
+          "code": "P201",
+          "message": "\"p\" is orphaned (no links, no flow references)",
+          "line": 6,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "icon-unknown-ref",
+      "src": "pcd 1.0\nperson p \"P\" {\n  icon nope\n}\n",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"p\",\n      \"name\": \"P\",\n      \"icon\": \"nope\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson p \"P\" {\n  icon nope\n}\n",
+      "parseDiags": [],
+      "validateDiags": [
+        {
+          "code": "P201",
+          "message": "\"p\" is orphaned (no links, no flow references)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        },
+        {
+          "code": "P210",
+          "message": "unknown icon \"nope\" (declare it or use a built-in)",
+          "line": 2,
+          "col": 1,
+          "severity": "warning"
+        }
+      ]
+    },
+    {
+      "name": "icon-unsupported-media",
+      "src": "pcd 1.0\nicon pic {\n  media \"image/png\"\n  data \"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg==\"\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E115",
+          "message": "unsupported icon media type 'image/png'",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "icon-bad-base64",
+      "src": "pcd 1.0\nicon bad {\n  media \"image/svg+xml\"\n  data \"not base64!\"\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E114",
+          "message": "icon data must be canonical Base64 (standard alphabet, padding, no whitespace)",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "icon-missing-media",
+      "src": "pcd 1.0\nicon m {\n  data \"AAAA\"\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "icon declaration requires a media line",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "icon-missing-data",
+      "src": "pcd 1.0\nicon m {\n  media \"image/svg+xml\"\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "icon declaration requires a data line",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "icon-unknown-line",
+      "src": "pcd 1.0\nicon m {\n  sparkle yes\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "unknown icon line 'sparkle'",
+          "line": 3,
+          "col": 3,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "icon-duplicate-line",
+      "src": "pcd 1.0\nicon m {\n  media \"image/svg+xml\"\n  media \"image/svg+xml\"\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E110",
+          "message": "duplicate attribute 'media'",
+          "line": 4,
+          "col": 3,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
+      "name": "icon-unclosed",
+      "src": "pcd 1.0\nicon m {\n  media \"image/svg+xml\"\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E104",
+          "message": "unclosed icon block",
+          "line": 2,
+          "col": 1,
+          "severity": "error"
+        }
+      ],
       "validateDiags": []
     },
     {
@@ -879,7 +1107,7 @@
     {
       "name": "stray-lt",
       "src": "pcd 1.0\nperson a \"A\"\n<\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\n",
       "parseDiags": [
         {
@@ -903,7 +1131,7 @@
     {
       "name": "unterminated-string",
       "src": "pcd 1.0\ntitle \"abc\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"abc\"\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"abc\"\n}",
       "print": "pcd 1.0\ntitle \"abc\"\n",
       "parseDiags": [
         {
@@ -919,7 +1147,7 @@
     {
       "name": "invalid-escape",
       "src": "pcd 1.0\ntitle \"a\\nb\"\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"anb\"\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"anb\"\n}",
       "print": "pcd 1.0\ntitle \"anb\"\n",
       "parseDiags": [
         {
@@ -1086,7 +1314,7 @@
     {
       "name": "dup-ids",
       "src": "pcd 1.0\nperson a \"A\"\nperson a \"A2\"\nflow \"f\" as f1 {\n info \"x\"\n}\nflow \"g\" as f1 {\n info \"y\"\n}\nview \"v1\" as v1 {\n layout saved\n}\nview \"v2\" as v1 {\n layout saved\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A2\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"f1\",\n      \"title\": \"f\",\n      \"steps\": [\n        {\n          \"type\": \"info\",\n          \"text\": \"x\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"f1\",\n      \"title\": \"g\",\n      \"steps\": [\n        {\n          \"type\": \"info\",\n          \"text\": \"y\",\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 7,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"id\": \"v1\",\n      \"name\": \"v1\",\n      \"lines\": [\n        {\n          \"type\": \"layout\",\n          \"mode\": \"saved\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"v1\",\n      \"name\": \"v2\",\n      \"lines\": [\n        {\n          \"type\": \"layout\",\n          \"mode\": \"saved\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 13,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A2\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"f1\",\n      \"title\": \"f\",\n      \"steps\": [\n        {\n          \"type\": \"info\",\n          \"text\": \"x\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"f1\",\n      \"title\": \"g\",\n      \"steps\": [\n        {\n          \"type\": \"info\",\n          \"text\": \"y\",\n          \"pos\": {\n            \"line\": 8,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 7,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"id\": \"v1\",\n      \"name\": \"v1\",\n      \"lines\": [\n        {\n          \"type\": \"layout\",\n          \"mode\": \"saved\",\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"v1\",\n      \"name\": \"v2\",\n      \"lines\": [\n        {\n          \"type\": \"layout\",\n          \"mode\": \"saved\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 13,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\nperson a \"A2\"\n\nflow \"f\" as f1 {\n  info \"x\"\n}\nflow \"g\" as f1 {\n  info \"y\"\n}\n\nview \"v1\" as v1 {\n  layout saved\n}\nview \"v2\" as v1 {\n  layout saved\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -1144,7 +1372,7 @@
     {
       "name": "unknown-endpoints",
       "src": "pcd 1.0\nperson a \"A\"\na -> ghost\nflow {\n a -> b\n process ghost2\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"ghost\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"target\": \"ghost2\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"ghost\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"target\": \"ghost2\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\n\na -> ghost\n\nflow {\n  a -> b\n  process ghost2\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -1181,7 +1409,7 @@
     {
       "name": "contains-rules",
       "src": "pcd 1.0\ncontainer app \"App\" {\n contains ghost\n}\ngroup g \"G\" {\n contains app\n}\ngroup g2 \"G2\" {\n contains g\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"container\",\n      \"id\": \"app\",\n      \"name\": \"App\",\n      \"contains\": [\n        \"ghost\"\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"group\",\n      \"id\": \"g\",\n      \"name\": \"G\",\n      \"contains\": [\n        \"app\"\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"group\",\n      \"id\": \"g2\",\n      \"name\": \"G2\",\n      \"contains\": [\n        \"g\"\n      ],\n      \"pos\": {\n        \"line\": 8,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"container\",\n      \"id\": \"app\",\n      \"name\": \"App\",\n      \"contains\": [\n        \"ghost\"\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"group\",\n      \"id\": \"g\",\n      \"name\": \"G\",\n      \"contains\": [\n        \"app\"\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"group\",\n      \"id\": \"g2\",\n      \"name\": \"G2\",\n      \"contains\": [\n        \"g\"\n      ],\n      \"pos\": {\n        \"line\": 8,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\ncontainer app \"App\" {\n  contains ghost\n}\ngroup g \"G\" {\n  contains app\n}\ngroup g2 \"G2\" {\n  contains g\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -1225,7 +1453,7 @@
     {
       "name": "attach-unknown",
       "src": "pcd 1.0\nnote n \"N\" {\n attach ghost\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"note\",\n      \"id\": \"n\",\n      \"name\": \"N\",\n      \"attach\": \"ghost\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"note\",\n      \"id\": \"n\",\n      \"name\": \"N\",\n      \"attach\": \"ghost\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nnote n \"N\" {\n  attach ghost\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -1248,7 +1476,7 @@
     {
       "name": "p205-raw-attrs",
       "src": "pcd 1.0\nperson a \"A\" {\n blur \"2px\"\n}\nperson b \"B\"\na -> b {\n glow \"on\"\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"attributes\": [\n        {\n          \"raw\": \"blur \\\"2px\\\"\",\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"attributes\": [\n        {\n          \"raw\": \"glow \\\"on\\\"\",\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"attributes\": [\n        {\n          \"raw\": \"blur \\\"2px\\\"\",\n          \"pos\": {\n            \"line\": 3,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"attributes\": [\n        {\n          \"raw\": \"glow \\\"on\\\"\",\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\" {\n  blur \"2px\"\n}\nperson b \"B\"\n\na -> b {\n  glow \"on\"\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -1271,7 +1499,7 @@
     {
       "name": "msg-link-ref-missing",
       "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\nflow {\n a -> b as nolink\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"linkRef\": \"nolink\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"steps\": [\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"linkRef\": \"nolink\",\n          \"pos\": {\n            \"line\": 5,\n            \"col\": 2\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nperson a \"A\"\nperson b \"B\"\n\nflow {\n  a -> b as nolink\n}\n",
       "parseDiags": [],
       "validateDiags": [
@@ -1287,7 +1515,7 @@
     {
       "name": "alias-orphan-skip",
       "src": "pcd 1.0\nimport auth as \"auth.pcd\"\nperson auth \"Auth\"\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"imports\": [\n    {\n      \"alias\": \"auth\",\n      \"path\": \"auth.pcd\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"auth\",\n      \"name\": \"Auth\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"imports\": [\n    {\n      \"alias\": \"auth\",\n      \"path\": \"auth.pcd\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    }\n  ],\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"auth\",\n      \"name\": \"Auth\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\n\nimport auth as \"auth.pcd\"\n\nperson auth \"Auth\"\n",
       "parseDiags": [],
       "validateDiags": []
@@ -1295,7 +1523,7 @@
     {
       "name": "clean-doc",
       "src": "pcd 1.0\ntitle \"Clean\"\nlevel container\nperson u \"User\"\nsystem web \"Web\"\nsystem db \"DB\" {\n  technology \"Postgres\"\n}\nu -> web : \"browse\"\nweb -> db : \"query\" as q\nflow \"Main\" as main {\n  intro \"start\"\n  u -> web\n  web -> db as q\n}\nview \"V\" {\n  position u (0, 0)\n  position web (100, 0)\n  position db (200, 0)\n}\nstyle u {\n  shape person\n}\n",
-      "doc": "{\n  \"irVersion\": 8,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"Clean\",\n  \"level\": \"container\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"u\",\n      \"name\": \"User\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"web\",\n      \"name\": \"Web\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"db\",\n      \"name\": \"DB\",\n      \"technology\": \"Postgres\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"u\",\n      \"to\": \"web\",\n      \"label\": \"browse\",\n      \"pos\": {\n        \"line\": 9,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"q\",\n      \"from\": \"web\",\n      \"to\": \"db\",\n      \"label\": \"query\",\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"main\",\n      \"title\": \"Main\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"start\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"u\",\n          \"to\": \"web\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"web\",\n          \"to\": \"db\",\n          \"linkRef\": \"q\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 11,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"name\": \"V\",\n      \"lines\": [\n        {\n          \"type\": \"position\",\n          \"id\": \"u\",\n          \"x\": 0,\n          \"y\": 0,\n          \"pos\": {\n            \"line\": 17,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"web\",\n          \"x\": 100,\n          \"y\": 0,\n          \"pos\": {\n            \"line\": 18,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"db\",\n          \"x\": 200,\n          \"y\": 0,\n          \"pos\": {\n            \"line\": 19,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 16,\n        \"col\": 1\n      }\n    }\n  ],\n  \"styles\": [\n    {\n      \"target\": \"u\",\n      \"style\": {\n        \"shape\": \"person\"\n      },\n      \"pos\": {\n        \"line\": 21,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "doc": "{\n  \"irVersion\": 9,\n  \"formatVersion\": \"1.0\",\n  \"title\": \"Clean\",\n  \"level\": \"container\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"u\",\n      \"name\": \"User\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"web\",\n      \"name\": \"Web\",\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"db\",\n      \"name\": \"DB\",\n      \"technology\": \"Postgres\",\n      \"pos\": {\n        \"line\": 6,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"from\": \"u\",\n      \"to\": \"web\",\n      \"label\": \"browse\",\n      \"pos\": {\n        \"line\": 9,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"q\",\n      \"from\": \"web\",\n      \"to\": \"db\",\n      \"label\": \"query\",\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"main\",\n      \"title\": \"Main\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"start\",\n          \"pos\": {\n            \"line\": 12,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"u\",\n          \"to\": \"web\",\n          \"pos\": {\n            \"line\": 13,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"web\",\n          \"to\": \"db\",\n          \"linkRef\": \"q\",\n          \"pos\": {\n            \"line\": 14,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 11,\n        \"col\": 1\n      }\n    }\n  ],\n  \"views\": [\n    {\n      \"name\": \"V\",\n      \"lines\": [\n        {\n          \"type\": \"position\",\n          \"id\": \"u\",\n          \"x\": 0,\n          \"y\": 0,\n          \"pos\": {\n            \"line\": 17,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"web\",\n          \"x\": 100,\n          \"y\": 0,\n          \"pos\": {\n            \"line\": 18,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"position\",\n          \"id\": \"db\",\n          \"x\": 200,\n          \"y\": 0,\n          \"pos\": {\n            \"line\": 19,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 16,\n        \"col\": 1\n      }\n    }\n  ],\n  \"styles\": [\n    {\n      \"target\": \"u\",\n      \"style\": {\n        \"shape\": \"person\"\n      },\n      \"pos\": {\n        \"line\": 21,\n        \"col\": 1\n      }\n    }\n  ]\n}",
       "print": "pcd 1.0\ntitle \"Clean\"\nlevel container\n\nperson u \"User\"\nsystem web \"Web\"\nsystem db \"DB\" {\n  technology \"Postgres\"\n}\n\nu -> web : \"browse\"\nweb -> db : \"query\" as q\n\nflow \"Main\" as main {\n  intro \"start\"\n  u -> web\n  web -> db as q\n}\n\nview \"V\" {\n  position u (0, 0)\n  position web (100, 0)\n  position db (200, 0)\n}\n\nstyle u {\n  shape person\n}\n",
       "parseDiags": [],
       "validateDiags": []

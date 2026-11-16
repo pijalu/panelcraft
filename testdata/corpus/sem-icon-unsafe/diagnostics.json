@@ -1,0 +1,19 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P209",
+      "message": "icon \"evil\" has unsafe or unsupported SVG content: script, event-handler",
+      "line": 3,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P201",
+      "message": "\"p\" is orphaned (no links, no flow references)",
+      "line": 8,
+      "col": 1,
+      "severity": "warning"
+    }
+  ]
+}
