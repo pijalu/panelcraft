@@ -65,7 +65,9 @@ async function seedFile(page: Page, name: string, text: string): Promise<void> {
   const input = page.getByTestId('tree-create-input');
   await input.fill(name);
   await input.press('Enter');
-  await expect(page.getByTestId(`tab-${name}`)).toBeVisible();
+  // Wait for the new file to be the *active* tab: a visible tab that is not
+  // selected would take the next edit into the previous document.
+  await expect(page.getByTestId(`tab-${name}`)).toHaveAttribute('data-active', 'true');
   await openWorkspacePanels(page, ['code']);
   await setDocument(page, text);
 }
@@ -94,6 +96,8 @@ test.describe('item 16 — drill-down on the hosted build', () => {
     await seedFile(page, 'shop.pcd', CONTAINERS);
 
     await page.getByTestId('tab-context.pcd').click();
+    await expect(page.getByTestId('tab-context.pcd')).toHaveAttribute('data-active', 'true');
+    await expect(page.getByTestId('canvas').locator('g.pc-obj[data-id="shop"]')).toHaveCount(1);
     await page.getByTestId('canvas').locator('g.pc-obj[data-id="shop"]').click();
     await page.getByTestId('prop-open-child').click();
     await expect(page.getByTestId('drill-crumbs')).toContainText('Back to context.pcd');

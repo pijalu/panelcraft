@@ -183,6 +183,70 @@ $ HOSTED_URL=http://localhost:4173/ EXPECTED_BUILD_SHA=$(git rev-parse HEAD) \
 13 passed (4.0s)
 ```
 
+## Deployment evidence (live site)
+
+The change was published through its own new gate, so this release is the gate's
+first customer. Merge commit `d3ac0839c96da6df39dd4e45586570b8b93ece64`:
+
+```
+$ gh run list --workflow ci     → ci     push         d3ac083  success
+$ gh run list --workflow pages  → pages  workflow_run d3ac083  success  (run 43910942763)
+```
+
+The Pages run is the `workflow_run` of that `ci` success — it did not deploy on
+its own schedule — and its `verify` job reported:
+
+```
+- revision: d3ac0839c96da6df39dd4e45586570b8b93ece64
+- deployment page: https://pijalu.github.io/panelcraft/
+- Assets verified byte-identical: 5/5
+Verdict: PASS
+```
+
+Checked again from this working tree, independently of the workflow, against the
+live origin — rebuilding from the same commit with the Pages base so the
+comparison is like for like:
+
+```
+$ git checkout main && git rev-parse HEAD
+d3ac0839c96da6df39dd4e45586570b8b93ece64
+$ npm run build -- --base=/panelcraft/ && node -p "require('./web/dist/build-info.json').sha"
+d3ac0839c96da6df39dd4e45586570b8b93ece64
+$ node scripts/hosted-evidence.mjs --url https://pijalu.github.io/panelcraft/ \
+    --dist web/dist --expect-sha d3ac0839c96da6df39dd4e45586570b8b93ece64 --run 43910942763
+- Served source SHA: d3ac0839c96da6df39dd4e45586570b8b93ece64 (d3ac083, main)
+- index.html meta identity: d3ac083
+- Assets verified byte-identical: 5/5
+| assets/index-BBywv01q.js | 2a8a26239ca7400f… | 2a8a26239ca7400f… | yes |
+Verdict: PASS
+```
+
+Hosted smoke against the deployed site, both projects:
+
+```
+$ HOSTED_URL=https://pijalu.github.io/panelcraft/ \
+  EXPECTED_BUILD_SHA=d3ac0839c96da6df39dd4e45586570b8b93ece64 npm run e2e:hosted
+✓ [fresh] … boot: the served page is the published revision and stays self-contained
+✓ [fresh] … item 7 submenu and corner context menu
+✓ [fresh] … item 8 long file names
+✓ [fresh] … item 9 transport and framing
+✓ [fresh] … item 10 derived default flow
+✓ [fresh] … item 12 default grid
+✓ [fresh] … item 13 routes / item 14 label centring
+✓ [fresh] … item 15 project icons / item 16 drill-down and source
+✓ [upgrading] … the installed shell is the deployed revision, online and offline
+13 passed (4.4s)
+```
+
+The hosted run earned its keep immediately: the item 16 scenario failed against
+the live site while passing locally, and that failure was real evidence rather
+than noise — the seeding helper waited for the new file's tab to be *visible*
+instead of *selected*, so the following edit landed in the previous document and
+the child diagram opened empty. The screenshot from the failing run showed the
+blank child canvas; the helper now waits for `data-active="true"` before typing,
+and the same test then passed against the unchanged deployment (`e2e-hosted/` is
+not a published path, so fixing a test did not redeploy the site).
+
 ## Residual risks
 
 - **One flake, observed once.** The first full `npx playwright test` run on this
@@ -191,6 +255,14 @@ $ HOSTED_URL=http://localhost:4173/ EXPECTED_BUILD_SHA=$(git rev-parse HEAD) \
   re-run passed 199/199, and `--repeat-each=5` passed 10/10. The archived
   determinism work already removed the races found so far; this one is not
   reproduced and is recorded rather than claimed fixed.
+- **The hosted smoke is a smoke suite, not a second full regression run.** It
+  asserts one representative behaviour per item against the deployed build (menu
+  geometry, file actions, transport plus camera ceiling, derived flow, default
+  grid, route avoidance, label centring, icon bytes, drill-down plus source), and
+  it does not repeat the theme matrix, accessibility scans or animation-timing
+  assertions that the local suite owns. A defect it does not cover can still be
+  hidden behind a green hosted run; the local gate remains the place where items
+  are proven in depth.
 - **Update/restart is rehearsed, not deployed.** Pages cannot be made to serve a
   second worker script, so the restart lifecycle is proven against the same bundle
   locally. The hosted `upgrading` project covers what the deployment *can* prove:
