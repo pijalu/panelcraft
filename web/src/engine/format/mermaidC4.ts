@@ -219,6 +219,7 @@ export function fromC4(src: string): MermaidResult {
     formatVersion: '1.0',
     title: st.title,
     level: st.level,
+    icons: [],
     imports: [],
     objects: ctx.objects,
     links: ctx.links,

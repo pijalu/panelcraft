@@ -35,6 +35,8 @@ export interface FlowPlayerApi {
   resume(): void;
   restart(): void;
   stepTo(index1: number): void;
+  /** Play on from a 1-based beat (the flow pane's per-step play button). */
+  playFrom(index1: number): void;
   choose(branchIndex: number): void;
   /** UX08-WP13: recompute the current beat's framing for the current viewport. */
   refit(): void;
@@ -75,6 +77,7 @@ export function useFlowPlayer(deps: FlowPlayerDeps): FlowPlayerApi {
     resume: () => runner.resume(),
     restart: () => runner.restart(),
     stepTo: (index1) => runner.stepTo(index1),
+    playFrom: (index1) => runner.playFrom(index1),
     choose: (branchIndex) => runner.choose(branchIndex),
     refit: () => runner.refit(),
     setRectProvider: (r) => runner.setRectProvider(r),

@@ -47,9 +47,24 @@ describe('flow catalog (UX08-WP13)', () => {
     expect(entries[1]?.description).toBeUndefined();
   });
 
-  it('is empty for a file without flows', () => {
+  it('is empty for a file without flows or connections', () => {
     const { doc: bare } = parsePDL('pcd 1.0\nperson a "Ada"\n');
     expect(flowCatalog(bare)).toEqual([]);
+  });
+
+  it('lists the derived default flow for a link-only file (item 10)', () => {
+    const { doc: linked } = parsePDL(`pcd 1.0
+
+person customer "Customer"
+system shop "Shop"
+
+customer -> shop : "buys"
+`);
+    const entries = flowCatalog(linked);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ key: 'flow1', title: 'Default flow', steps: 1, derived: true });
+    // An authored flow always wins: nothing is derived alongside it.
+    expect(flowCatalog(doc()).every((entry) => entry.derived === undefined)).toBe(true);
   });
 });
 

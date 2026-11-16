@@ -107,11 +107,18 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByTestId('pb-exit').click();
     await expect(tokens(page)).toHaveCount(0);
 
-    // Reduced motion: static emphasis, no sparks.
+    // Reduced motion: static emphasis plus a still token at the endpoint — no
+    // movement, but the beat still shows where the message went (item 9).
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.getByTestId('step-play-1').click();
     await expect(page.getByTestId('canvas').locator('.pc-emph').first()).toBeVisible();
-    await expect(tokens(page)).toHaveCount(0);
+    const still = page.getByTestId('canvas').locator('.pc-token-static');
+    await expect(still).toHaveCount(1);
+    await expect(still).toBeVisible();
+    const moving = await still.evaluate((el) => (el as Element).getAnimations().length);
+    expect(moving, 'the static token must not animate').toBe(0);
+    // No travelling token or trail either.
+    await expect(page.getByTestId('canvas').locator('.pc-trail')).toHaveCount(0);
     await capture(page, `flow02-reduced-motion-${theme}`);
     await page.getByTestId('pb-exit').click();
 

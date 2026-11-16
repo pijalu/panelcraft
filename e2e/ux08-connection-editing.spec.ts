@@ -108,6 +108,8 @@ const routeD = (page: Page): Promise<string | null> =>
 test('UX08-WP09: dragging a channel slides it and persists as a waypoint', async ({ page }) => {
   await seed(page);
   await selectLink(page);
+  const before = await docText(page);
+  const routeBefore = await routeD(page);
   const { axis, cx, cy } = await channel(page);
   // Drag along the channel's normal: a vertical channel moves horizontally.
   const dx = axis === 'h' ? 0 : 40;
@@ -117,9 +119,12 @@ test('UX08-WP09: dragging a channel slides it and persists as a waypoint', async
   await page.mouse.move(cx + dx, cy + dy, { steps: 8 });
   await page.mouse.up();
 
-  await expect.poll(() => docText(page)).not.toContain('waypoint (300, 200)');
+  // The gesture committed geometry: the file gained/rewrote its bends and the
+  // drawn route is now different from the one the user grabbed.
+  await expect.poll(() => docText(page)).not.toBe(before);
   expect(await docText(page)).toContain('waypoint (');
   const moved = await routeD(page);
+  expect(moved).not.toBe(routeBefore);
 
   // reload: committed bends are document data, not session state
   await page.reload();

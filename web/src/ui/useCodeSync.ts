@@ -41,6 +41,7 @@ function emptyDoc(): Doc {
   return {
     irVersion: IR_VERSION,
     formatVersion: FORMAT_VERSION,
+    icons: [],
     imports: [],
     objects: [],
     links: [],

@@ -30,7 +30,7 @@ function Harness() {
   const player = useFlowPlayer({
     textOf: () => DOC,
     openFile: () => {},
-    animator: { play: () => {}, stop: () => {} },
+    animator: { play: () => {}, stop: () => {}, pause: () => {}, resume: () => {}, settle: () => {} },
     camera: { focus: () => {}, save: () => {}, restoreSaved: () => {} },
     clock: { now: () => 0, delay: () => 0, cancel: () => {} },
     currentViewport: () => ({ x: 0, y: 0, k: 1 }),
@@ -123,7 +123,7 @@ function DescHarness() {
   const player = useFlowPlayer({
     textOf: () => DOC_DESC,
     openFile: () => {},
-    animator: { play: () => {}, stop: () => {} },
+    animator: { play: () => {}, stop: () => {}, pause: () => {}, resume: () => {}, settle: () => {} },
     camera: { focus: () => {}, save: () => {}, restoreSaved: () => {} },
     clock: { now: () => 0, delay: () => 0, cancel: () => {} },
     currentViewport: () => ({ x: 0, y: 0, k: 1 }),

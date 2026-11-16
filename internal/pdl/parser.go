@@ -206,6 +206,8 @@ func (p *parser) statement(doc *ir.Doc) {
 		p.parseMeta(doc, t.Text)
 	case "import":
 		doc.Imports = append(doc.Imports, p.parseImport())
+	case "icon":
+		doc.Icons = append(doc.Icons, p.parseIcon())
 	case "flow":
 		doc.Flows = append(doc.Flows, p.parseFlow())
 	case "view":
@@ -275,6 +277,67 @@ func (p *parser) parseImport() ir.ImportStmt {
 	return ir.ImportStmt{Alias: alias, Path: path, Comments: comments, Pos: tokPos(t0)}
 }
 
+// parseIcon reads a document icon declaration (§3.1): the payload's media
+// type and Base64 are syntax, not semantics — a declaration that cannot be
+// decoded can never be rendered, so it aborts the file like any other grammar
+// error instead of round-tripping as unusable data.
+func (p *parser) parseIcon() ir.IconDecl {
+	t0 := p.next()
+	comments := p.takeComments()
+	id := p.ident()
+	pos := tokPos(t0)
+	var label, mediaType, data *string
+	seen := map[string]bool{}
+	p.expect(TokPunct, "{")
+	for {
+		p.skipComments()
+		t := p.peek()
+		if t.Type == TokEOF {
+			p.fail(t0, ErrUnclosedBlock, "unclosed icon block")
+		}
+		if t.Type == TokPunct && t.Text == "}" {
+			p.next()
+			break
+		}
+		kw := p.expect(TokIdent, "")
+		switch kw.Text {
+		case "label":
+			p.once(seen, kw, "label")
+			v := p.str()
+			label = &v
+		case "media":
+			p.once(seen, kw, "media")
+			v := p.str()
+			mediaType = &v
+		case "data":
+			p.once(seen, kw, "data")
+			v := p.str()
+			data = &v
+		default:
+			p.fail(kw, ErrUnexpected, fmt.Sprintf("unknown icon line '%s'", kw.Text))
+		}
+	}
+	if mediaType == nil {
+		p.fail(t0, ErrUnexpected, "icon declaration requires a media line")
+	}
+	supported := false
+	for _, mt := range ir.IconMediaTypes {
+		if mt == *mediaType {
+			supported = true
+		}
+	}
+	if !supported {
+		p.fail(t0, ErrInvalidIconMedia, fmt.Sprintf("unsupported icon media type '%s'", *mediaType))
+	}
+	if data == nil {
+		p.fail(t0, ErrUnexpected, "icon declaration requires a data line")
+	}
+	if !ir.IsCanonicalBase64(*data) {
+		p.fail(t0, ErrInvalidIconData, "icon data must be canonical Base64 (standard alphabet, padding, no whitespace)")
+	}
+	return ir.IconDecl{ID: id, Label: label, MediaType: *mediaType, Data: *data, Comments: comments, Pos: pos}
+}
+
 func (p *parser) parseObject() ir.Obj {
 	t0 := p.next()
 	comments := p.takeComments()
@@ -303,7 +366,7 @@ func (p *parser) objectBlock(o *ir.Obj, t0 Token) {
 			return
 		}
 		t := p.expect(TokIdent, "")
-		if p.objectAttr(o, seen, t0, t) {
+		if p.objectAttr(o, seen, t0, t) || p.hierarchyAttr(o, seen, t) {
 			continue
 		}
 		o.Attributes = append(o.Attributes, ir.RawAttr{Raw: p.captureRaw(t), Pos: tokPos(t)})
@@ -361,11 +424,74 @@ func (p *parser) objectAttr(o *ir.Obj, seen map[string]bool, t0, t Token) bool {
 	return true
 }
 
+// hierarchyAttr handles the IR v10 decomposition and source attributes (§3.2,
+// §3.3) in their own function so the attribute table stays inside the
+// complexity gate and one concern per function.
+func (p *parser) hierarchyAttr(o *ir.Obj, seen map[string]bool, t Token) bool {
+	switch t.Text {
+	case "drilldown":
+		p.once(seen, t, "drilldown")
+		o.Drilldown = p.parseDrilldown()
+	case "source":
+		p.once(seen, t, "source")
+		o.Source = p.parseSource(t)
+	default:
+		return false
+	}
+	return true
+}
+
 func (p *parser) once(seen map[string]bool, t Token, key string) {
 	if seen[key] {
 		p.fail(t, ErrDuplicateAttr, fmt.Sprintf("duplicate attribute '%s'", key))
 	}
 	seen[key] = true
+}
+
+// parseDrilldown reads `"<path>" [view <id>]` (IR v10, FILE-FORMAT §3.2). The
+// path is a quoted workspace path, not an identifier; the optional view is the
+// child's view id.
+func (p *parser) parseDrilldown() *ir.Drilldown {
+	d := &ir.Drilldown{Path: p.str()}
+	peeked := p.peek()
+	if peeked.Type == TokIdent && peeked.Text == "view" {
+		p.next()
+		d.View = p.ident()
+	}
+	return d
+}
+
+// parseSource reads `{ language "…" text "…" … }` (IR v10, §3.3): one `text`
+// line per source line, in document order. No text line is E116 — the block
+// would show nothing and the printer would drop it, breaking round-trip.
+func (p *parser) parseSource(t0 Token) *ir.SourceBlock {
+	p.expect(TokPunct, "{")
+	src := &ir.SourceBlock{}
+	seen := map[string]bool{}
+	for {
+		p.skipComments()
+		if p.peek().Type == TokEOF {
+			p.fail(t0, ErrUnclosedBlock, "unclosed source block")
+		}
+		if p.peek().Type == TokPunct && p.peek().Text == "}" {
+			p.next()
+			break
+		}
+		t := p.expect(TokIdent, "")
+		switch t.Text {
+		case "language":
+			p.once(seen, t, "language")
+			src.Language = p.str()
+		case "text":
+			src.Lines = append(src.Lines, p.str())
+		default:
+			p.fail(t, ErrUnexpected, fmt.Sprintf("unknown source line '%s'", t.Text))
+		}
+	}
+	if len(src.Lines) == 0 {
+		p.fail(t0, ErrEmptySource, "source block needs at least one text line")
+	}
+	return src
 }
 
 // ident validates a PDL identifier (§1 + errata D-M1-8).

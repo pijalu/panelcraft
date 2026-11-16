@@ -342,13 +342,16 @@ describe('properties + grid + resize', () => {
   });
 
   it('grid draws the chosen type (UX08-WP05, FR-C2)', () => {
-    expect(ctrl.toggleGrid()).toBe('dots');
+    // The fresh default is the subtle dots grid, so the first toggle hides it
+    // and the second restores the remembered type.
+    expect(ctrl.gridSettings()).toMatchObject({ type: 'dots', snap: true });
     expect(ctrl.toggleGrid()).toBe('off');
+    expect(ctrl.toggleGrid()).toBe('dots');
   });
 
   it('grid visibility and snapping are independent (UX08-WP05)', () => {
-    const noSnap = { version: 1 as const, type: 'lines' as const, snap: false, last: 'lines' as const };
-    const snapped = { version: 1 as const, type: 'off' as const, snap: true, last: 'dots' as const };
+    const noSnap = { version: 2 as const, type: 'lines' as const, snap: false, last: 'lines' as const };
+    const snapped = { version: 2 as const, type: 'off' as const, snap: true, last: 'dots' as const };
 
     // Snapping off: the object follows the pointer exactly (13 px stays 13 px).
     ctrl.applyGrid(noSnap);
@@ -365,7 +368,7 @@ describe('properties + grid + resize', () => {
   });
 
   it('remembers the last visible grid type across the toggle', () => {
-    ctrl.applyGrid({ version: 1, type: 'lines', snap: true, last: 'lines' });
+    ctrl.applyGrid({ version: 2, type: 'lines', snap: true, last: 'lines' });
     ctrl.toggleGrid();
     const off = ctrl.gridSettings();
     expect(off).toMatchObject({ type: 'off', last: 'lines', snap: true });

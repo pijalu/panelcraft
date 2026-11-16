@@ -1,0 +1,26 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P207",
+      "message": "icon handle \"cloud\" collides with the built-in icon of the same name",
+      "line": 3,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P206",
+      "message": "duplicate icon handle \"cloud2\"",
+      "line": 11,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P210",
+      "message": "unknown icon \"missing-handle\" (declare it or use a built-in)",
+      "line": 19,
+      "col": 1,
+      "severity": "warning"
+    }
+  ]
+}

@@ -97,8 +97,26 @@ describe('object controls (F-11)', () => {
     const { patches } = mountObject({ style: { fill: '#111111' } });
     fireEvent.input(screen.getByTestId('prop-style-stroke'), { target: { value: '#ff0000' } });
     expect(patches[0]?.patch).toEqual({ style: { fill: '#111111', stroke: '#ff0000' } });
+  });
+
+  it('writes the icon to the object and drops a stale style override', () => {
+    const { patches } = mountObject({ style: { fill: '#111111' } });
     fireEvent.input(screen.getByTestId('prop-style-icon'), { target: { value: 'cloud' } });
-    expect(patches[1]?.patch).toEqual({ style: { fill: '#111111', icon: 'cloud' } });
+    expect(patches[0]?.patch).toEqual({ icon: 'cloud' });
+  });
+
+  it('keeps editing an existing style override but clears it in one patch', () => {
+    const { patches } = mountObject({ icon: 'db', style: { icon: 'cloud' } });
+    expect((screen.getByTestId('prop-style-icon') as HTMLInputElement).value).toBe('cloud');
+    fireEvent.input(screen.getByTestId('prop-style-icon'), { target: { value: '' } });
+    expect(patches[0]?.patch).toEqual({ style: { icon: undefined }, icon: undefined });
+  });
+
+  it('shows the object icon in the field even without a style override', () => {
+    const { patches } = mountObject({ icon: 'db' });
+    expect((screen.getByTestId('prop-style-icon') as HTMLInputElement).value).toBe('db');
+    fireEvent.input(screen.getByTestId('prop-style-icon'), { target: { value: '' } });
+    expect(patches[0]?.patch).toEqual({ icon: undefined });
   });
 
   it('patches integer stacking and restores Auto without inventing a value', () => {

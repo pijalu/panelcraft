@@ -11,7 +11,13 @@ import {
   type Scene,
   type SceneLink,
 } from '../engine/render/scenegraph';
-import { routeLink, portPoint, type Side, type Polyline } from '../engine/render/router';
+import {
+  assetFor,
+  sameIconAssets,
+  type IconAsset,
+  type IconAssets,
+} from '../engine/render/iconAssets';
+import { routeLink, invalidWaypoints, crossingEntities, portPoint, type Side, type Polyline } from '../engine/render/router';
 import {
   invert,
   panBy,
@@ -76,7 +82,7 @@ import {
   type ResizeHandle,
 } from '../engine/render/overlay';
 import { ValueChange, UndoStack, type CoalescableCommand } from '../workspace/undo';
-import type { Kind } from '../engine/model/types';
+import type { Doc, Kind } from '../engine/model/types';
 import { s, type StringKey } from './strings';
 
 export interface DiagramObject {
@@ -212,6 +218,8 @@ export interface Snapshot {
   viewport: Transform;
   /** Committed route geometry shared with the mini-map (CX-02). */
   routes?: Record<string, Point[]>;
+  /** Route problems per link id, in plain words (item 13). */
+  routeWarnings?: Record<string, string[]>;
 }
 
 export interface PropertiesRequest {
@@ -426,6 +434,31 @@ function resizeTarget(e: Event): { id: string; handle: ResizeHandle } | null {
   return id && handle ? { id, handle } : null;
 }
 
+/**
+ * IR v9: a document-level edit that is not canvas state (icon declarations, and
+ * any future non-object statement). The controller owns the history entry only —
+ * `write` is the caller's normal persist path, so undo and redo replay exactly
+ * the same write and the code view can never drift from the file.
+ */
+class DocChange implements CoalescableCommand {
+  readonly coalesceKey = undefined;
+  constructor(
+    private readonly write: (doc: Doc) => void,
+    private readonly before: Doc,
+    private readonly after: Doc,
+    readonly label: string,
+  ) {}
+  undo(): void {
+    this.write(this.before);
+  }
+  redo(): void {
+    this.write(this.after);
+  }
+  coalesce(): CoalescableCommand | null {
+    return null;
+  }
+}
+
 export class CanvasController {
   readonly undo: UndoStack;
   private readonly svg: SVGSVGElement;
@@ -436,9 +469,17 @@ export class CanvasController {
   private selObjects = new Set<string>();
   private selLinks = new Set<string>();
   private grid: GridSettings = defaultGrid();
+  /**
+   * IR v9: payloads of the open document, keyed by handle. The canvas resolves an
+   * object's icon *here* (by its current name) instead of carrying a copy on the
+   * object, so changing the name can never draw the previous icon.
+   */
+  private iconAssets: IconAssets = new Map();
   private spaceDown = false;
   private suppressContextMenu = false;
   private routes = new Map<string, Polyline>();
+  /** Route problems per link id (invalid bends, unresolved crossings). */
+  private warnings = new Map<string, string[]>();
   private seq = 0;
   /** Set by loadState: the canvas only speaks for a file after it has one
    * (F-28 — a pre-load empty snapshot must not be mistaken for a canvas edit). */
@@ -499,6 +540,7 @@ export class CanvasController {
       selection: { objects: [...this.selObjects], links: [...this.selLinks] },
       viewport: this.t,
       routes: Object.fromEntries(this.routes),
+      ...(this.warnings.size > 0 ? { routeWarnings: Object.fromEntries(this.warnings) } : {}),
     };
   }
 
@@ -541,7 +583,10 @@ export class CanvasController {
   private fitted(o: DiagramObject): DiagramObject {
     const text = o.name && o.name.length > 0 ? o.name : o.id;
     if (o.size !== undefined) return { ...o, lines: explicitLines(o, text, this.measure) };
-    const fit = autoSize({ text, kind: o.kind, icon: objectIcon(o) }, this.measure);
+    const fit = autoSize(
+      { text, kind: o.kind, icon: objectIcon(o), iconAsset: this.iconAssetFor(o) },
+      this.measure,
+    );
     // grow-only: a short label keeps the kind's default box, a long one gets
     // the room it needs (never shrink below what the shape language defines)
     return {
@@ -555,9 +600,12 @@ export class CanvasController {
   /** Apply a properties patch; label/icon changes refit unless size is explicit. */
   private patched(o: DiagramObject, patch: Partial<DiagramObject>): DiagramObject {
     const next = { ...o, ...patch };
-    if (patch.name !== undefined || patch.style?.icon !== undefined) {
+    if (patch.name !== undefined || patch.icon !== undefined || patch.style?.icon !== undefined) {
       const text = next.name && next.name.length > 0 ? next.name : o.id;
-      const fit = autoSize({ text, kind: o.kind, icon: objectIcon(next) }, this.measure);
+      const fit = autoSize(
+        { text, kind: o.kind, icon: objectIcon(next), iconAsset: this.iconAssetFor(next) },
+        this.measure,
+      );
       next.lines = o.size === undefined ? fit.lines : explicitLines(next, text, this.measure);
       if (o.size === undefined) {
         // grow-only on rename too: a shorter name must not shrink the box the
@@ -698,6 +746,28 @@ export class CanvasController {
     this.render();
   }
 
+  /**
+   * IR v9: publish the document's icon payloads. Called whenever the open file's
+   * declarations change, so `icon name` always resolves against what the file says.
+   */
+  setIconAssets(assets: IconAssets): void {
+    // Publishing is idempotent: callers do it from a render effect, and an
+    // unconditional repaint there is an infinite loop (repaint → render effect).
+    if (sameIconAssets(this.iconAssets, assets)) return;
+    this.iconAssets = assets;
+    this.render();
+  }
+
+  /** Payload for the object's *current* icon name, or `undefined`. */
+  private iconAssetFor(o: DiagramObject): IconAsset | undefined {
+    return assetFor(objectIcon(o), this.iconAssets);
+  }
+
+  /** Push an atomic, undoable document edit (IR v9 project icons). */
+  pushDocCommand(label: string, write: (doc: Doc) => void, before: Doc, after: Doc): void {
+    this.undo.push(new DocChange(write, before, after, label));
+  }
+
   fitSelection(): void {
     const targets = this.state.objects.filter((o) => this.selObjects.has(o.id));
     if (targets.length === 0) return;
@@ -751,7 +821,15 @@ export class CanvasController {
     patch: Partial<
       Pick<
         DiagramObject,
-        'name' | 'description' | 'technology' | 'tags' | 'dashed' | 'properties' | 'style' | 'z'
+        | 'name'
+        | 'description'
+        | 'technology'
+        | 'tags'
+        | 'dashed'
+        | 'properties'
+        | 'style'
+        | 'icon'
+        | 'z'
       >
     >,
   ): void {
@@ -1087,6 +1165,7 @@ export class CanvasController {
 
   private recomputeRoutes(): void {
     this.routes.clear();
+    this.warnings.clear();
     // F-20: an endpoint may be an imported ghost (`alias.id`) — route to it too
     const endpoint = (id: string): { x: number; y: number; w: number; h: number } | undefined =>
       this.state.objects.find((o) => o.id === id) ?? this.ghosts.find((g) => g.id === id);
@@ -1097,18 +1176,49 @@ export class CanvasController {
       const obstacles = this.state.objects.filter(
         (o) => o.kind !== 'group' && o.id !== link.from && o.id !== link.to,
       );
-      this.routes.set(
-        link.id,
-        routeLink({
-          from, to, obstacles,
-          routes: [...this.routes].map(([id, points]) => ({ id, points })),
-          ...(link.allowOverlap === true ? { allowOverlap: true } : {}),
-          ...(link.waypoints ? { waypoints: link.waypoints } : {}),
-          ...(link.fromAnchor !== undefined ? { fromAnchor: link.fromAnchor } : {}),
-          ...(link.toAnchor !== undefined ? { toAnchor: link.toAnchor } : {}),
-        }, link.route),
-      );
+      const input = {
+        from, to, obstacles,
+        routes: [...this.routes].map(([id, points]) => ({ id, points })),
+        ...(link.allowOverlap === true ? { allowOverlap: true } : {}),
+        ...(link.waypoints ? { waypoints: link.waypoints } : {}),
+        ...(link.fromAnchor !== undefined ? { fromAnchor: link.fromAnchor } : {}),
+        ...(link.toAnchor !== undefined ? { toAnchor: link.toAnchor } : {}),
+      };
+      const points = routeLink(input, link.route);
+      this.routes.set(link.id, points);
+      const warnings = link.allowOverlap === true ? [] : this.warningsFor(link, input, points);
+      if (warnings.length > 0) this.warnings.set(link.id, warnings);
     }
+  }
+
+  /**
+   * Route problems a reader has to know about, in plain words and in authored
+   * order. The document keeps the authored point; only the drawing and this
+   * message reflect that it cannot be honoured.
+   */
+  private warningsFor(
+    link: DiagramLink,
+    input: {
+      from: Rect; to: Rect; obstacles: Rect[]; waypoints?: [number, number][];
+      fromAnchor?: number; toAnchor?: number; allowOverlap?: boolean;
+    },
+    points: Polyline,
+  ): string[] {
+    const entities = [input.from, input.to, ...input.obstacles];
+    const nameOf = (rect: Rect): string => {
+      const owner = entities.find((o) => o === rect) as unknown as DiagramObject | undefined;
+      return owner?.name ?? owner?.id ?? s('an entity');
+    };
+    const out = invalidWaypoints(input).map((invalid) =>
+      s('{link}: bend {n} at ({x}, {y}) is inside {entity} — the route skips it.', {
+        link: link.label ?? link.id, n: invalid.index + 1,
+        x: invalid.point.x, y: invalid.point.y, entity: nameOf(invalid.rect),
+      }));
+    out.push(...crossingEntities(points, input).map((rect) =>
+      s('{link}: no clear route past {entity} — the connector still crosses it.', {
+        link: link.label ?? link.id, entity: nameOf(rect),
+      })));
+    return out;
   }
 
   private sceneLinks(): SceneLink[] {
@@ -1127,6 +1237,7 @@ export class CanvasController {
           line: (l.line ?? (l.dashed ? 'dashed' : 'solid')) as 'solid' | 'dashed' | 'dotted',
           route: l.route,
           width: l.width,
+          ...(this.warnings.has(l.id) ? { warnings: this.warnings.get(l.id)! } : {}),
         },
       ];
     });
@@ -1148,6 +1259,7 @@ export class CanvasController {
           z: o.z,
           dashed: o.dashed,
           icon: objectIcon(o),
+          iconAsset: this.iconAssetFor(o),
           labelLines: o.lines,
           style: o.style,
         })),

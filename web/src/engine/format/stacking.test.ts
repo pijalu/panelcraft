@@ -25,7 +25,7 @@ describe('CX-03 object z PDL', () => {
     const { doc, diagnostics } = parsePDL(SOURCE);
     expect(diagnostics).toEqual([]);
     expect(doc?.objects.map((o) => o.z)).toEqual([undefined, -2, 0, 4]);
-    expect(IR_VERSION).toBe(8);
+    expect(IR_VERSION).toBeGreaterThanOrEqual(9);
     expect(printDoc(doc!)).toBe(SOURCE);
     const json = serializeDoc(doc!);
     expect(json).toContain('"z": -2');

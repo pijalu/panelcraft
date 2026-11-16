@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // UX08-WP05: the two grid preferences are independent and survive a reload.
-// These tests also pin the migration contract: a document written before the
-// setting existed keeps snapping and shows no grid.
+// These tests also pin the migration contract: a profile that never chose a grid
+// gets the visible default, while an explicit choice (including `off`) is kept.
 import { describe, expect, it } from 'vitest';
 import {
   defaultGrid,
   gridVisible,
   GRID_TYPES,
+  GRID_VERSION,
   normaliseGrid,
   setGridSnap,
   setGridType,
@@ -14,23 +15,42 @@ import {
 } from './grid';
 
 describe('canvas grid settings', () => {
-  it('defaults to no grid and snapping on', () => {
+  it('defaults to a subtle visible dots grid with snapping on', () => {
     const grid = defaultGrid();
-    expect(grid.type).toBe('off');
+    expect(grid.type).toBe('dots');
     expect(grid.snap).toBe(true);
-    expect(gridVisible(grid)).toBe(false);
+    expect(gridVisible(grid)).toBe(true);
+    expect(grid.version).toBe(GRID_VERSION);
   });
 
   it('offers exactly the three visible states', () => {
     expect(GRID_TYPES).toEqual(['off', 'dots', 'lines']);
   });
 
-  it('migrates a missing or corrupt record to the safe default', () => {
+  it('treats a missing or corrupt record as "never chose" and uses the default', () => {
     for (const stored of [undefined, null, 42, 'lines', {}, { type: 'plaid' }, { snap: 'yes' }]) {
       const grid = normaliseGrid(stored);
-      expect(grid.type).toBe('off');
+      expect(grid.type).toBe('dots');
       expect(grid.snap).toBe(true);
     }
+  });
+
+  it('keeps an explicit saved choice, including off, when migrating a v1 record', () => {
+    // A record only exists once the user changed something, so a present type is
+    // a choice: the new default must not overwrite it.
+    for (const type of ['off', 'dots', 'lines'] as const) {
+      const grid = normaliseGrid({ version: 1, type, snap: true, last: 'dots' });
+      expect(grid.type).toBe(type);
+      expect(grid.version).toBe(GRID_VERSION);
+      expect(gridVisible(grid)).toBe(type !== 'off');
+    }
+    // Snapping alone was changed in v1: the untouched type keeps the v1
+    // behaviour of the stored value, and snapping stays off.
+    expect(normaliseGrid({ version: 1, type: 'off', snap: false })).toMatchObject({
+      type: 'off',
+      snap: false,
+      version: GRID_VERSION,
+    });
   });
 
   it('keeps snapping while the grid is hidden', () => {

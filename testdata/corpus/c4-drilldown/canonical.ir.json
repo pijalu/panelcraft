@@ -1,0 +1,82 @@
+{
+  "irVersion": 10,
+  "formatVersion": "1.0",
+  "title": "Shop — system context",
+  "level": "context",
+  "objects": [
+    {
+      "kind": "person",
+      "id": "shopper",
+      "name": "Shopper",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "shop",
+      "name": "Webshop",
+      "description": "Storefront",
+      "technology": "React",
+      "drilldown": {
+        "path": "containers/shop.pcd",
+        "view": "containers"
+      },
+      "pos": {
+        "line": 6,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system_ext",
+      "id": "psp",
+      "name": "Payment provider",
+      "pos": {
+        "line": 11,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "from": "shopper",
+      "to": "shop",
+      "label": "browses",
+      "pos": {
+        "line": 13,
+        "col": 1
+      }
+    },
+    {
+      "from": "shop",
+      "to": "psp",
+      "type": "requests",
+      "label": "charges",
+      "pos": {
+        "line": 14,
+        "col": 1
+      }
+    }
+  ],
+  "views": [
+    {
+      "name": "Context",
+      "lines": [
+        {
+          "type": "layout",
+          "mode": "auto",
+          "dir": "LR",
+          "pos": {
+            "line": 17,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 16,
+        "col": 1
+      }
+    }
+  ]
+}

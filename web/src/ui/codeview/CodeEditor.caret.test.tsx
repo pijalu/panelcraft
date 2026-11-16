@@ -53,6 +53,7 @@ const view = (): EditorView => {
 const docOf = (objects: Array<[string, string]>) => ({
   irVersion: 1,
   formatVersion: '1.0',
+  icons: [],
   imports: [],
   objects: objects.map(([id, name]) => ({
     kind: 'system' as const,

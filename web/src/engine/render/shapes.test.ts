@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from 'vitest';
 import {
-  shapeGlyphs, CONTENT_PAD, LABEL_ASCENT, contentBox, SHAPE_RADIUS, NOTE_FOLD, type SceneObject,
+  shapeGlyphs, CONTENT_PAD, LABEL_CENTRE, LABEL_LINE_HEIGHT, contentBox, SHAPE_RADIUS, NOTE_FOLD,
+  type SceneObject,
 } from './shapes';
 
 const obj = (kind: SceneObject['kind'], over: Partial<SceneObject> = {}): SceneObject => ({
@@ -104,7 +105,7 @@ describe('shape glyph set (M2-WP5, FR-C3 kinds)', () => {
       const head = person.find((s) => s.tag === 'circle')!;
       const shoulder = person.find((s) => s.tag === 'path' && s.attrs.class === 'pc-glyph')!;
       const texts = person.filter((s) => s.tag === 'text');
-      const blockTop = Number(texts[0]?.attrs.y) - LABEL_ASCENT;
+      const blockTop = Number(texts[0]?.attrs.y) - LABEL_CENTRE;
       const shoulderParts = /M \S+ (\S+) a (\S+)/.exec(String(shoulder.attrs.d))!;
       const glyphBottom = Number(shoulderParts[1]); // arc starts at the bottom-left endpoint
       expect(blockTop - glyphBottom).toBeGreaterThanOrEqual(4 - 1e-9);
@@ -114,7 +115,7 @@ describe('shape glyph set (M2-WP5, FR-C3 kinds)', () => {
       const top = datastore[1]!;
       const labels = datastore.filter((s) => s.tag === 'text');
       const ry = /a 60 (\S+) 0/.exec(String(top.attrs.d))!;
-      const dataTop = Number(labels[0]?.attrs.y) - LABEL_ASCENT;
+      const dataTop = Number(labels[0]?.attrs.y) - LABEL_CENTRE;
       expect(dataTop - 8).toBeGreaterThanOrEqual(2 * Number(ry[1]) + 4);
     }
   });
@@ -161,6 +162,31 @@ describe('content box (UX08-WP07)', () => {
     'person', 'system', 'system_ext', 'container', 'component', 'datastore', 'queue', 'note',
   ];
 
+  it('positions one line so the centred em box lands on the region middle', () => {
+    // Item 14: the `y` of a label line is the *centre* of its line box, because
+    // `.pc-label` centres the em box there (`dominant-baseline: central`). Adding
+    // a font ascent on top of that is the 4 px downward drift the bug reported.
+    for (const kind of ICON_KINDS) {
+      for (const h of [32, 36, 64, 140]) {
+        const object = obj(kind, { h, labelLines: ['Shop'] });
+        const box = contentBox(object);
+        const text = shapeGlyphs(object).find((s) => s.tag === 'text' && s.attrs.class === 'pc-label')!;
+        const middle = (box.label.top + box.label.bottom) / 2;
+        const centred = Math.max(middle - LABEL_LINE_HEIGHT / 2, box.label.top) + LABEL_CENTRE;
+        expect(Number(text.attrs.y), `${kind} at ${h}`).toBeCloseTo(centred, 6);
+      }
+    }
+  });
+
+  it('never starts a label block above its region at cramped sizes', () => {
+    // A 32 px datastore cannot fit lid + line + padding: the block is clamped to
+    // the region top instead of overflowing up into the shape's lid (item 14).
+    const object = obj('datastore', { h: 32, labelLines: ['D'] });
+    const box = contentBox(object);
+    const text = shapeGlyphs(object).find((s) => s.tag === 'text' && s.attrs.class === 'pc-label')!;
+    expect(Number(text.attrs.y) - LABEL_CENTRE).toBeGreaterThanOrEqual(box.label.top - 1e-9);
+  });
+
   it('puts every icon at the top center of its shape', () => {
     for (const kind of ICON_KINDS) {
       for (const h of [96, 140]) {
@@ -181,8 +207,8 @@ describe('content box (UX08-WP07)', () => {
         const box = contentBox(object);
         const texts = shapeGlyphs(object).filter((s) => s.tag === 'text' && s.attrs.class === 'pc-label');
         expect(texts, kind).toHaveLength(labelLines.length);
-        const blockTop = Number(texts[0]?.attrs.y) - LABEL_ASCENT;
-        const blockBottom = Number(texts.at(-1)?.attrs.y) + (16 - LABEL_ASCENT);
+        const blockTop = Number(texts[0]?.attrs.y) - LABEL_CENTRE;
+        const blockBottom = Number(texts.at(-1)?.attrs.y) + (16 - LABEL_CENTRE);
         const blockCenter = (blockTop + blockBottom) / 2;
         expect(blockCenter, `${kind} label block center y`).toBeCloseTo(
           (box.label.top + box.label.bottom) / 2, 6,

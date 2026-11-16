@@ -4,6 +4,74 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-16 — the hosted site proves its own revision (item 11)
+
+- Every bundle now carries the commit it was built from: `build-info.json` (sha,
+  short sha, ref, build time, sha256 of every emitted file) plus
+  `<meta name="panelcraft-build">` in `index.html`. The identity file is written
+  after the service worker's precache manifest, so it can never be served from the
+  previous build's cache.
+- Publication is gated on the revision instead of on a deploy job going green: the
+  `pages` workflow runs when `ci` finishes for `main`, publishes only on a
+  successful run, checks out that exact SHA, refuses to continue when the checked
+  out HEAD differs, and keeps the documentation-only path filter by diffing the
+  deployed commit against its parent. A manual dispatch must still show a green
+  `ci` run for the dispatched commit before it can publish.
+- A post-deployment evidence step (`scripts/hosted-evidence.mjs`) downloads the
+  served identity, compares it with a fresh rebuild of the same SHA and re-hashes
+  every asset `index.html` references, so a stale upload fails even when the
+  identity file looks right. The record is attached to the run and kept 90 days.
+- A hosted Playwright configuration (`npm run e2e:hosted`) exercises items 7–16
+  against the deployed URL with no local server, in two contexts: a fresh profile,
+  and a client that already has the service worker installed. The upgrading case
+  reads the build identity back out of the worker's cached shell — online and with
+  the network cut — so "which bundle is active" is answered, not assumed; the
+  update/restart lifecycle stays rehearsed locally against the same bundle, since
+  a deployed worker script cannot be rewritten.
+- `bugs.md` is now guidelines only; every item from this round lives under
+  `docs/archive/`. Details:
+  [docs/archive/bugs-hosted-release-verification.md](archive/bugs-hosted-release-verification.md).
+
+## 2026-11-16 — C4 drill-down and embedded source (item 16)
+
+- A C4 element can now *own* a subordinate diagram. A new object line
+  `drilldown "<workspace path>" [view <id>]` declares that a `system`,
+  `system_ext` or `container` decomposes into another `.pcd` file, authored on the
+  parent only so an edge cannot be described twice. Allowed transitions follow the
+  zoom levels (system → container, container → component/deployment); a child that
+  declares no `level` is accepted.
+- Opening it is real navigation, not a rename of the two existing mechanisms:
+  imports still reuse objects as read-only ghosts *inside* a diagram and a flow
+  `goto` still jumps between flows, while a drill-down opens a *subordinate*
+  document with a breadcrumb trail (`Back to shop.pcd › Webshop`), a dashed
+  parent-context boundary naming the element and its file, and a keyboard-reachable
+  affordance in the properties panel. A broken, cyclic or duplicate relation keeps
+  the current diagram and explains why instead of navigating.
+- `source { language "…" text "…" … }` embeds a short piece of source text in the
+  document — one line per source line, 64 KiB / 4096 lines per object, 256 KiB per
+  document. It reaches the shell through a local viewer/editor and is shown, never
+  executed or fetched; saving it is one undoable document command.
+- Format, IR (v10), printer, TypeScript and Go parsers/validators/printers landed
+  together with corpus seeds (`c4-drilldown`, `sem-decomposition`) and the shared
+  TS⇄Go fixture, so round-trip and parity stay byte-exact. New syntax error `E116`
+  rejects an empty source block, which the printer would otherwise silently drop;
+  validation adds `P211` duplicate parent, `P212` missing target (warning), `P213`
+  escaping/non-`.pcd` path, `P214` incompatible level, `P215` a kind that cannot
+  decompose, `P216` cycle, `P217` source over the limits, `P218` unknown view id.
+  Renaming or moving a target rewrites every referring path in the same step.
+- Mermaid export names `decomposition links (drilldown)` and `embedded source` in
+  its declared drop list, and the exporter's catalogue test keeps the document in
+  sync. Details: [docs/archive/bugs-c4-drill-down.md](archive/bugs-c4-drill-down.md).
+
+## 2026-11-15 — Project icons: portable, sanitized, manageable
+
+- A diagram can now carry its own icons. A new top-level `icon <handle> { label "…" media "image/svg+xml" data "<canonical Base64>" }` statement declares an SVG inside the `.pcd`, referenced by the existing object `icon name` property, so a file mailed, committed or rendered by the CLI looks the same everywhere — no sidecar asset, no network fetch, no icon font (the offline-only rule; ADR-0006).
+- Format, IR (v9), printer, TypeScript parser/validator and the Go port landed together, with corpus seeds and a shared TS⇄Go fixture, so `parse → print → parse` stays byte-stable and both engines agree byte for byte. New syntax codes `E114` (payload is not canonical Base64) and `E115` (media type this version cannot draw) abort the file rather than re-print something unusable; validation adds `P206` duplicate handle, `P207` built-in handle collision (the built-in namespace is reserved, so `icon cloud` never means two pictures), `P208` payload/count limits (64 KiB per icon, 256 KiB and 64 icons per document), `P209` unsafe or non-UTF-8 SVG, `P210` a name that resolves to nothing.
+- Icons are sanitized on ingest *and* checked at render against one allowlist (no scripts, event handlers, `<foreignObject>`, `<style>`, embedded `<image>`, external `href`, `url()`/`@import`/`javascript:`), implemented in TypeScript and Go and pinned by `testdata/icon-cases.json`. A payload that fails is reported and never drawn; renderable icons are embedded as a `data:` URI, so an SVG-as-image runs in static mode with nothing to execute or fetch.
+- The built-in set grew from 8 to 43 vendor-neutral technical glyphs (compute, storage, network, security, clients, platform, ops, data, concepts), all originals drawn in-repo, GPL-3.0-only, with the provenance and licensing record in [ICONS.md](ICONS.md) and a sync test tying each asset to the drawn module.
+- A searchable picker (built-ins by label/category/keyword, plus this file's icons with previews and honest "cannot be drawn" markers) replaces the free-text icon box, and **Manage project icons** adds, imports, pastes, replaces, renames and removes project icons: a rename rewrites every reference in one undoable document change, and removing a used icon reports the count and asks before clearing references, so no icon reference ever breaks silently. Mermaid export declares `icons` dropped whether they are built-in or declared.
+- Review turned up three defects in the new icon path, all fixed: a picked icon did not repaint the canvas (the payload was copied onto the object and the scene key ignored the icon), the shell republished payloads on every render and looped, and two built-in glyphs (`user`, `queue`) read wrong at the size the canvas draws — both redrawn and checked on a contact sheet at 16/22/48 px. The properties panel now shows the icon that is actually drawn and writes it to the object's own `icon` field.
+
 ## 2026-11-15 — Review fixes for the flow editor and Markdown documentation
 
 - Process step cards showed the shape name twice and hid the authored text; the title now carries what the step does and the summary keeps the shape name, like message cards. Long flow names are readable on hover.

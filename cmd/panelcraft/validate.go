@@ -61,6 +61,16 @@ func (f fsImports) ImportsOf(resolved string) []string {
 	return out
 }
 
+// Read returns the file text so the decomposition rules (§3.2) can inspect the
+// child diagram a `drilldown` points at. Slash paths are the format's spelling.
+func (f fsImports) Read(resolved string) (string, bool) {
+	raw, err := os.ReadFile(filepath.FromSlash(resolved))
+	if err != nil {
+		return "", false
+	}
+	return string(raw), true
+}
+
 // expandPaths resolves each PATH: files pass through, directories glob
 // *.pcd (non-recursive, sorted). Any unresolvable path is a usage error (2).
 func expandPaths(paths []string) ([]string, error) {

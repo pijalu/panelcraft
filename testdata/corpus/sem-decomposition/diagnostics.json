@@ -1,0 +1,47 @@
+{
+  "parse": [],
+  "validate": [
+    {
+      "code": "P211",
+      "message": "\"billing\" and \"shop\" both claim the child diagram \"containers/shop.pcd\" (one parent per child: keep one drilldown line)",
+      "line": 8,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P201",
+      "message": "\"shopper\" is orphaned (no links, no flow references)",
+      "line": 11,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P215",
+      "message": "a person cannot own a subordinate diagram (only system, system_ext and container decompose)",
+      "line": 11,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P201",
+      "message": "\"api\" is orphaned (no links, no flow references)",
+      "line": 14,
+      "col": 1,
+      "severity": "warning"
+    },
+    {
+      "code": "P213",
+      "message": "drilldown target \"notes/readme.md\" is not a .pcd path",
+      "line": 14,
+      "col": 1,
+      "severity": "error"
+    },
+    {
+      "code": "P201",
+      "message": "\"worker\" is orphaned (no links, no flow references)",
+      "line": 17,
+      "col": 1,
+      "severity": "warning"
+    }
+  ]
+}

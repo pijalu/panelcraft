@@ -1,0 +1,27 @@
+{
+  "irVersion": 10,
+  "formatVersion": "1.0",
+  "icons": [
+    {
+      "id": "evil",
+      "mediaType": "image/svg+xml",
+      "data": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxzY3JpcHQ+YWxlcnQoMSk8L3NjcmlwdD48cGF0aCBkPSJNMCAwaDF2MUgweiIgb25sb2FkPSJ4KCkiIHhsaW5rOmhyZWY9Imh0dHA6Ly9ldmlsLmV4YW1wbGUveCIvPjwvc3ZnPg==",
+      "pos": {
+        "line": 3,
+        "col": 1
+      }
+    }
+  ],
+  "objects": [
+    {
+      "kind": "person",
+      "id": "p",
+      "name": "P",
+      "icon": "evil",
+      "pos": {
+        "line": 8,
+        "col": 1
+      }
+    }
+  ]
+}

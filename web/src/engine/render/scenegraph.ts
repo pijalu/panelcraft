@@ -11,7 +11,7 @@
 // - links: path d + label repositioned in place
 // - removals/order changes → remove nodes / re-append in z order
 
-import { shapeGlyphs, type ElSpec, type SceneObject } from './shapes';
+import { iconStructuralKey, shapeGlyphs, type ElSpec, type SceneObject } from './shapes';
 import type { Polyline, RouteMode } from './router';
 import { routeToPath } from './routePath';
 import {
@@ -60,6 +60,12 @@ export interface SceneLink {
   width?: number;
   /** Geometry mode; absent preserves orthogonal routing. */
   route?: RouteMode;
+  /**
+   * Route problems the reader must know about: an authored bend that no valid
+   * route can honour, or a residual crossing no candidate could clear. Exposed
+   * on the element (tooltip + assistive description), never silent.
+   */
+  warnings?: string[];
 }
 
 export interface Scene {
@@ -104,6 +110,8 @@ export function structuralKey(o: SceneObject): string {
   return [
     o.kind, o.w, o.h, o.name ?? '', o.dashed ? 1 : 0,
     o.labelLines?.join('\u0001') ?? '', styleKey, o.ghost ? 'ghost' : '',
+    // the drawn icon is part of the shape: changing it must rebuild the node
+    iconStructuralKey(o),
   ].join('|');
 }
 
@@ -118,7 +126,7 @@ function markerRef(shape: MarkerShape): string {
 
 /** Everything `updateLink` writes besides the polyline (F-12 visual model). */
 function visualKey(l: SceneLink): string {
-  return [l.head ?? 'arrow', l.tail ?? 'none', l.line ?? (l.dashed ? 'dashed' : 'solid'), l.width ?? '', l.type ?? '', l.route ?? 'orthogonal'].join('|');
+  return [l.head ?? 'arrow', l.tail ?? 'none', l.line ?? (l.dashed ? 'dashed' : 'solid'), l.width ?? '', l.type ?? '', l.route ?? 'orthogonal', (l.warnings ?? []).join('\u0001')].join('|');
 }
 
 function polylineKey(points: Polyline): string {
@@ -366,7 +374,23 @@ export class SceneRenderer {
     if (link.width !== undefined) entry.path.setAttribute('stroke-width', String(link.width));
     else entry.path.removeAttribute('stroke-width');
     entry.path.setAttribute('d', pointsToPath(link.points, link.route));
-    entry.title.textContent = link.label ? `${link.label} (${link.id})` : link.id;
+    const label = link.label ? `${link.label} (${link.id})` : link.id;
+    const warnings = link.warnings ?? [];
+    // A route that could not be drawn as authored says so where the reader is
+    // already looking: the connector itself.
+    entry.el.classList.toggle('pc-link-warning', warnings.length > 0);
+    if (warnings.length > 0) {
+      entry.el.setAttribute('data-route-warning', warnings.join(' '));
+      entry.el.setAttribute('aria-description', warnings.join(' '));
+      entry.path.setAttribute('data-route-warning', String(warnings.length));
+    } else {
+      entry.el.removeAttribute('data-route-warning');
+      entry.el.removeAttribute('aria-description');
+      entry.path.removeAttribute('data-route-warning');
+    }
+    entry.title.textContent = warnings.length > 0
+      ? `${label} — ${warnings.join(' ')}`
+      : label;
   }
 
   // ---- UX08-WP10 link labels ---------------------------------------------

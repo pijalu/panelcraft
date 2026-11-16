@@ -12,8 +12,8 @@ import { isIcon } from './icons';
 import { contentHeight, rightContentReserve } from './shapes';
 
 /** Only a drawable icon reserves height (an unknown name renders nothing). */
-const hasDrawableIcon = (icon: string | undefined): boolean =>
-  icon !== undefined && isIcon(icon);
+const hasDrawableIcon = (icon: string | undefined, custom?: unknown): boolean =>
+  icon !== undefined && (custom !== undefined || isIcon(icon));
 
 export interface TextMetrics2D {
   w: number;
@@ -123,6 +123,8 @@ export interface AutoSizeInput {
   kind: Kind;
   /** Optional inline icon reserves the same right-side region as the renderer. */
   icon?: string;
+  /** Project icon payload for that name, when the document declares one. */
+  iconAsset?: unknown;
 }
 
 /**
@@ -138,7 +140,7 @@ export function autoSize(
   const reserve = rightContentReserve(input.kind);
   const w = clamp(Math.round(widest + 2 * PADDING.x + reserve), MIN_BOX.w, MAX_BOX.w);
   // UX08-WP07: the icon has its own top band, so it grows the box's height.
-  const h = clamp(contentHeight(input.kind, lines.length, hasDrawableIcon(input.icon)), MIN_BOX.h, MAX_BOX.h);
+  const h = clamp(contentHeight(input.kind, lines.length, hasDrawableIcon(input.icon, input.iconAsset)), MIN_BOX.h, MAX_BOX.h);
   return { w, h, lines };
 }
 

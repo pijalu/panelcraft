@@ -192,6 +192,83 @@ under `docs/archive/` with the executed plan, validation and review evidence.
 - **DOC-01** The user guide now documents the context-menu commands the canvas really offers
   and no longer advertises stacking commands that do not exist.
 
+### Fixed — file row actions in a narrow panel
+
+- A long file name no longer hides the row actions in the Files panel. The name is
+  the only shrinkable part of the row, it wraps to two clamped lines with an ellipsis
+  (the tooltip and the tab carry the full name), and the duplicate/rename/delete
+  buttons keep a non-shrinking area inside the panel with no horizontal overflow.
+  Right-clicking a row — or pressing `Shift+F10`/the context-menu key on it — offers
+  the same actions in a menu built on the shared surface, so a cramped row, a touch
+  screen or a keyboard user can still reach them; the menu targets the row it was
+  opened from, delete keeps its two-step confirmation, and focus returns to that row
+  when the menu closes or a rename is cancelled instead of falling to the document
+  body. See `docs/archive/bugs-long-filenames-file-actions.md`.
+
+### Fixed — menu viewport contract
+
+- Every menu surface now shares one viewport-safe contract. Placement is measured:
+  a menu opens on the side with room inside an 8 px margin, never covers its own
+  trigger, and scrolls internally when the requested height does not fit; nested
+  submenus flip to the left of their row instead of running off the right edge.
+  Overflowing lists show a scroll cue and keep keyboard focus scrolled into view.
+  The canvas context menu moved onto the same shared surface, so it gains
+  arrows/Home/End/submenu navigation, Escape/Tab dismissal and focus restoration to
+  the canvas, and its nine align/distribute/equal-size commands are grouped in one
+  reachable **Arrange** submenu while Properties, Duplicate, Copy, Paste and Delete
+  stay direct. See `docs/archive/bugs-menu-viewport-contract.md`.
+
+### Added — presentable default flow
+
+- A document that has connections but no authored flow is presentable immediately:
+  the Flows pane and the presentation launcher offer a **Default flow** derived from
+  the connections in the same stable topological order the editor already used, with
+  labels and parallel links preserved and creation order as the cycle fallback. It is
+  virtual: opening, presenting, saving and reloading write nothing into the `.pcd`, and
+  the first explicit edit materialises it as one ordinary undoable command. An authored
+  flow always wins. This closes the gap behind the default C4 template, where "buys"
+  and "charges" existed as links but nothing could present them. See
+  `docs/archive/bugs-default-virtual-flow.md`.
+
+### Fixed — connector routes are validated end to end
+
+- A connector is now validated as a whole polyline instead of by its endpoints.
+  Three causes were fixed: explicit bends were passed through verbatim, so a
+  bend placed inside an entity drew the route through that shape and its label;
+  automatic routes never counted their own two endpoint rectangles as obstacles,
+  so an anchored route could cut through the entity it pointed at; and candidate
+  scoring ignored direction reversals, so a connector that ran out, back and out
+  again was not treated as a loop. Each authored leg is now routed around entity
+  rectangles while keeping its valid bends (an intentional detour survives), an
+  automatic candidate is scored by interior crossings — endpoints included — then
+  shared lines with other connectors, then reversals, then length, and a bend
+  that lies inside an entity is skipped rather than silently relocated: the file
+  keeps the authored `waypoint` line and the connector explains itself in its
+  tooltip, accessible description and `data-route-warning`. `allowOverlap` links
+  keep their explicit opt-out. See `docs/archive/bugs-route-validation.md`.
+
+### Fixed — entity label centering
+
+- Entity labels are centred on their rendered bounds. The SVG `y` carried a font
+  ascent while the stylesheet also centred the em box on it, so every label sat
+  4 px too low; `y` is now the centre of its line box and the ascent constant is
+  gone. A block too tall for its region (a 32 px datastore) is clamped to the
+  region top instead of overflowing into the shape's glyphs. The label region is
+  published through the existing `contentBox()` geometry so connector routing and
+  auto-fit share one calculation. See `docs/archive/bugs-entity-label-centering.md`.
+
+### Changed — visible default grid
+
+- A profile that has never chosen a canvas grid now shows a subtle dots grid
+  with snapping on, instead of an empty canvas. The new default is safe to ship
+  because the migration decision is made per field: a stored, valid grid type is
+  an explicit choice and is kept verbatim (including `off`), while a missing or
+  corrupt field is a missing preference and takes the new default. Snapping stays
+  independent of visibility, the last-visible-type memory behind the `G` shortcut
+  and the sub-50 % zoom suppression are unchanged, and the grid remains editor
+  chrome that never reaches the document, the minimap, presentation mode or an
+  export. See `docs/archive/bugs-visible-default-grid.md`.
+
 ### Fixed — review pass 2 (docs/FIX-PLAN.md)
 
 - **F-01** Canvas edits no longer rewrite the file as an objects+links

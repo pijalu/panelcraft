@@ -1,6 +1,6 @@
 # PanelCraft — user guide
 
-Everything happens in your browser; nothing is sent anywhere (SPEC FR-S1).
+Everything happens in your browser; nothing is sent anywhere (the browser-local storage rule).
 Screenshots reference the light application theme; the dark theme mirrors every feature.
 Choose **View → Application theme → System / Light / Dark**. System follows live OS changes;
 Light and Dark override it. The choice is stored with browser-local workspace settings and is
@@ -11,6 +11,10 @@ and the CLI's `--theme` option.
 
 - The left tree holds `.pcd` files; the toolbar creates files, imports `.pcd`
   / mermaid (`.mmd`/`.mermaid`) or a workspace `.zip`, and exports.
+- Hovering a row reveals **duplicate / rename / delete**; right-click the row (or
+  press `Shift+F10` on it) for the same actions in a menu. A very long name wraps
+  to two lines with an ellipsis instead of hiding those buttons — the tooltip and
+  the tab carry the full name.
 - Tabs across the top switch open files; the dot marks unsaved changes.
 - **Everything is stored in your browser** (IndexedDB) — use *Export ZIP*
   regularly for backups (the app reminds you; SPEC FR-S2) and *Snapshots*
@@ -23,10 +27,14 @@ and the CLI's `--theme` option.
 - **Palette** (left): grouped by C4 level (Context/Container/Component, plus
   Structure for group/note). Click a kind — or press `1`–`9` — then click the
   canvas; dragging a palette row onto the canvas also places it.
-- **Grid**: *Application menu → View* offers **Grid: off / dots / lines** and a separate
-  **Snap to grid** checkbox. The two are independent browser-local preferences (the grid is
-  editor chrome: it is never written into a `.pcd` view and never appears in an SVG/PNG export).
-  `G` toggles visibility and brings back the last visible type.
+- **Grid**: a fresh profile shows a subtle dots grid with snapping on. *Application
+  menu → View* offers **Grid: off / dots / lines** and a separate **Snap to grid**
+  checkbox. The two are independent browser-local preferences (the grid is editor
+  chrome: it is never written into a `.pcd` view and never appears in an SVG/PNG export).
+  A grid choice you make yourself is remembered and is never replaced by the default
+  when the app is upgraded; below 50% zoom the pattern is hidden so it cannot turn into
+  a tint, and zooming back in restores it. `G` toggles visibility and brings back the
+  last visible type.
 - **Select**: click; Shift-click adds to the selection. Drag moves (snaps to
   the grid). **Rename** an object in place with `F2` or double-click; Enter commits,
   Escape cancels.
@@ -102,13 +110,15 @@ and the CLI's `--theme` option.
   objects, and the mini-map, SVG/PNG exports and `panelcraft render` use the same
   order.
 - **Context menu** (right-click): **Properties** (a single selected object or link;
-  disabled for larger selections), **Duplicate**, **Copy**, **Paste**, **Delete**,
-  **Align left**, **Align centre (horizontal)**, **Align right**, **Align top**,
-  **Align middle (vertical)**, **Align bottom**, **Distribute horizontally**,
-  **Distribute vertically**, and **Equal size** (the last three need two or three
-  selected objects and stay listed but disabled otherwise). There are no stacking
-  commands in the menu: layering is the **Stacking order** field in properties →
-  Advanced.
+  disabled for larger selections), **Duplicate**, **Copy**, **Paste** and **Delete**
+  are direct entries, followed by the **Arrange** group. Arrange holds the alignment
+  commands — **Align left**, **Align centre (horizontal)**, **Align right**, **Align top**,
+  **Align middle (vertical)**, **Align bottom** — plus **Distribute horizontally**,
+  **Distribute vertically** and **Equal size**; the group stays reachable and its entries
+  explain themselves when the selection is too small. Arrow keys, Home/End and Enter work
+  in the menu exactly as in the application menu, and closing returns focus to the canvas
+  without changing the selection. There are no stacking commands in the menu: layering is
+  the **Stacking order** field in properties → Advanced.
 - **History**: Ctrl/Cmd+Z / Shift-Ctrl/Cmd+Z act on the surface that has focus;
   the header's `⟲ History` lists the last actions across canvas and code with
   routed Undo/Redo.
@@ -144,6 +154,43 @@ and the CLI's `--theme` option.
 - **Dependencies panel**: select an object to see incoming/outgoing links and
   focus it (everything else fades).
 
+### C4 drill-down and embedded source
+
+A C4 element can own the diagram that explains it — a system opens its containers,
+a container opens its components. Author the relation in the code view (or in the
+properties panel's **Decomposition** section):
+
+```
+system shop "Webshop" {
+  drilldown "../containers/shop.pcd" view containers
+  source {
+    language "go"
+    text "func Charge(total Money) error {"
+    text "  return h.psp.Authorize(total)"
+    text "}"
+  }
+}
+```
+
+- The path is workspace-relative (resolved from the file that declares it), and the
+  optional `view` is a view *id* (`view "Containers" as containers { … }`).
+- **Opening it**: select the element and press **Open … diagram** in Properties.
+  The child opens with breadcrumbs (`Back to shop.pcd › Webshop`), a dashed parent
+  boundary naming the element and file, and a way back that keeps the trail. A
+  broken, missing, cyclic or duplicated relation never navigates: the bar says why.
+- Permitted transitions are the C4 zoom levels (`system`/`system_ext` → `level
+  container`, `container` → `level component` or `level deployment`). A child with no
+  `level` line is fine; `person`, `datastore`, `queue`, `note` and `group` cannot
+  decompose.
+- **Embedded source** stays local text: **View source** / **Add source** opens a
+  viewer that shows it (never executes or fetches it) and lets you edit it as one
+  undoable change. Limits: 64 KiB or 4096 lines per element, 256 KiB per file.
+- Imports (read-only ghosts *inside* a diagram), flow `goto` (jump between flows)
+  and drill-down (open a subordinate diagram) are three different things; only the
+  drill-down draws no edge.
+- Renaming or moving a child diagram rewrites the referring `drilldown` path for you.
+  Deleting it keeps the line and reports it, so you can re-point it in Properties.
+
 ### Search
 - `Ctrl/Cmd+P` — fuzzy search over files and objects; Enter jumps (opens the
   file, reveals the object), Esc closes from anywhere.
@@ -153,8 +200,13 @@ and the CLI's `--theme` option.
 1. **Find Flows** in the left rail — the labelled *flow steps* entry is present from the first
    load, so you never have to know a menu path. Open it from the rail (or **View → Flow Steps**);
    it docks, floats, collapses and closes like any other panel.
-2. **Create a flow** and name it: an empty document shows a short explanation and **New flow**.
-   The new flow starts with the diagram's existing connections in topological source order;
+2. **Create a flow** — or present the one you already have. A document with connections but no
+   authored flow shows **Default flow** straight away, derived from those connections in
+   topological source order; the presentation launcher offers it too, marked *from the
+   connections*. Nothing is written into the file until you edit it: opening, presenting,
+   saving and reloading leave the `.pcd` untouched, and the first edit turns it into a real,
+   undoable flow. An authored flow always wins. An empty document keeps the short explanation
+   and **New flow**, whose new flow also starts with the diagram's existing connections;
    creation order breaks ties. Fill in **Flow name** and **Flow purpose** — the purpose is printed
    as the flow's `description`, so it travels with the file instead of living in the UI.
 3. **Add steps from what you selected** — no ids to type. **Add message** needs a selected

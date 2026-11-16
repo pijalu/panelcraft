@@ -1,0 +1,25 @@
+pcd 1.0
+title "Decomposition diagnostics"
+level context
+
+system shop "Webshop" {
+  drilldown "containers/shop.pcd" view components
+}
+system billing "Billing" {
+  drilldown "containers/shop.pcd"
+}
+person shopper "Shopper" {
+  drilldown "people/shopper.pcd"
+}
+container api "API" {
+  drilldown "notes/readme.md"
+}
+container worker "Worker" {
+  source {
+    language "go"
+    text "func Run() {}"
+    text "// <script>alert(1)</script> is data, never executed"
+  }
+}
+
+shop -> billing

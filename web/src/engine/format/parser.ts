@@ -4,11 +4,12 @@
 // semantic problems defer to engine/model validation (P-codes).
 import { lex, type ArrowInfo, type Token } from './lexer';
 import { E, diag, type Diagnostic } from './diagnostics';
+import { ICON_MEDIA_TYPES, decodeIconBase64, isCanonicalBase64 } from './iconSvg';
 import {
-  FORMAT_VERSION, IR_VERSION,
+  type Drilldown, FORMAT_VERSION, IR_VERSION,
   type Branch, type CameraSpec, type Comments, type Doc, type Flow, type FlowStep,
-  type ImportStmt, type Kind, type Link, type Obj, type Pos, type StyleBlock,
-  type StyleStmt, type View, type ViewLine,
+  type IconDecl, type ImportStmt, type Kind, type Link, type Obj, type Pos,
+  type SourceBlock, type StyleBlock, type StyleStmt, type View, type ViewLine,
 } from '../model/types';
 
 export interface ParseResult {
@@ -112,7 +113,7 @@ class Parser {
     const doc: Doc = {
       irVersion: IR_VERSION,
       formatVersion: ver.text || FORMAT_VERSION,
-      imports: [], objects: [], links: [], flows: [], views: [], styles: [],
+      imports: [], icons: [], objects: [], links: [], flows: [], views: [], styles: [],
     };
     // Pre-magic comments are doc-level (D-M1-2): the magic line is canonical first.
     const lead = this.takeComments();
@@ -176,6 +177,7 @@ class Parser {
           this.parseMeta(d, kw);
         };
       case 'import': return (d) => d.imports.push(this.parseImport());
+      case 'icon': return (d) => d.icons.push(this.parseIcon());
       case 'flow': return (d) => d.flows.push(this.parseFlow());
       case 'view': return (d) => d.views.push(this.parseView());
       case 'style': return (d) => d.styles.push(this.parseStyleStmt());
@@ -212,6 +214,72 @@ class Parser {
     return comments.length ? { alias, path, comments, pos } : { alias, path, pos };
   }
 
+  /**
+   * Document icon declaration (§3.1): `icon <id> { label "…" media "…" data "…" }`.
+   * Media type and payload are required and checked here, because a declaration
+   * that cannot be decoded is a syntax problem, not a semantic one: it can never
+   * be rendered, and the canonical printer would emit an unusable file.
+   */
+  private parseIcon(): IconDecl {
+    const t0 = this.next();
+    const comments = this.takeComments();
+    const id = this.ident();
+    const block = this.iconBlock(t0);
+    const mediaType = this.iconMedia(t0, block.mediaType);
+    const data = block.data;
+    if (data === undefined) this.fail(t0, E.unexpected, 'icon declaration requires a data line');
+    if (!isCanonicalBase64(data) || decodeIconBase64(data) === null) {
+      this.fail(t0, E.invalidIconData, 'icon data must be canonical Base64 (standard alphabet, padding, no whitespace)');
+    }
+    const ic: IconDecl = { id, mediaType, data, pos: tokPos(t0) };
+    if (block.label !== undefined) ic.label = block.label;
+    if (comments.length > 0) ic.comments = comments;
+    return ic;
+  }
+
+  /** Body of an icon block (order-free, each line at most once). */
+  private iconBlock(t0: Token): { label?: string; mediaType?: string; data?: string } {
+    const block: { label?: string; mediaType?: string; data?: string } = {};
+    const seen = new Set<string>();
+    this.expect('punct', '{');
+    for (;;) {
+      this.skipComments();
+      const t = this.peek();
+      if (t.type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed icon block');
+      if (t.type === 'punct' && t.text === '}') {
+        this.next();
+        return block;
+      }
+      this.iconLine(this.expect('ident'), seen, block);
+    }
+  }
+
+  /** One `label`/`media`/`data` line of an icon block. */
+  private iconLine(
+    kw: Token,
+    seen: Set<string>,
+    block: { label?: string; mediaType?: string; data?: string },
+  ): void {
+    const key = kw.text;
+    if (key !== 'label' && key !== 'media' && key !== 'data') {
+      this.fail(kw, E.unexpected, `unknown icon line '${key}'`);
+    }
+    this.once(seen, kw, key);
+    const value = this.str();
+    if (key === 'label') block.label = value;
+    else if (key === 'media') block.mediaType = value;
+    else block.data = value;
+  }
+
+  /** Required media line: this version draws SVG only, so anything else aborts. */
+  private iconMedia(t0: Token, declared: string | undefined): string {
+    if (declared === undefined) this.fail(t0, E.unexpected, 'icon declaration requires a media line');
+    if (!ICON_MEDIA_TYPES.includes(declared)) {
+      this.fail(t0, E.invalidIconMedia, `unsupported icon media type '${declared}'`);
+    }
+    return declared;
+  }
+
   private parseObject(): Obj {
     const t0 = this.next();
     const comments = this.takeComments();
@@ -231,7 +299,7 @@ class Parser {
       if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed object block');
       if (this.peek().type === 'punct' && this.peek().text === '}') { this.next(); return; }
       const t = this.expect('ident');
-      const h = this.attrHandler(seen, t0, t);
+      const h = this.attrHandler(seen, t) ?? this.attrStyle(seen, t0, t);
       if (h) {
         h(o);
         continue;
@@ -242,7 +310,7 @@ class Parser {
   }
 
   /** Object attribute dispatch (§3 block body). */
-  private attrHandler(seen: Set<string>, t0: Token, t: Token): ((o: Obj) => void) | undefined {
+  private attrHandler(seen: Set<string>, t: Token): ((o: Obj) => void) | undefined {
     switch (t.text) {
       case 'description':
         this.once(seen, t, 'description');
@@ -282,17 +350,77 @@ class Parser {
           if (!Number.isSafeInteger(z)) this.fail(t, E.unexpected, 'z must be an integer');
           o.z = z;
         };
-      case 'style':
-        this.once(seen, t, 'style');
-        return (o) => { o.style = this.parseStyleBlock(t0, 'object'); };
+      case 'drilldown':
+        this.once(seen, t, 'drilldown');
+        return (o) => { o.drilldown = this.parseDrilldown(); };
+      case 'source':
+        this.once(seen, t, 'source');
+        return (o) => { o.source = this.parseSource(t); };
       default:
         return undefined;
     }
   }
 
+  /**
+   * The one object attribute that needs the block's opening token (`t0`) for its
+   * style parsing, kept separate so the attribute table stays one concern per
+   * function and inside the complexity gate.
+   */
+  private attrStyle(
+    seen: Set<string>,
+    t0: Token,
+    t: Token,
+  ): ((o: Obj) => void) | undefined {
+    if (t.text !== 'style') return undefined;
+    this.once(seen, t, 'style');
+    return (o) => { o.style = this.parseStyleBlock(t0, 'object'); };
+  }
+
   private once(seen: Set<string>, t: Token, key: string): void {
     if (seen.has(key)) this.fail(t, E.duplicateAttr, `duplicate attribute '${key}'`);
     seen.add(key);
+  }
+
+  /**
+   * C4 decomposition (IR v10, FILE-FORMAT §3.2): `drilldown "<path>" [view <id>]`.
+   * The path is a quoted string, not an identifier — it is a workspace path — and the
+   * optional view is the child's view *id* (the `as <id>` of a `view` statement).
+   */
+  private parseDrilldown(): Drilldown {
+    const path = this.str();
+    const peeked = this.peek();
+    if (peeked.type === 'ident' && peeked.text === 'view') {
+      this.next();
+      return { path, view: this.ident() };
+    }
+    return { path };
+  }
+
+  /**
+   * Embedded source (IR v10, FILE-FORMAT §3.3): `source { language "…" text "…" … }`.
+   * One `text` line per source line, in document order. A block with no text line is
+   * `E116`: it would show nothing and the printer would drop it, breaking round-trip.
+   */
+  private parseSource(t0: Token): SourceBlock {
+    this.expect('punct', '{');
+    const lines: string[] = [];
+    let language: string | undefined;
+    const seen = new Set<string>();
+    for (;;) {
+      this.skipComments();
+      if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed source block');
+      if (this.peek().type === 'punct' && this.peek().text === '}') { this.next(); break; }
+      const t = this.expect('ident');
+      if (t.text === 'language') {
+        this.once(seen, t, 'language');
+        language = this.str();
+        continue;
+      }
+      if (t.text !== 'text') this.fail(t, E.unexpected, `unknown source line '${t.text}'`);
+      lines.push(this.str());
+    }
+    if (lines.length === 0) this.fail(t0, E.emptySource, 'source block needs at least one text line');
+    return language === undefined ? { lines } : { language, lines };
   }
 
   /** PDL identifier (FILE-FORMAT §1 + errata D-M1-8: letters first, ≤64). */

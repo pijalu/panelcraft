@@ -22,6 +22,8 @@ const CHROME_TOKENS = [
   'danger-fg', 'danger-bg', 'danger-bg-fg', 'warn-bg', 'warn-bg-fg', 'warn-fg', 'ok',
   // UX08-WP05: the canvas grid is an editor-only preference with its own pair.
   'grid-dot', 'grid-line',
+  // Item 9: play-mode sparks carry their own core + halo pair per theme.
+  'spark-core', 'spark-glow', 'spark-trail',
 ] as const;
 
 type Tokens = Map<string, string>;
@@ -91,6 +93,20 @@ describe('application chrome tokens (UX08-WP03)', () => {
         expect(ratio, `${theme} ${token} vs canvas`).toBeGreaterThan(1.1);
         expect(ratio, `${theme} ${token} vs canvas`).toBeLessThan(2.2);
       }
+    }
+  });
+
+  it('keeps a spark readable on the canvas without a blooming halo (item 9)', () => {
+    // The core is the part the eye tracks: it must clear the 3:1 non-text bar
+    // against the canvas in both themes, and the halo must stay a halo — a glow
+    // as strong as the core would smear over labels as the token passes.
+    for (const [theme, tokens] of [['light', light], ['dark', dark]] as const) {
+      const canvas = tokens.get('canvas') ?? '';
+      expect(contrast(tokens.get('spark-core') ?? '', canvas), `${theme} spark core`).toBeGreaterThan(3);
+      expect(contrast(tokens.get('spark-trail') ?? '', canvas), `${theme} spark trail`).toBeGreaterThan(1.5);
+      expect(contrast(tokens.get('spark-glow') ?? '', canvas), `${theme} spark glow`).toBeLessThan(
+        contrast(tokens.get('spark-core') ?? '', canvas),
+      );
     }
   });
 

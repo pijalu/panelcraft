@@ -3,7 +3,7 @@
 // elbows, and the polyline keeps the port anchors.
 
 import { describe, expect, it } from 'vitest';
-import { routeOrtho } from './router';
+import { routeOrtho, invalidWaypoints, crossingEntities } from './router';
 
 const A = { x: 0, y: 0, w: 100, h: 60 };
 const B = { x: 400, y: 200, w: 100, h: 60 };
@@ -32,14 +32,25 @@ describe('routeOrtho with waypoints (F-19)', () => {
     }
   });
 
-  it('ignores obstacles when the user stated the path', () => {
-    const pts = routeOrtho({
-      from: A,
-      to: B,
-      obstacles: [{ x: 180, y: 0, w: 40, h: 200 }],
-      waypoints: [[200, 30]],
-    });
-    expect(pts.some((p) => p.x === 200 && p.y === 30)).toBe(true);
+  it('doglegs a leg around a third-party entity instead of crossing it', () => {
+    // The waypoint is a legal point between the two ports: it is honoured, and
+    // the leg that would otherwise cut the entity in half bends around it.
+    const obstacle = { x: 180, y: 0, w: 40, h: 200 };
+    const pts = routeOrtho({ from: A, to: B, obstacles: [obstacle], waypoints: [[200, 220]] });
+    expect(pts.some((p) => p.x === 200 && p.y === 220)).toBe(true);
+    expect(crossingEntities(pts, { from: A, to: B, obstacles: [obstacle],
+      waypoints: [[200, 220]] })).toEqual([]);
+  });
+
+  it('skips a waypoint inside an entity and reports it', () => {
+    // No route can honour this point without painting over the shape and its
+    // label, so the point is skipped (never relocated) and diagnosed.
+    const obstacle = { x: 180, y: 0, w: 40, h: 200 };
+    const input = { from: A, to: B, obstacles: [obstacle], waypoints: [[200, 30]] as [number, number][] };
+    const pts = routeOrtho(input);
+    expect(pts.some((p) => p.x === 200 && p.y === 30)).toBe(false);
+    expect(crossingEntities(pts, input)).toEqual([]);
+    expect(invalidWaypoints(input)).toEqual([{ index: 0, point: { x: 200, y: 30 }, rect: obstacle }]);
   });
 
   it('falls back to the automatic route without waypoints', () => {

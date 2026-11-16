@@ -26,23 +26,26 @@ import { useAppTheme } from './useAppTheme';
 import { useCanvasGrid } from './useCanvasGrid';
 import { useHistory } from './useHistory';
 import { useViewSession } from './useViewSession';
-import type { HoverInfo } from './hoverInfo';
+import { useShellUi } from './useShellUi';
 import { layoutStyle, PANELS, type DockId, type PanelId } from './uiLayout';
 import { CollapseButton, PanelRail } from './PanelChrome';
 import { CanvasMenu } from './CanvasMenu';
 import { MiniMap } from './MiniMap';
 import { s } from './strings';
+import type { Doc, IconDecl, Obj } from '../engine/model/types';
+import { DrillBar } from './DrillBar';
+import { SourceViewer } from './SourceViewer';
+import { useDrillLayer, type DrillLayer, type DrilldownHandle } from './useDrilldown';
+import { useDocumentPipeline } from './useDocumentPipeline';
 import { ShellBanners } from './ShellBanners';
 import { DropZone, HostedPanel } from './WorkspacePanels';
 import { useCanvasRevealPort } from './useCanvasReveal';
 import type { IllustrationId } from '../engine/anim/illustrations';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
-import { useCodeSync } from './useCodeSync';
 import { useShellLifecycle } from './useShellLifecycle';
 import type { useDivergedClose } from './useDivergedClose';
 import { useFlowStage } from './useFlowStage';
 import { useDrawer } from './useDrawer';
-import { useAppCanvas } from './useAppCanvas';
 import { useShellDialogs } from './useShellDialogs';
 
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
@@ -182,7 +185,16 @@ function CanvasSplit(props: {
 }) {
   return (
     <main class="canvas-wrap" onContextMenu={props.onCanvasContextMenu}>
-      <svg ref={props.canvas.svgRef} class="pc-canvas" data-testid="canvas" width="100%" height="100%" />
+      {/* Item 7: focusable (not tabbable) so closing a menu can restore focus
+          to the canvas the user invoked it from. */}
+      <svg
+        ref={props.canvas.svgRef}
+        class="pc-canvas"
+        data-testid="canvas"
+        width="100%"
+        height="100%"
+        tabindex={-1}
+      />
       <MiniMap
         snapshot={props.canvas.snap}
         controller={props.canvas.ctrlRef.current}
@@ -331,7 +343,7 @@ function playFrom(
 ): void {
   if (activePath === null) return;
   player.start(activePath, flowKey);
-  player.stepTo(index);
+  player.playFrom(index);
 }
 
 /** Screen-space box of the object being renamed (F-15 tracks pan/zoom). */
@@ -431,8 +443,23 @@ function propsSlot(p: {
   activePath: string | null;
   viewName: string | undefined;
   linkLabelRef: { current: HTMLInputElement | null };
+  projectIcons?: IconDecl[];
+  onManageIcons?: () => void;
+  drill?: DrilldownHandle;
+  doc?: Doc | null;
+  onSourceOpen?: (objectId: string) => void;
 }): ComponentChildren {
   const ctrl = p.canvas.ctrlRef.current;
+  const selected = p.sel.obj;
+  const stored = selected == null ? undefined : p.doc?.objects.find((o) => o.id === selected.id);
+  const hierarchy = selected == null || p.drill === undefined ? undefined : {
+    target: p.drill.targetOf(selected.id),
+    onSet: (path: string | null, view?: string) => p.drill?.setDrilldown(selected.id, path, view),
+    onOpen: () => p.drill?.drill(selected.id),
+    hasSource: stored?.source !== undefined,
+    language: stored?.source?.language,
+    onOpenSource: () => p.onSourceOpen?.(selected.id),
+  };
   return (
     <PropsSlot
       ui={p.ui}
@@ -453,6 +480,9 @@ function propsSlot(p: {
       ctrl={ctrl}
       sections={p.ui.layout.sections}
       onToggleSection={p.ui.toggleSection}
+      projectIcons={p.projectIcons}
+      onManageIcons={p.onManageIcons}
+      hierarchy={hierarchy}
     />
   );
 }
@@ -489,32 +519,30 @@ function dockedPanels(
   });
 }
 
-/** Shell body with recoverable left/right/bottom docks and floating panels. */
-function AppBody(p: {
-  ws: ReturnType<typeof useWorkspace>;
-  canvas: ReturnType<typeof useCanvasController>;
-  code: CodeSyncHandle;
-  ui: ReturnType<typeof useUiLayout>;
-  player: FlowPlayerApi;
-  activePath: string | null;
-  viewName: string | undefined;
-  onView: (n: string | undefined) => void;
-  onPresent: () => void;
-  sel: ReturnType<typeof selections>;
-  diverged: ReturnType<typeof useDivergedClose>;
-  illustration: IllustrationId | 'auto';
-  onIllustration: (id: IllustrationId | 'auto') => void;
-  dirty: boolean; flowSelection: FlowSelection | null;
-  onFlowSelection: (selection: FlowSelection) => void;
-  revealRef: { current: ((id: string) => void) | null };
-  /** UX08-WP08: link Label field, focused when a link is inspected. */
-  linkLabelRef: { current: HTMLInputElement | null };
-}) {
+/** Embedded-source dialog of the open element (IR v10, FILE-FORMAT.md §3.3). */
+function SourceLayer(props: { layer: DrillLayer; obj: Obj | null }): ComponentChildren {
+  const { layer, obj } = props;
+  if (obj === null) return null;
+  return (
+    <SourceViewer
+      obj={obj}
+      onSave={(source) => layer.drill.setSource(obj.id, source)}
+      onClose={layer.closeSource}
+    />
+  );
+}
+
+/**
+ * Panel content of the shell body. Extracted so `AppBody` stays inside the
+ * function-length gate and each panel's wiring is one screen away from the dock
+ * code that hosts it.
+ */
+function bodyPanels(
+  p: Parameters<typeof AppBody>[0],
+  ctrl: CanvasController | null,
+): Record<PanelId, ComponentChildren> {
   const { ws, canvas, code, ui, player, activePath, viewName } = p;
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const ctrl = canvas.ctrlRef.current;
-  const { drawer, dismiss } = useDrawer(ui);
-  const content: Record<PanelId, ComponentChildren> = {
+  return {
     sidebar: <SidebarSlot ui={ui} manager={ws.manager} version={ws.version} />,
     flows: flowsSlot({
       ui,
@@ -550,8 +578,49 @@ function AppBody(p: {
       activePath,
       viewName,
       linkLabelRef: p.linkLabelRef,
+      projectIcons: p.projectIcons,
+      onManageIcons: p.onManageIcons,
+      drill: p.drill,
+      doc: p.doc,
+      onSourceOpen: p.onSourceOpen,
     }),
   };
+}
+
+/** Shell body with recoverable left/right/bottom docks and floating panels. */
+function AppBody(p: {
+  ws: ReturnType<typeof useWorkspace>;
+  canvas: ReturnType<typeof useCanvasController>;
+  code: CodeSyncHandle;
+  ui: ReturnType<typeof useUiLayout>;
+  player: FlowPlayerApi;
+  activePath: string | null;
+  viewName: string | undefined;
+  onView: (n: string | undefined) => void;
+  onPresent: () => void;
+  sel: ReturnType<typeof selections>;
+  diverged: ReturnType<typeof useDivergedClose>;
+  illustration: IllustrationId | 'auto';
+  onIllustration: (id: IllustrationId | 'auto') => void;
+  dirty: boolean; flowSelection: FlowSelection | null;
+  onFlowSelection: (selection: FlowSelection) => void;
+  revealRef: { current: ((id: string) => void) | null };
+  /** Link Label field, focused when a link is inspected. */
+  linkLabelRef: { current: HTMLInputElement | null };
+  /** IR v9: icons declared in the open file, and the manager trigger. */
+  projectIcons: IconDecl[];
+  onManageIcons: () => void;
+  /** IR v10: drill-down trail, findings and the two hierarchy edits. */
+  drill: DrilldownHandle;
+  /** Parsed document of the open file (hierarchy + source authoring). */
+  doc: Doc | null;
+  onSourceOpen: (objectId: string) => void;
+}) {
+  const { ws, canvas, code, ui, player, activePath, viewName } = p;
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const ctrl = canvas.ctrlRef.current;
+  const { drawer, dismiss } = useDrawer(ui);
+  const content = bodyPanels(p, ctrl);
   const docked = (dock: DockId) => dockedPanels(dock, ui, content);
   return (
     <div class="app-body" data-drawer={drawer === null ? undefined : 'open'}>
@@ -577,6 +646,7 @@ function AppBody(p: {
         viewName={viewName}
         onView={p.onView}
         onPresent={p.onPresent}
+        drill={p.drill}
         onCanvasContextMenu={(event) => {
           event.preventDefault();
           setMenu({ x: event.clientX, y: event.clientY });
@@ -592,7 +662,16 @@ function AppBody(p: {
           y={menu.y}
           selectionCount={canvas.snap?.selection.objects.length ?? 0}
           linkCount={canvas.snap?.selection.links.length ?? 0}
-          onClose={() => setMenu(null)}
+          onClose={() => {
+            setMenu(null);
+            // The invoking surface is this canvas, whatever held focus before
+            // (the code editor often does). Restoring focus must not change the
+            // selection or create undo history, and it runs after the surface
+            // unmounts: removing the focused menu item sends focus to <body>,
+            // which would undo a synchronous restore.
+            const canvasEl = canvas.svgRef.current;
+            requestAnimationFrame(() => canvasEl?.focus());
+          }}
         />
       )}
     </div>
@@ -610,11 +689,13 @@ function CenterColumn(props: {
   viewName: string | undefined;
   onView: (n: string | undefined) => void;
   onPresent: () => void;
+  drill: DrilldownHandle;
   onCanvasContextMenu: (e: MouseEvent) => void;
 }) {
   const { canvas, code, player } = props;
+  const parent = props.drill.parent;
   return (
-    <main class="canvas-col">
+    <main class="canvas-col" data-parent={parent === undefined ? undefined : parent.label}>
       <TemplateOverlay
         show={(props.canvas.snap?.objects.length ?? 0) === 0}
         onInsert={(t) => props.code.machine.textChanged(t.text)}
@@ -629,6 +710,7 @@ function CenterColumn(props: {
         ctrl={canvas.ctrlRef.current}
         selection={canvas.snap?.selection.objects ?? []}
       />
+      <DrillBar drill={props.drill} />
       <CanvasSplit
         canvas={canvas}
         player={player}
@@ -643,37 +725,30 @@ export function App() {
   const ws = useWorkspace();
   const activePath = ws.ready ? ws.manager.activePath : null;
   const view = useViewSession(activePath);
-  const [renaming, setRenaming] = useState<string | null>(null); // F-15 inline rename
-  const [hover, setHover] = useState<HoverInfo | null>(null);
+  const shell = useShellUi();
+  const { renaming, setRenaming, hover, setHover, illustration, setIllustration } = shell;
+  const { flowSelection, setFlowSelection, historyOpen, setHistoryOpen } = shell;
   const grid = useCanvasGrid(ws.manager, ws.ready, ws.version);
   const ui = useUiLayout(ws.manager, ws.ready, ws.version);
-  const { canvas, inspect } = useAppCanvas({
-    ws,
-    view,
-    ui,
-    grid,
-    onRename: (id) => setRenaming(id),
+  // controller → code-sync → project icons: one pipeline, one file writer
+  const { canvas, inspect, code, icons } = useDocumentPipeline({
+    ws, view, ui, grid, activePath,
+    onRename: setRenaming, // inline rename request from the canvas
     onGhostOpen: (path) => ws.manager.openFile(path), // F-20
-    onHover: (info) => setHover(info), // F-25
+    onHover: setHover, // hover card content
   });
   const { manager } = ws;
-  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = useShellDialogs();
-  const code = useCodeSync({
-    manager: ws.manager,
-    ready: ws.ready,
-    activePath,
-    version: ws.version,
-    ctrlRef: canvas.ctrlRef,
-    snap: canvas.snap,
-    viewRef: view.viewNameRef,
+  const layer = useDrillLayer({
+    activePath, manager, version: ws.version, revision: code.snapshot,
+    ctrlRef: canvas.ctrlRef, commitDoc: code.commitDoc,
+    openFile: (path) => manager.openFile(path),
+    onView: view.setViewName,
   });
-  view.commitDocRef.current = code.commitDoc;
-  const [illustration, setIllustration] = useState<IllustrationId | 'auto'>('auto');
-  const [flowSelection, setFlowSelection] = useState<FlowSelection | null>(null);
+  const sourceObj = layer.doc?.objects.find((o) => o.id === layer.sourceId) ?? null;
+  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = useShellDialogs();
   const player = useFlowStage({ manager, canvas, activePath, illustration });
   const appTheme = useAppTheme(manager, ws.ready, ws.version);
   const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null, setFlash);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
   const sel = selections(canvas.snap);
   const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
@@ -728,7 +803,13 @@ export function App() {
         onFlowSelection={setFlowSelection}
         revealRef={revealRef}
         linkLabelRef={inspect.linkLabelRef}
+        projectIcons={icons.projectIcons}
+        onManageIcons={icons.openManager}
+        drill={layer.drill}
+        doc={layer.doc}
+        onSourceOpen={layer.openSource}
       />
+      <SourceLayer layer={layer} obj={sourceObj} />
       <AppOverlays
         hover={hover}
         presenting={pres.presenting}
@@ -754,6 +835,10 @@ export function App() {
         {...{ historyOpen, history, onHistoryClose: () => setHistoryOpen(false) }}
         snapsOpen={snapsOpen}
         onSnapsClose={() => setSnapsOpen(false)}
+        iconsOpen={icons.managerOpen}
+        iconDoc={icons.doc}
+        onIconsClose={icons.closeManager}
+        onIconsCommit={icons.commit}
       />
     </div>
   );

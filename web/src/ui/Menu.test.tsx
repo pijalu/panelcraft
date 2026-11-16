@@ -3,7 +3,8 @@
 // UX08-WP01: keyboard and dismissal contract of the shared menu primitive.
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Menu, type MenuEntry } from './Menu';
+import { ContextMenu, type ContextEntry } from './ContextMenu';
+import { FloatingMenu, Menu, type MenuEntry } from './Menu';
 
 afterEach(cleanup);
 
@@ -161,5 +162,86 @@ describe('Menu primitive', () => {
     const trigger = screen.getByTestId('app-menu');
     fireEvent.keyDown(trigger, { key: 'ArrowDown' });
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
+  });
+});
+
+describe('FloatingMenu surface (item 7)', () => {
+  const items: MenuEntry[] = [
+    { kind: 'item', id: 'one', label: 'One', testId: 'f-one', onSelect: vi.fn() },
+    { kind: 'item', id: 'two', label: 'Two', testId: 'f-two', onSelect: vi.fn() },
+    {
+      kind: 'submenu',
+      id: 'more',
+      label: 'More',
+      testId: 'f-more',
+      items: [{ kind: 'item', id: 'deep', label: 'Deep', testId: 'f-deep', onSelect: vi.fn() }],
+    },
+  ];
+
+  function mountFloating(onClose = vi.fn()) {
+    render(<FloatingMenu id="float" label="Canvas actions" anchor={{ left: 40, top: 60 }} items={items} onClose={onClose} testId="floating" />);
+    return onClose;
+  }
+
+  it('opens at its anchor, focuses the first entry and roves with arrows', () => {
+    mountFloating();
+    const menu = screen.getByTestId('floating');
+    expect(menu.getAttribute('data-testid')).toBe('floating');
+    expect(document.activeElement).toBe(screen.getByTestId('f-one'));
+    fireEvent.keyDown(document.activeElement as Element, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(screen.getByTestId('f-two'));
+    fireEvent.keyDown(document.activeElement as Element, { key: 'End' });
+    expect(document.activeElement).toBe(screen.getByTestId('f-more'));
+    fireEvent.keyDown(document.activeElement as Element, { key: 'Home' });
+    expect(document.activeElement).toBe(screen.getByTestId('f-one'));
+    // It is a menu surface, not a dialog: assistive technology gets the same role.
+    expect(screen.getByRole('menu', { name: 'Canvas actions' })).toBeTruthy();
+  });
+
+  it('closes on Escape and Tab without leaving focus inside', () => {
+    const onClose = mountFloating();
+    fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes on an outside pointer but not on a click inside', () => {
+    const onClose = mountFloating();
+    fireEvent.pointerDown(screen.getByTestId('f-two'));
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.pointerDown(document.body);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('context menu (item 7)', () => {
+  const onProps = vi.fn();
+  const entries: ContextEntry[] = [
+    { id: 'props', label: 'Properties', onSelect: onProps },
+    { id: 'remove', label: 'Delete', onSelect: vi.fn() },
+    {
+      id: 'arrange',
+      label: 'Arrange',
+      items: [{ id: 'align-left', label: 'Align left', onSelect: vi.fn() }],
+    },
+  ];
+
+  it('runs an action exactly once and reports the close', () => {
+    const onClose = vi.fn();
+    render(<ContextMenu x={20} y={30} items={entries} onClose={onClose} />);
+    const item = screen.getByTestId('ctx-props');
+    fireEvent.click(item);
+    expect(onProps).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('exposes grouped commands as a submenu that keeps its entries reachable', () => {
+    render(<ContextMenu x={20} y={30} items={entries} onClose={vi.fn()} />);
+    const group = screen.getByTestId('ctx-arrange');
+    expect(group.getAttribute('aria-haspopup')).toBe('menu');
+    fireEvent.click(group);
+    expect(screen.getByTestId('ctx-align-left')).toBeTruthy();
+    // The direct actions stay one click away on the root surface.
+    expect(screen.getByTestId('ctx-props')).toBeTruthy();
+    expect(screen.getByTestId('ctx-remove')).toBeTruthy();
   });
 });

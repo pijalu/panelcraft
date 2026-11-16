@@ -4,7 +4,7 @@
 // and always emitted (D-M1-16), blank line between sections, comments
 // re-attached above their statement (D-M1-10/12).
 import type {
-  Branch, Comments, Doc, FlowStep, ImportStmt, Link, Obj, StyleBlock,
+  Branch, Comments, Doc, FlowStep, IconDecl, ImportStmt, Link, Obj, SourceBlock, StyleBlock,
   StyleStmt,
 } from '../model/types';
 
@@ -189,6 +189,29 @@ const objectAttrLines = (o: Obj, p: Printer): void => {
   if (o.attach !== undefined) p.add(`${INDENT}attach ${o.attach}`);
   if (o.icon !== undefined) p.add(`${INDENT}icon ${o.icon}`);
   geometryLines(o, p);
+  hierarchyLines(o, p);
+};
+
+/**
+ * IR v10 hierarchy lines (FILE-FORMAT §3.2/§3.3): decomposition first, then the
+ * source block. `source` needs the nested block, so it is printed here rather than
+ * in a flat `objectAttrLines` chain.
+ */
+const hierarchyLines = (o: Obj, p: Printer): void => {
+  if (o.drilldown !== undefined) {
+    const view = o.drilldown.view === undefined ? '' : ` view ${o.drilldown.view}`;
+    p.add(`${INDENT}drilldown ${quote(o.drilldown.path)}${view}`);
+  }
+  if (o.source === undefined) return;
+  p.add(`${INDENT}source {`);
+  sourceLines(o.source, p);
+  p.add(`${INDENT}}`);
+};
+
+/** Canonical source order: `language` first, then one `text` line per source line. */
+const sourceLines = (src: SourceBlock, p: Printer): void => {
+  if (src.language !== undefined) p.add(`${INDENT}${INDENT}language ${quote(src.language)}`);
+  for (const line of src.lines) p.add(`${INDENT}${INDENT}text ${quote(line)}`);
 };
 
 /** Print a coordinate/size number the way the Go printer does (int when exact). */
@@ -316,6 +339,20 @@ const printImport = (imp: ImportStmt, p: Printer): void => {
   p.add(`import ${imp.alias} as ${quote(imp.path)}`);
 };
 
+/**
+ * Document icon declaration (§3.1). Canonical line order is label, media, data;
+ * `media` and `data` are always printed because the parser requires them, and
+ * the payload is already canonical Base64, so printing cannot drift.
+ */
+const printIcon = (ic: IconDecl, p: Printer): void => {
+  p.comment(ic.comments, 0);
+  p.add(`icon ${ic.id} {`);
+  if (ic.label !== undefined) p.add(`${INDENT}label ${quote(ic.label)}`);
+  p.add(`${INDENT}media ${quote(ic.mediaType)}`);
+  p.add(`${INDENT}data ${quote(ic.data)}`);
+  p.add('}');
+};
+
 const printSection = <T>(p: Printer, items: readonly T[], print: (x: T, pp: Printer) => void): void => {
   if (items.length === 0) return;
   p.blank();
@@ -337,6 +374,7 @@ export function printDoc(doc: Doc): string {
     if (val !== undefined) p.add(`${key} ${quoted ? quote(val) : val}`);
   }
   printSection(p, doc.imports, printImport);
+  printSection(p, doc.icons, printIcon);
   printSection(p, doc.objects, printObject);
   printSection(p, doc.links, printLink);
   printSection(p, doc.flows, printFlow);

@@ -5,10 +5,10 @@
 import type { ComponentChildren } from 'preact';
 import { PanelRail } from './PanelChrome';
 import { Palette } from './Palette';
-import { PropertiesPanel } from './PropertiesPanel';
+import { PropertiesPanel, type HierarchyProps } from './PropertiesPanel';
 import { DepsPanel } from './deps/DepsPanel';
 import { PALETTE_ORDER, type CanvasController, type DiagramLink, type DiagramObject } from './CanvasController';
-import type { Kind } from '../engine/model/types';
+import type { IconDecl, Kind } from '../engine/model/types';
 import type { UiLayoutHandle } from './useUiLayout';
 import type { ImportError } from '../engine/model/imports';
 import { s, type StringKey } from './strings';
@@ -83,6 +83,11 @@ export interface PropsSlotProps {
   /** F-11 section expand state + toggler (persisted with the layout). */
   sections: Record<string, boolean>;
   onToggleSection: (section: string) => void;
+  /** IR v9: icons declared in the open file + the manager trigger. */
+  projectIcons?: IconDecl[];
+  onManageIcons?: () => void;
+  /** IR v10: decomposition + embedded source of the selected element. */
+  hierarchy?: HierarchyProps;
 }
 
 /** Properties + dependencies column (or its rail). */
@@ -107,6 +112,9 @@ export function PropsSlot(props: PropsSlotProps) {
         onCollapse={() => props.ui.togglePanel('props')}
         sections={props.sections}
         onToggleSection={props.onToggleSection}
+        projectIcons={props.projectIcons}
+        onManageIcons={props.onManageIcons}
+        hierarchy={props.hierarchy}
       />
       <DepsPanel
         text={props.depsText}

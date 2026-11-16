@@ -38,6 +38,8 @@ Every string below can appear in `dropped[]`; anything starting with
 - `unknown attributes`
 - `icons`
 - `object stacking order`
+- `decomposition links (drilldown)`
+- `embedded source`
 - `note anchors (detach)`
 - `style beyond fill (stroke/text/shape)`
 - `waypoints`

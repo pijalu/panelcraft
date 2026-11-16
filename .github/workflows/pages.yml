@@ -1,28 +1,113 @@
-# GitHub Pages deployment — STUB (PLAN §2 M0-WP4).
-# Build-only proof of wiring now; actual Pages deploy enablement lands with
-# M7 release engineering (SPEC FR-H, hosting). Enable the `deploy` job then.
+# GitHub Pages deployment with a same-revision release gate.
+#
+# The old workflow deployed whenever `web/**` changed, on its own schedule, and a
+# green deploy job was the only proof anything worked. That cannot answer "which
+# revision is the live site serving?", so publication now hangs off the `ci`
+# workflow and deploys the exact commit whose checks passed:
+#
+#   ci (push to main) ──success──▶ pages: gate → build → deploy → verify
+#
+# `gate` refuses to publish when the checks for the SHA did not pass, when the
+# commit touched nothing that ships, or when the checked-out HEAD is not the SHA
+# it meant to publish. `verify` runs the deployment evidence script and the
+# hosted Playwright smoke suite against the live site, so a release claim cites a
+# served SHA and byte-identical assets instead of a successful upload.
 name: pages
 
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [main]
-    paths: ['web/**', 'vite.config.ts', 'package-lock.json', '.github/workflows/pages.yml']
+  # Manual republication of the current main; the gate still demands a green ci
+  # run for that same commit, so this cannot publish untested code.
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# One deployment at a time, and never cancelled mid-flight: a half-applied
+# deployment would make the evidence in `verify` describe neither revision.
 concurrency:
-  group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  group: pages-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
+
+env:
+  SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
 
 jobs:
+  gate:
+    # Publication requires a *successful* ci run for the same commit. A red or
+    # cancelled pipeline, or a pull-request run, never reaches the site.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.revision.outputs.sha }}
+      publish: ${{ steps.revision.outputs.publish }}
+    steps:
+      # Two commits of history: the path filter compares the deployed commit with
+      # its parent to keep documentation-only pushes off the site.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 2
+
+      - name: resolve the revision under test
+        id: revision
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: ${{ github.event.workflow_run.head_sha || github.sha }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          if [ "$head" != "$TARGET" ]; then
+            echo "::error::checkout is $head but this run means to publish $TARGET"
+            exit 1
+          fi
+          echo "sha=$head" >> "$GITHUB_OUTPUT"
+          echo "revision under test: $head"
+
+          # A manual dispatch carries no CI verdict of its own, so ask for one.
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            conclusion="$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$head" \
+              --jq '.workflow_runs[0].conclusion // "none"')"
+            if [ "$conclusion" != "success" ]; then
+              echo "::error::ci for $head is '$conclusion' — refusing to publish an unchecked revision"
+              exit 1
+            fi
+            echo "revision: $head"
+          fi
+
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "manual dispatch: publishing $head"
+            exit 0
+          fi
+          # Documentation-only pushes are still filtered out of the site.
+          changed="$(git diff --name-only HEAD^1 HEAD || true)"
+          echo "changed files:"; echo "$changed"
+          if echo "$changed" | grep -qE '^(web/|vite.config.ts|package-lock.json|\.github/workflows/pages\.yml)'; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "no shipped paths changed — nothing to deploy (checks still passed)"
+          fi
+
   build:
+    needs: gate
+    if: needs.gate.outputs.publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -34,10 +119,26 @@ jobs:
       # already relative, including the service-worker scope (`baseURI`).
       - name: build for the project sub-path
         run: npm run build -- --base=/${{ github.event.repository.name }}/
+        env:
+          # Stamped into build-info.json and <meta name="panelcraft-build">, so
+          # the served page names the commit it was built from.
+          GITHUB_SHA: ${{ needs.gate.outputs.sha }}
       - name: the bundle must not point at the domain root
         run: |
           if grep -qE '(src|href)="/assets/' web/dist/index.html; then
             echo '::error::index.html references /assets — Pages serves /<repo>/ and would 404'
+            exit 1
+          fi
+      - name: the bundle must carry its own revision
+        env:
+          SHA: ${{ needs.gate.outputs.sha }}
+        run: |
+          stamped="$(node -p "require('./web/dist/build-info.json').sha")"
+          meta="$(grep -o 'name="panelcraft-build" content="[^"]*"' web/dist/index.html | head -1)"
+          echo "build-info sha: $stamped"
+          echo "index.html:     $meta"
+          if [ "$stamped" != "$SHA" ]; then
+            echo "::error::bundle was built from $stamped, not $SHA"
             exit 1
           fi
       - name: asset-origin scan (self-containment holds on Pages too)
@@ -46,15 +147,82 @@ jobs:
         with:
           path: web/dist
 
-  # Live since M7: Pages environment must exist (repo Settings → Pages →
-  # GitHub Actions source). Serves the SPA offline-capable (SPEC FR-H, N8).
   deploy:
-    if: true
-    needs: build
+    needs: [gate, build]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+  # The release gate: prove which revision is being served, then exercise items
+  # 7–16 against the live site in a fresh profile and in an upgrading client.
+  verify:
+    needs: [gate, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Rebuild from the same SHA: the evidence compares what is served against
+      # what this commit produces, so neither side is taken on trust.
+      - name: rebuild for comparison
+        run: npm run build -- --base=/${{ github.event.repository.name }}/
+        env:
+          GITHUB_SHA: ${{ needs.gate.outputs.sha }}
+
+      - name: deployment evidence (served SHA + asset hashes)
+        env:
+          SHA: ${{ needs.gate.outputs.sha }}
+          RUN: ${{ github.run_id }}
+        run: |
+          node scripts/hosted-evidence.mjs \
+            --url "$SITE_URL" \
+            --dist web/dist \
+            --expect-sha "$SHA" \
+            --run "$RUN" \
+            --out test-results/hosted | tee /tmp/deployment-evidence.md
+          cat /tmp/deployment-evidence.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: install chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: hosted smoke (fresh + upgrading client)
+        env:
+          HOSTED_URL: ${{ env.SITE_URL }}
+          EXPECTED_BUILD_SHA: ${{ needs.gate.outputs.sha }}
+        run: npm run e2e:hosted
+
+      - name: release evidence summary
+        if: always()
+        run: |
+          {
+            echo "## Hosted release evidence"
+            echo "- site: $SITE_URL"
+            echo "- revision: ${{ needs.gate.outputs.sha }}"
+            echo "- pages run: ${{ github.run_id }}"
+            echo "- deployment page: ${{ needs.deploy.outputs.page_url }}"
+            echo "- evidence records: test-results/hosted/"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: retain release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hosted-release-evidence
+          path: |
+            test-results/hosted/
+            test-results/hosted-artifacts/
+          retention-days: 90

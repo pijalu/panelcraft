@@ -43,6 +43,7 @@ direction LR                 ← auto-layout hint: LR | TB | RL | BT
 theme dark                   ← light | dark (render hint only)
 
 import billing as "../billing/system.pcd"    ← 0..n, see §5
+<icons>                      ← 0..n, see §3.1
 
 <objects>                    ← 0..n, see §3
 <links>                      ← 0..n, see §4
@@ -77,6 +78,8 @@ attach id                   ← note only: anchored object id
 icon name                   ← built-in icon id (M5)
 size <w> <h>                ← explicit canvas geometry in document units (IR v2, F-13)
 z <int>                     ← explicit stacking order; absent = auto (IR v6, CX-03)
+drilldown "path.pcd" [view id]  ← C4 decomposition, IR v10 (§3.2)
+source { … }                ← embedded source text, IR v10 (§3.3)
 ```
 
 * `size` is presentation geometry, not semantics: it is optional, positive, and
@@ -121,6 +124,169 @@ queue events "order.events" { technology "Kafka" }
 group ctx "Checkout context" { contains api db }
 note n1 "PCI scope ends at PSP" { attach erp }
 ```
+
+### 3.1 Document icons (IR v9)
+
+An object's `icon name` property first pointed only at the built-in set. A file
+may now carry its **own** icons, so a diagram stays self-contained when it is
+mailed, committed or rendered by the CLI — no sidecar file, no network, no icon
+font (the offline-only rule). A declaration is a top-level statement:
+
+```
+IconStmt := "icon" Id "{" IconLine* "}"
+IconLine := "label" QuotedText      ← 0..1 human label (the picker name)
+          | "media" QuotedText      ← REQUIRED, this version: "image/svg+xml"
+          | "data"  QuotedText      ← REQUIRED, canonical Base64 of the SVG
+```
+
+```
+icon brand {
+  label "Company mark"
+  media "image/svg+xml"
+  data "<Base64 of the SVG, one line>"
+}
+```
+
+* **Handles** follow the identifier rule (§1). The built-in namespace is
+  **reserved**: reusing a built-in handle is an error (`P207`), so `icon cloud`
+  never means two different pictures in two files. Duplicate handles are `P206`.
+* **Resolution order**: built-ins are always available; a `P210` warning marks a
+  name that resolves to nothing, and the object then draws without an icon (no
+  silent substitution, no broken band in the layout).
+* **Payload**: canonical Base64 only — standard alphabet, `=` padding, no
+  whitespace, length a multiple of four (`E114` when it is not). The decoded
+  bytes must be UTF-8 SVG; a non-SVG media type is a syntax error (`E115`),
+  because this version cannot draw it and the printer would emit an unusable file.
+* **Safety** (`P209`): the SVG is checked against an element/attribute allowlist —
+  no `<script>`, no event handlers, no `<foreignObject>`, no `<style>`, no
+  embedded `<image>`, no external `href`, no `url()`/`@import`/`javascript:` — and
+  the same rule table runs in the browser engine and the Go CLI, gated by one
+  shared fixture. Anything that fails is reported, never executed and never
+  fetched: the renderer embeds the payload as a `data:` URI, and an SVG drawn as
+  an image runs in static mode.
+* **Limits** (`P208`): 64 KiB decoded per icon, 256 KiB per document, 64
+  declarations per document.
+* **Printing**: declarations come after imports and before objects, in document
+  order, with the canonical line order label → media → data and the payload
+  untouched (it is already canonical), so `parse → print → parse` is byte-stable.
+* **Management is a document operation**: renaming a handle rewrites every
+  reference (`icon name` on objects, `style { icon … }`, top-level `style`
+  statements) in one undoable step; removal reports the usages and clears them
+  only when the author confirms. Deleting an icon never leaves a dangling
+  reference behind by accident.
+* **Exports**: the payload is local bytes, so SVG/PNG and the CLI renderer carry
+  it as-is. Mermaid has no equivalent and declares `icons` dropped (§9).
+* Provenance and licensing of the built-in set: [ICONS.md](ICONS.md).
+
+### 3.2 Decomposition links — C4 drill-down (IR v10)
+
+A C4 element may *decompose* into a subordinate diagram that lives in the same
+workspace: a system opens its container diagram, a container opens its component
+diagram. The relation is authorised on the **parent object only** — a child file
+never points back at its parent — so every edge has exactly one author and the two
+ends can never disagree.
+
+```
+ObjectAttr += "drilldown" QuotedPath [ "view" Ident ]
+```
+
+```
+system shop "Webshop" {
+  description "Storefront SPA"
+  drilldown "containers/shop.pcd" view containers
+}
+```
+
+* **Target** — workspace-relative POSIX path to a `.pcd` file, resolved from the
+  declaring file's directory. Absolute paths, backslashes, paths that escape the
+  workspace root and non-`.pcd` suffixes are errors (`P213`).
+* **View** — optional view *id* inside the target file (the `as <id>` of a `view`
+  statement, §7.1). Absent, the child opens its default (implicit or first) view; a
+  view id the target does not declare is an error (`P218`).
+* **Allowed transitions** — decomposition follows C4's zoom levels:
+
+  | parent kind | child `level` (§2) |
+  |---|---|
+  | `system`, `system_ext` | `container` |
+  | `container` | `component`, `deployment` |
+
+  A child that declares **no** `level` line is accepted (the file makes no claim). A
+  child that declares a different one is `P214`. `person`, `datastore`, `queue`,
+  `note` and `group` cannot decompose at all (`P215`) — a group is a boundary and a
+  note is an annotation, neither is a C4 element.
+* **One parent per child** — a target file is claimed by at most one object per
+  document (`P211`); the workspace-wide pass behind the UI additionally reports a
+  child claimed by two *different* files.
+* **Acyclic** — following decomposition links must not return to a file already in
+  the trail (`P216`).
+* **Identity** — the parent object keeps its own id; the child diagram's content is
+  *not* merged into the parent, is never duplicated as ghost objects, and the parent
+  is never silently renamed. The child renders a parent-context boundary that names
+  the parent element and its file; imported ghosts (§5) stay visually distinct.
+* **Navigation** — a drill-down is opened from a visible, keyboard-reachable
+  affordance on the entity (properties panel action and canvas context action); the
+  trail shows breadcrumbs back to the root, and returning keeps the previous view
+  and camera. A broken, cyclic or duplicate relation keeps the current context and
+  reports the reason instead of opening anything.
+* **Editing** — `drilldown` is a document line like any other: setting, changing or
+  clearing it is one undoable command, so undo/redo never desynchronises the trail
+  (the trail re-resolves from the file after every edit).
+* **Rename / move / delete** — renaming or moving a target in the workspace rewrites
+  the referring `drilldown` path in every affected file in the same step; deleting a
+  target keeps the authored relation and reports `P212`, which the properties panel
+  offers to re-point. No hidden backlink is stored, so there is nothing else to
+  maintain.
+* **Exports** — the relation is not an edge: it draws no link, so SVG/PNG and the
+  CLI renderer are unaffected and an unsaved child never appears in a parent export.
+  Mermaid has no decomposition concept; `drilldown` is declared dropped (§9).
+
+### 3.3 Embedded source (IR v10)
+
+An object may carry a short piece of source text — a handler signature, a query, the
+interface a container exposes — so a diagram can explain itself without a second
+file.
+
+```
+ObjectAttr += "source" "{" ( "language" QuotedText | "text" QuotedText )* "}"
+```
+
+```
+container api "Checkout API" {
+  technology "Go"
+  source {
+    language "go"
+    text "func (h *Handler) Charge(ctx context.Context) error {"
+    text "  return h.psp.Authorize(ctx)"
+    text "}"
+  }
+}
+```
+
+* **Text is data** — one `text` line per source line, in document order; the parser
+  joins them with `\n` and the printer emits them back verbatim, one per line
+  (round-trip and `format(x) == x` hold). Escapes are the ordinary string escapes
+  (`\"`, `\\`), so a source line needs no special quoting rules; leading indentation
+  is content, not block structure (§1). A block without any `text` line is a syntax
+  error (`E116`), and `language` appears at most once per block.
+* **Language** — free-form short label (`go`, `typescript`, `sql`, …), printed
+  before the text lines. Absent means "unlabelled"; the viewer then shows plain text.
+* **Safety** — source is *text kept in the document*. It is never executed, never
+  parsed as markup, never fetched and never rendered as HTML: the viewer prints it in
+  a text node, so `<script>` is shown, not run. Storage stays browser-local — no
+  URL, no server, no include.
+* **Limits** (`P217`): 64 KiB of source per object, 4096 lines per object, 256 KiB
+  per document. Over the limit is an error and the file keeps the text it authored —
+  nothing is truncated and nothing is dropped silently.
+* **Editing** — the viewer is an editor: saving is one undoable document command and
+  an unsaved buffer is reported before a drill-down/navigation discards it.
+* **Exports** — source is metadata, not geometry: SVG/PNG/CLI render the element
+  without the text (the canvas never draws it either); Mermaid declares `source`
+  dropped (§9).
+
+The three "same file" mechanisms stay distinct: `import` (§5) reuses another file's
+objects read-only inside this diagram, a flow `goto` (§6) jumps between flows, and
+`drilldown` opens a subordinate diagram. None is presented as a substitute for
+another.
 
 ## 4. Links
 
@@ -180,20 +346,32 @@ api -publishes-> events as L7 {
   resolved endpoints. Mermaid export declares `endpoint perimeter anchors` as
   dropped because Mermaid has no equivalent data.
 
-* **Overlap avoidance (CX-02, IR v5)**: automatic orthogonal routes avoid solid
-  non-group objects and previously routed links where a reasonable bounded
-  candidate exists. Document order is deterministic; clear existing routes stay
-  unchanged, shared endpoint points are allowed, and parallel/coincident links
-  use separate channels when possible. Explicit perimeter anchors keep their
-  outward stubs. Group boundaries are not solid obstacles, but their non-group
-  children are. If every candidate conflicts, the minimum-conflict, shortest
-  deterministic fallback is used; dense graphs can therefore retain crossings.
-  `allow overlap` opts one link out of object and connector avoidance. It is
-  emitted only when true; absence and false have identical default behavior.
-  Explicit `waypoint` geometry remains authoritative and bypasses automatic
-  avoidance with or without this override. Canvas, minimap, SVG/PNG and CLI use
-  the committed route polylines. Mermaid export declares `overlap overrides`
-  as dropped because the target has no equivalent data.
+* **Overlap avoidance (IR v5)**: automatic
+  orthogonal routes avoid solid non-group objects — *including the route's own two
+  endpoints*, which may only be touched at their ports and clearance stubs — and
+  previously routed links where a reasonable bounded candidate exists. Document order
+  is deterministic; clear existing routes stay unchanged, shared endpoint points are
+  allowed, and parallel/coincident links use separate channels when possible. Explicit
+  perimeter anchors keep their outward stubs. Group boundaries are not solid obstacles,
+  but their non-group children are. Candidates are scored by interior crossings, then
+  shared lines with other connectors, then direction reversals (a connector that runs
+  out, back and out again reads as a loop), then length, so a detour stays bounded and
+  readable. If every candidate conflicts, the minimum-conflict, shortest deterministic
+  fallback is used; dense graphs can therefore retain crossings, and such a connector
+  reports it. `allow overlap` opts one link out of object and connector avoidance. It
+  is emitted only when true; absence and false have identical default behavior.
+
+  Explicit `waypoint` geometry remains authoritative and bypasses *automatic*
+  avoidance with or without this override: a bend outside every shape is honoured even
+  when a shorter automatic route exists, and each leg between bends is still routed
+  around entity rectangles so a detour never becomes a crossing. A bend that lies
+  **inside** an entity cannot be drawn without covering the shape and its label, so it
+  is skipped rather than silently relocated: the printed document keeps the authored
+  `waypoint` line untouched, and the connector carries the reason (`data-route-warning`
+  and its accessible description), e.g. `charges: bend 2 at (432, 70) is inside Payment
+  provider — the route skips it.` Canvas, minimap, SVG/PNG and CLI use the committed
+  route polylines. Mermaid export declares `overlap overrides` as dropped because the
+  target has no equivalent data.
 
 * **Connector sparks (FLOW-02, IR v7)**: `sparks <1..8>` sets how many tokens travel
   a link during a message step and `speed <0.25..4>` scales their motion, where `1`
@@ -417,8 +595,10 @@ nested subgraph ids): warning + skipped, never silent.
 
 **Dropped (declared, per SPEC FR-M4):** flows, positions/layout, views, imports
 (exported file is flattened: imported objects inlined and marked via comment `%%
-imported from …`), properties, notes detach, icons, endpoint perimeter anchors,
-waypoints, overlap overrides, object stacking order, custom shapes.
+imported from …`), properties, notes detach, icons (built-in and document-declared), endpoint perimeter anchors,
+waypoints, overlap overrides, object stacking order, custom shapes, decomposition
+links (`drilldown`, §3.2) and embedded source (`source`, §3.3) — mermaid has neither
+concept, so both are named in the drop list the export reports.
 C4 export mode (`--c4`): emits C4Context/Container statements when kinds fit, else
 fallback flowchart.
 
@@ -438,6 +618,19 @@ fallback flowchart.
 | P202 | warning | empty flow / flow without visual steps |
 | P203 | warning | `style` targets non-existent id |
 | P204 | info | position overlaps (view-time concern; reported, not fixed) |
+| P206 | error | duplicate document icon handle |
+| P207 | error | document icon handle collides with a built-in icon |
+| P208 | error | icon payload/declaration count over the §3.1 limits |
+| P209 | error | icon payload is not valid UTF-8 or fails the SVG allowlist |
+| P210 | warning | `icon` name resolves to no built-in and no declared icon |
+| P211 | error | two objects in one document claim the same decomposition target |
+| P212 | warning | decomposition target file missing (relation and diagram stay usable) |
+| P213 | error | decomposition target path escapes the workspace or is not a `.pcd` path |
+| P214 | error | decomposition target declares a C4 level the parent kind cannot open (§3.2) |
+| P215 | error | this object kind cannot own a subordinate diagram (§3.2) |
+| P216 | error | decomposition cycle (the chain returns to a file already in the trail) |
+| P217 | error | embedded source over the §3.3 limits (64 KiB / 4096 lines / 256 KiB per doc) |
+| P218 | error | decomposition `view` id is not declared by the target file |
 
 Exit codes per SPEC FR-X. All findings carry `line:col` of the offending token.
 
@@ -461,14 +654,17 @@ Exit codes per SPEC FR-X. All findings carry `line:col` of the offending token.
 ```ebnf
 file        = "pcd" version , { stmt } ;
 version     = number , [ "." number ] ;
-stmt        = meta | import | object | link | flow | view | style ;
+stmt        = meta | import | icon | object | link | flow | view | style ;
 meta        = ("title" string) | ("level" ident) | ("direction" ident) | ("theme" ident) ;
 import      = "import" ident "as" path ;
+icon        = "icon" ident "{" , [ "label" string ] , "media" string , "data" string , "}" ;
 object      = kind ident , [ string ] , [ "{" , { attr } , "}" ] ;
 attr        = ("description" , string) | ("technology" , string) | ("tag" , ident { ident })
             | ("property" , ident , string) | ("contains" , ident { ident })
             | ("attach" , ident) | ("icon" , ident)
-            | ("size" , number , number) | ("z" , number) ;
+            | ("size" , number , number) | ("z" , number)
+            | ("drilldown" , string , [ "view" , ident ])
+            | ("source" , "{" , [ "language" , string ] , { "text" , string } , "}" ) ;
 link        = ident , arrow , ident , [ ":" , string ] , [ "as" , ident ] , [ linkblock ] ;
 arrow       = [ "<" ] , "-" , [ ident , "-" ] , [ ">" ] ;   (* <-, ->, <->, -type-> *)
 flow        = "flow" , [ string ] , [ "as" , ident ] , "{" , { step } , "}" ;
@@ -482,6 +678,7 @@ goto        = "goto" , [ path , "#" ] , ident , [ "return" , ("end"|"here") ] ;
 anchor      = "anchor" , ("from" | "to") , number ;   (* normalized 0 <= n < 1 *)
 view        = "view" , string , [ "as" , ident ] , "{" , { viewline } , "}" ;
 style       = "style" , ident , "{" , { styleline } , "}" ;
+(* IR v10: `drilldown` and `source` are object attributes — see `attr` above. *)
 ```
 
 (Formal EBNF is the implementation reference; this section is the readable summary.
@@ -592,7 +789,11 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   { attr } , "}" ]`), so an attribute-less object prints as `person a "A"` and
   a `{}` style block parses to "no style" and is omitted (§3, §11).
 - E-14 Nesting limit: 32 levels, deeper = E112 (§6).
-- E-15 Syntax errors (E100–E113) abort the whole file (doc = null + diagnostics);
+- E-14a Icon payload syntax (§3.1): `E114` = the `data` string is not canonical
+  Base64; `E115` = the `media` string names a type this version cannot draw.
+  Both abort the file: the declaration could never be rendered, and re-printing
+  it would emit a file the app refuses to load.
+- E-15 Syntax errors (E100–E115) abort the whole file (doc = null + diagnostics);
   semantic findings never abort (§10, §14 sample).
 
 **Validation**
@@ -625,3 +826,18 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   ≥1 error finding or parse abort, 2 = usage error. PATH: files or directories
   (a directory globs `*.pcd`, non-recursive, sorted). `validate --json` emits
   `{files,errors,warnings,infos}`.
+
+**Decomposition and source (IR v10)**
+- E-22 `drilldown` is written `drilldown "<path>" [view <ident>]`, one per object;
+  the target path is a quoted string (a path, not an identifier) and the view is the
+  child's view *id*, not its display name. The canonical printer emits the two
+  lines after `size`/`z` and before the object's `style` block, `drilldown` first.
+- E-23 A `source` block holds `language "…"` at most once and any number of `text
+  "…"` lines in document order (one per source line). No `text` line is `E116`
+  (nothing to show, and the printed file would lose the block); any other line
+  inside the block is `E.unexpected`, like every other known block. The IR keeps the
+  lines separately (`source.lines`) so a reader never re-splits on `\n`.
+- E-24 `drilldown`/`source` are object attributes, so they inherit §12: unknown
+  attributes still become raw data, and the two new ones are never silently
+  downgraded to it. Diagnostics P211–P218 are semantic (§10) and therefore never
+  abort a parse.

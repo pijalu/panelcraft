@@ -1,0 +1,29 @@
+pcd 1.0
+title "Project icons"
+level container
+
+# Project icons travel inside the file: explicit media type + canonical Base64.
+icon brand {
+  label "Company mark"
+  media "image/svg+xml"
+  data "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTQgNGgxNnYxNkg0eiIvPjwvc3ZnPg=="
+}
+icon badge {
+  media "image/svg+xml"
+  data "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iOSIgZmlsbD0iIzBhZiIvPjwvc3ZnPg=="
+}
+
+person shopper "Shopper"
+system shop "Webshop" {
+  icon brand
+}
+system cdn "Edge cache" {
+  icon badge
+}
+system legacy "Built-in icon still works" {
+  icon database
+}
+
+shopper -> shop : "browse"
+shop -> cdn : "assets"
+cdn -> legacy : "miss"

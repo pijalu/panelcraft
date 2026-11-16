@@ -109,6 +109,7 @@ describe('CodeEditor', () => {
       machine.canvasChanged({
         irVersion: 1,
         formatVersion: '1.0',
+        icons: [],
         imports: [],
         objects: [{ kind: 'person', id: 'p1', name: 'Pat', pos: { line: 0, col: 0 } }],
         links: [],

@@ -141,11 +141,25 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.locator('.cm-content')).toContainText('allow overlap');
 
     // A manual waypoint is authoritative even without the overlap override.
-    await setDoc(page, DOC.replace('a -> b as L2\n', 'a -> b as L2 {\n  waypoint (330, 130)\n}\n'));
-    await expect(route(page, 'L2')).toHaveAttribute('d', /330[ ,]+130/);
+    // It sits outside every shape, so nothing may replace it with the automatic
+    // route; the legs still bend around the blocker instead of crossing it.
+    await setDoc(page, DOC.replace('a -> b as L2\n', 'a -> b as L2 {\n  waypoint (400, 200)\n}\n'));
+    await expect(route(page, 'L2')).toHaveAttribute('d', /400[ ,]+200/);
     await selectLink(page, 'L2');
     await expect(page.getByTestId('link-allow-overlap')).not.toBeChecked();
     await capture(page, `cx02-manual-waypoint-${theme}`);
+    await axe(page);
+
+    // A waypoint *inside* an entity cannot be drawn: the route skips it, the
+    // document keeps it, and the connector explains itself (item 13).
+    await setDoc(page, DOC.replace('a -> b as L2\n', 'a -> b as L2 {\n  waypoint (330, 130)\n}\n'));
+    await expect(page.locator('.cm-content')).toContainText('waypoint (330, 130)');
+    await expect(route(page, 'L2')).not.toHaveAttribute('d', /330[ ,]+130/);
+    await expect(route(page, 'L2')).toHaveAttribute('data-route-warning', '1');
+    await expect(page.getByTestId('canvas').locator('g.pc-link[data-id="L2"]'))
+      .toHaveAttribute('data-route-warning', /inside Blocker/);
+    await expect(route(page, 'L2')).toHaveAttribute('d', second!);
+    await capture(page, `cx02-interior-waypoint-${theme}`);
     await axe(page);
 
     // Endpoint and object edits recompute the same deterministic avoidance.

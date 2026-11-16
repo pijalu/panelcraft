@@ -13,6 +13,7 @@ const sample: Doc = {
   direction: 'LR',
   theme: 'dark',
   comments: ['header note'],
+  icons: [],
   imports: [{ alias: 'common', path: '../common/actors.pcd', comments: ['#x'], pos: { line: 5, col: 1 } }],
   objects: [
     {

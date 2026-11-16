@@ -4,8 +4,8 @@
 // Empty collections and absent scalars are omitted on both sides.
 
 import type {
-  Branch, CameraSpec, Comments, Doc, Flow, FlowStep, ImportStmt, Link, Obj, Pos,
-  Property, RawAttr, StyleBlock, StyleStmt, View, ViewLine,
+  Branch, CameraSpec, Comments, Doc, Flow, FlowStep, IconDecl, ImportStmt, Link, Obj,
+  Pos, Property, RawAttr, StyleBlock, StyleStmt, View, ViewLine,
 } from './types';
 import { IR_VERSION } from './types';
 
@@ -60,6 +60,16 @@ function styleBlock(s?: StyleBlock): Entry {
 const importStmt = (imp: ImportStmt): JSONRecord =>
   obj(['alias', imp.alias], ['path', imp.path], comments(imp.comments), ['pos', pos(imp.pos)]);
 
+const iconDecl = (ic: IconDecl): JSONRecord =>
+  obj(
+    ['id', ic.id],
+    ['label', ic.label],
+    ['mediaType', ic.mediaType],
+    ['data', ic.data],
+    comments(ic.comments),
+    ['pos', pos(ic.pos)],
+  );
+
 const objectStmt = (o: Obj): JSONRecord =>
   obj(
     ['kind', o.kind],
@@ -74,6 +84,14 @@ const objectStmt = (o: Obj): JSONRecord =>
     ['icon', o.icon],
     ['size', o.size === undefined ? undefined : { w: o.size.w, h: o.size.h }],
     ['z', o.z],
+    ['drilldown',
+      o.drilldown === undefined
+        ? undefined
+        : obj(['path', o.drilldown.path], ['view', o.drilldown.view])],
+    ['source',
+      o.source === undefined
+        ? undefined
+        : obj(['language', o.source.language], ['lines', o.source.lines])],
     styleBlock(o.style),
     [
       'attributes',
@@ -235,6 +253,7 @@ export function serializeDoc(doc: Doc): string {
     ['theme', doc.theme],
     comments(doc.comments),
     ['imports', arr(doc.imports.map(importStmt))],
+    ['icons', arr(doc.icons.map(iconDecl))],
     ['objects', arr(doc.objects.map(objectStmt))],
     ['links', arr(doc.links.map(linkStmt))],
     ['flows', arr(doc.flows.map(flowStmt))],

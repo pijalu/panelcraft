@@ -87,7 +87,13 @@ npm run test:perf            # N1–N4 perf budgets, no coverage instrumentation
 npm run e2e                  # playwright (build first: npm run build — the
                              # webServer runs `npm run preview` on the EXISTING
                              # dist, so a stale bundle silently tests old code)
-npm run build                # static bundle → web/dist
+npm run e2e:hosted           # hosted smoke: items 7–16 against the DEPLOYED site
+                             # (HOSTED_URL=… EXPECTED_BUILD_SHA=… ; fresh profile
+                             # + a client with the service worker installed)
+node scripts/hosted-evidence.mjs --url <site> --dist web/dist \
+  --expect-sha <sha>         # deployment evidence: served SHA + asset hashes
+npm run build                # static bundle → web/dist (also writes
+                             # build-info.json + the panelcraft-build meta tag)
 
 # go
 go build ./...               # bin: panelcraft (embeds web/dist — build web first)
@@ -114,6 +120,9 @@ panelcraft serve --addr :8080 --open
 - [ ] Format changes landed atomically: parser + printer + IR + `FILE-FORMAT.md`
       + corpus regeneration (`node scripts/corpus-accept.mjs`) + Go parity
 - [ ] e2e goldens only via `UPDATE_GOLDENS=1`; run artefacts go to `test-results/`
+- [ ] Release change: `npm run e2e:hosted` green against the deployed URL, and
+      `scripts/hosted-evidence.mjs` passed for the published SHA (a green deploy
+      job alone proves nothing about which revision is served)
 - [ ] GPL headers present on new files
 
 ## Working conventions
@@ -164,6 +173,8 @@ panelcraft serve --addr :8080 --open
 | `internal/{ir,pdl,server,render}` | Go IR codec, PDL parser, embedded server, chromedp render |
 | `testdata/corpus` | golden .pcd + .ir.json (shared TS/Go) |
 | `e2e` | Playwright specs + curated goldens (`e2e/goldens/`) |
+| `e2e-hosted` | Hosted smoke specs: items 7–16 against the deployed site, fresh + upgrading client |
+| `scripts/hosted-evidence.mjs` | Deployment evidence: served SHA, asset hashes, provenance record |
 | `docs/architecture` | PDL workspace: PanelCraft's own architecture diagrams (corpus seeds) |
 | `docs` | SPEC, IMPLEMENTATION-PLAN, FILE-FORMAT, STYLE-GUIDE, milestones, adr/ |
 

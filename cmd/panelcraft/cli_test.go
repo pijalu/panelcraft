@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -340,5 +341,39 @@ func TestConvertErrors(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "abort.pcd")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestValidateHierarchy proves the CLI reads the child diagram a `drilldown`
+// points at (FILE-FORMAT §3.2): a level mismatch is an error, a missing target is
+// only a warning, so a half-built hierarchy still validates its parent.
+func TestValidateHierarchy(t *testing.T) {
+	const parent = "pcd 1.0\nsystem shop \"Shop\" {\n  drilldown %q\n}\n"
+	cases := []struct {
+		name     string
+		child    string
+		childDoc string
+		want     int
+		wantCode string
+	}{
+		{"level.pcd", "child.pcd", "pcd 1.0\nlevel context\ncontainer api \"API\"\n", 1, "P214"},
+		{"ok.pcd", "child.pcd", "pcd 1.0\nlevel container\ncontainer api \"API\"\n", 0, ""},
+		{"gone.pcd", "missing.pcd", "", 0, "P212"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if tc.childDoc != "" {
+				writeFile(t, dir, tc.child, tc.childDoc)
+			}
+			path := writeFile(t, dir, tc.name, fmt.Sprintf(parent, tc.child))
+			var stdout, stderr strings.Builder
+			if got := runValidate([]string{path}, &stdout, &stderr); got != tc.want {
+				t.Fatalf("exit %d, want %d (stdout: %q)", got, tc.want, stdout.String())
+			}
+			if tc.wantCode != "" && !strings.Contains(stdout.String(), tc.wantCode) {
+				t.Fatalf("stdout missing %s:\n%s", tc.wantCode, stdout.String())
+			}
+		})
 	}
 }

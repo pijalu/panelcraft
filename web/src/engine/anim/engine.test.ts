@@ -6,7 +6,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { FlowAnimator, type BeatCtx } from './engine';
 import type { AnimHandle, AnimPlayer } from './ports';
-import { MOTION } from './timings';
+import { MOTION, travelTiming } from './timings';
 import type { Beat } from '../flows/plan';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -16,6 +16,7 @@ interface PlayerCall {
   kf: Record<string, string | number>[];
   durationMs: number;
   easing: string;
+  fill: string;
 }
 
 const mkPlayer = (): { player: AnimPlayer; calls: PlayerCall[] } => {
@@ -24,7 +25,13 @@ const mkPlayer = (): { player: AnimPlayer; calls: PlayerCall[] } => {
     calls,
     player: {
       animate: (el, kf, opts): AnimHandle => {
-        calls.push({ el, kf: [...kf], durationMs: opts.durationMs, easing: opts.easing ?? 'linear' });
+        calls.push({
+          el,
+          kf: [...kf],
+          durationMs: opts.durationMs,
+          easing: opts.easing ?? 'linear',
+          fill: opts.fill ?? 'none',
+        });
         return { cancel: () => {} };
       },
     },
@@ -138,12 +145,38 @@ describe('FlowAnimator dims (FR-F4)', () => {
     expect(svg.querySelectorAll('.pc-dim-history')).toHaveLength(0);
   });
 
-  it('stop() restores everything and empties the anim layer', () => {
+  it('stop() restores everything and removes the anim layer', () => {
     const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry() });
     anim.play(beatOf({ index: 1, kind: 'msg', actors: ['a', 'b'], links: [{ linkId: 'ab', from: 'a', to: 'b', flipped: false }], dim: ['c', 'bc'] }), ctx);
     anim.stop();
     expect(svg.querySelectorAll('.pc-dim').length).toBe(0);
-    expect(svg.querySelector('.pc-anim-layer')?.childElementCount).toBe(0);
+    // No orphan layer survives playback (item 9).
+    expect(svg.querySelector('.pc-anim-layer')).toBeNull();
+  });
+
+  it('settle() jumps the beat to its end state instead of leaving it moving', () => {
+    // A parked step reports "paused", so nothing may still be travelling.
+    let finished = 0;
+    const anim = new FlowAnimator(svg, {
+      player: { ...fx.player, finishAll: () => (finished += 1) },
+      geometry: mkGeometry(),
+    });
+    anim.play(beatOf({ index: 1, kind: 'msg', actors: ['a', 'b'], links: [{ linkId: 'ab', from: 'a', to: 'b', flipped: false }], dim: [] }), ctx);
+    anim.settle();
+    expect(finished).toBe(1);
+  });
+
+  it('pause()/resume() delegate to the player', () => {
+    let paused = 0;
+    let resumed = 0;
+    const anim = new FlowAnimator(svg, {
+      player: { ...fx.player, pauseAll: () => (paused += 1), resumeAll: () => (resumed += 1) },
+      geometry: mkGeometry(),
+    });
+    anim.pause();
+    anim.resume();
+    expect(paused).toBe(1);
+    expect(resumed).toBe(1);
   });
 
   it('beats without participants touch nothing (intro overview)', () => {
@@ -171,7 +204,10 @@ describe('FlowAnimator tokens, rings, badges (FR-F4)', () => {
     expect(layer?.querySelector('.pc-trail')).not.toBeNull();
     const tokenCall = fx.calls.find((c) => c.el.classList.contains('pc-token'));
     expect(tokenCall).toBeDefined();
-    expect(tokenCall?.durationMs).toBe(MOTION.tokenMs);
+    // The beat owns the timing (item 9): the token arrives before the step
+    // changes and holds there instead of vanishing after its own 900 ms.
+    expect(tokenCall?.durationMs).toBe(travelTiming(MOTION.stepDelayMs, 1, 1).durationMs);
+    expect(tokenCall?.fill).toBe('forwards');
     expect(tokenCall?.kf.length).toBeGreaterThan(1); // sampled travel keyframes
     expect(tokenCall?.kf[0]?.transform).toContain('translate(0');
   });
@@ -233,10 +269,13 @@ describe('FlowAnimator reduced motion (FR-F5)', () => {
     const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry(), reducedMotion: true });
     anim.play(beatOf({ index: 2, kind: 'msg', actors: ['a', 'b'], links: [{ linkId: 'ab', from: 'a', to: 'b', flipped: false }], dim: ['c', 'bc'] }), ctx);
     expect(fx.calls.length).toBe(0);
-    // only the badge is in the anim layer — no token/trail/ring motion
+    // The badge plus a static arrived token are in the layer — no motion at all,
+    // but the beat still shows where the message went (item 9).
     const layer = svg.querySelector('.pc-anim-layer');
-    expect(layer?.childElementCount).toBe(1);
     expect(layer?.querySelector('.pc-badge')).not.toBeNull();
+    expect(layer?.querySelectorAll('.pc-token-static')).toHaveLength(1);
+    expect(layer?.querySelector('.pc-token:not(.pc-token-static)')).toBeNull();
+    expect(layer?.querySelector('.pc-trail')).toBeNull();
     expect(svg.querySelector('.pc-obj[data-id="c"]')?.classList.contains('pc-dim')).toBe(true);
     expect(svg.querySelector('.pc-obj[data-id="a"]')?.classList.contains('pc-emph')).toBe(true);
     expect(svg.querySelector('.pc-obj[data-id="b"]')?.classList.contains('pc-emph')).toBe(true);

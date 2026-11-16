@@ -85,7 +85,10 @@ play mode, exports PNG/SVG for docs.
 ### 4.1 Workspace & files (FR-W)
 
 * **FR-W1** Virtual file tree with folders and `.pcd` files; create, rename, delete,
-  move (drag & drop), duplicate.
+  move (drag & drop), duplicate. Row actions stay reachable at any panel width: a
+  long name wraps to two clamped lines (full name in the tooltip) instead of pushing
+  the buttons out of view, and the row offers the same actions in a context menu
+  (right-click, `Shift+F10`/context-menu key) for pointer, touch and keyboard use.
 * **FR-W2** Multi-tab editing; unsaved-changes indicator; autosave (see FR-S1).
 * **FR-W3** Per-file import: `.pcd`, `.mmd`/`.mermaid` (mermaid text), `.txt` (treated as mermaid).
 * **FR-W4** Per-file export: `.pcd`, `.mmd` (mermaid subset export), `.svg`, `.png`
@@ -103,15 +106,18 @@ play mode, exports PNG/SVG for docs.
   Secondary (right) and middle mouse-button drags also pan directly; a moved
   secondary drag does not open the context menu.
 * **FR-C2** Grid + snap-to-grid (toggleable); alignment guides when dragging. Grid type
-  (off/dots/lines) and snapping are independent browser-local editor preferences; the grid is
-  editor chrome only (absent from presentation, minimap and SVG/PNG/CLI output).
+  (off/dots/lines) and snapping are independent browser-local editor preferences. A
+  profile that has never chosen a grid shows a subtle dots grid with snapping on; a
+  saved explicit choice (including off) is preserved across upgrades and never
+  overwritten. The grid is editor chrome only (absent from presentation, minimap and
+  SVG/PNG/CLI output).
 * **FR-C3** Stencil palette (C4 types): Person, Software System, External System,
   Container, Component, Data Store, Queue/Topic, Group/Boundary, Note.
   Drag-drop or click-to-place.
 * **FR-C4** Objects: select, multi-select (rubber band, shift-click), drag, resize
   (groups/boundaries), rotate *not* supported (C4 shapes are axis-aligned).
 * **FR-C5** Inline rename (double-click), description tooltip, icon per object
-  (built-in icon set, M5).
+  (built-in icon set plus document-declared project icons, M5 / FILE-FORMAT §3.1).
 * **FR-C6** Properties panel: name, description, technology, tags (multi),
   custom key-value properties, style overrides (fill, border, text color, icon).
 * **FR-C7** Connections: drag from port/edge halo to target; typed links
@@ -124,7 +130,13 @@ play mode, exports PNG/SVG for docs.
 * **FR-C9** Undo/redo (command stack, coalesced typing/drag operations, ≥100 steps),
   full keyboard shortcuts (§10).
 * **FR-C10** Context menus: canvas, object, edge (duplicate, delete, bring-to-front,
-  add to group, create flow step from link…).
+  add to group, create flow step from link…). Every menu surface — application,
+  panel, nested submenu and context menu — shares one contract: placed from measured
+  rectangles inside the viewport without covering its trigger, nested surfaces flip
+  when the preferred side has no room, overflowing lists scroll internally with a
+  visible cue, focused entries scroll into view, and arrows/Home/End/Enter/Escape/Tab
+  plus focus restoration behave identically. Frequently used commands stay direct
+  while advanced arrangement commands are grouped, never removed.
 * **FR-C11** Dependencies view of selected object: highlight incoming/outgoing + list
   panel (M6).
 * **FR-C12** Copy/paste/duplicate objects within and across files (internal clipboard;
@@ -168,7 +180,11 @@ IcePanel-style visual storytelling over the static diagram.
 * **FR-F1** Multiple named flows per diagram; flow editor: ordered step list, drag to
   reorder, per-step title + description. A flow carries its own one-line `description`,
   and each step may carry a `description` — both live in the file (IR v8), never in a
-  UI-only store.
+  UI-only store. A document with connections and no authored flow has a virtual default
+  flow derived from those connections (stable topological order, labels and parallel links
+  preserved, creation order as the cycle fallback). It is never persisted: opening,
+  presenting, saving and reloading leave the file unchanged, and the first explicit edit
+  materialises it as one undoable command. An authored flow is always authoritative.
 * **FR-F2** Step types (all in v1):
   | Type | Meaning | Visual behavior |
   |---|---|---|
@@ -251,6 +267,37 @@ Single static binary, no runtime deps, all assets embedded (`go:embed`).
 
 ---
 
+### 4.11 C4 decomposition and embedded source
+
+An element may own a subordinate diagram, so a C4 model is navigable instead of
+flat. Grammar and diagnostics: [FILE-FORMAT.md](FILE-FORMAT.md) §3.2, §3.3, §10.
+
+* **Ownership** — `drilldown "<workspace path>" [view <id>]` on a `system`, `system_ext`
+  or `container` declares that this element decomposes into the given `.pcd` file
+  (optionally one named view). The relation is authored on the parent only; the
+  child never declares a backlink, so there is one source of truth per edge.
+* **Allowed transitions** follow the C4 zoom levels: system/system_ext →
+  `level container`, container → `level component` or `level deployment`. A child
+  that declares no `level` is accepted; a mismatching one, a kind that cannot
+  decompose (person, datastore, queue, note, group), a duplicated target, a cyclic
+  chain, a missing file and an escaping or non-`.pcd` path are reported as
+  diagnostics (P211–P218) instead of being silently repaired.
+* **Navigation** — a drill-down is opened from a visible, keyboard-reachable affordance on
+  the entity (properties panel plus canvas context action). The child opens in its
+  own tab with breadcrumbs back through the trail, and a parent-context boundary
+  that names the parent element and file — visually distinct from imported ghosts
+  and never a duplicate of the parent object.
+* **Embedded source** — `source { language "…" ; text "…" … }` embeds a short piece of source
+  text in the document (one `text` line per source line, 64 KiB / 4096 lines per
+  object). It is data: shown in a local read/edit viewer, never executed, never
+  parsed as markup, never fetched; editing it is one undoable command.
+* **Distinctness** — imports, flows and drill-downs stay distinct: an import reuses objects
+  read-only inside the diagram, a flow `goto` moves between flows, and a drill-down
+  opens a subordinate diagram. Nothing is presented as a substitute for another.
+* **Exports** — exports declare themselves: decomposition links draw no edge, so SVG/PNG
+  and CLI rendering are unaffected, and Mermaid export names `drilldown` and
+  `source` in its documented drop list.
+
 ## 5. Non-functional requirements
 
 | ID | Requirement | Target |
@@ -300,7 +347,8 @@ Single static binary, no runtime deps, all assets embedded (`go:embed`).
 Workspace { schemaVersion, files[], settings }
 File      { path, meta, imports[], objects[], links[], groups[], flows[], views[] }
 Object    { id, kind(person|system|system_ext|container|component|datastore|queue|group|note),
-            name, description, technology, tags[], properties{}, style{}, importedFrom? }
+            name, description, technology, tags[], properties{}, style{}, importedFrom?,
+            drilldown?{ path, view? }, source?{ language?, lines[] } }   ← IR v10
 Link      { id, from, to, type, label, direction(uni|bi), style{}, waypoints[] }
 Flow      { id, title, description?, steps[] }
 Step      { type(intro|msg|process|alt|par|goto|info|conclusion), description?,
@@ -313,7 +361,9 @@ View      { id, name, layout(auto:LR|auto:TB|saved), positions{}, hiddenTags?, e
 Rules: ids are stable strings (`[a-z][a-z0-9_]*`, unique per file); link endpoints must
 resolve to objects or imported aliases; flows reference link ids for `msg` steps
 (mermaid-imported edges get auto ids `L1..Ln` recorded in `links:` so flows survive
-round-trips).
+round-trips). `drilldown` is a parent-only relation to a workspace-relative `.pcd`
+file plus optional view id; `source` is line-oriented text the document owns.
+Neither is a link and neither is persisted outside the file.
 
 ---
 
@@ -449,12 +499,19 @@ implemented and covered by tests.
 * FR-C7 typed links, label, direction (uni/bi), arrowheads (`head`/`tail`:
   arrow/open/diamond/circle/square/none), line texture (solid/dashed/dotted), width.
 * FR-C8 waypoints are draggable and persisted (`waypoint` lines); orthogonal, straight,
-  and curved routing with deterministic object/route/label collision avoidance for labels.
+  and curved routing with deterministic object/route/label collision avoidance for
+  labels. A route is validated as a whole polyline: automatic routes avoid both
+  endpoints and other entities, and a waypoint that lies inside an entity is never
+  drawn through it — the route skips that bend, keeps the authored line in the file,
+  and the connector states why (see FILE-FORMAT “Overlap avoidance”).
 * FR-C10 canvas and object context menus (duplicate, delete, copy/paste, align,
   distribute, equalise size).
 * FR-C12 copy/paste/duplicate within a file, with id re-allocation on paste.
 * FR-I1…FR-I3 imports: `import Alias as "./x.pcd"`, read-only ghosts rendered on the
   canvas, click-through to the source file, cycle detection.
+* C4 decomposition and embedded source: `drilldown` opens the subordinate
+  diagram with breadcrumbs and a parent-context boundary; `source` keeps a short
+  piece of source text in the file behind a local viewer (FILE-FORMAT §3.2, §3.3).
 * FR-X / S6 CLI: Mermaid/PDL → canonical PDL conversion and real-Chrome SVG/PNG
   rendering, including light/dark themes, named views, output sizing and C4 auto-layout.
 * N10 UI strings are centralized in a typed English catalog with named-placeholder

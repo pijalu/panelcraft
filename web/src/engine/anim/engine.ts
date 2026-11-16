@@ -10,7 +10,7 @@
 // the scene elements themselves (.pc-dim / .pc-emph) — CSS owns the opacity
 // transition (app.css), reduced-motion kills it via media query.
 import type { Beat, BeatLink } from '../flows/plan';
-import { MOTION } from './timings';
+import { MOTION, travelTiming } from './timings';
 import type { AnimPlayer, Keyframe } from './ports';
 
 export interface PathGeometry {
@@ -128,13 +128,23 @@ export class FlowAnimator {
     ]);
     this.badge(beat, ctx);
     if (this.reduced()) {
-      // FR-F5: jump to end states — persistent emphasis, no movement
+      // Reduced motion jumps to the end states — persistent emphasis, no
+      // movement at all. The links carry the beat's direction, so they are
+      // emphasized too and each travelled connector shows a static token at its
+      // endpoint (item 9).
       for (const id of this.allActors(beat)) {
         const el = this.findEl(id);
         if (el !== null) {
           el.classList.add('pc-emph');
           this.emphasized.push(el);
         }
+      }
+      for (const link of this.allLinks(beat)) {
+        const el = this.findEl(link.linkId);
+        if (el === null) continue;
+        el.classList.add('pc-emph');
+        this.emphasized.push(el);
+        this.staticToken(link);
       }
       return;
     }
@@ -148,14 +158,14 @@ export class FlowAnimator {
   private applyIllustration(illu: IllustrationId, beat: Beat, ctx: BeatCtx): void {
     switch (illu) {
       case 'travel-token':
-        for (const link of this.allLinks(beat)) this.travel(link, true);
+        for (const link of this.allLinks(beat)) this.travel(link, true, beat.delayMs);
         return;
       case 'trail-fade':
-        for (const link of this.allLinks(beat)) this.travel(link, false);
+        for (const link of this.allLinks(beat)) this.travel(link, false, beat.delayMs);
         return;
       case 'sequential-glow':
         // the staggered glow is additive: the lane links still travel (FR-F4)
-        for (const link of this.allLinks(beat)) this.travel(link, true);
+        for (const link of this.allLinks(beat)) this.travel(link, true, beat.delayMs);
         return;
       case 'packet-burst': {
         const first = this.allActors(beat)[0];
@@ -170,6 +180,18 @@ export class FlowAnimator {
       default:
         return; // pulse / sequential-glow: the rings already carry the beat
     }
+  }
+
+  /** Reduced motion: the token, already arrived, at the connector's endpoint. */
+  private staticToken(link: BeatLink): void {
+    const pathEl = this.svg.querySelector(`.pc-link[data-id="${link.linkId}"] .pc-route`);
+    if (pathEl === null) return;
+    const len = this.geometry.length(pathEl);
+    const p = this.geometry.pointAt(pathEl, link.flipped ? 0 : len);
+    const token = mkEl('circle', 'pc-token pc-token-static');
+    token.setAttribute('r', String(TOKEN_R));
+    token.setAttribute('transform', `translate(${p.x}px, ${p.y}px)`);
+    this.ensureLayer().appendChild(token);
   }
 
   /** F-17 packet-burst: six dots leave the actor's box and fade out. */
@@ -226,6 +248,30 @@ export class FlowAnimator {
   stop(): void {
     this.clearVisuals();
     this.previous.clear();
+    // Explicitly drop live animations too: clearing the layer removes their
+    // elements, but a paused or infinitely-iterating animation would otherwise
+    // stay registered on the player (item 9).
+    this.player.cancelAll?.();
+    // And remove the emptied layer: leaving one behind after playback is an
+    // orphan element that accumulates across presentations.
+    this.svg.querySelector('.pc-anim-layer')?.remove();
+  }
+
+  /** Transport pause: freeze the beat's motion, do not remove it. */
+  pause(): void {
+    this.player.pauseAll?.();
+  }
+
+  /** Transport resume: continue what pause froze. */
+  resume(): void {
+    this.player.resumeAll?.();
+  }
+
+  /** Parked step (transport stepper / progress dot): show the beat's settled
+   * state at once. The transport reports "paused", so nothing may still be
+   * moving — the token is left at its endpoint instead (item 9). */
+  settle(): void {
+    this.player.finishAll?.();
   }
 
   private badge(beat: Beat, ctx: BeatCtx): void {
@@ -274,14 +320,17 @@ export class FlowAnimator {
   }
 
   /** Token circle + trailing dash glide along the resolved link path. */
-  private travel(link: BeatLink, withToken = true): void {
+  private travel(link: BeatLink, withToken = true, dwellMs: number = this.motion.stepDelayMs): void {
     const layer = this.ensureLayer();
     const pathEl = this.svg.querySelector(`.pc-link[data-id="${link.linkId}"] .pc-route`);
     if (pathEl === null) return;
     const len = this.geometry.length(pathEl);
     const count = clampCount(link.sparks);
     const speed = clampSpeed(link.speed);
-    const durationMs = this.motion.tokenMs / speed;
+    // One contract for the whole group: every spark arrives inside the beat and
+    // the token holds at the endpoint until the step changes (item 9).
+    const timing = travelTiming(dwellMs, speed, count, this.motion);
+    const durationMs = timing.durationMs;
     const trailLen = Math.max(len * TRAIL_FRAC, 1);
     // trailing dash overlay (FR-F4): same d, dash segment slides with token.
     // With several sparks the dash would smear the whole line, so it is kept
@@ -304,8 +353,7 @@ export class FlowAnimator {
     for (let i = 0; i < count; i++) {
       this.spark(layer, pathEl, len, link, {
         durationMs,
-        // deterministic stagger: each spark starts one slot later
-        delayMs: Math.round((durationMs * i) / count),
+        delayMs: timing.staggerMs * i,
       });
     }
   }
@@ -333,13 +381,16 @@ export class FlowAnimator {
     const kf: Keyframe[] = pingPong
       // back to the start point, without repeating the far endpoint frame
       ? [...forward, ...forward.slice(0, -1).reverse()]
-      : [...forward.slice(0, -1), { ...forward.at(-1)!, opacity: 0 }];
+      : forward;
     this.player.animate(token, kf, {
       durationMs: timing.durationMs,
       easing: 'linear',
       delayMs: timing.delayMs,
       // bidirectional connectors keep travelling until the beat ends
       iterations: pingPong ? Infinity : 1,
+      // A one-way token STAYS at its endpoint: the arrival is the point of the
+      // beat, so it must not snap back to the path start (item 9).
+      fill: pingPong ? 'none' : 'forwards',
     });
   }
 }

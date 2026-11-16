@@ -19,6 +19,11 @@
      (1.50:1 dots, 1.31:1 lines against the canvas fill). */
   --pc-grid-dot: #c9cfd7;
   --pc-grid-line: #d8dde3;
+  /* Play-mode spark (item 9): a saturated core with a short halo. On a light
+     canvas the core carries the contrast; the glow only has to bloom. */
+  --pc-spark-core: #1d4ed8;
+  --pc-spark-glow: #60a5fa;
+  --pc-spark-trail: #2563eb;
   --pc-text-xs: 11px;
   --pc-text-sm: 12px;
   --pc-text-md: 14px;
@@ -103,6 +108,11 @@
   /* UX08-WP05: dark grid pairs — 1.80:1 dots, 1.64:1 lines on the canvas. */
   --pc-grid-dot: #39414b;
   --pc-grid-line: #333b45;
+  /* Play-mode spark (item 9): near-white core, blue halo — a neon dot that
+     reads on the dark canvas without blooming over labels. */
+  --pc-spark-core: #dbeafe;
+  --pc-spark-glow: #60a5fa;
+  --pc-spark-trail: #93c5fd;
 
   /* UX08-WP03 chrome tokens — same roles, dark values. */
   --pc-activity-bg: #1b1e23;
@@ -1396,15 +1406,31 @@ marker .pc-arrow[fill='none'] {
   font-size: var(--pc-text-sm);
 }
 
+/* Item 7: a scrollable list says so — an inset edge shadow plus the standard
+   scrollbar. Without it a cut-off command looked missing rather than reachable. */
+.menu-scrolls {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-image: linear-gradient(var(--pc-menu-bg) 30%, transparent),
+    linear-gradient(transparent, var(--pc-menu-bg) 70%);
+  background-position: 0 0, 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 12px;
+  background-attachment: local, local;
+}
+
 .menu-submenu {
   position: relative;
 }
 
+/* Item 7: placement is measured in Menu.tsx (fixed, inline left/top/max-height)
+   so a nested surface flips to the left of its row and clamps vertically instead
+   of a fixed `left: 100%` running off-screen. */
 .menu-submenu-popover {
-  position: absolute;
-  top: -4px;
-  left: calc(100% + 2px);
+  position: fixed;
   z-index: 81;
+  overflow: auto;
+  max-width: min(320px, calc(100vw - 16px));
   min-width: 160px;
   display: flex;
   flex-direction: column;
@@ -1685,11 +1711,11 @@ marker .pc-arrow[fill='none'] {
 }
 
 .tree-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   text-align: left;
   font-family: inherit;
   font-size: var(--pc-text-sm);
@@ -1700,12 +1726,36 @@ marker .pc-arrow[fill='none'] {
   cursor: pointer;
 }
 
+/* Two lines, then an ellipsis. A long unbroken name used to push the row
+   actions out of the panel; wrapping it whole turned a narrow panel into a
+   column of single letters, so the row keeps a predictable height and the
+   button's tooltip carries the full name (item 8). */
+.tree-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+/* The label is the only shrinkable part of the row: without `min-width: 0` the
+   flex item refuses to go below its content width and the actions get pushed
+   past the panel edge (item 8). */
+.tree-label {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .tree-folder > .tree-label > .tree-name {
   font-weight: 600;
 }
 
 .tree-actions {
   display: none;
+  flex: none;
   gap: 2px;
 }
 
@@ -2402,13 +2452,24 @@ marker .pc-arrow[fill='none'] {
 }
 
 .pc-token {
-  fill: var(--pc-accent);
+  fill: var(--pc-spark-core);
+  /* Neon core: two tight halos, never wider than 8 px, so a spark can pass a
+     label without washing it out (item 9). */
+  filter: drop-shadow(0 0 3px var(--pc-spark-glow)) drop-shadow(0 0 8px var(--pc-spark-glow));
+}
+
+/* Reduced motion: the arrived token is a still mark, same core and halo. */
+.pc-token-static {
+  filter: drop-shadow(0 0 3px var(--pc-spark-glow)) drop-shadow(0 0 8px var(--pc-spark-glow));
 }
 
 .pc-trail {
   fill: none;
-  stroke: var(--pc-accent);
-  opacity: 0.55;
+  stroke: var(--pc-spark-trail);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.75;
+  filter: drop-shadow(0 0 2px var(--pc-spark-glow));
 }
 
 /* Inline object icons (M5-WP7) — muted so labels stay dominant. */
@@ -2950,48 +3011,6 @@ marker .pc-arrow[fill='none'] {
 }
 
 /* F-19 context menu */
-.context-menu {
-  position: fixed;
-  z-index: 60;
-  min-width: 210px;
-  max-height: 70vh;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  padding: 4px;
-  background: var(--pc-menu-bg);
-  border: 1px solid var(--pc-menu-border);
-  border-radius: var(--pc-radius-md);
-  box-shadow: var(--pc-menu-shadow);
-}
-
-.context-item {
-  min-height: var(--pc-control-min);
-  padding: var(--pc-space-1) var(--pc-space-2);
-  border: 0;
-  border-radius: var(--pc-radius-sm);
-  background: transparent;
-  color: var(--pc-fg);
-  font: inherit;
-  font-size: var(--pc-text-sm);
-  text-align: left;
-  cursor: pointer;
-}
-
-.context-item:hover:not([disabled]) {
-  background: var(--pc-list-hover-bg);
-}
-
-.context-item[disabled] {
-  color: var(--pc-disabled-fg);
-  cursor: default;
-}
-
-.context-item:focus-visible {
-  outline: 2px solid var(--pc-focus-ring);
-  outline-offset: -2px;
-}
-
 /* F-19 waypoint handles (drag to re-route an explicit path) */
 .pc-waypoint {
   fill: var(--pc-bg);
@@ -3773,4 +3792,343 @@ marker .pc-arrow[fill='none'] {
     height: 100%;
     box-shadow: 0 0 24px rgb(0 0 0 / 35%);
   }
+}
+
+/* IR v9 project icons: field + picker + manager (FILE-FORMAT §3.1).
+   The picker is a real listbox over `--pc-*` tokens, so both themes and high
+   contrast get the same geometry; icons are 16px glyphs in one column. */
+.icon-field {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.icon-field > input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.icon-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  color: var(--pc-fg);
+  cursor: pointer;
+}
+
+.icon-thumb {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  fill: currentColor;
+  stroke: none;
+}
+
+.icon-thumb-broken,
+.icon-thumb-none {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+}
+
+.icon-picker {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(320px, 80vw);
+  max-height: 340px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-md);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
+}
+
+.icon-picker-search {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.icon-picker-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.icon-group {
+  padding: 6px 6px 2px;
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.icon-option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 4px 6px;
+  background: none;
+  border: 0;
+  border-radius: var(--pc-radius-sm);
+  color: var(--pc-fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.icon-option:hover,
+.icon-option:focus-visible {
+  background: var(--pc-canvas);
+}
+
+.icon-option[aria-selected='true'] {
+  outline: 1px solid var(--pc-accent);
+}
+
+.icon-option-label {
+  flex: 1 1 auto;
+  font-size: var(--pc-text-sm);
+}
+
+.icon-option-meta {
+  font-size: var(--pc-text-xs);
+  color: var(--pc-muted);
+}
+
+.icon-empty {
+  padding: 8px 6px;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-muted);
+}
+
+.icon-picker-actions {
+  border-top: 1px solid var(--pc-border);
+  padding-top: 6px;
+  margin-top: 4px;
+}
+
+.icon-manager {
+  width: min(720px, 94vw);
+}
+
+.icon-manager-list {
+  max-height: 40vh;
+  overflow-y: auto;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.icon-manager-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--pc-border);
+}
+
+.icon-manager-name {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-manager-refs {
+  font-size: var(--pc-text-xs);
+}
+
+.icon-manager-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* A file picker that reads as a button: the native control truncates its own
+   label ("Choose File … N…en"), which looked like broken text next to the
+   handle. The input stays in the DOM (focusable through the label) but invisible. */
+.icon-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: var(--pc-text-xs);
+  color: var(--pc-fg);
+  background: var(--pc-surface);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  cursor: pointer;
+}
+
+.icon-file:hover,
+.icon-file:focus-within {
+  border-color: var(--pc-accent);
+}
+
+.icon-file:focus-within {
+  outline: 2px solid var(--pc-accent);
+  outline-offset: 1px;
+}
+
+.icon-file input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.icon-manager-add {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  border-top: 1px solid var(--pc-border);
+  padding-top: 10px;
+}
+
+.icon-manager-add .field,
+.icon-manager-add textarea {
+  width: 100%;
+}
+
+.icon-manager-error {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-fg);
+  background: var(--pc-warn);
+  border-radius: var(--pc-radius-sm);
+}
+
+/* IR v10 drill-down chrome (FILE-FORMAT.md §3.2, §3.3). The bar sits above the canvas
+   inside the centre column; the parent boundary is an inset outline on the
+   canvas area, so a subordinate diagram never looks like a top-level one — and
+   never like the dashed ghost objects *inside* it. */
+.drill-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+  background: var(--pc-panel-header-bg);
+  border-bottom: 1px solid var(--pc-panel-border);
+  font-size: var(--pc-text-xs);
+}
+
+.drill-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drill-crumbs li + li::before {
+  content: '›';
+  margin: 0 2px;
+  color: var(--pc-muted);
+}
+
+.drill-crumb {
+  padding: 1px 4px;
+  border: 0;
+  background: none;
+  color: var(--pc-accent);
+  font: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.drill-crumb:hover { text-decoration: underline; }
+
+.drill-crumb:focus-visible,
+.drill-dismiss:focus-visible {
+  outline: 2px solid var(--pc-focus-ring);
+  outline-offset: 1px;
+}
+
+.drill-current {
+  padding: 1px 4px;
+  font-weight: 600;
+  color: var(--pc-fg);
+}
+
+.drill-notice,
+.drill-findings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  margin: 0;
+  color: var(--pc-warn-fg);
+}
+
+.drill-dismiss {
+  border: 0;
+  background: none;
+  color: var(--pc-accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Parent-context boundary of a subordinate diagram: an inset dashed frame with
+   the element + file it was opened from (never a ghost badge). */
+.canvas-col[data-parent] .canvas-wrap {
+  outline: 2px dashed var(--pc-accent);
+  outline-offset: -4px;
+  border-radius: 6px;
+}
+
+.pc-parent-context {
+  margin: 0;
+  color: var(--pc-muted);
+}
+
+.dialog-source {
+  max-width: min(760px, 92vw);
+  width: 100%;
+}
+
+.source-text {
+  margin: 0;
+  padding: 8px;
+  max-height: 46vh;
+  overflow: auto;
+  border: 1px solid var(--pc-panel-border);
+  border-radius: 6px;
+  background: var(--pc-surface);
+  color: var(--pc-fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--pc-text-sm);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.prop-problem { color: var(--pc-warn-fg); }
+
+.prop-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }

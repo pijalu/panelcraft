@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ICONS, iconGlyphs, iconPaths } from './icons';
+import { BUILTIN_ICONS, searchBuiltinIcons } from '../model/icons';
 
 const ICON_DIR = join(import.meta.dirname, '..', '..', '..', 'assets', 'icons');
 
@@ -34,6 +35,18 @@ describe('icon set sync (M5-WP7)', () => {
       const svg = readFileSync(join(ICON_DIR, file), 'utf8');
       expect(svg, `${file} missing SPDX`).toContain('SPDX-License-Identifier: GPL-3.0-only');
     }
+  });
+
+  it('the model registry and the drawn module cover the same handles', () => {
+    const registry = BUILTIN_ICONS.map((i) => i.name).sort();
+    const drawn = Object.keys(ICONS).sort();
+    expect(registry).toEqual(drawn);
+  });
+
+  it('search matches handles, labels and keywords', () => {
+    expect(searchBuiltinIcons('kafka').map((i) => i.name)).toContain('queue');
+    expect(searchBuiltinIcons('').length).toBe(BUILTIN_ICONS.length);
+    expect(searchBuiltinIcons('zzz')).toEqual([]);
   });
 
   it('iconGlyphs positions paths and rejects unknown names', () => {

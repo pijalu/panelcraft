@@ -1,2 +1,2 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 9c4.4 0 8 2.2 8 5v2H4v-2c0-2.8 3.6-5 8-5Z"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7.5 8a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0 -9 0zM9.5 8a2.5 2.5 0 1 1 5 0a2.5 2.5 0 1 1 -5 0z"/><path d="M5 21L5 17.5L9 15L15 15L19 17.5L19 21z"/></svg>

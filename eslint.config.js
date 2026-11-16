@@ -25,6 +25,20 @@ export default tseslint.config(
       globals: { console: 'readonly', process: 'readonly' },
     },
   },
+  {
+    // Node-side build/release scripts run in the standard Node globals (fetch,
+    // URL, Buffer), which the browser-facing config above does not declare.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        fetch: 'readonly',
+        URL: 'readonly',
+        Buffer: 'readonly',
+      },
+    },
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

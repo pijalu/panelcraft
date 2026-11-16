@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FlowAnimator, type BeatCtx } from './engine';
 import type { AnimHandle, AnimOpts, AnimPlayer, Keyframe } from './ports';
-import { MOTION } from './timings';
+import { MOTION, travelTiming } from './timings';
 import type { Beat, BeatLink } from '../flows/plan';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -100,33 +100,45 @@ describe('FLOW-02 connector sparks', () => {
     anim.play(beatOf(link), ctx);
   };
 
-  it('keeps the historical single token at default speed', () => {
+  it('keeps the historical single token and lands it inside the beat', () => {
     play(linkOf());
     const calls = tokenCalls(fx.calls);
     expect(tokens(svg)).toHaveLength(1);
     expect(calls).toHaveLength(1);
-    expect(calls[0]!.opts.durationMs).toBe(MOTION.tokenMs);
+    // The beat owns the timing: the token arrives before the step changes and
+    // holds there, instead of finishing after 900 ms and vanishing (item 9).
+    const expected = travelTiming(MOTION.stepDelayMs, 1, 1);
+    expect(calls[0]!.opts.durationMs).toBe(expected.durationMs);
+    expect(calls[0]!.opts.durationMs).toBeLessThan(MOTION.stepDelayMs);
     expect(calls[0]!.opts.iterations ?? 1).toBe(1);
-    // the token fades out at the far end for a one-way connector
-    expect(calls[0]!.kf.at(-1)?.opacity).toBe(0);
+    expect(calls[0]!.opts.fill).toBe('forwards');
+    // the token stays visible at the far end for a one-way connector
+    expect(calls[0]!.kf.at(-1)?.opacity ?? 1).toBe(1);
+    expect(xOf(calls[0]!.kf.at(-1)!)).toBeCloseTo(100);
   });
 
-  it('draws `sparks` staggered tokens and scales duration by speed', () => {
+  it('draws `sparks` staggered tokens that all arrive inside the beat', () => {
     play(linkOf({ sparks: 3, speed: 2 }));
     const calls = tokenCalls(fx.calls);
     expect(tokens(svg)).toHaveLength(3);
     expect(calls).toHaveLength(3);
-    for (const call of calls) expect(call.opts.durationMs).toBe(MOTION.tokenMs / 2);
+    const timing = travelTiming(MOTION.stepDelayMs, 2, 3);
+    for (const call of calls) expect(call.opts.durationMs).toBe(timing.durationMs);
     const delays = calls.map((c) => c.opts.delayMs ?? 0);
     expect(delays).toEqual([...delays].sort((a, b) => a - b));
     expect(new Set(delays).size).toBe(3);
+    // The last spark finishes before the step changes: no orphan at the cut.
+    const lastEnd = Math.max(...delays) + timing.durationMs;
+    expect(lastEnd).toBeLessThan(MOTION.stepDelayMs);
   });
 
   it('clamps out-of-range counts and speeds instead of failing', () => {
     play(linkOf({ sparks: 99, speed: 0.01 }));
     const calls = tokenCalls(fx.calls);
     expect(tokens(svg)).toHaveLength(8);
-    expect(calls[0]!.opts.durationMs).toBe(MOTION.tokenMs / 0.25);
+    // 0.01× clamps to the slowest speed, and the slowest travel still fits the beat.
+    expect(calls[0]!.opts.durationMs).toBe(travelTiming(MOTION.stepDelayMs, 0.25, 8).durationMs);
+    expect(calls[0]!.opts.durationMs).toBeLessThan(MOTION.stepDelayMs);
   });
 
   it('ping-pongs along a bidirectional connector and starts at the far end when flipped', () => {
@@ -143,10 +155,17 @@ describe('FLOW-02 connector sparks', () => {
     expect(flippedXs[0]).toBeCloseTo(100);
   });
 
-  it('reduced motion draws no sparks at all', () => {
+  it('reduced motion animates nothing and shows the arrived token instead', () => {
     play(linkOf({ sparks: 4, bidir: true }), true);
-    expect(tokens(svg)).toHaveLength(0);
+    // No motion at all…
     expect(fx.calls.some((c) => c.el.getAttribute('class') === 'pc-token')).toBe(false);
+    // …but the beat still says where the message went: one static token at the
+    // endpoint and the connector emphasized (item 9).
+    const staticTokens = tokens(svg);
+    expect(staticTokens).toHaveLength(1);
+    expect(staticTokens[0]!.getAttribute('class')).toContain('pc-token-static');
+    expect(staticTokens[0]!.getAttribute('transform')).toContain('translate(100px, 0px)');
+    expect(svg.querySelector('.pc-link')?.classList.contains('pc-emph')).toBe(true);
   });
 
   it('clears every spark on the next beat and on stop', () => {
@@ -158,6 +177,7 @@ describe('FLOW-02 connector sparks', () => {
     anim.play(beatOf(linkOf({ sparks: 2 })), ctx);
     anim.stop();
     expect(tokens(svg)).toHaveLength(0);
-    expect(svg.querySelector('.pc-anim-layer')?.textContent).toBe('');
+    // The layer itself is removed too — no orphan element after playback.
+    expect(svg.querySelector('.pc-anim-layer')).toBeNull();
   });
 });

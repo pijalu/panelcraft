@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 8
+const IRVersion = 10
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -59,10 +59,38 @@ type ImportStmt struct {
 	Pos      Pos      `json:"pos"`
 }
 
+// IconDecl is a document-scoped icon declaration (IR v9, FILE-FORMAT §3.1):
+// an explicit media type plus a canonical Base64 payload, referenced by the
+// existing object `icon name` property. Label is the picker name and optional.
+type IconDecl struct {
+	ID        string   `json:"id"`
+	Label     *string  `json:"label,omitempty"`
+	MediaType string   `json:"mediaType"`
+	Data      string   `json:"data"`
+	Comments  []string `json:"comments,omitempty"`
+	Pos       Pos      `json:"pos"`
+}
+
 // ObjSize is explicit canvas geometry (`size <w> <h>`, F-13).
 type ObjSize struct {
 	W float64 `json:"w"`
 	H float64 `json:"h"`
+}
+
+// Drilldown is a C4 decomposition relation (IR v10, FILE-FORMAT §3.2):
+// `drilldown "<path>" [view <id>]` on the parent object only. View is optional
+// and names a view *id* inside the target file.
+type Drilldown struct {
+	Path string `json:"path"`
+	View string `json:"view,omitempty"`
+}
+
+// SourceBlock is embedded source text (IR v10, FILE-FORMAT §3.3): `language`
+// plus one entry per source line, in document order. Lines is never empty —
+// the parser rejects a block without a `text` line (E116).
+type SourceBlock struct {
+	Language string   `json:"language,omitempty"`
+	Lines    []string `json:"lines"`
 }
 
 // Obj is an object statement (§3).
@@ -79,6 +107,8 @@ type Obj struct {
 	Icon        string      `json:"icon,omitempty"`
 	Size        *ObjSize    `json:"size,omitempty"`
 	Z           *float64    `json:"z,omitempty"`
+	Drilldown   *Drilldown  `json:"drilldown,omitempty"`
+	Source      *SourceBlock `json:"source,omitempty"`
 	Style       *StyleBlock `json:"style,omitempty"`
 	Attributes  []RawAttr   `json:"attributes,omitempty"`
 	Comments    []string    `json:"comments,omitempty"`
@@ -204,6 +234,7 @@ type Doc struct {
 	Theme         string       `json:"theme,omitempty"`
 	Comments      []string     `json:"comments,omitempty"`
 	Imports       []ImportStmt `json:"imports,omitempty"`
+	Icons         []IconDecl   `json:"icons,omitempty"`
 	Objects       []Obj        `json:"objects,omitempty"`
 	Links         []Link       `json:"links,omitempty"`
 	Flows         []Flow       `json:"flows,omitempty"`

@@ -36,6 +36,7 @@ import {
   showFlowLink,
   type FlatStep,
 } from './flowDoc';
+import { derivedFlow, findFlow, flowForEdit, flowsForDisplay } from './derivedFlow';
 
 /** Canvas point in diagram coordinates plus its zoom (UX08-WP13). */
 export interface ViewPoint {
@@ -882,10 +883,19 @@ function ErrorPane({ noFile }: { noFile: boolean }) {
 
 /** Resolve the selected flow + step + flattened rows for the editor. */
 function locate(doc: Doc, sel: FlowSelection | null): { flow: Flow | null; step: FlowStep | null; flat: FlatStep[] } {
-  const flow = sel === null ? null : (doc.flows.find((f) => f.id === sel.flow || f.title === sel.flow) ?? null);
+  const flow = sel === null ? null : findFlow(doc, sel.flow);
   const step = sel !== null && flow !== null && sel.step.length > 0 ? getAt(flow, sel.step) : null;
   const flat = flow === null ? [] : flatSteps(flow);
   return { flow, step, flat };
+}
+
+/**
+ * Edit the flow behind `key`, materialising the derived default flow into `doc`
+ * on the first real edit (one ordinary undoable command, never on open/present).
+ */
+function editFlow(doc: Doc, key: string, fn: (flow: Flow) => void): void {
+  const flow = flowForEdit(doc, key);
+  if (flow !== null) fn(flow);
 }
 
 /** Build a mutator that patches the selected flow through retext. */
@@ -896,8 +906,7 @@ function mutator(
   return (fn) => {
     if (sel === null || sel.step.length === 0) return;
     apply((d) => {
-      const f = d.flows.find((x) => x.id === sel.flow || x.title === sel.flow);
-      if (f !== undefined) fn(f, sel.step);
+      editFlow(d, sel.flow, (f) => fn(f, sel.step));
     });
   };
 }
@@ -939,8 +948,7 @@ function addKindStep(
   const step = seedFor(kind, canvas);
   if (step === null) return;
   apply((d) => {
-    const f = d.flows.find((x) => flowKey(x) === key);
-    if (f !== undefined) appendStep(f, step);
+    editFlow(d, key, (f) => appendStep(f, step));
   });
 }
 
@@ -960,6 +968,19 @@ interface EditorProps {
   setSel(next: FlowSelection): void;
 }
 
+/**
+ * Flows to offer and whether the selection is the virtual derived one (item 10).
+ * A link-only document shows its derived default flow so it is presentable before
+ * anyone authors a flow.
+ */
+function displayState(doc: Doc, sel: FlowSelection | null): { flows: Flow[]; virtual: boolean; effective: FlowSelection | null } {
+  const flows = flowsForDisplay(doc);
+  const first = flows[0];
+  // A fresh panel opens on the first flow: the editor is always ready to edit.
+  const effective = sel ?? (first === undefined ? null : { flow: flowKey(first), step: [] });
+  return { flows, virtual: derivedFlow(doc) !== null, effective };
+}
+
 /** The authored half of the pane: one parsed document, one selection. */
 function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
   const apply = (fn: (d: Doc) => void): void => {
@@ -967,21 +988,17 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
     if (next !== null) pane.onChangeText(next);
   };
   const names = objectNames(doc);
-  const first = doc.flows[0];
-  // A fresh panel opens on the first flow: the editor is always ready to edit.
-  const effective: FlowSelection | null = sel ?? (first === undefined ? null : { flow: flowKey(first), step: [] });
+  const { flows, virtual, effective } = displayState(doc, sel);
   const { flow, step, flat } = locate(doc, effective);
   const selKey = effective?.flow ?? '';
   const selStep = effective?.step ?? [];
   const ready = canvasReady(pane.canvas);
   const pick = (key: string): void => setSel({ flow: key, step: [] });
 
-  /** Mutate the selected flow by its key (stable across edits). */
+  /** Mutate the selected flow by its key (stable across edits). The derived flow
+   *  is written into the file on this first real edit and not before. */
   const withFlow = (fn: (f: Flow) => void): void => {
-    apply((d) => {
-      const f = d.flows.find((x) => flowKey(x) === selKey);
-      if (f !== undefined) fn(f);
-    });
+    apply((d) => editFlow(d, selKey, fn));
   };
   const actions = makeActions(mutator(effective, apply), step);
   const ops: StepOps = {
@@ -1009,7 +1026,7 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
 
   return (
     <div class="flow-pane" data-testid="flow-pane">
-      {doc.flows.length === 0 ? (
+      {flows.length === 0 ? (
         <div class="flow-empty" data-testid="flow-empty">
           <p>{s('A flow is a short guided walkthrough of this diagram.')}</p>
           <p class="flow-hint">{s('Add one, then build it from the shapes and connectors you select on the canvas.')}</p>
@@ -1019,8 +1036,13 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
         </div>
       ) : (
         <>
+          {virtual && (
+            <p class="flow-hint" data-testid="flow-derived-hint">
+              {s('Derived from the connections in this diagram. Editing it makes it a real flow.')}
+            </p>
+          )}
           <FlowList
-            flows={doc.flows}
+            flows={flows}
             selFlow={selKey}
             onPick={pick}
             onPlay={pane.onPlay}

@@ -45,10 +45,34 @@ async function zoomSteps(page: Page, direction: 'in' | 'out', ticks: number): Pr
 }
 
 test.describe('canvas grid (UX08-WP05)', () => {
+  test('a fresh profile shows the subtle default grid, and `g` toggles it', async ({ page }) => {
+    await ready(page);
+
+    // Item 12: a profile that never chose a grid shows dots, not an empty canvas.
+    await expect.poll(() => gridFill(page)).toBe('url(#pc-grid-pattern-dots)');
+    await page.getByTestId('app-menu').click();
+    await expect(page.getByTestId('view-grid-dots')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByTestId('view-grid-snap')).toHaveAttribute('aria-checked', 'true');
+    await page.keyboard.press('Escape');
+
+    // Vision review evidence: the default grid must stay subtle in both themes.
+    for (const scheme of ['light', 'dark'] as const) {
+      await setAppTheme(page, scheme);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', scheme);
+      await capture(page, `ux08-grid-default-${scheme}`);
+    }
+    await setAppTheme(page, 'system');
+
+    // The `g` shortcut flips visibility and comes back to the same type.
+    await page.locator('svg[data-testid="canvas"]').click({ position: { x: 40, y: 40 } });
+    await page.keyboard.press('g');
+    await expect.poll(() => gridFill(page)).toBeNull();
+    await page.keyboard.press('g');
+    await expect.poll(() => gridFill(page)).toBe('url(#pc-grid-pattern-dots)');
+  });
+
   test('three grid types and a separate snap toggle, both kept across a reload', async ({ page }) => {
     await ready(page);
-    // Nothing is drawn before the user asks for a grid.
-    await expect.poll(() => gridFill(page)).toBeNull();
 
     await chooseGrid(page, 'dots');
     await expect.poll(() => gridFill(page)).toBe('url(#pc-grid-pattern-dots)');

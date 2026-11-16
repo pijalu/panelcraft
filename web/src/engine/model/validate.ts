@@ -5,6 +5,12 @@
 // ImportSource so the CLI supplies fs at WP9 and tests supply maps.
 import type { Diagnostic } from '../format/diagnostics';
 import { diag } from '../format/diagnostics';
+import {
+  ICON_MAX_BYTES, ICON_MAX_COUNT, ICON_TOTAL_MAX_BYTES, decodeIconBase64, decodeIconSvg,
+  svgIssues,
+} from '../format/iconSvg';
+import { BUILTIN_ICON_NAMES, isBuiltinIcon } from './icons';
+import { checkHierarchy } from './hierarchy';
 import type { Doc, FlowStep } from './types';
 
 export interface ImportSource {
@@ -13,6 +19,9 @@ export interface ImportSource {
   classify(from: string | undefined, path: string): ClassResult;
   /** Raw import paths declared by the (readable) file at `resolved`. */
   importsOf(resolved: string): string[];
+  /** File text, or null when unknown. Used by the decomposition rules
+   * (P212/P214/P216/P218) which read the child diagram they point at. */
+  read?(resolved: string): string | null;
 }
 
 export type ClassResult =
@@ -194,6 +203,86 @@ const checkImports = (doc: Doc, file: string | undefined, src: ImportSource, out
   }
 };
 
+// --- P206–P210 (document icons, IR v9 §3.1) ---------------------------------
+
+/** Handles a document may reference: built-ins plus its own declarations. */
+export function iconHandles(doc: Doc): Set<string> {
+  const s = new Set<string>(BUILTIN_ICON_NAMES);
+  for (const ic of doc.icons) s.add(ic.id);
+  return s;
+}
+
+/** Resolve the SVG source of a declared icon, or `null` when unusable. */
+export function iconSource(decl: { data: string }): string | null {
+  return decodeIconSvg(decl.data);
+}
+
+const checkIcons = (doc: Doc, out: Diagnostic[]): void => {
+  const seen = new Set<string>();
+  let total = 0;
+  for (const ic of doc.icons) {
+    if (seen.has(ic.id)) {
+      out.push(diag('P206', `duplicate icon handle "${ic.id}"`, ic.pos.line, ic.pos.col));
+      continue;
+    }
+    seen.add(ic.id);
+    // Built-in handles are a reserved namespace: a project icon that shadowed
+    // one would make the same `icon name` mean different things per file with
+    // no visible cue, so the clash is an error and the author renames it.
+    if (isBuiltinIcon(ic.id)) {
+      out.push(diag(
+        'P207',
+        `icon handle "${ic.id}" collides with the built-in icon of the same name`,
+        ic.pos.line,
+        ic.pos.col,
+      ));
+    }
+    const bytes = decodeIconBase64(ic.data)?.length ?? 0;
+    total += bytes;
+    if (bytes > ICON_MAX_BYTES) {
+      out.push(diag(
+        'P208',
+        `icon "${ic.id}" payload is ${bytes} bytes (limit ${ICON_MAX_BYTES})`,
+        ic.pos.line,
+        ic.pos.col,
+      ));
+    }
+    const svg = iconSource(ic);
+    if (svg === null) {
+      out.push(diag('P209', `icon "${ic.id}" payload is not valid UTF-8`, ic.pos.line, ic.pos.col));
+    } else {
+      const issues = svgIssues(svg);
+      if (issues.length > 0) {
+        out.push(diag(
+          'P209',
+          `icon "${ic.id}" has unsafe or unsupported SVG content: ${issues.join(', ')}`,
+          ic.pos.line,
+          ic.pos.col,
+        ));
+      }
+    }
+  }
+  if (doc.icons.length > ICON_MAX_COUNT) {
+    out.push(diag('P208', `document declares ${doc.icons.length} icons (limit ${ICON_MAX_COUNT})`, 1, 1));
+  }
+  if (total > ICON_TOTAL_MAX_BYTES) {
+    out.push(diag('P208', `document icon payloads total ${total} bytes (limit ${ICON_TOTAL_MAX_BYTES})`, 1, 1));
+  }
+};
+
+const checkIconRefs = (doc: Doc, out: Diagnostic[]): void => {
+  const handles = iconHandles(doc);
+  const unknown = (name: string, line: number, col: number): void => {
+    if (!handles.has(name)) {
+      out.push(diag('P210', `unknown icon "${name}" (declare it or use a built-in)`, line, col, 'warning'));
+    }
+  };
+  for (const o of doc.objects) {
+    if (o.icon !== undefined) unknown(o.icon, o.pos.line, o.pos.col);
+    if (o.style?.icon !== undefined) unknown(o.style.icon, o.pos.line, o.pos.col);
+  }
+};
+
 // --- P201 / P202 / P203 / P204 ----------------------------------------------
 
 const checkOrphans = (doc: Doc, ids: Ids, out: Diagnostic[]): void => {
@@ -271,8 +360,11 @@ export function validateDoc(doc: Doc, opts: ValidateOpts = {}): Diagnostic[] {
   const out: Diagnostic[] = [];
   const ids = collectIds(doc);
   checkDupIds(doc, out);
+  checkIcons(doc, out);
+  checkIconRefs(doc, out);
   checkFlowSteps(doc, ids, out);
   if (opts.imports !== undefined) checkImports(doc, opts.file, opts.imports, out);
+  checkHierarchy(doc, opts.file, opts.imports?.read?.bind(opts.imports), out);
   checkObjects(doc, ids, out);
   checkOrphans(doc, ids, out);
   checkFlowsEmpty(doc, out);

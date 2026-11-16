@@ -8,6 +8,7 @@ import {
   basename, createFile, deleteNode, duplicateNode, filesUnder, getNode, newRoot,
   parentPath, readFile, renameNode, moveNode, writeFile, FsError, type FsNode,
 } from './fs';
+import { rewriteDrilldownPaths } from './rewriteRefs';
 import { initialTabs, openTab, closeTab, moveTab, setDirty, type TabsState } from './tabs';
 import { Autosaver } from './store/autosave';
 import { MemoryStorage } from './store/memory';
@@ -24,6 +25,7 @@ import { printDoc } from '../engine/format/printer';
 import { DEFAULT_SHAPE } from '../ui/CanvasController';
 import { applyCanvasState } from '../engine/model/merge';
 import { isImportRef, resolveImportGhosts, type ImportError } from '../engine/model/imports';
+
 import {
   IR_VERSION, FORMAT_VERSION,
   type Doc, type Kind, type Link, type Obj, type StyleBlock,
@@ -167,6 +169,7 @@ export function stateToDoc(state: CanvasState): Doc {
     formatVersion: FORMAT_VERSION,
     objects,
     links,
+    icons: [],
     imports: [],
     flows: [],
     views: [],
@@ -443,6 +446,11 @@ export class WorkspaceManager {
     return readFile(this.root, path);
   }
 
+  /** True when `path` is a file in this workspace (drill-down targets, §3.2). */
+  hasFile(path: string): boolean {
+    return getNode(this.root, path)?.kind === 'file';
+  }
+
   /** Code view → file (format-on-save path; dirty + autosave). */
   saveText(path: string, text: string): void {
     const node = getNode(this.root, path);
@@ -501,6 +509,7 @@ export class WorkspaceManager {
     const parent = parentPath(path);
     renameNode(this.root, path, newName);
     const next = parent === '' ? newName : `${parent}/${newName}`;
+    this.retargetDrilldowns(path, next);
     this.tabs = retargetTabs(this.tabs, path, next);
     this.emit();
     this.scheduleSave();
@@ -509,9 +518,27 @@ export class WorkspaceManager {
   movePath(from: string, toDir: string): void {
     const target = `${toDir === '' ? '' : `${toDir}/`}${basename(from)}`;
     moveNode(this.root, from, toDir);
+    this.retargetDrilldowns(from, target);
     this.tabs = retargetTabs(this.tabs, from, target);
     this.emit();
     this.scheduleSave();
+  }
+
+  /**
+   * IR v10 (§3.2): a rename or move rewrites every `drilldown` that pointed at the
+   * moved diagram, so the hierarchy survives the file operation. Only the quoted
+   * path of those lines changes — the rest of each file stays byte-identical.
+   */
+  private retargetDrilldowns(from: string, to: string): void {
+    const files = filesUnder(this.root).filter((f) => f.node.kind === 'file');
+    const rewrites = rewriteDrilldownPaths(
+      files.map((f) => ({ path: f.path, text: f.node.content ?? '' })),
+      from,
+      to,
+    );
+    for (const rewrite of rewrites) {
+      if (rewrite.changed) writeFile(this.root, rewrite.path, rewrite.text);
+    }
   }
 
   duplicatePath(path: string): string {

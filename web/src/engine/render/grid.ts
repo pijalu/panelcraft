@@ -9,7 +9,12 @@
 export type GridType = 'off' | 'dots' | 'lines';
 
 export interface GridSettings {
-  version: 1;
+  /**
+   * Preference-record version. Version 1 shipped with a hidden default; version
+   * 2 shows a subtle grid on a fresh install. The version is informational: the
+   * migration decision is made per field (see `normaliseGrid`).
+   */
+  version: 2;
   type: GridType;
   /** Snapping is independent of visibility: lines may be shown without snapping. */
   snap: boolean;
@@ -24,12 +29,16 @@ export type VisibleGridType = Exclude<GridType, 'off'>;
 
 export const GRID_TYPES: readonly GridType[] = ['off', 'dots', 'lines'];
 
+/** The preference-record version this build writes. */
+export const GRID_VERSION = 2;
+
 /**
- * Default: grid hidden, snapping on — exactly the behaviour a document had
- * before this setting existed, so migration cannot move existing shapes.
+ * Default for a profile that has never chosen a grid: subtle dots with snapping
+ * on. The grid is editor chrome only — showing it moves no shape, so this
+ * default cannot alter document geometry.
  */
 export function defaultGrid(): GridSettings {
-  return { version: 1, type: 'off', snap: true, last: 'dots' };
+  return { version: GRID_VERSION, type: 'dots', snap: true, last: 'dots' };
 }
 
 function isGridType(value: unknown): value is GridType {
@@ -37,8 +46,11 @@ function isGridType(value: unknown): value is GridType {
 }
 
 /**
- * Normalise a stored value. Unknown or corrupt input falls back to the default
- * per field (a half-written record must not leave the canvas unsnapped).
+ * Normalise a stored value. The migration decision is per field, which is what
+ * separates "never chose" from "chose off": a record is only written when the
+ * user changes something, so a *present, valid* `type` is an explicit choice and
+ * is preserved — including `off`. A missing or corrupt field is a missing
+ * preference and takes the current default (visible dots, snapping on).
  */
 export function normaliseGrid(stored: unknown): GridSettings {
   const base = defaultGrid();
@@ -48,7 +60,7 @@ export function normaliseGrid(stored: unknown): GridSettings {
   const last = isGridType(rec.last) && rec.last !== 'off' ? rec.last : base.last;
   const snap = typeof rec.snap === 'boolean' ? rec.snap : base.snap;
   // A stored `off` still remembers the type it should come back to.
-  return { version: 1, type, snap, last: type === 'off' ? last : type };
+  return { version: GRID_VERSION, type, snap, last: type === 'off' ? last : type };
 }
 
 /** Choose a visible grid type (no side effect on snapping). */
