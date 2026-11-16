@@ -56,6 +56,38 @@ async function hostMetrics(page: Page, panel: 'props' | 'flows'): Promise<{
 }
 
 for (const colorScheme of ['light', 'dark'] as const) {
+  test(`collapsed panels share one tab column per dock (${colorScheme})`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.emulateMedia({ colorScheme });
+    await ready(page);
+
+    const left = page.getByTestId('collapsed-rail-left');
+    const right = page.getByTestId('collapsed-rail-right');
+    await expect(left).toBeVisible();
+    await expect(right).toBeVisible();
+    await expect(page.getByTestId('dock-left').locator('.panel-rail-group')).toHaveCount(1);
+    await expect(page.getByTestId('dock-right').locator('.panel-rail-group')).toHaveCount(1);
+    await expect(left.getByTestId('rail-sidebar')).toBeVisible();
+    await expect(left.getByTestId('rail-flows')).toBeVisible();
+    await expect(right.getByTestId('rail-code')).toBeVisible();
+    await expect(right.getByTestId('rail-props')).toBeVisible();
+
+    for (const rail of [left, right]) {
+      const box = await rail.boundingBox();
+      expect(box).not.toBeNull();
+      expect(Math.round(box!.width)).toBe(36);
+    }
+
+    await capture(page, `collapsed-panel-tabs-${colorScheme}`);
+
+    await left.getByTestId('expand-flows').click();
+    await expect(page.getByTestId('panel-title-flows')).toBeVisible();
+    await expect(page.getByTestId('rail-sidebar')).toBeVisible();
+    await expect(page.getByTestId('rail-flows')).toHaveCount(0);
+  });
+}
+
+for (const colorScheme of ['light', 'dark'] as const) {
   test(`UX-08 WP02: Properties stays readable at narrow dock widths (${colorScheme})`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.emulateMedia({ colorScheme });

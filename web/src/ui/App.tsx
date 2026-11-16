@@ -457,6 +457,38 @@ function propsSlot(p: {
   );
 }
 
+/** Render one dock with all its collapsed tabs in a single shared column. */
+function dockedPanels(
+  dock: DockId,
+  ui: ReturnType<typeof useUiLayout>,
+  content: Record<PanelId, ComponentChildren>,
+): ComponentChildren {
+  const panels = PANELS.filter((panel) => ui.layout.docks[panel] === dock)
+    .sort((a, b) => ui.layout.order[a] - ui.layout.order[b]);
+  const collapsed = panels.filter((panel) => ui.layout.panels[panel] === 'collapsed' && dock !== 'float');
+  const renderPanel = (panel: PanelId) => (
+    <HostedPanel key={panel} id={panel} ui={ui}>
+      {content[panel]}
+    </HostedPanel>
+  );
+  let groupRendered = false;
+  return panels.map((panel) => {
+    if (!collapsed.includes(panel)) return renderPanel(panel);
+    if (groupRendered) return null;
+    groupRendered = true;
+    return (
+      <div
+        key={`collapsed-rail-${dock}`}
+        class="panel-rail-group"
+        data-testid={`collapsed-rail-${dock}`}
+        data-dock={dock}
+      >
+        {collapsed.map(renderPanel)}
+      </div>
+    );
+  });
+}
+
 /** Shell body with recoverable left/right/bottom docks and floating panels. */
 function AppBody(p: {
   ws: ReturnType<typeof useWorkspace>;
@@ -520,14 +552,7 @@ function AppBody(p: {
       linkLabelRef: p.linkLabelRef,
     }),
   };
-  const docked = (dock: DockId) =>
-    PANELS.filter((panel) => ui.layout.docks[panel] === dock)
-      .sort((a, b) => ui.layout.order[a] - ui.layout.order[b])
-      .map((panel) => (
-        <HostedPanel key={panel} id={panel} ui={ui}>
-          {content[panel]}
-        </HostedPanel>
-      ));
+  const docked = (dock: DockId) => dockedPanels(dock, ui, content);
   return (
     <div class="app-body" data-drawer={drawer === null ? undefined : 'open'}>
       {drawer !== null && (

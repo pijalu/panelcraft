@@ -32,10 +32,9 @@ export function PanelRail({ id, labelKey, onExpand, children }: RailProps) {
         onClick={onExpand}
       >
         <ChevronRightIcon />
+        {/* Collapsed panels keep a visible label, and the whole tab activates. */}
+        <span class="rail-label" aria-hidden="true">{s(labelKey)}</span>
       </button>
-      {/* UX08-WP12: a labelled rail entry, so a collapsed panel is still
-          identifiable at a glance (the chevron alone names nothing). */}
-      <span class="rail-label" aria-hidden="true">{s(labelKey)}</span>
       {children}
     </div>
   );

@@ -27,6 +27,17 @@ describe('App shell + palette (WP9)', () => {
     return { container, svg };
   }
 
+  it('groups collapsed panels into one tab column per dock', () => {
+    render(<App />);
+
+    const left = screen.getByTestId('collapsed-rail-left');
+    const right = screen.getByTestId('collapsed-rail-right');
+    expect(left.querySelectorAll('[data-testid="rail-sidebar"], [data-testid="rail-flows"]')).toHaveLength(2);
+    expect(right.querySelectorAll('[data-testid="rail-code"], [data-testid="rail-props"]')).toHaveLength(2);
+    expect(screen.getByTestId('dock-left').querySelectorAll('.panel-rail-group')).toHaveLength(1);
+    expect(screen.getByTestId('dock-right').querySelectorAll('.panel-rail-group')).toHaveLength(1);
+  });
+
   it('renders palette with all 9 C4 kinds + properties panel', () => {
     mount();
     for (const kind of [

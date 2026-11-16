@@ -28,10 +28,83 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 # To fix
 
-_No queued items._
+## 2. Make flows topology-derived and easy to edit
+
+**Observed behavior:** Flow creation and editing require too much manual work,
+and the flow panel does not provide a simple ordering and annotation workflow
+for existing connections.
+
+**Expected behavior:**
+
+- Treat a flow as the ordering and annotation of existing connections rather
+  than a separate connection topology.
+- Derive the default flow order topologically. Where connections have the same
+  topological rank, order them by creation index.
+- Let users change the order directly in the flow panel with drag and drop.
+- Let users add and edit descriptions/details for the flow and its connection
+  entries.
+- Let users hide individual entries without deleting the underlying connection.
+- Make the editing experience comparable to PowerPoint's animation pane and
+  slide ordering: a simple ordered list with drag-and-drop reordering and
+  visibility controls.
+
+## 3. Optimize orthogonal connection endpoints
+
+**Observed behavior:** Orthogonal connections can produce diagonal-looking or
+tangent endpoint segments. In the reported example between **Customer** and
+**Blah**, the arrow runs tangentially at the endpoint instead of entering the
+shape cleanly.
+
+**Expected behavior:**
+
+- Keep orthogonal connections horizontal/vertical, without diagonal segments.
+- For automatic endpoints, choose the endpoint side and final leg so the arrow
+  approaches the shape perpendicularly rather than tangentially.
+- Preserve manually selected or moved endpoints; apply endpoint optimization
+  only when the user has not explicitly set the endpoint.
+
+## 4. Review or remove the Views feature
+
+**Observed behavior:** The **Views** feature has unclear purpose and can reset
+the current drawing instead of preserving the user's work.
+
+**Expected behavior:** Review whether Views provides a useful, distinct
+capability. If retained, switching or creating a view must never reset or replace
+the drawing unexpectedly, and its behavior must be clear to users. If it cannot
+meet that contract, remove the feature and its associated controls.
+
+## 5. Support moving the canvas view with the mouse
+
+**Observed behavior:** Moving the canvas view is not available through a direct
+mouse drag gesture; the requested mouse-only workflow is to press a secondary
+mouse button and move the view area.
+
+**Expected behavior:** Support press-and-drag canvas panning with the requested
+secondary/middle mouse-button gesture, without requiring a keyboard modifier.
+The gesture must not select objects, create accidental edits, or trigger the
+context menu, and existing touch, wheel, and keyboard navigation must remain
+available. Schedule and complete this fix in the current bug-fixing session.
+
+## 6. Fix the failing GitHub CI/CD run — schedule last
+
+**Observed behavior:** GitHub Actions run
+[43828484739](https://github.com/pijalu/panelcraft/actions/runs/43828484739)
+is failing.
+
+**Expected behavior:** Inspect the run logs, identify the root cause, and restore
+a green CI/CD pipeline without weakening tests or skipping required quality
+gates. Add regression coverage where the failure exposes a repository or workflow
+defect. Plan this item last in the current bug-fixing session, after the canvas
+mouse-panning fix.
 
 ## Closed this session
 
+- **Collapsed panels now share one tab-like column per dock.** All collapsed
+  panels keep labelled, keyboard-accessible expand controls, the Code sync chip
+  remains visible, and expanding one panel leaves the other tabs available.
+  Verified by component tests, full unit/coverage gates, 16 targeted browser
+  tests, and light/dark screenshot review.
+  Write-up: `docs/archive/bugs-collapsed-panel-rails.md`.
 - **BUG-08 — undo from the History dialog could revert far more than the last
   edit** (the connector-style end-to-end test went red on the shared CI runner,
   green locally). Fixed by removing the test's dependence on same-link command

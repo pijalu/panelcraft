@@ -727,6 +727,13 @@ body {
 }
 
 /* UX08-WP12: the rail names its panel in a vertical label. */
+.panel-rail .rail-toggle {
+  width: 100%;
+  flex-direction: column;
+  gap: var(--pc-space-2);
+  padding: 4px 0 8px;
+}
+
 .rail-label {
   writing-mode: vertical-rl;
   text-orientation: mixed;
@@ -739,6 +746,38 @@ body {
 .props-col .panel-rail {
   border-right: none;
   border-left: 1px solid var(--pc-border);
+}
+
+/* One dock owns one compact activity column; individual panels become tabs in
+   that column instead of parallel 36 px rails. */
+.panel-rail-group {
+  width: 36px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 6px 0;
+  overflow-y: auto;
+  background: var(--pc-activity-bg);
+  border-right: 1px solid var(--pc-panel-border);
+}
+
+.panel-rail-group[data-dock='right'] {
+  border-right: none;
+  border-left: 1px solid var(--pc-panel-border);
+}
+
+.panel-rail-group > .panel-rail {
+  width: auto;
+  padding: 0;
+  gap: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+}
+
+.panel-rail-group > .panel-rail + .panel-rail {
+  border-top: 1px solid var(--pc-panel-border);
 }
 
 .rail-chip {
