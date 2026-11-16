@@ -5,7 +5,7 @@
 import type { ComponentChildren } from 'preact';
 import { PanelRail } from './PanelChrome';
 import { Palette } from './Palette';
-import { PropertiesPanel } from './PropertiesPanel';
+import { PropertiesPanel, type HierarchyProps } from './PropertiesPanel';
 import { DepsPanel } from './deps/DepsPanel';
 import { PALETTE_ORDER, type CanvasController, type DiagramLink, type DiagramObject } from './CanvasController';
 import type { IconDecl, Kind } from '../engine/model/types';
@@ -86,6 +86,8 @@ export interface PropsSlotProps {
   /** IR v9: icons declared in the open file + the manager trigger. */
   projectIcons?: IconDecl[];
   onManageIcons?: () => void;
+  /** IR v10: decomposition + embedded source of the selected element. */
+  hierarchy?: HierarchyProps;
 }
 
 /** Properties + dependencies column (or its rail). */
@@ -112,6 +114,7 @@ export function PropsSlot(props: PropsSlotProps) {
         onToggleSection={props.onToggleSection}
         projectIcons={props.projectIcons}
         onManageIcons={props.onManageIcons}
+        hierarchy={props.hierarchy}
       />
       <DepsPanel
         text={props.depsText}

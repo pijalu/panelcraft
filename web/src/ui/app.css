@@ -4018,3 +4018,117 @@ marker .pc-arrow[fill='none'] {
   background: var(--pc-warn);
   border-radius: var(--pc-radius-sm);
 }
+
+/* IR v10 drill-down chrome (FILE-FORMAT.md §3.2, §3.3). The bar sits above the canvas
+   inside the centre column; the parent boundary is an inset outline on the
+   canvas area, so a subordinate diagram never looks like a top-level one — and
+   never like the dashed ghost objects *inside* it. */
+.drill-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+  background: var(--pc-panel-header-bg);
+  border-bottom: 1px solid var(--pc-panel-border);
+  font-size: var(--pc-text-xs);
+}
+
+.drill-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drill-crumbs li + li::before {
+  content: '›';
+  margin: 0 2px;
+  color: var(--pc-muted);
+}
+
+.drill-crumb {
+  padding: 1px 4px;
+  border: 0;
+  background: none;
+  color: var(--pc-accent);
+  font: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.drill-crumb:hover { text-decoration: underline; }
+
+.drill-crumb:focus-visible,
+.drill-dismiss:focus-visible {
+  outline: 2px solid var(--pc-focus-ring);
+  outline-offset: 1px;
+}
+
+.drill-current {
+  padding: 1px 4px;
+  font-weight: 600;
+  color: var(--pc-fg);
+}
+
+.drill-notice,
+.drill-findings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  margin: 0;
+  color: var(--pc-warn-fg);
+}
+
+.drill-dismiss {
+  border: 0;
+  background: none;
+  color: var(--pc-accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Parent-context boundary of a subordinate diagram: an inset dashed frame with
+   the element + file it was opened from (never a ghost badge). */
+.canvas-col[data-parent] .canvas-wrap {
+  outline: 2px dashed var(--pc-accent);
+  outline-offset: -4px;
+  border-radius: 6px;
+}
+
+.pc-parent-context {
+  margin: 0;
+  color: var(--pc-muted);
+}
+
+.dialog-source {
+  max-width: min(760px, 92vw);
+  width: 100%;
+}
+
+.source-text {
+  margin: 0;
+  padding: 8px;
+  max-height: 46vh;
+  overflow: auto;
+  border: 1px solid var(--pc-panel-border);
+  border-radius: 6px;
+  background: var(--pc-surface);
+  color: var(--pc-fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--pc-text-sm);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.prop-problem { color: var(--pc-warn-fg); }
+
+.prop-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

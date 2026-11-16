@@ -32,7 +32,10 @@ import { CollapseButton, PanelRail } from './PanelChrome';
 import { CanvasMenu } from './CanvasMenu';
 import { MiniMap } from './MiniMap';
 import { s } from './strings';
-import type { IconDecl } from '../engine/model/types';
+import type { Doc, IconDecl, Obj } from '../engine/model/types';
+import { DrillBar } from './DrillBar';
+import { SourceViewer } from './SourceViewer';
+import { useDrillLayer, type DrillLayer, type DrilldownHandle } from './useDrilldown';
 import { useDocumentPipeline } from './useDocumentPipeline';
 import { ShellBanners } from './ShellBanners';
 import { DropZone, HostedPanel } from './WorkspacePanels';
@@ -442,8 +445,21 @@ function propsSlot(p: {
   linkLabelRef: { current: HTMLInputElement | null };
   projectIcons?: IconDecl[];
   onManageIcons?: () => void;
+  drill?: DrilldownHandle;
+  doc?: Doc | null;
+  onSourceOpen?: (objectId: string) => void;
 }): ComponentChildren {
   const ctrl = p.canvas.ctrlRef.current;
+  const selected = p.sel.obj;
+  const stored = selected == null ? undefined : p.doc?.objects.find((o) => o.id === selected.id);
+  const hierarchy = selected == null || p.drill === undefined ? undefined : {
+    target: p.drill.targetOf(selected.id),
+    onSet: (path: string | null, view?: string) => p.drill?.setDrilldown(selected.id, path, view),
+    onOpen: () => p.drill?.drill(selected.id),
+    hasSource: stored?.source !== undefined,
+    language: stored?.source?.language,
+    onOpenSource: () => p.onSourceOpen?.(selected.id),
+  };
   return (
     <PropsSlot
       ui={p.ui}
@@ -466,6 +482,7 @@ function propsSlot(p: {
       onToggleSection={p.ui.toggleSection}
       projectIcons={p.projectIcons}
       onManageIcons={p.onManageIcons}
+      hierarchy={hierarchy}
     />
   );
 }
@@ -502,35 +519,30 @@ function dockedPanels(
   });
 }
 
-/** Shell body with recoverable left/right/bottom docks and floating panels. */
-function AppBody(p: {
-  ws: ReturnType<typeof useWorkspace>;
-  canvas: ReturnType<typeof useCanvasController>;
-  code: CodeSyncHandle;
-  ui: ReturnType<typeof useUiLayout>;
-  player: FlowPlayerApi;
-  activePath: string | null;
-  viewName: string | undefined;
-  onView: (n: string | undefined) => void;
-  onPresent: () => void;
-  sel: ReturnType<typeof selections>;
-  diverged: ReturnType<typeof useDivergedClose>;
-  illustration: IllustrationId | 'auto';
-  onIllustration: (id: IllustrationId | 'auto') => void;
-  dirty: boolean; flowSelection: FlowSelection | null;
-  onFlowSelection: (selection: FlowSelection) => void;
-  revealRef: { current: ((id: string) => void) | null };
-  /** UX08-WP08: link Label field, focused when a link is inspected. */
-  linkLabelRef: { current: HTMLInputElement | null };
-  /** IR v9: icons declared in the open file, and the manager trigger. */
-  projectIcons: IconDecl[];
-  onManageIcons: () => void;
-}) {
+/** Embedded-source dialog of the open element (IR v10, FILE-FORMAT.md §3.3). */
+function SourceLayer(props: { layer: DrillLayer; obj: Obj | null }): ComponentChildren {
+  const { layer, obj } = props;
+  if (obj === null) return null;
+  return (
+    <SourceViewer
+      obj={obj}
+      onSave={(source) => layer.drill.setSource(obj.id, source)}
+      onClose={layer.closeSource}
+    />
+  );
+}
+
+/**
+ * Panel content of the shell body. Extracted so `AppBody` stays inside the
+ * function-length gate and each panel's wiring is one screen away from the dock
+ * code that hosts it.
+ */
+function bodyPanels(
+  p: Parameters<typeof AppBody>[0],
+  ctrl: CanvasController | null,
+): Record<PanelId, ComponentChildren> {
   const { ws, canvas, code, ui, player, activePath, viewName } = p;
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const ctrl = canvas.ctrlRef.current;
-  const { drawer, dismiss } = useDrawer(ui);
-  const content: Record<PanelId, ComponentChildren> = {
+  return {
     sidebar: <SidebarSlot ui={ui} manager={ws.manager} version={ws.version} />,
     flows: flowsSlot({
       ui,
@@ -568,8 +580,47 @@ function AppBody(p: {
       linkLabelRef: p.linkLabelRef,
       projectIcons: p.projectIcons,
       onManageIcons: p.onManageIcons,
+      drill: p.drill,
+      doc: p.doc,
+      onSourceOpen: p.onSourceOpen,
     }),
   };
+}
+
+/** Shell body with recoverable left/right/bottom docks and floating panels. */
+function AppBody(p: {
+  ws: ReturnType<typeof useWorkspace>;
+  canvas: ReturnType<typeof useCanvasController>;
+  code: CodeSyncHandle;
+  ui: ReturnType<typeof useUiLayout>;
+  player: FlowPlayerApi;
+  activePath: string | null;
+  viewName: string | undefined;
+  onView: (n: string | undefined) => void;
+  onPresent: () => void;
+  sel: ReturnType<typeof selections>;
+  diverged: ReturnType<typeof useDivergedClose>;
+  illustration: IllustrationId | 'auto';
+  onIllustration: (id: IllustrationId | 'auto') => void;
+  dirty: boolean; flowSelection: FlowSelection | null;
+  onFlowSelection: (selection: FlowSelection) => void;
+  revealRef: { current: ((id: string) => void) | null };
+  /** Link Label field, focused when a link is inspected. */
+  linkLabelRef: { current: HTMLInputElement | null };
+  /** IR v9: icons declared in the open file, and the manager trigger. */
+  projectIcons: IconDecl[];
+  onManageIcons: () => void;
+  /** IR v10: drill-down trail, findings and the two hierarchy edits. */
+  drill: DrilldownHandle;
+  /** Parsed document of the open file (hierarchy + source authoring). */
+  doc: Doc | null;
+  onSourceOpen: (objectId: string) => void;
+}) {
+  const { ws, canvas, code, ui, player, activePath, viewName } = p;
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const ctrl = canvas.ctrlRef.current;
+  const { drawer, dismiss } = useDrawer(ui);
+  const content = bodyPanels(p, ctrl);
   const docked = (dock: DockId) => dockedPanels(dock, ui, content);
   return (
     <div class="app-body" data-drawer={drawer === null ? undefined : 'open'}>
@@ -595,6 +646,7 @@ function AppBody(p: {
         viewName={viewName}
         onView={p.onView}
         onPresent={p.onPresent}
+        drill={p.drill}
         onCanvasContextMenu={(event) => {
           event.preventDefault();
           setMenu({ x: event.clientX, y: event.clientY });
@@ -637,11 +689,13 @@ function CenterColumn(props: {
   viewName: string | undefined;
   onView: (n: string | undefined) => void;
   onPresent: () => void;
+  drill: DrilldownHandle;
   onCanvasContextMenu: (e: MouseEvent) => void;
 }) {
   const { canvas, code, player } = props;
+  const parent = props.drill.parent;
   return (
-    <main class="canvas-col">
+    <main class="canvas-col" data-parent={parent === undefined ? undefined : parent.label}>
       <TemplateOverlay
         show={(props.canvas.snap?.objects.length ?? 0) === 0}
         onInsert={(t) => props.code.machine.textChanged(t.text)}
@@ -656,6 +710,7 @@ function CenterColumn(props: {
         ctrl={canvas.ctrlRef.current}
         selection={canvas.snap?.selection.objects ?? []}
       />
+      <DrillBar drill={props.drill} />
       <CanvasSplit
         canvas={canvas}
         player={player}
@@ -683,6 +738,13 @@ export function App() {
     onHover: setHover, // hover card content
   });
   const { manager } = ws;
+  const layer = useDrillLayer({
+    activePath, manager, version: ws.version, revision: code.snapshot,
+    ctrlRef: canvas.ctrlRef, commitDoc: code.commitDoc,
+    openFile: (path) => manager.openFile(path),
+    onView: view.setViewName,
+  });
+  const sourceObj = layer.doc?.objects.find((o) => o.id === layer.sourceId) ?? null;
   const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = useShellDialogs();
   const player = useFlowStage({ manager, canvas, activePath, illustration });
   const appTheme = useAppTheme(manager, ws.ready, ws.version);
@@ -743,7 +805,11 @@ export function App() {
         linkLabelRef={inspect.linkLabelRef}
         projectIcons={icons.projectIcons}
         onManageIcons={icons.openManager}
+        drill={layer.drill}
+        doc={layer.doc}
+        onSourceOpen={layer.openSource}
       />
+      <SourceLayer layer={layer} obj={sourceObj} />
       <AppOverlays
         hover={hover}
         presenting={pres.presenting}
