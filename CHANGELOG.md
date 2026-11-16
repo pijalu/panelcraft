@@ -230,6 +230,23 @@ under `docs/archive/` with the executed plan, validation and review evidence.
   and "charges" existed as links but nothing could present them. See
   `docs/archive/bugs-default-virtual-flow.md`.
 
+### Fixed — connector routes are validated end to end
+
+- A connector is now validated as a whole polyline instead of by its endpoints.
+  Three causes were fixed: explicit bends were passed through verbatim, so a
+  bend placed inside an entity drew the route through that shape and its label;
+  automatic routes never counted their own two endpoint rectangles as obstacles,
+  so an anchored route could cut through the entity it pointed at; and candidate
+  scoring ignored direction reversals, so a connector that ran out, back and out
+  again was not treated as a loop. Each authored leg is now routed around entity
+  rectangles while keeping its valid bends (an intentional detour survives), an
+  automatic candidate is scored by interior crossings — endpoints included — then
+  shared lines with other connectors, then reversals, then length, and a bend
+  that lies inside an entity is skipped rather than silently relocated: the file
+  keeps the authored `waypoint` line and the connector explains itself in its
+  tooltip, accessible description and `data-route-warning`. `allowOverlap` links
+  keep their explicit opt-out. See `docs/archive/bugs-route-validation.md`.
+
 ### Fixed — entity label centering
 
 - Entity labels are centred on their rendered bounds. The SVG `y` carried a font

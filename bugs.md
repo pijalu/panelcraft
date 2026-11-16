@@ -63,84 +63,6 @@ from a clean first visit so an old cached client cannot be confused with a faile
 deployment. Make the release process require the relevant continuous-integration
 checks before publication, and retain the hosted test output as release evidence.
 
-## 13. Prevent entity links from crossing shapes and generating nonsense routes
-
-**Severity:** High — incorrect geometry can misrepresent architecture semantics.
-
-**Observed behavior:** Links between entities can take nonsensical routes. In the
-supplied screenshot (`/Users/muaddib/Library/Caches/goa/images/goa-image-702857706.png`),
-the Shop → Payment provider connector travels horizontally through the Shop
-shape and its label, loops far above both entities, and only then turns down to
-Payment provider. The "charges" label is detached to the left of Shop rather
-than clearly associated with that route. This is a correctness problem, not
-cosmetic polish: the drawing makes the relationship difficult to trace and can
-imply the wrong source or target.
-
-A second screenshot (`/Users/muaddib/Library/Caches/goa/images/goa-image-375620880.png`)
-shows a vertical connector segment passing through the Payment provider name.
-Its exact reproduction is:
-
-```pcd
-pcd 1.0
-
-person user "Customer"
-system app "Shop" {
-  size 57 36
-  style {
-    fill #6a0b53
-    text #c2dbff
-  }
-}
-system_ext pay "Payment provider"
-
-user -> app : "buys"
-app -> pay : "charges" {
-  waypoint (432, 254)
-  waypoint (432, 70)
-}
-
-view "Default" {
-  position app (248, 128)
-  position pay (348, 52)
-  position user (40, 40)
-}
-```
-
-**Expected behavior:** Each automatic route starts and ends at the correct entity
-perimeter, approaches endpoints perpendicularly, avoids entity interiors and
-text, and uses the shortest readable orthogonal path without unexplained loops
-or backtracking. Labels remain adjacent to their owning connector and never
-cross unrelated shapes or links. Moving entities, changing views, reloading,
-and exporting preserve a coherent route. Explicit anchors and valid user
-waypoints remain authoritative, including intentional detours, but a waypoint
-inside an endpoint entity must be diagnosed or safely resolved rather than
-silently drawing through that entity and its label.
-
-**Research:** A previous fix covered outward endpoint stubs and perpendicular
-approaches (`docs/archive/bugs-orthogonal-endpoints.md`), but the screenshots
-show that endpoint direction alone does not ensure a valid overall route. The
-second fixture also separates automatic-routing defects from explicit-path
-behavior: its two waypoints intentionally force the down/up backtrack, and
-`(432, 70)` lies inside the Payment provider rectangle positioned at
-`(348, 52)`. The current waypoint router deliberately skips obstacle avoidance
-(`web/src/engine/render/router.ts`), so it accepts that target-interior point
-and draws through the target label. The large detour is user-authored; the
-missing validation or safe handling of entity-interior waypoints is the defect.
-Tests must assert the entire polyline and label placement, not only endpoints.
-
-**Fix plan:** Reproduce first with the default Customer/Shop/Payment provider C4
-example and save the before screenshot and route coordinates. Add failing
-geometry tests that reject entity-interior crossings, label/entity collisions,
-far-away detours, and unnecessary reversals for automatic routes. Add the exact
-second fixture as an explicit-waypoint regression: preserve the intentional
-detour while rejecting or safely handling the waypoint inside Payment provider.
-Include nearby, stacked, and reordered entities. Localize whether the invalid
-points come from obstacle avoidance, endpoint anchors, persisted waypoints, or
-route projection before changing the router. Verify the original fixture after
-entity moves, reload, undo/redo, view switches, and SVG export; retain valid
-explicit waypoint behavior. Review light/dark screenshots and run focused
-routing/render tests, the full browser suite, and all quality gates.
-
 ## 15. Icon management is limited to eight built-ins
 
 **Observed.** Objects can select only `cloud`, `database`, `gear`, `lock`, `mail`,
@@ -193,6 +115,33 @@ and light/dark/narrow screenshots. Mermaid/static SVG exports must state how lin
 children and source are represented or explicitly reported as unsupported.
 
 ## Closed this session
+
+- **Routes are validated as a whole polyline, and an intentional detour survives.**
+  The report showed `Shop → Payment provider` cutting through its own shape and
+  then looping above both entities, with the `charges` label detached. Three
+  separate causes were localised before touching the router. Explicit waypoints
+  were passed through verbatim, so a bend placed inside an entity was drawn
+  through that shape and its label; automatic routes never tested their own two
+  endpoint rectangles, so a route (especially one with explicit perimeter
+  anchors) could be scored as conflict-free while cutting through the entity it
+  pointed at; and candidate scoring ranked only crossings and raw length, so a
+  connector that ran out, back and out again was not recognised as a loop. Now
+  each authored leg is routed around entity rectangles while keeping its bends,
+  automatic candidates count interior conflicts against every entity including
+  the endpoints (a port or clearance stub only touches a perimeter), and
+  reversals are penalised after crossings and shared lines so detours stay
+  bounded and readable. A bend inside an entity cannot be honoured by any route,
+  so it is skipped rather than silently relocated: the file keeps the authored
+  `waypoint` line, and the connector carries the reason — tooltip, accessible
+  description and `data-route-warning` — e.g. “charges: bend 2 at (432, 70) is
+  inside Payment provider — the route skips it.” Verified by whole-polyline
+  fixture tests (perimeter endpoints, perpendicular legs, no interior crossing of
+  any entity or entity label, bounded length, no reversal, preserved detour,
+  untouched document, label adjacency, nearby/stacked/reordered entities,
+  anchors), router contract tests, browser scenarios for both fixtures in both
+  themes with sampled route paths against rendered shape boxes, the full unit,
+  coverage, e2e (192) and Go gates, and light/dark screenshot review.
+  Write-up: `docs/archive/bugs-route-validation.md`.
 
 - **Flow presentation frames, animates and responds as reported.** Four separate
   defects, not one: the automatic camera fitted only the step's participants at

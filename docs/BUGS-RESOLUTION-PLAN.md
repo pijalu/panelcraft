@@ -234,6 +234,9 @@ artefacts stay under `test-results/`; curated golden changes require an intentio
 
 ## 9. Sub-plan 13 — validate complete routes and preserve intentional detours
 
+**Status: closed.** Evidence and implementation notes:
+[docs/archive/bugs-route-validation.md](archive/bugs-route-validation.md).
+
 **Owner:** Routing agent. **Depends on:** item 14's shared content/label geometry.
 
 1. Save the first screenshot's minimal automatic-route reproduction, the exact PCD in

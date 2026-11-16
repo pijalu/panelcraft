@@ -90,14 +90,17 @@ describe('CX-02 best-effort link avoidance', () => {
     expect(routed).toHaveLength(2);
   });
 
-  it('keeps explicit waypoints authoritative over automatic avoidance', () => {
+  it('keeps an authored waypoint authoritative over automatic avoidance', () => {
+    // The waypoint is outside every entity, so the user's detour wins over the
+    // shorter automatic route — and the leg bends around the obstacle.
     const routed = routeLink({
       from: box(20, 100), to: box(500, 100),
-      waypoints: [[280, 130]],
+      waypoints: [[280, 250]],
       obstacles: [box(250, 80, 80, 100)],
       routes: [{ id: 'existing', points: [{ x: 200, y: 80 }, { x: 200, y: 180 }] }],
     });
-    expect(routed).toContainEqual({ x: 280, y: 130 });
+    expect(routed).toContainEqual({ x: 280, y: 250 });
+    expect(intersectsSolid(routed, box(250, 80, 80, 100))).toBe(false);
   });
 
   it('keeps shared endpoints and falls back deterministically when no clear route exists', () => {

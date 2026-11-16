@@ -180,20 +180,32 @@ api -publishes-> events as L7 {
   resolved endpoints. Mermaid export declares `endpoint perimeter anchors` as
   dropped because Mermaid has no equivalent data.
 
-* **Overlap avoidance (CX-02, IR v5)**: automatic orthogonal routes avoid solid
-  non-group objects and previously routed links where a reasonable bounded
-  candidate exists. Document order is deterministic; clear existing routes stay
-  unchanged, shared endpoint points are allowed, and parallel/coincident links
-  use separate channels when possible. Explicit perimeter anchors keep their
-  outward stubs. Group boundaries are not solid obstacles, but their non-group
-  children are. If every candidate conflicts, the minimum-conflict, shortest
-  deterministic fallback is used; dense graphs can therefore retain crossings.
-  `allow overlap` opts one link out of object and connector avoidance. It is
-  emitted only when true; absence and false have identical default behavior.
-  Explicit `waypoint` geometry remains authoritative and bypasses automatic
-  avoidance with or without this override. Canvas, minimap, SVG/PNG and CLI use
-  the committed route polylines. Mermaid export declares `overlap overrides`
-  as dropped because the target has no equivalent data.
+* **Overlap avoidance (IR v5)**: automatic
+  orthogonal routes avoid solid non-group objects — *including the route's own two
+  endpoints*, which may only be touched at their ports and clearance stubs — and
+  previously routed links where a reasonable bounded candidate exists. Document order
+  is deterministic; clear existing routes stay unchanged, shared endpoint points are
+  allowed, and parallel/coincident links use separate channels when possible. Explicit
+  perimeter anchors keep their outward stubs. Group boundaries are not solid obstacles,
+  but their non-group children are. Candidates are scored by interior crossings, then
+  shared lines with other connectors, then direction reversals (a connector that runs
+  out, back and out again reads as a loop), then length, so a detour stays bounded and
+  readable. If every candidate conflicts, the minimum-conflict, shortest deterministic
+  fallback is used; dense graphs can therefore retain crossings, and such a connector
+  reports it. `allow overlap` opts one link out of object and connector avoidance. It
+  is emitted only when true; absence and false have identical default behavior.
+
+  Explicit `waypoint` geometry remains authoritative and bypasses *automatic*
+  avoidance with or without this override: a bend outside every shape is honoured even
+  when a shorter automatic route exists, and each leg between bends is still routed
+  around entity rectangles so a detour never becomes a crossing. A bend that lies
+  **inside** an entity cannot be drawn without covering the shape and its label, so it
+  is skipped rather than silently relocated: the printed document keeps the authored
+  `waypoint` line untouched, and the connector carries the reason (`data-route-warning`
+  and its accessible description), e.g. `charges: bend 2 at (432, 70) is inside Payment
+  provider — the route skips it.` Canvas, minimap, SVG/PNG and CLI use the committed
+  route polylines. Mermaid export declares `overlap overrides` as dropped because the
+  target has no equivalent data.
 
 * **Connector sparks (FLOW-02, IR v7)**: `sparks <1..8>` sets how many tokens travel
   a link during a message step and `speed <0.25..4>` scales their motion, where `1`

@@ -465,7 +465,11 @@ implemented and covered by tests.
 * FR-C7 typed links, label, direction (uni/bi), arrowheads (`head`/`tail`:
   arrow/open/diamond/circle/square/none), line texture (solid/dashed/dotted), width.
 * FR-C8 waypoints are draggable and persisted (`waypoint` lines); orthogonal, straight,
-  and curved routing with deterministic object/route/label collision avoidance for labels.
+  and curved routing with deterministic object/route/label collision avoidance for
+  labels. A route is validated as a whole polyline: automatic routes avoid both
+  endpoints and other entities, and a waypoint that lies inside an entity is never
+  drawn through it — the route skips that bend, keeps the authored line in the file,
+  and the connector states why (see FILE-FORMAT “Overlap avoidance”).
 * FR-C10 canvas and object context menus (duplicate, delete, copy/paste, align,
   distribute, equalise size).
 * FR-C12 copy/paste/duplicate within a file, with id re-allocation on paste.

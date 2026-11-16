@@ -28,8 +28,10 @@ export interface RouteInput {
   clearance?: number;
   /**
    * Explicit user waypoints (F-19). When present the route passes through them
-   * with orthogonal elbows and obstacle avoidance is skipped — the user has
-   * stated the intended path.
+   * with orthogonal elbows and *optional* obstacle avoidance is skipped — the
+   * user stated the intended detour. A waypoint that sits inside an entity is
+   * not a detour but an impossible point: it is skipped here and reported by
+   * `invalidWaypoints`, because a route may never be drawn through a shape.
    */
   waypoints?: [number, number][];
   /** Optional normalized side-quarter perimeter anchors (CX-01, IR v4). */
@@ -66,39 +68,241 @@ export function pickSides(a: Rect, b: Rect): [Side, Side] {
 
 /**
  * Route through explicit waypoints: port → each waypoint → port, joined by
- * orthogonal elbows. Obstacles are deliberately ignored (F-19), but the two
- * endpoint shapes are not: a leg that would leave or enter a port through
- * its own entity pays a short outward stub first (the same contract explicit
- * anchors get). Elbows continue the incoming direction — never an index
- * parity — so a local edit cannot flip the shape of the whole route.
+ * orthogonal elbows. An authored waypoint is authoritative, but a *leg* is not
+ * exempt from geometry: each leg picks the readable shape that crosses no entity
+ * rectangle, so an intentional detour is preserved instead of being flattened
+ * into the automatic route. A leg that would leave or enter a port through its
+ * own entity pays a short outward stub first (the same contract explicit anchors
+ * get). Elbows continue the incoming direction — never an index parity — so a
+ * local edit cannot flip the shape of the whole route.
  */
 function routeThroughWaypoints(input: RouteInput): Polyline {
   const ends = routeEndpoints(input);
   const waypoints = (input.waypoints ?? []).map(([x, y]) => ({ x, y }));
   const { anchors, stubB } = waypointAnchors(input, ends, waypoints);
+  const rects = entityRects(input);
+  const clearance = input.clearance ?? ROUTER_CLEARANCE;
 
   const out: Polyline = [anchors[0]!];
-  let incoming: 'h' | 'v' = horizontalSide(ends.sideA) ? 'h' : 'v';
+  const startAxis: Axis = horizontalSide(ends.sideA) ? 'h' : 'v';
+  let incoming: Move = { axis: startAxis, sign: 1 };
   for (let i = 1; i < anchors.length; i++) {
     const p = out[out.length - 1]!;
     const q = anchors[i]!;
-    if (Math.abs(p.x - q.x) < 0.5 || Math.abs(p.y - q.y) < 0.5) {
-      out.push(q);
-      if (Math.abs(p.x - q.x) >= 0.5) incoming = 'h';
-      else if (Math.abs(p.y - q.y) >= 0.5) incoming = 'v';
-      continue;
-    }
-    // Final leg with no stub: arrive along the target's port side.
-    const horizontalFirst =
-      i === anchors.length - 1 && !stubB ? !horizontalSide(ends.sideB) : incoming === 'h';
-    const elbow: Point = horizontalFirst ? { x: q.x, y: p.y } : { x: p.x, y: q.y };
-    out.push(elbow, q);
-    incoming = horizontalFirst ? 'v' : 'h';
+    const last = i === anchors.length - 1;
+    const leg = routeLeg({
+      from: p, to: q, rects, clearance, incoming,
+      ...(i === 1 ? { firstAxis: startAxis } : {}),
+      // Final leg with no stub: arrive along the target's port side.
+      ...(last && !stubB ? { lastAxis: horizontalSide(ends.sideB) ? 'h' : 'v' } : {}),
+    });
+    out.push(...leg.points.slice(1));
+    incoming = leg.exit;
+  }
+  return compact(out);
+}
+
+type Axis = 'h' | 'v';
+
+/** One orthogonal move: which axis, and in which direction. */
+interface Move {
+  axis: Axis;
+  sign: number;
+}
+
+interface LegRequest {
+  from: Point;
+  to: Point;
+  rects: Rect[];
+  clearance: number;
+  /** How the previous leg arrived, so this one does not retrace it. */
+  incoming: Move;
+  /** Axis the first move must take (a port's outward normal). */
+  firstAxis?: Axis;
+  /** Axis the last move must take (into a port). */
+  lastAxis?: Axis;
+}
+
+interface LegResult {
+  points: Polyline;
+  /** Direction of the last segment, so the next leg can continue it. */
+  exit: Move;
+}
+
+const axisOf = (a: Point, b: Point): Axis => (a.y === b.y ? 'h' : 'v');
+
+/** Direction of one segment. */
+function moveOf(a: Point, b: Point): Move {
+  return a.y === b.y
+    ? { axis: 'h', sign: Math.sign(b.x - a.x) }
+    : { axis: 'v', sign: Math.sign(b.y - a.y) };
+}
+
+/** Direction of the final segment of a leg. */
+const exitOf = (points: Polyline): Move => moveOf(points[points.length - 2]!, points[points.length - 1]!);
+
+/** True when `move` walks back along `previous`. */
+function retraces(move: Move, previous: Move): boolean {
+  return move.axis === previous.axis && move.sign === -previous.sign;
+}
+
+/** Move axes of a polyline, in order, with zero-length steps dropped. */
+function axes(points: Polyline): Axis[] {
+  const out: Axis[] = [];
+  for (let i = 1; i < points.length; i++) {
+    if (points[i]!.x === points[i - 1]!.x && points[i]!.y === points[i - 1]!.y) continue;
+    out.push(axisOf(points[i - 1]!, points[i]!));
   }
   return out;
 }
 
+/** One leg's obstacle-crossing count over entity rectangles (perimeter is free). */
+function legCrossings(points: Polyline, rects: Rect[]): number {
+  return points.slice(1).reduce((total, point, index) => total +
+    rects.filter((rect) => segmentEntersRect(points[index]!, point, insetRect(rect))).length, 0);
+}
+
+function insetRect(r: Rect): Rect {
+  const inset = 0.5;
+  return { x: r.x + inset, y: r.y + inset, w: r.w - 2 * inset, h: r.h - 2 * inset };
+}
+
+/** Channels a leg may route through: just outside each entity edge. */
+function legChannels(rects: Rect[], axis: 'x' | 'y', clearance: number): number[] {
+  const values = rects.flatMap((r) => axis === 'x'
+    ? [r.x - clearance, r.x + r.w + clearance]
+    : [r.y - clearance, r.y + r.h + clearance]);
+  return [...new Set(values)];
+}
+
+/** Orthogonal leg shapes, most direct first, around the given channels. */
+function legCandidates(req: LegRequest): Polyline[] {
+  const { from: a, to: b } = req;
+  const shapes: Polyline[] = [];
+  if (a.x === b.x || a.y === b.y) shapes.push([a, b]);
+  shapes.push([a, { x: b.x, y: a.y }, b], [a, { x: a.x, y: b.y }, b]);
+  for (const x of legChannels(req.rects, 'x', req.clearance)) {
+    shapes.push([a, { x, y: a.y }, { x, y: b.y }, b]);
+  }
+  for (const y of legChannels(req.rects, 'y', req.clearance)) {
+    shapes.push([a, { x: a.x, y }, { x: b.x, y }, b]);
+  }
+  const usable = shapes
+    .map(compact)
+    .filter((points) => points.length > 1)
+    .filter((points) => {
+      const moves = axes(points);
+      if (req.firstAxis !== undefined && moves[0] !== req.firstAxis) return false;
+      if (req.lastAxis !== undefined && moves[moves.length - 1] !== req.lastAxis) return false;
+      return true;
+    });
+  // A leg that turns is preferred over one that retraces the previous segment:
+  // going back along the line it just came down draws the connector over itself.
+  // A stable sort keeps the written order for equal scores, so adding a waypoint
+  // cannot flip an earlier elbow.
+  const rank = (points: Polyline): number =>
+    retraces(moveOf(points[0]!, points[1]!), req.incoming) ? 1 : 0;
+  return usable.sort((p, q) => rank(p) - rank(q));
+}
+
+/**
+ * Route one leg around entity rectangles. Crossings dominate, then reversals,
+ * then length, then the candidate order (which keeps the incoming direction).
+ * When every shape conflicts the first — most direct — one wins: a documented
+ * minimal-conflict result instead of an unexplained loop.
+ */
+function routeLeg(req: LegRequest): LegResult {
+  let best = compact([req.from, req.to]);
+  let bestScore = Infinity;
+  for (const candidate of legCandidates(req)) {
+    // Doubling back over the previous segment is what a reader sees as a loop,
+    // so it costs the same as a reversal even though this leg looks straight.
+    const back = retraces(moveOf(candidate[0]!, candidate[1]!), req.incoming) ? 1000 : 0;
+    const score = legCrossings(candidate, req.rects) * 100000 + back +
+      reversals(candidate) * 1000 + pathLength(candidate);
+    if (score < bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  return { points: best, exit: exitOf(best) };
+}
+
 const horizontalSide = (side: Side): boolean => side === 'left' || side === 'right';
+
+/** Every rectangle a route may never be drawn through: endpoints plus obstacles. */
+function entityRects(input: RouteInput): Rect[] {
+  return [input.from, input.to, ...(input.obstacles ?? [])];
+}
+
+/** Strict interior test — the boundary belongs to the shape's perimeter. */
+function insideRect(p: Point, r: Rect): boolean {
+  return p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h;
+}
+
+/** One authored waypoint that no valid route can honour. */
+export interface InvalidWaypoint {
+  /** Index in the authored `waypoints` array (stable across re-routes). */
+  index: number;
+  /** The authored point, exactly as it stands in the document. */
+  point: Point;
+  /** The entity rectangle the point sits inside. */
+  rect: Rect;
+}
+
+/**
+ * Explicit waypoints that lie inside an entity (the two endpoints or any
+ * obstacle). Reported instead of silently drawing the route through the shape
+ * and its label: the router renders a safe route without them, the document
+ * keeps the authored point, and the canvas explains why it was skipped.
+ */
+export function invalidWaypoints(input: RouteInput): InvalidWaypoint[] {
+  const rects = entityRects(input);
+  const out: InvalidWaypoint[] = [];
+  (input.waypoints ?? []).forEach(([x, y], index) => {
+    const point = { x, y };
+    const rect = rects.find((r) => insideRect(point, r));
+    if (rect) out.push({ index, point, rect });
+  });
+  return out;
+}
+
+/**
+ * Entity rectangles a polyline is drawn through. The rectangles are inset by
+ * half a unit so a route that merely touches a perimeter — the port it leaves
+ * from, the clearance stub it pays — is not a crossing.
+ */
+export function crossingEntities(points: Polyline, input: RouteInput): Rect[] {
+  const rects = entityRects(input);
+  return rects.filter((rect) => points.slice(1).some((point, index) =>
+    segmentEntersRect(points[index]!, point, insetRect(rect))));
+}
+
+/** Liang–Barsky clip: true when the segment spends length inside `r`. */
+function segmentEntersRect(a: Point, b: Point, r: Rect): boolean {
+  if (r.w <= 0 || r.h <= 0) return false;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const edges: [number, number][] = [
+    [-dx, a.x - r.x],
+    [dx, r.x + r.w - a.x],
+    [-dy, a.y - r.y],
+    [dy, r.y + r.h - a.y],
+  ];
+  let enter = 0;
+  let exit = 1;
+  for (const [p, q] of edges) {
+    if (p === 0) {
+      if (q < 0) return false;
+      continue;
+    }
+    const t = q / p;
+    if (p < 0) enter = Math.max(enter, t);
+    else exit = Math.min(exit, t);
+    if (enter > exit) return false;
+  }
+  return exit - enter > 1e-6;
+}
 
 const inwardOf = (from: Point, to: Point, normal: Point): boolean =>
   (to.x - from.x) * normal.x + (to.y - from.y) * normal.y < 0;
@@ -153,16 +357,28 @@ function stubbedRoute(a: Point, b: Point, sideA: Side, sideB: Side, channel: num
 }
 
 /**
- * Orthogonal route v1: straight line when anchors align; else a Z shape with
- * the channel at the mid between anchors. If the channel (or straight run)
- * crosses an obstacle, the channel shifts past the obstacle's nearest edge
- * (+ clearance). One detour per link — deterministic and stable (WP6 v1).
+ * Orthogonal route: explicit waypoints when the user authored them, otherwise
+ * the automatic Z/detour route.
+ *
+ * Waypoint contract: a waypoint outside every entity is authoritative and its
+ * detour is preserved, even when a shorter automatic route exists. A waypoint
+ * *inside* an entity cannot be honoured by any route that does not paint over
+ * the shape and its label, so it is skipped (never silently relocated) and
+ * `invalidWaypoints` reports it for the canvas to explain.
  */
 export function routeOrtho(input: RouteInput): Polyline {
   if (input.waypoints !== undefined && input.waypoints.length > 0) {
-    return routeThroughWaypoints(input); // F-19: user-stated path wins
+    return routeExplicit(input);
   }
   return routeAuto(input);
+}
+
+/** Route through the waypoints that can be honoured. */
+function routeExplicit(input: RouteInput): Polyline {
+  const dropped = new Set(invalidWaypoints(input).map((w) => w.index));
+  const kept = (input.waypoints ?? []).filter((_, index) => !dropped.has(index));
+  if (kept.length === 0) return routeAuto(input);
+  return routeThroughWaypoints({ ...input, waypoints: kept });
 }
 
 /** Route one link using its visual mode; orthogonal remains the default. */
@@ -323,14 +539,40 @@ function routeConflictCount(points: Polyline, routes: RouteObstacle[]): number {
   return conflicts;
 }
 
-function objectConflictCount(points: Polyline, obstacles: Rect[]): number {
+/**
+ * Interior conflicts, including the route's own endpoints. An automatic route
+ * has to leave and reach its ports without cutting through either shape — the
+ * port and the clearance stub only touch the perimeter, which the inset
+ * rectangles deliberately allow.
+ */
+function entityConflictCount(points: Polyline, input: RouteInput): number {
+  const rects = entityRects(input).map(insetRect);
   return points.slice(1).reduce((total, point, index) => total +
-    obstacles.filter((rect) => segIntersectsRect(points[index]!, point, rect)).length, 0);
+    rects.filter((rect) => segmentEntersRect(points[index]!, point, rect)).length, 0);
 }
 
 function pathLength(points: Polyline): number {
   return points.slice(1).reduce((total, point, index) => total +
     Math.abs(point.x - points[index]!.x) + Math.abs(point.y - points[index]!.y), 0);
+}
+
+/**
+ * Direction changes along one axis: a route that runs right, back left, then
+ * right again reads as a loop. Counted per axis so an ordinary Z or an
+ * obstacle detour (one turn each) stays at zero.
+ */
+function reversals(points: Polyline): number {
+  let total = 0;
+  for (const axis of ['x', 'y'] as const) {
+    let sign = 0;
+    for (let i = 1; i < points.length; i++) {
+      const step = Math.sign(points[i]![axis] - points[i - 1]![axis]);
+      if (step === 0) continue;
+      if (sign !== 0 && step !== sign) total++;
+      sign = step;
+    }
+  }
+  return total;
 }
 
 function shiftedChannel(points: Polyline, segment: number, channel: number): Polyline {
@@ -424,17 +666,21 @@ function routeCandidates(base: Polyline, input: RouteInput): Polyline[] {
   return candidates.map(compact).filter((points) => validAutomaticCandidate(points, input));
 }
 
-function avoidRouteConflicts(base: Polyline, input: RouteInput): Polyline {
-  const obstacles = input.obstacles ?? [];
+function routeScore(points: Polyline, input: RouteInput): number {
   const routes = input.routes ?? [];
-  if (objectConflictCount(base, obstacles) === 0 && routeConflictCount(base, routes) === 0) return base;
-  return routeCandidates(base, input).reduce((best, candidate) => {
-    const score = objectConflictCount(candidate, obstacles) * 100000 +
-      routeConflictCount(candidate, routes) * 10000 + pathLength(candidate);
-    const bestScore = objectConflictCount(best, obstacles) * 100000 +
-      routeConflictCount(best, routes) * 10000 + pathLength(best);
-    return score < bestScore ? candidate : best;
-  }, base);
+  // Ordered so a crossing outranks everything, a shared line with another
+  // connector outranks shape, and the readability terms only break ties.
+  return entityConflictCount(points, input) * 100000 +
+    routeConflictCount(points, routes) * 10000 +
+    reversals(points) * 1000 +
+    pathLength(points);
+}
+
+function avoidRouteConflicts(base: Polyline, input: RouteInput): Polyline {
+  if (entityConflictCount(base, input) === 0 && routeConflictCount(base, input.routes ?? []) === 0 &&
+    reversals(base) === 0) return base;
+  return routeCandidates(base, input).reduce((best, candidate) =>
+    routeScore(candidate, input) < routeScore(best, input) ? candidate : best, base);
 }
 
 function routeAuto(input: RouteInput): Polyline {

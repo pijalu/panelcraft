@@ -11,7 +11,7 @@ import {
   type Scene,
   type SceneLink,
 } from '../engine/render/scenegraph';
-import { routeLink, portPoint, type Side, type Polyline } from '../engine/render/router';
+import { routeLink, invalidWaypoints, crossingEntities, portPoint, type Side, type Polyline } from '../engine/render/router';
 import {
   invert,
   panBy,
@@ -212,6 +212,8 @@ export interface Snapshot {
   viewport: Transform;
   /** Committed route geometry shared with the mini-map (CX-02). */
   routes?: Record<string, Point[]>;
+  /** Route problems per link id, in plain words (item 13). */
+  routeWarnings?: Record<string, string[]>;
 }
 
 export interface PropertiesRequest {
@@ -439,6 +441,8 @@ export class CanvasController {
   private spaceDown = false;
   private suppressContextMenu = false;
   private routes = new Map<string, Polyline>();
+  /** Route problems per link id (invalid bends, unresolved crossings). */
+  private warnings = new Map<string, string[]>();
   private seq = 0;
   /** Set by loadState: the canvas only speaks for a file after it has one
    * (F-28 — a pre-load empty snapshot must not be mistaken for a canvas edit). */
@@ -499,6 +503,7 @@ export class CanvasController {
       selection: { objects: [...this.selObjects], links: [...this.selLinks] },
       viewport: this.t,
       routes: Object.fromEntries(this.routes),
+      ...(this.warnings.size > 0 ? { routeWarnings: Object.fromEntries(this.warnings) } : {}),
     };
   }
 
@@ -1087,6 +1092,7 @@ export class CanvasController {
 
   private recomputeRoutes(): void {
     this.routes.clear();
+    this.warnings.clear();
     // F-20: an endpoint may be an imported ghost (`alias.id`) — route to it too
     const endpoint = (id: string): { x: number; y: number; w: number; h: number } | undefined =>
       this.state.objects.find((o) => o.id === id) ?? this.ghosts.find((g) => g.id === id);
@@ -1097,18 +1103,49 @@ export class CanvasController {
       const obstacles = this.state.objects.filter(
         (o) => o.kind !== 'group' && o.id !== link.from && o.id !== link.to,
       );
-      this.routes.set(
-        link.id,
-        routeLink({
-          from, to, obstacles,
-          routes: [...this.routes].map(([id, points]) => ({ id, points })),
-          ...(link.allowOverlap === true ? { allowOverlap: true } : {}),
-          ...(link.waypoints ? { waypoints: link.waypoints } : {}),
-          ...(link.fromAnchor !== undefined ? { fromAnchor: link.fromAnchor } : {}),
-          ...(link.toAnchor !== undefined ? { toAnchor: link.toAnchor } : {}),
-        }, link.route),
-      );
+      const input = {
+        from, to, obstacles,
+        routes: [...this.routes].map(([id, points]) => ({ id, points })),
+        ...(link.allowOverlap === true ? { allowOverlap: true } : {}),
+        ...(link.waypoints ? { waypoints: link.waypoints } : {}),
+        ...(link.fromAnchor !== undefined ? { fromAnchor: link.fromAnchor } : {}),
+        ...(link.toAnchor !== undefined ? { toAnchor: link.toAnchor } : {}),
+      };
+      const points = routeLink(input, link.route);
+      this.routes.set(link.id, points);
+      const warnings = link.allowOverlap === true ? [] : this.warningsFor(link, input, points);
+      if (warnings.length > 0) this.warnings.set(link.id, warnings);
     }
+  }
+
+  /**
+   * Route problems a reader has to know about, in plain words and in authored
+   * order. The document keeps the authored point; only the drawing and this
+   * message reflect that it cannot be honoured.
+   */
+  private warningsFor(
+    link: DiagramLink,
+    input: {
+      from: Rect; to: Rect; obstacles: Rect[]; waypoints?: [number, number][];
+      fromAnchor?: number; toAnchor?: number; allowOverlap?: boolean;
+    },
+    points: Polyline,
+  ): string[] {
+    const entities = [input.from, input.to, ...input.obstacles];
+    const nameOf = (rect: Rect): string => {
+      const owner = entities.find((o) => o === rect) as unknown as DiagramObject | undefined;
+      return owner?.name ?? owner?.id ?? s('an entity');
+    };
+    const out = invalidWaypoints(input).map((invalid) =>
+      s('{link}: bend {n} at ({x}, {y}) is inside {entity} — the route skips it.', {
+        link: link.label ?? link.id, n: invalid.index + 1,
+        x: invalid.point.x, y: invalid.point.y, entity: nameOf(invalid.rect),
+      }));
+    out.push(...crossingEntities(points, input).map((rect) =>
+      s('{link}: no clear route past {entity} — the connector still crosses it.', {
+        link: link.label ?? link.id, entity: nameOf(rect),
+      })));
+    return out;
   }
 
   private sceneLinks(): SceneLink[] {
@@ -1127,6 +1164,7 @@ export class CanvasController {
           line: (l.line ?? (l.dashed ? 'dashed' : 'solid')) as 'solid' | 'dashed' | 'dotted',
           route: l.route,
           width: l.width,
+          ...(this.warnings.has(l.id) ? { warnings: this.warnings.get(l.id)! } : {}),
         },
       ];
     });
