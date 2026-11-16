@@ -273,36 +273,6 @@ entity moves, reload, undo/redo, view switches, and SVG export; retain valid
 explicit waypoint behavior. Review light/dark screenshots and run focused
 routing/render tests, the full browser suite, and all quality gates.
 
-## 14. Center entity labels using rendered geometry, including custom sizes
-
-**Observed behavior:** In the second screenshot above, the Shop label is not well
-centered inside its custom 57×36 shape; it reads visibly too low. The defect
-affects the entity's own label, independently of the connector-label placement
-problem in the previous item.
-
-**Expected behavior:** Entity labels are horizontally and optically vertically
-centered in their available content box at default and custom sizes. Small
-shapes, multiple lines, icons, glyphs, imported badges, and custom text colors
-must not introduce baseline offsets or clipping. Connector routing must use the
-same correct content geometry when avoiding labels.
-
-**Research:** The label layout adds `LABEL_ASCENT` to the SVG text `y` coordinate
-(`web/src/engine/render/shapes.ts`), while the stylesheet applies
-`dominant-baseline: central` to that same text (`web/src/ui/app.css`). This
-combines two vertical-positioning models and is consistent with the downward
-shift visible at 36 px height. Existing unit tests calculate expected bounds
-from SVG attributes rather than measuring the browser-rendered text, so they can
-pass while the visible label remains off-center.
-
-**Fix plan:** Add a failing real-browser regression using the supplied 57×36
-Shop object. Compare the rendered text bounding box center with the shape's
-content-box center instead of asserting only the `y` attribute. Establish one
-baseline model for entity labels and verify default/small/custom heights,
-multiple lines, every shape kind, icons, and both themes. Review screenshots
-with the route visible and hidden so entity-label centering and connector-label
-avoidance cannot be confused, then run focused render tests, visual review, and
-the full quality gates.
-
 ## 15. Icon management is limited to eight built-ins
 
 **Observed.** Objects can select only `cloud`, `database`, `gear`, `lock`, `mail`,
@@ -355,6 +325,19 @@ and light/dark/narrow screenshots. Mermaid/static SVG exports must state how lin
 children and source are represented or explicitly reported as unsupported.
 
 ## Closed this session
+
+- **Entity labels are centred by their rendered bounds again.** Two vertical
+  positioning models had been stacked: the SVG `y` carried a 12 px font ascent
+  *and* `.pc-label` centred the em box on that same coordinate, so every label
+  drifted 4 px low — most visible in the reported 57×36 Shop shape. `y` is now the
+  centre of its line box, one model, no compensating constant. Fixing the drift
+  exposed a real overlap the old shift had hidden: a 32 px datastore cannot fit
+  its lid, a line and the padding, so a block that does not fit is clamped to its
+  region top instead of overflowing into the shape's glyphs. Verified by a
+  real-browser assertion of rendered bounds against the layout model for every
+  kind in both themes, two unit tests pinning the model, 4 targeted and 165 full
+  browser tests, and the full unit/coverage/docs gates.
+  Write-up: `docs/archive/bugs-entity-label-centering.md`.
 
 - **A fresh profile now shows a subtle dots grid.** The hidden default was the
   whole defect — renderer, menu items and the `G` shortcut all worked. Flipping

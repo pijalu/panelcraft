@@ -197,8 +197,13 @@ export function contentHeight(kind: Kind, lineCount: number, hasIcon = false): n
   return text + 20 + icon;
 }
 
-/** Baseline offset inside one 16 px line box (share of the token line height). */
-export const LABEL_ASCENT = 12;
+/**
+ * Baseline offset from the top of one 16 px line box. Only half the line box,
+ * because the label stylesheet centres the em box on the `y` coordinate
+ * (`dominant-baseline: central` in `.pc-label`). One model, one number: adding
+ * a font ascent on top of a centred baseline is what pushed labels 4 px low.
+ */
+export const LABEL_CENTRE = LABEL_LINE_HEIGHT / 2;
 
 /** Centred label inside the content box (UX08-WP07). */
 const TEXT_MID = (obj: SceneObject): ElSpec[] => {
@@ -207,12 +212,14 @@ const TEXT_MID = (obj: SceneObject): ElSpec[] => {
   const { label } = box;
   const x = Math.max(label.left + 4, (label.left + label.right) / 2);
   // Centre the *text box*, not the baselines: a two-line block must keep equal
-  // air above and below, otherwise it reads bottom-heavy.
+  // air above and below, otherwise it reads bottom-heavy. A block that cannot fit
+  // its region (a 32 px-tall datastore with a lid) starts at the region top
+  // instead of overflowing upwards into the shape's own glyphs.
   const middle = (label.top + label.bottom) / 2;
-  const top = middle - (lines.length * LABEL_LINE_HEIGHT) / 2;
+  const top = Math.max(middle - (lines.length * LABEL_LINE_HEIGHT) / 2, label.top);
   return lines.map((line, i) => ({
     tag: 'text' as const,
-    attrs: { x, y: top + LABEL_ASCENT + i * LABEL_LINE_HEIGHT, class: 'pc-label' },
+    attrs: { x, y: top + LABEL_CENTRE + i * LABEL_LINE_HEIGHT, class: 'pc-label' },
     text: line,
   }));
 };

@@ -192,6 +192,16 @@ under `docs/archive/` with the executed plan, validation and review evidence.
 - **DOC-01** The user guide now documents the context-menu commands the canvas really offers
   and no longer advertises stacking commands that do not exist.
 
+### Fixed — entity label centering
+
+- Entity labels are centred on their rendered bounds. The SVG `y` carried a font
+  ascent while the stylesheet also centred the em box on it, so every label sat
+  4 px too low; `y` is now the centre of its line box and the ascent constant is
+  gone. A block too tall for its region (a 32 px datastore) is clamped to the
+  region top instead of overflowing into the shape's glyphs. The label region is
+  published through the existing `contentBox()` geometry so connector routing and
+  auto-fit share one calculation. See `docs/archive/bugs-entity-label-centering.md`.
+
 ### Changed — visible default grid
 
 - A profile that has never chosen a canvas grid now shows a subtle dots grid
