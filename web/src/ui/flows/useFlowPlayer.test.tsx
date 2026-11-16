@@ -44,6 +44,9 @@ flow "Refund" as refund {
 const mkAnimator = () => {
   const played: number[] = [];
   let stops = 0;
+  let pauses = 0;
+  let resumes = 0;
+  let settles = 0;
   const anim = {
     play: (beat: Beat, _ctx: BeatCtx) => {
       played.push(beat.index);
@@ -51,8 +54,24 @@ const mkAnimator = () => {
     stop: () => {
       stops += 1;
     },
+    pause: () => {
+      pauses += 1;
+    },
+    resume: () => {
+      resumes += 1;
+    },
+    settle: () => {
+      settles += 1;
+    },
   };
-  return { anim: anim as unknown as FlowAnimator, played, stops: () => stops };
+  return {
+    anim: anim as unknown as FlowAnimator,
+    played,
+    stops: () => stops,
+    pauses: () => pauses,
+    resumes: () => resumes,
+    settles: () => settles,
+  };
 };
 
 const mkCamera = () => {
@@ -184,6 +203,21 @@ describe('useFlowPlayer transport (M5-WP5)', () => {
     expect(h.result.current.state.status).toBe('paused');
     expect(h.result.current.state.progress).toEqual({ index: 5, total: 5 });
     expect(h.clk.pending()).toBe(0);
+    // A parked step must not keep animating while the dock says "paused":
+    // the beat jumps to its settled state instead (item 9).
+    expect(h.animator.settles()).toBeGreaterThan(0);
+  });
+
+  it('playFrom plays on from a beat instead of parking on it', () => {
+    // The flow pane's per-step play button: animation runs and the timer is
+    // armed, unlike the transport stepper (item 9).
+    act(() => {
+      h.result.current.playFrom(2);
+    });
+    expect(h.result.current.state.status).toBe('playing');
+    expect(h.result.current.state.progress).toEqual({ index: 2, total: 5 });
+    expect(h.animator.played.at(-1)).toBe(2);
+    expect(h.clk.pending()).toBe(1);
   });
 
   it('restart returns to beat 1 and clears choices', () => {
@@ -211,6 +245,20 @@ describe('useFlowPlayer transport (M5-WP5)', () => {
     expect(h.camera.restored()).toBe(1);
     expect(h.result.current.state.status).toBe('idle');
     expect(h.clk.pending()).toBe(0);
+  });
+
+  it('pause freezes the beat animation and resume continues it', () => {
+    // A token that keeps travelling while the transport is paused is an orphan
+    // animation (item 9).
+    expect(h.animator.pauses()).toBe(0);
+    act(() => {
+      h.result.current.pause();
+    });
+    expect(h.animator.pauses()).toBe(1);
+    act(() => {
+      h.result.current.resume();
+    });
+    expect(h.animator.resumes()).toBe(1);
   });
 
   it('play/pause toggles the auto-advance timer', () => {

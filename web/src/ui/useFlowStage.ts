@@ -85,7 +85,10 @@ export function useFlowStage(deps: FlowStageDeps): FlowPlayerApi {
     );
   }, [stage, deps.illustration]);
 
-  const noopBeat = useMemo(() => ({ play: () => {}, stop: () => {} }), []);
+  const noopBeat = useMemo(
+    () => ({ play: () => {}, stop: () => {}, pause: () => {}, resume: () => {}, settle: () => {} }),
+    [],
+  );
   const noopCam = useMemo(() => ({ focus: () => {}, save: () => {}, restoreSaved: () => {} }), []);
 
   const textOf = useMemo(

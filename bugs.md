@@ -35,49 +35,6 @@ and final archive criteria. Planning only: no implementation has been executed.
 
 
 
-## 9. Repair flow presentation framing, playback, sparks, and transport
-
-**Observed behavior:** Flow presentation does not behave as expected:
-
-1. Automatic camera zoom is too aggressive, producing close-ups instead of
-   preserving enough diagram context.
-2. Message animation stops too early in the step.
-3. The moving spark is visually plain; it should have an attractive neon glow.
-4. Buttons in presentation mode reportedly do not respond.
-
-**Expected behavior:** Automatic framing keeps the active participants, route,
-and label readable at a restrained zoom while retaining useful context. Message
-animation remains active for the intended step duration and reaches its endpoint
-before the step changes. Sparks have a clear neon-style core and glow in both
-themes without obscuring labels. Every presentation control — previous,
-play/pause, next, restart, exit, progress dots, and branch choices — responds to
-pointer and keyboard input.
-
-**Research:** The automatic camera currently fits only the active rectangles with
-48 px padding and allows the general 400% zoom maximum
-(`web/src/engine/anim/camera.ts`, `web/src/engine/render/viewport.ts`). One-way
-sparks run once for 900 ms by default, while a step dwells for 2500 ms;
-bidirectional sparks alone repeat until the beat ends
-(`web/src/engine/anim/timings.ts`, `web/src/engine/anim/engine.ts`). A spark is a
-6 px accent-coloured circle with a 55%-opacity trail and no glow
-(`web/src/ui/app.css`). Presentation button handlers exist in
-`web/src/ui/PresentDock.tsx`, but current browser scenarios do not exercise every
-transport button. The camera, timing, and plain-spark reports match the current
-implementation; the unresponsive-buttons report still needs an exact live-browser
-reproduction before assigning a cause.
-
-**Fix plan:** First add failing browser regressions for excessive message-step
-zoom, animation lifetime relative to dwell, and every presentation control in
-playing, paused, and branch-choice states. Capture the actual hit target and
-player state when a control fails. Then bound automatic presentation zoom and
-context independently of manual canvas zoom, define one timing contract so sparks
-do not finish prematurely, and implement a token-based neon core/glow with static
-reduced-motion emphasis. Verify endpoint completion, pause/resume, restart,
-branch choices, exit restoration, and no orphan animation. Review settled and
-mid-animation screenshots in light/dark themes at wide and narrow sizes, run
-accessibility checks, then run focused animation/presentation tests followed by
-the full unit, browser, and quality gates.
-
 ## 11. Verify hosted behavior against the deployed revision
 
 **Observed behavior:** The long-menu and long-filename defects are still visible
@@ -236,6 +193,29 @@ and light/dark/narrow screenshots. Mermaid/static SVG exports must state how lin
 children and source are represented or explicitly reported as unsupported.
 
 ## Closed this session
+
+- **Flow presentation frames, animates and responds as reported.** Four separate
+  defects, not one: the automatic camera fitted only the step's participants at
+  up to 400 % zoom, so a message between neighbouring shapes became a close-up
+  with the route, its label and the surrounding diagram cropped away; a one-way
+  spark ran its own 900 ms inside a 2500 ms step and then faded out, so the
+  arrival was never seen; the spark was a plain accent dot with no glow; and
+  "the buttons do not respond" reproduced as two real defects — the shell's key
+  handler swallowed Space/Enter while focus was on a dock button, and a parked
+  step published `paused` while its animation kept running, so the toggle needed
+  two presses. Presentation zoom is now capped at 1.25 with the union centred and
+  independent of the manual canvas zoom (an authored focus zoom is still kept);
+  one beat-lifetime contract places every spark inside the dwell with a visible
+  arrival margin and holds a one-way token at its endpoint; pause/resume reach the
+  animations, a parked step settles to its end state, and stop removes every
+  animation and the emptied layer; arrows/Escape stay global while a focused
+  control owns Space/Enter; and the token is a theme-token neon core with halos no
+  wider than 8 px, with a static endpoint mark under reduced motion. Verified by
+  camera/timing/lifetime unit tests, ten browser scenarios covering every control
+  by pointer and keyboard in playing, paused and branch states plus framing,
+  arrival, pause and orphan cleanup, the full unit/coverage/perf gates, and
+  light/dark screenshot review.
+  Write-up: `docs/archive/bugs-presentation-playback.md`.
 
 - **Long file names no longer hide the file actions.** A long `.pcd` name pushed
   duplicate / rename / delete out of the Files panel. The row's label was an

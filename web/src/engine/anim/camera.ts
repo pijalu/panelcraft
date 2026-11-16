@@ -35,6 +35,14 @@ export interface CameraIntent {
 /** Default intent: fit the participants (pre-WP13 behaviour). */
 const AUTO: CameraIntent = { mode: 'auto' };
 
+/**
+ * Presentation framing stays restrained. An automatic fit never zooms past this,
+ * so a message between two neighbouring shapes keeps the diagram around it
+ * instead of cropping to a close-up of their boxes (item 9). Manual canvas zoom
+ * is a separate control and is never consulted here.
+ */
+export const PRESENT_ZOOM_MAX = 1.25;
+
 const toCss = (t: Transform): string => `translate(${t.x}px, ${t.y}px) scale(${t.k})`;
 
 export interface CameraDeps {
@@ -47,12 +55,15 @@ export interface CameraDeps {
   clock: Clock;
   motion?: typeof MOTION;
   reducedMotion?: boolean;
+  /** Upper bound for an automatic fit (presentation only; not the canvas). */
+  maxZoom?: number;
 }
 
 export class CameraController {
   private readonly deps: CameraDeps;
   private readonly motion: typeof MOTION;
   private readonly reduced: boolean;
+  private readonly maxZoom: number;
   private saved: Transform | null = null;
   private glide: AnimHandle | null = null;
   private timer: number | null = null;
@@ -61,22 +72,35 @@ export class CameraController {
     this.deps = deps;
     this.motion = deps.motion ?? MOTION;
     this.reduced = deps.reducedMotion ?? false;
+    this.maxZoom = deps.maxZoom ?? PRESENT_ZOOM_MAX;
   }
 
-  /** Fit-transform for a set of rects (view padding 48px). fitRect already
-   * clamps zoom to ZOOM_MIN/MAX. */
+  /** Fit-transform for a set of rects (view padding 48px), bounded by the
+   * presentation zoom cap. fitRect already clamps zoom to ZOOM_MIN/MAX. */
   private target(rects: Rect[]): Transform | null {
     const union = unionRects(rects);
     if (union === null) return null;
-    return fitRect(union, this.deps.view(), 48);
+    const fit = fitRect(union, this.deps.view(), 48);
+    if (fit.k <= this.maxZoom) return fit;
+    // Centred on the same union, just less close: the step keeps the diagram
+    // around its participants (route, labels and neighbours stay readable).
+    const view = this.deps.view();
+    const k = this.maxZoom;
+    return {
+      x: view.w / 2 - (union.x + union.w / 2) * k,
+      y: view.h / 2 - (union.y + union.h / 2) * k,
+      k,
+    };
   }
 
   /** Viewport transform that frames the intent (null = nothing to do). */
   private intentTarget(intent: CameraIntent, rects: Rect[], current: Transform): Transform | null {
     if (intent.mode === 'auto' || intent.mode === 'overview') return this.target(rects);
-    // focus: centre the named canvas point, keeping the zoom unless one is given
+    // focus: centre the named canvas point. An authored zoom is a deliberate
+    // close-up and is kept; otherwise the current zoom is used, still capped so
+    // an inherited manual zoom cannot turn a step into a crop.
     const view = this.deps.view();
-    const k = clampZoom(intent.zoom ?? current.k);
+    const k = clampZoom(intent.zoom ?? Math.min(current.k, this.maxZoom));
     const x = intent.x ?? 0;
     const y = intent.y ?? 0;
     return { x: view.w / 2 - x * k, y: view.h / 2 - y * k, k };

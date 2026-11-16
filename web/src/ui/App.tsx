@@ -340,7 +340,7 @@ function playFrom(
 ): void {
   if (activePath === null) return;
   player.start(activePath, flowKey);
-  player.stepTo(index);
+  player.playFrom(index);
 }
 
 /** Screen-space box of the object being renamed (F-15 tracks pan/zoom). */

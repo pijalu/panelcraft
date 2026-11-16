@@ -2,12 +2,12 @@
 // M5-WP3 unit tests — CameraController (fit-step target computation, glide,
 // exit-restore). Fake player + fake clock: no real timers (handover protocol c).
 import { describe, expect, it } from 'vitest';
-import { CameraController } from './camera';
+import { CameraController, PRESENT_ZOOM_MAX } from './camera';
 import { MOTION } from './timings';
 import type { AnimHandle, AnimPlayer } from './ports';
 import type { Clock } from './ports';
 import type { Transform } from '../render/viewport';
-import { applyRect, unionRects } from '../render/viewport';
+import { applyRect, unionRects, ZOOM_MIN } from '../render/viewport';
 
 interface CamCall {
   kf: Record<string, string | number>[];
@@ -54,6 +54,62 @@ const mkDeps = (view: { w: number; h: number } = { w: 800, h: 600 }, reducedMoti
 
 const R_A = { x: 0, y: 0, w: 120, h: 80 };
 const R_B = { x: 200, y: 0, w: 120, h: 80 };
+
+describe('presentation framing (item 9)', () => {
+  it('caps an automatic fit so neighbours are not cropped away', () => {
+    const fx = mkDeps({ w: 1200, h: 700 });
+    // Two shapes a short hop apart: an unbounded fit would zoom to ~370 %.
+    const a = { x: 0, y: 0, w: 140, h: 70 };
+    const b = { x: 260, y: 0, w: 140, h: 70 };
+    fx.cam.snapTo([a, b], { x: 0, y: 0, k: 1 });
+    const t = fx.current();
+    expect(t.k).toBeCloseTo(PRESENT_ZOOM_MAX, 5);
+    // The union stays centred in the viewport…
+    const u = unionRects([a, b]) as NonNullable<ReturnType<typeof unionRects>>;
+    expect(t.x + (u.x + u.w / 2) * t.k).toBeCloseTo(600, 5);
+    expect(t.y + (u.y + u.h / 2) * t.k).toBeCloseTo(350, 5);
+    // …and the visible canvas is several times the pair, i.e. context remains.
+    expect(1200 / t.k).toBeGreaterThan(u.w * 2);
+  });
+
+  it('caps a single-shape step the same way', () => {
+    const fx = mkDeps({ w: 1200, h: 700 });
+    fx.cam.snapTo([{ x: 0, y: 0, w: 120, h: 80 }], { x: 0, y: 0, k: 1 });
+    expect(fx.current().k).toBeCloseTo(PRESENT_ZOOM_MAX, 5);
+  });
+
+  it('still zooms out for a wide step (the cap is an upper bound only)', () => {
+    const fx = mkDeps({ w: 1200, h: 700 });
+    const far = [
+      { x: 0, y: 0, w: 120, h: 80 },
+      { x: 4000, y: 1900, w: 120, h: 80 },
+    ];
+    fx.cam.snapTo(far, { x: 0, y: 0, k: 1 });
+    const k = fx.current().k;
+    expect(k).toBeLessThan(0.5);
+    expect(k).toBeGreaterThan(ZOOM_MIN);
+  });
+
+  it('ignores the manual canvas zoom it was called with', () => {
+    const wide = mkDeps({ w: 1200, h: 700 });
+    const zoomed = mkDeps({ w: 1200, h: 700 });
+    const rects = [R_A, R_B];
+    wide.cam.snapTo(rects, { x: 0, y: 0, k: 1 });
+    zoomed.cam.snapTo(rects, { x: -900, y: -400, k: 4 });
+    expect(zoomed.current()).toEqual(wide.current());
+  });
+
+  it('keeps an authored focus zoom but caps an inherited one', () => {
+    const authored = mkDeps({ w: 1200, h: 700 });
+    authored.cam.snapTo([R_A], { x: 0, y: 0, k: 1 });
+    authored.cam.focus([], { x: 0, y: 0, k: 1 }, { mode: 'focus', x: 100, y: 100, zoom: 3, durationMs: 0 });
+    expect(authored.current().k).toBeCloseTo(3, 5);
+
+    const inherited = mkDeps({ w: 1200, h: 700 });
+    inherited.cam.focus([], { x: 0, y: 0, k: 4 }, { mode: 'focus', x: 100, y: 100, durationMs: 0 });
+    expect(inherited.current().k).toBeCloseTo(PRESENT_ZOOM_MAX, 5);
+  });
+});
 
 describe('CameraController (M5-WP3)', () => {
   it('glides to the fit-transform of the actor union after the camera duration', () => {
@@ -152,15 +208,17 @@ describe('CameraController presentation intents (UX08-WP13)', () => {
     expect(fx.current()).toEqual({ x: 400 - 400 * 2, y: 300 - 300 * 2, k: 2 });
   });
 
-  it('focus clamps out-of-range zoom and falls back to the current zoom', () => {
+  it('focus clamps an out-of-range zoom and caps a zoom inherited from the canvas', () => {
     const fx = mkDeps();
     fx.cam.focus([], { x: 0, y: 0, k: 1 }, { mode: 'focus', x: 10, y: 10, zoom: 99 });
     fx.tick(MOTION.cameraMs);
     expect(fx.current().k).toBe(4);
+    // A step with no zoom of its own used to inherit the manual canvas zoom, so
+    // a close-up on the canvas became a close-up in the presentation.
     const kept = mkDeps();
     kept.cam.focus([], { x: 0, y: 0, k: 1.5 }, { mode: 'focus', x: 0, y: 0 });
     kept.tick(MOTION.cameraMs);
-    expect(kept.current().k).toBe(1.5);
+    expect(kept.current().k).toBe(PRESENT_ZOOM_MAX);
   });
 
   it('a duration override sets the glide length; zero applies immediately', () => {

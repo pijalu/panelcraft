@@ -3,7 +3,14 @@
 // progress dots and the reduced-motion probe.
 
 import { describe, expect, it } from 'vitest';
-import { isPresenting, prefersReducedMotion, presentAction, progressDots } from './present';
+import {
+  isControlTarget,
+  isPresenting,
+  prefersReducedMotion,
+  presentAction,
+  presentKeyIsGlobal,
+  progressDots,
+} from './present';
 
 describe('isPresenting', () => {
   it('is true for every non-idle state', () => {
@@ -35,6 +42,37 @@ describe('presentAction', () => {
     expect(presentAction(' ', true)).toBeNull(); // Ctrl+Space is a platform shortcut
     expect(presentAction('ArrowRight', true)).toBeNull();
     expect(presentAction('x')).toBeNull();
+  });
+});
+
+describe('presentKeyIsGlobal', () => {
+  it('lets a focused control keep the keys that activate it', () => {
+    for (const key of [' ', 'Spacebar', 'Enter']) {
+      expect(presentKeyIsGlobal(key, 'BUTTON')).toBe(false);
+    }
+    // The letter shortcuts would otherwise fight the control's own behaviour.
+    expect(presentKeyIsGlobal('p', 'BUTTON')).toBe(false);
+    expect(presentKeyIsGlobal(' ', 'INPUT')).toBe(false);
+    expect(presentKeyIsGlobal(' ', 'DIV', true)).toBe(false);
+  });
+
+  it('keeps arrows, paging and Escape global from anywhere', () => {
+    for (const key of ['ArrowRight', 'ArrowLeft', 'PageDown', 'PageUp', 'Escape']) {
+      expect(presentKeyIsGlobal(key, 'BUTTON')).toBe(true);
+    }
+  });
+
+  it('claims every key when nothing focusable owns it', () => {
+    expect(presentKeyIsGlobal(' ', 'BODY')).toBe(true);
+    expect(presentKeyIsGlobal('p', 'DIV')).toBe(true);
+  });
+
+  it('recognises the interactive element types', () => {
+    for (const tag of ['BUTTON', 'A', 'INPUT', 'TEXTAREA', 'SELECT']) {
+      expect(isControlTarget(tag), tag).toBe(true);
+    }
+    expect(isControlTarget('DIV')).toBe(false);
+    expect(isControlTarget('DIV', true)).toBe(true);
   });
 });
 

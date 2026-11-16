@@ -30,6 +30,12 @@ export interface FlowRects {
 export interface BeatPlayer {
   play(beat: Beat, ctx: BeatCtx): void;
   stop(): void;
+  /** Freeze the current beat's animation (transport pause). */
+  pause(): void;
+  /** Continue the frozen beat animation. */
+  resume(): void;
+  /** Show the beat's settled state at once (parked step, no motion). */
+  settle(): void;
 }
 
 /** Narrow camera port — the real CameraController satisfies it. */
@@ -144,6 +150,8 @@ export class FlowRunner {
 
   private awaitChoice(beat: Beat): void {
     this.cancelTimer();
+    // The chooser parks the flow: nothing may keep moving behind a dialog.
+    this.io.animator.settle();
     const alts =
       this.frame().plan.alts.find((a) => a.path === String(beat.index)) ?? null;
     this.io.publish({ status: 'paused', awaitingChoice: alts });
@@ -226,6 +234,7 @@ export class FlowRunner {
     if (done.retHere) {
       this.runBeat(false); // replay the goto beat's visual, no re-navigation
       this.cancelTimer();
+      this.io.animator.settle();
       this.io.publish({ status: 'paused' }); // loop checkpoint awaits transport
       return;
     }
@@ -277,7 +286,21 @@ export class FlowRunner {
     f.index = Math.max(0, Math.min(f.plan.beats.length - 1, index1 - 1));
     this.runBeat();
     this.cancelTimer(); // stepping parks: no auto-advance
+    // ...and it really is parked: the beat jumps to its settled state, because a
+    // dock that says "paused" while a token still travels is the wrong report.
+    this.io.animator.settle();
     this.io.publish({ status: 'paused' });
+  }
+
+  /** Play on from a 1-based beat (the flow pane's per-step play button): the
+   * beat runs with its animation and auto-advance, unlike a parked step. */
+  playFrom(index1: number): void {
+    if (this.stack.length === 0) return;
+    this.cancelTimer();
+    const f = this.frame();
+    f.index = Math.max(0, Math.min(f.plan.beats.length - 1, index1 - 1));
+    this.io.publish({ status: 'playing' });
+    this.runBeat();
   }
 
   /** Answer the current alt chooser; rebuilds the plan with the choice. */
@@ -300,6 +323,9 @@ export class FlowRunner {
 
   pause(): void {
     this.cancelTimer();
+    // The transport froze the beat, so the beat's animation freezes with it —
+    // a token that keeps travelling while paused is an orphan (item 9).
+    this.io.animator.pause();
     this.io.publish({ status: 'paused' });
   }
 
@@ -307,6 +333,7 @@ export class FlowRunner {
     const beat = this.frame().plan.beats[this.frame().index];
     if (beat === undefined) return;
     this.io.publish({ status: 'playing' });
+    this.io.animator.resume();
     this.scheduleAdvance(beat.delayMs);
   }
 
