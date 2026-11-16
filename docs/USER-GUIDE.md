@@ -1,6 +1,6 @@
 # PanelCraft — user guide
 
-Everything happens in your browser; nothing is sent anywhere (SPEC FR-S1).
+Everything happens in your browser; nothing is sent anywhere (the browser-local storage rule).
 Screenshots reference the light application theme; the dark theme mirrors every feature.
 Choose **View → Application theme → System / Light / Dark**. System follows live OS changes;
 Light and Dark override it. The choice is stored with browser-local workspace settings and is
@@ -153,6 +153,43 @@ and the CLI's `--theme` option.
   Pin objects to opt them out of re-layout.
 - **Dependencies panel**: select an object to see incoming/outgoing links and
   focus it (everything else fades).
+
+### C4 drill-down and embedded source
+
+A C4 element can own the diagram that explains it — a system opens its containers,
+a container opens its components. Author the relation in the code view (or in the
+properties panel's **Decomposition** section):
+
+```
+system shop "Webshop" {
+  drilldown "../containers/shop.pcd" view containers
+  source {
+    language "go"
+    text "func Charge(total Money) error {"
+    text "  return h.psp.Authorize(total)"
+    text "}"
+  }
+}
+```
+
+- The path is workspace-relative (resolved from the file that declares it), and the
+  optional `view` is a view *id* (`view "Containers" as containers { … }`).
+- **Opening it**: select the element and press **Open … diagram** in Properties.
+  The child opens with breadcrumbs (`Back to shop.pcd › Webshop`), a dashed parent
+  boundary naming the element and file, and a way back that keeps the trail. A
+  broken, missing, cyclic or duplicated relation never navigates: the bar says why.
+- Permitted transitions are the C4 zoom levels (`system`/`system_ext` → `level
+  container`, `container` → `level component` or `level deployment`). A child with no
+  `level` line is fine; `person`, `datastore`, `queue`, `note` and `group` cannot
+  decompose.
+- **Embedded source** stays local text: **View source** / **Add source** opens a
+  viewer that shows it (never executes or fetches it) and lets you edit it as one
+  undoable change. Limits: 64 KiB or 4096 lines per element, 256 KiB per file.
+- Imports (read-only ghosts *inside* a diagram), flow `goto` (jump between flows)
+  and drill-down (open a subordinate diagram) are three different things; only the
+  drill-down draws no edge.
+- Renaming or moving a child diagram rewrites the referring `drilldown` path for you.
+  Deleting it keeps the line and reports it, so you can re-point it in Properties.
 
 ### Search
 - `Ctrl/Cmd+P` — fuzzy search over files and objects; Enter jumps (opens the

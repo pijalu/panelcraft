@@ -4,6 +4,37 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-16 — C4 drill-down and embedded source (item 16)
+
+- A C4 element can now *own* a subordinate diagram. A new object line
+  `drilldown "<workspace path>" [view <id>]` declares that a `system`,
+  `system_ext` or `container` decomposes into another `.pcd` file, authored on the
+  parent only so an edge cannot be described twice. Allowed transitions follow the
+  zoom levels (system → container, container → component/deployment); a child that
+  declares no `level` is accepted.
+- Opening it is real navigation, not a rename of the two existing mechanisms:
+  imports still reuse objects as read-only ghosts *inside* a diagram and a flow
+  `goto` still jumps between flows, while a drill-down opens a *subordinate*
+  document with a breadcrumb trail (`Back to shop.pcd › Webshop`), a dashed
+  parent-context boundary naming the element and its file, and a keyboard-reachable
+  affordance in the properties panel. A broken, cyclic or duplicate relation keeps
+  the current diagram and explains why instead of navigating.
+- `source { language "…" text "…" … }` embeds a short piece of source text in the
+  document — one line per source line, 64 KiB / 4096 lines per object, 256 KiB per
+  document. It reaches the shell through a local viewer/editor and is shown, never
+  executed or fetched; saving it is one undoable document command.
+- Format, IR (v10), printer, TypeScript and Go parsers/validators/printers landed
+  together with corpus seeds (`c4-drilldown`, `sem-decomposition`) and the shared
+  TS⇄Go fixture, so round-trip and parity stay byte-exact. New syntax error `E116`
+  rejects an empty source block, which the printer would otherwise silently drop;
+  validation adds `P211` duplicate parent, `P212` missing target (warning), `P213`
+  escaping/non-`.pcd` path, `P214` incompatible level, `P215` a kind that cannot
+  decompose, `P216` cycle, `P217` source over the limits, `P218` unknown view id.
+  Renaming or moving a target rewrites every referring path in the same step.
+- Mermaid export names `decomposition links (drilldown)` and `embedded source` in
+  its declared drop list, and the exporter's catalogue test keeps the document in
+  sync. Details: [docs/archive/bugs-c4-drill-down.md](archive/bugs-c4-drill-down.md).
+
 ## 2026-11-15 — Project icons: portable, sanitized, manageable
 
 - A diagram can now carry its own icons. A new top-level `icon <handle> { label "…" media "image/svg+xml" data "<canonical Base64>" }` statement declares an SVG inside the `.pcd`, referenced by the existing object `icon name` property, so a file mailed, committed or rendered by the CLI looks the same everywhere — no sidecar asset, no network fetch, no icon font (the offline-only rule; ADR-0006).

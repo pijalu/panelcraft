@@ -50,7 +50,7 @@ older archived item has a similar title.
 | Routing agent / `fix/whole-route-validity` | 13 | router, route diagnostics, connector-label geometry/tests | After geometry contract with label agent | Do not edit entity-label baseline code; consume its geometry API. |
 | Label agent / `fix/entity-label-centering` | 14 | shape text layout, browser geometry tests | Immediately | Provide stable content/label rectangles to routing. |
 | Icon agent / `feat/project-icon-registry` | 15 | built-in assets, icon grammar/IR/render/management, parity | Immediately | First native-format feature to integrate; rebase drill-down onto it. |
-| Drill-down agent / `feat/c4-drill-down-source` | 16 | decomposition/source grammar, navigation/workspace UI, parity | Specification now; format after item 15 | Reuse the final format/parity layout from item 15. |
+| Drill-down agent / `feat/c4-drill-down-source` | 16 | decomposition/source grammar, navigation/workspace UI, parity — **closed** | Specification now; format after item 15 | Reuse the final format/parity layout from item 15. |
 
 ### Integration sequence
 
@@ -322,6 +322,9 @@ artefacts stay under `test-results/`; curated golden changes require an intentio
    run format/corpus/Go/render/workspace/browser/full quality gates before archiving.
 
 ## 12. Sub-plan 16 — genuine C4 decomposition and embedded source
+
+**Status:** closed — shipped as `drilldown`/`source` (IR v10); the write-up with
+evidence is [archive/bugs-c4-drill-down.md](archive/bugs-c4-drill-down.md).
 
 **Owner:** Drill-down agent. **Depends on:** item 15 merged; reuse its format/parity pattern.
 

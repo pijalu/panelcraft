@@ -63,33 +63,25 @@ from a clean first visit so an old cached client cannot be confused with a faile
 deployment. Make the release process require the relevant continuous-integration
 checks before publication, and retain the hosted test output as release evidence.
 
-## 16. No true C4 drill-down or embedded source view
-
-**Observed.** Imported objects appear as read-only ghosts and open their source
-file; flow `goto` navigates to another file. Neither expresses that one C4 element
-decomposes into a child diagram. Objects also cannot carry embedded source code.
-
-**Expected.** Let an entity link to a subordinate diagram/view and optionally embed
-source, so a system can open its container diagram and a container its component
-diagram. This must be a real C4 hierarchy with stable parent/child identity, not an
-import alias or a generic hyperlink. Selecting or keyboard-activating the entity's
-drill-down affordance should open the child with breadcrumbs/back navigation and a
-clear parent boundary/context; embedded source should open in a safe read/edit
-viewer without leaving browser-local storage.
-
-**Fix / test plan.** Review and extend SPEC/FILE-FORMAT with one canonical
-parent-to-child relation, allowed C4 level transitions, entity identity across
-levels, view selection, and embedded source language/content escaping. Define
-missing targets, cycles, duplicate links, rename/move/delete behavior, unsaved
-changes, import/ghost interaction, presentation behavior, and export semantics.
-Keep targets workspace-relative; never fetch URLs or execute source. Add navigation
-breadcrumbs, visible/focusable drill-down controls, and child-boundary rendering
-without duplicating or silently renaming the parent object. Test round trips,
-TypeScript/Go parity, broken/cyclic links, keyboard navigation, reload/ZIP export,
-and light/dark/narrow screenshots. Mermaid/static SVG exports must state how linked
-children and source are represented or explicitly reported as unsupported.
-
 ## Closed this session
+
+- **C4 drill-down with breadcrumbs and embedded source.**
+  A system could not open its container diagram and a container not its component
+  diagram: imported objects were read-only ghosts *inside* the current diagram and a
+  flow `goto` only jumped between flows, so neither expressed decomposition, and no
+  element could carry the snippet that explains it. A document now declares
+  `drilldown "<workspace path>" [view <id>]` on the parent only (system/system_ext →
+  container, container → component/deployment), and `source { language "…" text "…" }`
+  keeps a short piece of source text in the file. Opening a drill-down shows the
+  child with a breadcrumb trail, a parent-context boundary that names the element
+  and its file, and no edge (so SVG/PNG and CLI rendering are unchanged); the source
+  viewer displays text and never executes or fetches it. Grammar, IR v10, printer,
+  TypeScript and Go parsers/validators and the shared fixture landed together with
+  corpus seeds, so round-trip and parity stay byte-exact; `P211`–`P218` report
+  duplicate, missing, escaping, wrong-level, impossible, cyclic and unknown-view
+  relations, `E116` rejects an empty source block, and renaming or moving a target
+  rewrites every referring path in one step. Mermaid export names both drops.
+  Details: [docs/archive/bugs-c4-drill-down.md](docs/archive/bugs-c4-drill-down.md).
 
 - **Icons: 43 built-ins plus project-defined, portable, sanitized icons.**
   Objects could only pick one of eight built-in glyphs and there was no way to

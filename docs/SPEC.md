@@ -267,34 +267,34 @@ Single static binary, no runtime deps, all assets embedded (`go:embed`).
 
 ---
 
-### 4.11 C4 decomposition and embedded source (FR-D)
+### 4.11 C4 decomposition and embedded source
 
 An element may own a subordinate diagram, so a C4 model is navigable instead of
 flat. Grammar and diagnostics: [FILE-FORMAT.md](FILE-FORMAT.md) §3.2, §3.3, §10.
 
-* **FR-D1** `drilldown "<workspace path>" [view <id>]` on a `system`, `system_ext`
+* **Ownership** — `drilldown "<workspace path>" [view <id>]` on a `system`, `system_ext`
   or `container` declares that this element decomposes into the given `.pcd` file
   (optionally one named view). The relation is authored on the parent only; the
   child never declares a backlink, so there is one source of truth per edge.
-* **FR-D2** Allowed transitions follow the C4 zoom levels: system/system_ext →
+* **Allowed transitions** follow the C4 zoom levels: system/system_ext →
   `level container`, container → `level component` or `level deployment`. A child
   that declares no `level` is accepted; a mismatching one, a kind that cannot
   decompose (person, datastore, queue, note, group), a duplicated target, a cyclic
   chain, a missing file and an escaping or non-`.pcd` path are reported as
   diagnostics (P211–P218) instead of being silently repaired.
-* **FR-D3** A drill-down is opened from a visible, keyboard-reachable affordance on
+* **Navigation** — a drill-down is opened from a visible, keyboard-reachable affordance on
   the entity (properties panel plus canvas context action). The child opens in its
   own tab with breadcrumbs back through the trail, and a parent-context boundary
   that names the parent element and file — visually distinct from imported ghosts
   and never a duplicate of the parent object.
-* **FR-D4** `source { language "…" ; text "…" … }` embeds a short piece of source
+* **Embedded source** — `source { language "…" ; text "…" … }` embeds a short piece of source
   text in the document (one `text` line per source line, 64 KiB / 4096 lines per
   object). It is data: shown in a local read/edit viewer, never executed, never
   parsed as markup, never fetched; editing it is one undoable command.
-* **FR-D5** Breakdown, ghosts and flows stay distinct: an import reuses objects
+* **Distinctness** — imports, flows and drill-downs stay distinct: an import reuses objects
   read-only inside the diagram, a flow `goto` moves between flows, and a drill-down
   opens a subordinate diagram. Nothing is presented as a substitute for another.
-* **FR-D6** Exports declare themselves: decomposition links draw no edge, so SVG/PNG
+* **Exports** — exports declare themselves: decomposition links draw no edge, so SVG/PNG
   and CLI rendering are unaffected, and Mermaid export names `drilldown` and
   `source` in its documented drop list.
 
@@ -362,8 +362,8 @@ Rules: ids are stable strings (`[a-z][a-z0-9_]*`, unique per file); link endpoin
 resolve to objects or imported aliases; flows reference link ids for `msg` steps
 (mermaid-imported edges get auto ids `L1..Ln` recorded in `links:` so flows survive
 round-trips). `drilldown` is a parent-only relation to a workspace-relative `.pcd`
-file plus optional view id (FR-D1); `source` is line-oriented text the document owns
-(FR-D4). Neither is a link and neither is persisted outside the file.
+file plus optional view id; `source` is line-oriented text the document owns.
+Neither is a link and neither is persisted outside the file.
 
 ---
 
@@ -509,7 +509,7 @@ implemented and covered by tests.
 * FR-C12 copy/paste/duplicate within a file, with id re-allocation on paste.
 * FR-I1…FR-I3 imports: `import Alias as "./x.pcd"`, read-only ghosts rendered on the
   canvas, click-through to the source file, cycle detection.
-* FR-D C4 decomposition and embedded source: `drilldown` opens the subordinate
+* C4 decomposition and embedded source: `drilldown` opens the subordinate
   diagram with breadcrumbs and a parent-context boundary; `source` keeps a short
   piece of source text in the file behind a local viewer (FILE-FORMAT §3.2, §3.3).
 * FR-X / S6 CLI: Mermaid/PDL → canonical PDL conversion and real-Chrome SVG/PNG
