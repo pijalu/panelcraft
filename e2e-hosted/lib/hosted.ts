@@ -76,12 +76,33 @@ export async function watchOrigins(page: Page): Promise<string[]> {
   return foreign;
 }
 
-/** Replace the code view's text atomically and wait for the model to catch up. */
+/**
+ * Content-only view of a document for round-trip comparison: CodeMirror's line
+ * nodes carry their own newline, so blank lines would be counted twice, and the
+ * comparison is about *what* the document holds, not its spacing.
+ */
+function normalise(text: string): string {
+  return text
+    .replace(/\u200b/g, '')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line !== '')
+    .join('\n');
+}
+
+/** Replace the code view's text and wait until the model round-trips it. */
 export async function setDocument(page: Page, text: string): Promise<void> {
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.fill(text);
+  // A contenteditable `fill()` can lose the trailing lines when a re-render
+  // lands mid-keystroke; typing into a select-all selection is atomic.
+  await editor.click();
+  await editor.press('ControlOrMeta+a');
+  await page.keyboard.insertText(text);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  // Assert the document actually holds what was typed: a silently truncated
+  // document would make the following assertions test the wrong diagram.
+  expect(normalise(await documentText(page)), 'document text').toBe(normalise(text));
 }
 
 /** The code view's text — i.e. exactly what a save would write. */
