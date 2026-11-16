@@ -11,6 +11,10 @@ and the CLI's `--theme` option.
 
 - The left tree holds `.pcd` files; the toolbar creates files, imports `.pcd`
   / mermaid (`.mmd`/`.mermaid`) or a workspace `.zip`, and exports.
+- Hovering a row reveals **duplicate / rename / delete**; right-click the row (or
+  press `Shift+F10` on it) for the same actions in a menu. A very long name wraps
+  to two lines with an ellipsis instead of hiding those buttons — the tooltip and
+  the tab carry the full name.
 - Tabs across the top switch open files; the dot marks unsaved changes.
 - **Everything is stored in your browser** (IndexedDB) — use *Export ZIP*
   regularly for backups (the app reminds you; SPEC FR-S2) and *Snapshots*

@@ -192,6 +192,19 @@ under `docs/archive/` with the executed plan, validation and review evidence.
 - **DOC-01** The user guide now documents the context-menu commands the canvas really offers
   and no longer advertises stacking commands that do not exist.
 
+### Fixed — file row actions in a narrow panel
+
+- A long file name no longer hides the row actions in the Files panel. The name is
+  the only shrinkable part of the row, it wraps to two clamped lines with an ellipsis
+  (the tooltip and the tab carry the full name), and the duplicate/rename/delete
+  buttons keep a non-shrinking area inside the panel with no horizontal overflow.
+  Right-clicking a row — or pressing `Shift+F10`/the context-menu key on it — offers
+  the same actions in a menu built on the shared surface, so a cramped row, a touch
+  screen or a keyboard user can still reach them; the menu targets the row it was
+  opened from, delete keeps its two-step confirmation, and focus returns to that row
+  when the menu closes or a rename is cancelled instead of falling to the document
+  body. See `docs/archive/bugs-long-filenames-file-actions.md`.
+
 ### Fixed — menu viewport contract
 
 - Every menu surface now shares one viewport-safe contract. Placement is measured:

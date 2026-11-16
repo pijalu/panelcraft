@@ -3,10 +3,11 @@
 // rename (double-click / F2), duplicate, delete (two-step inline confirm),
 // new file/folder, and pointer-based drag-to-move (no HTML5 DnD — mirrors
 // the palette drag pattern, ADR-0001 chrome-only re-render).
-import { useState } from 'preact/hooks';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WorkspaceManager } from '../workspace/workspace';
 import { listDir } from '../workspace/fs';
 import { CloseIcon, CopyIcon, DisclosureClosedIcon, DisclosureOpenIcon, PencilIcon } from './icons';
+import { useRowMenu, type RowMenuTarget } from './fileRowMenu';
 import { baseName } from './paths';
 import { s } from './strings';
 
@@ -58,6 +59,49 @@ function buildRows(manager: WorkspaceManager): Row[] {
   return rows;
 }
 
+/**
+ * Pointer drag-to-move: the dragged path plus the row handlers (the file tree
+ * requirement to move files between folders). Only the primary button starts a
+ * drag, so a right-click stays a menu gesture.
+ */
+function useRowDrag(manager: WorkspaceManager) {
+  const [drag, setDrag] = useState<DragState>(IDLE_DRAG);
+
+  const down = (row: Row, e: PointerEvent): void => {
+    if (e.button !== 0) return; // right-click opens the row menu, it does not drag
+    if ((e.target as HTMLElement).closest('[data-no-drag]')) return;
+    setDrag({ path: row.path, suppress: false });
+  };
+
+  const up = (row: Row): void => {
+    if (drag.path === '' || drag.path === row.path) {
+      setDrag(IDLE_DRAG);
+      return;
+    }
+    const from = drag.path;
+    const targetDir = row.kind === 'folder' ? row.path : parentDir(row.path);
+    if (targetDir === parentDir(from) || targetDir.startsWith(`${from}/`)) {
+      setDrag(IDLE_DRAG); // same folder or into own subtree — nothing to do
+      return;
+    }
+    try {
+      manager.movePath(from, targetDir);
+      setDrag({ path: '', suppress: true }); // swallow the trailing click
+    } catch {
+      setDrag(IDLE_DRAG); // fs refused (into-self/exists) — keep layout
+    }
+  };
+
+  return {
+    drag,
+    down,
+    up,
+    reset: () => setDrag(IDLE_DRAG),
+    /** Force a re-render without changing the drag (folder expand/collapse). */
+    refresh: () => setDrag((d) => ({ ...d })),
+  };
+}
+
 export function FileTree({ manager, version, onOpen }: FileTreeProps) {
   const rows = buildRows(manager);
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -65,8 +109,8 @@ export function FileTree({ manager, version, onOpen }: FileTreeProps) {
   const [creating, setCreating] = useState<null | 'file' | 'folder'>(null);
   const [createName, setCreateName] = useState('');
   const [lastFolder, setLastFolder] = useState('');
-  const [drag, setDrag] = useState<DragState>(IDLE_DRAG);
   void version; // re-read happens via buildRows on each render
+  const { drag, down, up, reset, refresh } = useRowDrag(manager);
 
   const startRename = (path: string): void => {
     setRenaming(path);
@@ -86,7 +130,7 @@ export function FileTree({ manager, version, onOpen }: FileTreeProps) {
   const toggleFolder = (path: string): void => {
     if (collapsedFolders.has(path)) collapsedFolders.delete(path);
     else collapsedFolders.add(path);
-    setDrag((d) => ({ ...d })); // force re-render with new expansion state
+    refresh(); // re-render with the new expansion state
   };
 
   const onDelete = (path: string): void => {
@@ -97,6 +141,15 @@ export function FileTree({ manager, version, onOpen }: FileTreeProps) {
       setConfirmDelete(path);
     }
   };
+
+  // The row context menu carries the same actions as the inline buttons, so a
+  // long name that squeezes those buttons never makes an action unreachable.
+  const rowMenu = useRowMenu({
+    onOpen,
+    onDuplicate: (p) => manager.duplicatePath(p),
+    onRename: startRename,
+    onDelete,
+  });
 
   const commitCreate = (): void => {
     const path = lastFolder === '' ? createName : `${lastFolder}/${createName}`;
@@ -110,32 +163,6 @@ export function FileTree({ manager, version, onOpen }: FileTreeProps) {
     if (creating === 'folder') setLastFolder(path);
     setCreating(null);
     setCreateName('');
-  };
-
-  /* ---- pointer drag-to-move (FR-W1) ---- */
-
-  const onRowPointerDown = (row: Row, e: PointerEvent): void => {
-    if ((e.target as HTMLElement).closest('[data-no-drag]')) return;
-    setDrag({ path: row.path, suppress: false });
-  };
-
-  const onRowPointerUp = (row: Row): void => {
-    if (drag.path === '' || drag.path === row.path) {
-      setDrag(IDLE_DRAG);
-      return;
-    }
-    const from = drag.path;
-    const targetDir = row.kind === 'folder' ? row.path : parentDir(row.path);
-    if (targetDir === parentDir(from) || targetDir.startsWith(`${from}/`)) {
-      setDrag(IDLE_DRAG); // same folder or into own subtree — nothing to do
-      return;
-    }
-    try {
-      manager.movePath(from, targetDir);
-      setDrag({ path: '', suppress: true }); // swallow the trailing click
-    } catch {
-      setDrag(IDLE_DRAG); // fs refused (into-self/exists) — keep layout
-    }
   };
 
   return (
@@ -162,8 +189,8 @@ export function FileTree({ manager, version, onOpen }: FileTreeProps) {
             dragging={drag.path === row.path}
             collapsed={collapsedFolders.has(row.path)}
             suppressClick={drag.suppress}
-            onPointerDown={onRowPointerDown}
-            onPointerUp={onRowPointerUp}
+            onPointerDown={down}
+            onPointerUp={up}
             onOpenPath={onOpen}
             onToggleFolder={(p) => {
               setLastFolder(p);
@@ -174,10 +201,14 @@ export function FileTree({ manager, version, onOpen }: FileTreeProps) {
             onCancelRename={() => setRenaming(null)}
             onDuplicate={(p) => manager.duplicatePath(p)}
             onDelete={onDelete}
-            onSuppress={() => setDrag(IDLE_DRAG)}
+            onOpenMenu={(target, box) =>
+              rowMenu.open({ ...target, x: box.left, y: box.bottom })
+            }
+            onSuppress={reset}
           />
         ))}
       </ul>
+      {rowMenu.node}
     </nav>
   );
 }
@@ -239,40 +270,95 @@ interface TreeRowProps {
   onCancelRename: () => void;
   onDuplicate: (path: string) => void;
   onDelete: (path: string) => void;
+  /** Open the row menu at this row, anchored to the row's own box. */
+  onOpenMenu: (target: RowMenuTarget, box: { left: number; bottom: number }) => void;
   onSuppress: () => void;
+}
+
+/** The row's context-menu trigger box: the label's viewport rect. */
+function menuAnchor(el: HTMLElement): { left: number; bottom: number } {
+  const box = el.getBoundingClientRect();
+  return { left: box.left, bottom: box.bottom };
+}
+
+/**
+ * Inline rename input. It takes focus from a layout effect rather than
+ * `autoFocus`: the menu that started the rename unmounts in the same commit and
+ * would otherwise drop focus to the document body, swallowing the next key.
+ */
+function RenameInput(props: {
+  value: string;
+  onValue: (v: string) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+}) {
+  const ref = useRef<HTMLInputElement | null>(null);
+  useLayoutEffect(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+  return (
+    <input
+      ref={ref}
+      data-testid="tree-rename-input"
+      data-no-drag
+      value={props.value}
+      onInput={(e) => props.onValue((e.target as HTMLInputElement).value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') props.onCommit();
+        if (e.key === 'Escape') props.onCancel();
+      }}
+      onBlur={props.onCommit}
+    />
+  );
 }
 
 /** One tree row: label button, inline rename input, hover actions. */
 function TreeRow(props: TreeRowProps) {
   const { row } = props;
   const [draft, setDraft] = useState(row.name);
+  const nameRef = useRef<HTMLButtonElement | null>(null);
+  const wasRenaming = useRef(props.renaming);
+  // Leaving a rename must not drop focus to the document body: the next Tab
+  // would restart from the top of the app. A layout effect runs right after the
+  // commit, before the browser can dispatch another key.
+  useLayoutEffect(() => {
+    if (wasRenaming.current && !props.renaming) nameRef.current?.focus();
+    wasRenaming.current = props.renaming;
+  }, [props.renaming]);
+  const openMenu = (el: HTMLElement): void => {
+    props.onOpenMenu({ path: row.path, kind: row.kind }, menuAnchor(el));
+  };
   return (
     <li
       class={`tree-row tree-${row.kind}${props.dragging ? ' dragging' : ''}`}
       data-path={row.path}
       data-testid={`tree-row-${row.path}`}
       style={`padding-left: ${row.depth * 14 + 6}px`}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        props.onOpenMenu({ path: row.path, kind: row.kind }, { left: e.clientX, bottom: e.clientY });
+      }}
       onPointerDown={(e) => props.onPointerDown(row, e as unknown as PointerEvent)}
       onPointerUp={() => props.onPointerUp(row)}
     >
       {props.renaming ? (
-        <input
-          data-testid="tree-rename-input"
-          data-no-drag
+        <RenameInput
           value={draft}
-          onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') props.onCommitRename(row.path, draft);
-            if (e.key === 'Escape') props.onCancelRename();
-          }}
-          onBlur={() => props.onCommitRename(row.path, draft)}
-          autoFocus
+          onValue={setDraft}
+          onCommit={() => props.onCommitRename(row.path, draft)}
+          onCancel={props.onCancelRename}
         />
       ) : (
         <span class="tree-label">
           <button
             type="button"
+            ref={nameRef}
             class="tree-name"
+            // The name is clamped to two lines so a huge name cannot push the
+            // row actions out of the panel or turn one row into a column of
+            // letters. The tooltip carries the whole name.
+            title={row.name}
             onClick={() => {
               if (props.suppressClick) {
                 props.onSuppress();
@@ -283,10 +369,16 @@ function TreeRow(props: TreeRowProps) {
             }}
             onKeyDown={(e) => {
               if (row.kind === 'file' && e.key === 'F2') props.onStartRename(row.path);
+              // The platform context-menu chord (Windows/Linux keyboard, macOS
+              // Fn+Ctrl+F10 in some layouts) and the dedicated ContextMenu key.
+              const chord = e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10');
+              if (!chord) return;
+              e.preventDefault();
+              openMenu(e.currentTarget);
             }}
           >
             {row.kind === 'folder' && (props.collapsed ? <DisclosureClosedIcon /> : <DisclosureOpenIcon />)}
-            {row.name}
+            <span class="tree-text">{row.name}</span>
           </button>
         </span>
       )}

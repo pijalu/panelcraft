@@ -1701,11 +1701,11 @@ marker .pc-arrow[fill='none'] {
 }
 
 .tree-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   text-align: left;
   font-family: inherit;
   font-size: var(--pc-text-sm);
@@ -1716,12 +1716,36 @@ marker .pc-arrow[fill='none'] {
   cursor: pointer;
 }
 
+/* Two lines, then an ellipsis. A long unbroken name used to push the row
+   actions out of the panel; wrapping it whole turned a narrow panel into a
+   column of single letters, so the row keeps a predictable height and the
+   button's tooltip carries the full name (item 8). */
+.tree-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+/* The label is the only shrinkable part of the row: without `min-width: 0` the
+   flex item refuses to go below its content width and the actions get pushed
+   past the panel edge (item 8). */
+.tree-label {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .tree-folder > .tree-label > .tree-name {
   font-weight: 600;
 }
 
 .tree-actions {
   display: none;
+  flex: none;
   gap: 2px;
 }
 

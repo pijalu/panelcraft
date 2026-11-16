@@ -195,6 +195,8 @@ const EN = {
   "+ folder": "+ folder",
   "Duplicate": "Duplicate",
   "Duplicate {path}": "Duplicate {path}",
+  "Open": "Open",
+  "File actions": "File actions",
   "Rename": "Rename",
   "Rename {path}": "Rename {path}",
   "Delete {path}": "Delete {path}",

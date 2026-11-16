@@ -85,7 +85,10 @@ play mode, exports PNG/SVG for docs.
 ### 4.1 Workspace & files (FR-W)
 
 * **FR-W1** Virtual file tree with folders and `.pcd` files; create, rename, delete,
-  move (drag & drop), duplicate.
+  move (drag & drop), duplicate. Row actions stay reachable at any panel width: a
+  long name wraps to two clamped lines (full name in the tooltip) instead of pushing
+  the buttons out of view, and the row offers the same actions in a context menu
+  (right-click, `Shift+F10`/context-menu key) for pointer, touch and keyboard use.
 * **FR-W2** Multi-tab editing; unsaved-changes indicator; autosave (see FR-S1).
 * **FR-W3** Per-file import: `.pcd`, `.mmd`/`.mermaid` (mermaid text), `.txt` (treated as mermaid).
 * **FR-W4** Per-file export: `.pcd`, `.mmd` (mermaid subset export), `.svg`, `.png`

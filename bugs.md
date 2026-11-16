@@ -35,22 +35,6 @@ and final archive criteria. Planning only: no implementation has been executed.
 
 
 
-## 8. Keep long filenames and file actions reachable — schedule after long-menu fix
-
-**Observed behavior:** In the Files panel, an overly long filename pushes the
-file-action icons out of view.
-
-**Expected behavior:** Wrap long filenames across lines so the visible action
-icons remain reachable, and provide a context menu as an alternative way to
-invoke the file actions. Preserve pointer, touch, and keyboard operation without
-horizontal overflow.
-
-**Fix plan:** Add component and browser regressions using a long filename in a
-narrow Files panel. Verify the filename wraps, every action stays visible and
-operable, the context menu exposes the same actions, and keyboard focus remains
-usable. Review light/dark and narrow-viewport screenshots, then run the full
-unit, end-to-end, accessibility, and quality gates.
-
 ## 9. Repair flow presentation framing, playback, sparks, and transport
 
 **Observed behavior:** Flow presentation does not behave as expected:
@@ -252,6 +236,22 @@ and light/dark/narrow screenshots. Mermaid/static SVG exports must state how lin
 children and source are represented or explicitly reported as unsupported.
 
 ## Closed this session
+
+- **Long file names no longer hide the file actions.** A long `.pcd` name pushed
+  duplicate / rename / delete out of the Files panel. The row's label was an
+  unstyled flex item, so `min-width: auto` kept it at the name's full width and
+  the name never wrapped — only the ellipsis was fighting the actions. The label
+  is now the only shrinkable part of the row, the name wraps to two clamped lines
+  with the whole name in the tooltip, and the actions keep a non-shrinking area
+  with no horizontal overflow. The same actions are on a row context menu
+  (right-click or `Shift+F10`) built on the shared menu surface, so a cramped row,
+  a touch screen or a keyboard user can still reach them; the menu targets its own
+  row, delete keeps its two-step confirmation, and focus returns to that row when
+  the menu closes or a rename is cancelled. Verified by row geometry, menu entry
+  set, keyboard path, focus return and accessibility scans in the browser, five
+  component tests, the full unit/coverage and end-to-end gates, and light/dark
+  screenshot review (which rejected unbounded wrapping).
+  Write-up: `docs/archive/bugs-long-filenames-file-actions.md`.
 
 - **Every menu now shares one viewport-safe contract.** Menus were positioned
   from unmeasured guesses: nested submenus sat at `left: 100%` with no collision

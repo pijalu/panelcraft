@@ -29,47 +29,59 @@ export interface ContextMenuProps {
   y: number;
   items: ContextEntry[];
   onClose: () => void;
+  /** Element id of the surface; defaults to the canvas menu's id. */
+  id?: string;
+  /** Accessible name of the surface. */
+  label?: string;
+  /** `data-testid` of the surface. */
+  testId?: string;
+  /** Prefix for the per-entry test ids (`<prefix>-<entry id>`). */
+  itemTestIdPrefix?: string;
 }
 
 const isGroup = (entry: ContextEntry): entry is MenuGroup => 'items' in entry;
 
-/** Map the canvas action model onto the shared menu entries. */
-function toMenuEntries(items: ContextEntry[]): MenuEntry[] {
+/** Map the context action model onto the shared menu entries. */
+function toMenuEntries(items: ContextEntry[], prefix: string): MenuEntry[] {
   return items.map((entry): MenuEntry => {
     if (isGroup(entry)) {
       return {
         kind: 'submenu',
         id: entry.id,
         label: entry.label,
-        testId: `ctx-${entry.id}`,
-        items: entry.items.map(toAction),
+        testId: `${prefix}-${entry.id}`,
+        items: entry.items.map((item) => toAction(item, prefix)),
       };
     }
-    return toAction(entry);
+    return toAction(entry, prefix);
   });
 }
 
-function toAction(item: MenuItem): MenuEntry {
+function toAction(item: MenuItem, prefix: string): MenuEntry {
   return {
     kind: 'item',
     id: item.id,
     label: item.label,
-    testId: `ctx-${item.id}`,
+    testId: `${prefix}-${item.id}`,
     ...(item.disabled === true ? { disabled: true } : {}),
     onSelect: item.onSelect,
   };
 }
 
-/** Floating menu at (x, y) in viewport coordinates. */
-export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
+/**
+ * Floating menu at (x, y) in viewport coordinates. The canvas and the file tree
+ * share one surface: only the element id, accessible name and test ids differ,
+ * so placement, scrolling, keyboard and dismissal cannot drift between them.
+ */
+export function ContextMenu(props: ContextMenuProps) {
   return (
     <FloatingMenu
-      id="canvas-context"
-      label={s('Canvas actions')}
-      anchor={{ left: x, top: y }}
-      items={toMenuEntries(items)}
-      onClose={onClose}
-      testId="context-menu"
+      id={props.id ?? 'canvas-context'}
+      label={props.label ?? s('Canvas actions')}
+      anchor={{ left: props.x, top: props.y }}
+      items={toMenuEntries(props.items, props.itemTestIdPrefix ?? 'ctx')}
+      onClose={props.onClose}
+      testId={props.testId ?? 'context-menu'}
     />
   );
 }
