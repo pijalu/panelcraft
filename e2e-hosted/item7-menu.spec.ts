@@ -18,12 +18,24 @@ beta -> gamma : "two"
 
 /** Inside the window, allowing the shared 8 px edge margin. */
 async function expectInsideViewport(page: Page, selector: string): Promise<void> {
-  const box = (await page.locator(selector).boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 };
   const viewport = page.viewportSize() ?? { width: 0, height: 0 };
-  expect(box.x, `${selector} left`).toBeGreaterThanOrEqual(0);
-  expect(box.y, `${selector} top`).toBeGreaterThanOrEqual(0);
-  expect(box.x + box.width, `${selector} right`).toBeLessThanOrEqual(viewport.width + 0.5);
-  expect(box.y + box.height, `${selector} bottom`).toBeLessThanOrEqual(viewport.height + 0.5);
+  // Placement is measured and corrected after the surface mounts, so this is a
+  // "reaches a legal position" contract, not a first-frame snapshot: a menu that
+  // never comes back on screen still fails.
+  await expect
+    .poll(
+      async () => {
+        const box = (await page.locator(selector).boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 };
+        const outside =
+          box.x < 0 ||
+          box.y < 0 ||
+          box.x + box.width > viewport.width + 0.5 ||
+          box.y + box.height > viewport.height + 0.5;
+        return outside ? JSON.stringify(box) : 'inside';
+      },
+      { message: `${selector} stays inside ${viewport.width}x${viewport.height}` },
+    )
+    .toBe('inside');
 }
 
 test.describe('item 7 — menus on the hosted build', () => {

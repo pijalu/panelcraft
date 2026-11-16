@@ -238,14 +238,21 @@ $ HOSTED_URL=https://pijalu.github.io/panelcraft/ \
 13 passed (4.4s)
 ```
 
-The hosted run earned its keep immediately: the item 16 scenario failed against
-the live site while passing locally, and that failure was real evidence rather
-than noise — the seeding helper waited for the new file's tab to be *visible*
-instead of *selected*, so the following edit landed in the previous document and
-the child diagram opened empty. The screenshot from the failing run showed the
-blank child canvas; the helper now waits for `data-active="true"` before typing,
-and the same test then passed against the unchanged deployment (`e2e-hosted/` is
-not a published path, so fixing a test did not redeploy the site).
+The hosted run earned its keep immediately, and twice. First the item 16
+scenario failed against the live site while passing locally: the seeding helper
+waited for the new file's tab to be *visible* instead of *selected*, so the
+following edit landed in the previous document. Fixing that exposed the deeper
+one — the child document kept only its first six lines, because filling a
+contenteditable can drop the trailing lines when a re-render lands mid-keystroke.
+The helper now types into a select-all selection and then asserts the document
+actually round-trips what was typed, so a truncated document can no longer make
+the following assertions describe the wrong diagram. A third failure appeared
+only under `--repeat-each`: the menu-geometry helper measured a context menu in
+the frame before its placement correction, so it now polls for "reaches a legal
+position" — a menu that never comes back on screen still fails. All three were
+test-side races surfaced by a slower origin, and all three now pass against the
+unchanged deployment: `--repeat-each=3` → 39 passed (`e2e-hosted/` is not a
+published path, so fixing tests did not redeploy the site).
 
 ## Residual risks
 
