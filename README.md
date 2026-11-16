@@ -12,8 +12,9 @@ service-worker offline shell) and a single Go binary
 
 ## Quick start (users)
 
-- **Hosted**: open the GitHub Pages URL — works offline after the first load
-  (service worker caches the app shell; your data stays in your browser).
+- **Hosted**: [open PanelCraft on GitHub Pages](https://pijalu.github.io/panelcraft/) —
+  works offline after the first load (service worker caches the app shell; your
+  data stays in your browser).
 - **Self-host / CLI**: grab a binary from Releases (linux/darwin/windows ×
   amd64/arm64, checksums in `SHA256SUMS`), then:
 
