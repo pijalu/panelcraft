@@ -4,6 +4,19 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-17 — orthogonal waypoints have one whole-path simplification contract
+
+- Explicit bends on orthogonal links are now planned as one route instead of one
+  leg at a time. Entity crossings remain a hard constraint; clean candidates are
+  ranked by fewer whole-path reversals, fewer skipped bends, shorter length and
+  authored-index ties. A bend inside a shape or one that makes the connector run
+  out and back is skipped with a reason on the connector, while an intentional
+  detour that reverses nothing still survives.
+- The authored `waypoint` lines stay untouched in PDL, IR, the code view and the
+  file. Straight and curved routes keep every waypoint verbatim. This replaces
+  the earlier rule that every outside bend was authoritative.
+  Details: [docs/archive/bugs-orthogonal-waypoint-simplification.md](archive/bugs-orthogonal-waypoint-simplification.md).
+
 ## 2026-11-17 — presentation Play replays the current beat
 
 - Play in the presentation dock, the play bar and the presentation keyboard

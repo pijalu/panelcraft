@@ -69,8 +69,15 @@ and the CLI's `--theme` option.
   corner: pointers inside or beyond the object clamp to the nearest perimeter point,
   so the connector cannot detach. Endpoint positions are stored as normalized
   `anchor from` / `anchor to` values and retain their side-relative position after
-  resizing and reloads. Intermediate waypoints remain freely draggable and always
-  override automatic avoidance, including when **Allow overlap** is off. Labels
+  resizing and reloads. Intermediate waypoints remain freely draggable. On an
+  orthogonal route the whole path is planned at once: a bend inside a shape or one
+  that makes the connector run out and back is skipped, with the reason shown on
+  the connector and in its accessible description; an intentional detour that goes
+  around without reversing or crossing anything is still honoured. A single
+  authored bend is always that intentional detour unless it lies inside a shape;
+  reversal simplification starts when two or more bends are authored. The
+  `waypoint` lines in the code view never change because of this. Straight and
+  curved routes keep every waypoint verbatim. Labels
   automatically try nearby positions to avoid objects, other routes, other labels and
   the edge of the drawing; they wrap to a readable box on their own backing, paint above
   the shapes, and show a leader when they had to move away from their route. The whole

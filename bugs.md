@@ -36,23 +36,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 - Keep changes small and cohesive. Extract a module only when it gives a rule one owner; do not build a general framework or mix opportunistic cleanup into a bug fix. Preserve existing ports where possible and remove an API only after tracing its callers.
 - A format change is atomic: TypeScript and Go parser/printer/IR/validation, format documentation, corpus regeneration and parity fixtures land together. UI work also needs keyboard, reduced-motion, narrow-viewport, light/dark and no-network verification as applicable.
 
-## Orthogonal waypoint routes need an explicit simplification contract
-
-**Observed.** `routeExplicit` drops only bends inside entities, and `routeThroughWaypoints` scores each leg independently (`web/src/engine/render/router.ts:79-103,208-229,377-382`). The reported probe produces two whole-path direction reversals even though no segment literally intersects or retraces itself. Calling every reversal a “loop” is therefore imprecise.
-
-**Review finding.** The proposal conflicts with the current authoritative-waypoint contract in `docs/FILE-FORMAT.md:364-373` and with the intentional-detour assertion in `CanvasController.routeGeometry.test.ts:198-216`. “Greedily drop bends that reduce reversals” is a product behaviour change, not a small bug fix. It must not be slipped in while leaving those contracts untouched.
-
-**Expected.** For orthogonal routes only, simplify an authored out-and-back route by skipping the fewest bends necessary under a documented scoring rule. Preserve authored order and source text. A skipped bend must carry a reason on the connector. Never increase entity crossings. Straight and curved routes are outside this item. Explicitly supersede the old “every outside bend is authoritative” wording and replace—not weaken—the old detour test with tests for the new contract.
-
-**Fix plan.**
-
-1. Add the exact reported polyline as a failing whole-route test, plus an intentional detour that must survive, multiple removable bends, duplicate points, obstacles and an already-clean route. Define a reversal, retracing and a crossing separately in test helpers; do not use one as a synonym for another.
-2. Introduce one pure explicit-route planner whose result contains both the polyline and structured skip records (`inside-entity` or `causes-reversal`, authored index and point). Evaluate whole candidates deterministically: entity crossings are a hard constraint, fewer full-path reversals wins, then fewer dropped bends, shorter length and authored-index tie-breaks. If removal is iterative, prove termination and bound the work with a realistic many-bend performance case.
-3. Make the canvas consume that same result for rendering and warnings. Do not leave `invalidWaypoints` as a second, divergent decision path. The engine returns reason codes; the canvas owns plain-language text.
-4. Keep all authored `waypoint` lines unchanged in PDL/IR. Update the routing contract in `FILE-FORMAT.md`, `USER-GUIDE.md`, `SPEC.md` and `CHANGELOG.md`, including the intentional change to detour preservation.
-
-**Validation.** Focused router/controller tests first, then `npm test`, `npm run check`, route performance tests and built-app light/dark route screenshots. Assert both rendered geometry and warning text, and verify that the document text is unchanged.
-
 ## Update banner click blockage is not reproduced
 
 **Observed.** A user reports a stuck “Update available” banner with unclickable controls. The current code and existing e2e do not establish that failure. Review check run after `npm run build`: `npx playwright test e2e/ux08-pwa.spec.ts` completed with **4 passed**, including real Restart and Later clicks, reload, and queueing during playback. Thus the original plan to change presentation queueing would risk fixing working behaviour.

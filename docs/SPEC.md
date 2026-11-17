@@ -501,9 +501,11 @@ implemented and covered by tests.
 * FR-C8 waypoints are draggable and persisted (`waypoint` lines); orthogonal, straight,
   and curved routing with deterministic object/route/label collision avoidance for
   labels. A route is validated as a whole polyline: automatic routes avoid both
-  endpoints and other entities, and a waypoint that lies inside an entity is never
-  drawn through it — the route skips that bend, keeps the authored line in the file,
-  and the connector states why (see FILE-FORMAT “Overlap avoidance”).
+  endpoints and other entities. Orthogonal waypoints are scored as whole candidates
+  (crossings, then full-path reversals, skipped bends, length, authored-index tie);
+  an inside-entity or reversal-causing bend is skipped with a reason on the connector
+  while the authored line stays in PDL/IR. Straight and curved routes keep every
+  waypoint verbatim (see FILE-FORMAT “Overlap avoidance”).
 * FR-C10 canvas and object context menus (duplicate, delete, copy/paste, align,
   distribute, equalise size).
 * FR-C12 copy/paste/duplicate within a file, with id re-allocation on paste.

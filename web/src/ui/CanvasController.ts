@@ -17,7 +17,7 @@ import {
   type IconAsset,
   type IconAssets,
 } from '../engine/render/iconAssets';
-import { routeLink, invalidWaypoints, crossingEntities, portPoint, type Side, type Polyline } from '../engine/render/router';
+import { planLink, crossingEntities, portPoint, type RoutePlan, type Side, type Polyline } from '../engine/render/router';
 import {
   invert,
   panBy,
@@ -1184,17 +1184,17 @@ export class CanvasController {
         ...(link.fromAnchor !== undefined ? { fromAnchor: link.fromAnchor } : {}),
         ...(link.toAnchor !== undefined ? { toAnchor: link.toAnchor } : {}),
       };
-      const points = routeLink(input, link.route);
-      this.routes.set(link.id, points);
-      const warnings = link.allowOverlap === true ? [] : this.warningsFor(link, input, points);
+      const plan = planLink(input, link.route);
+      this.routes.set(link.id, plan.points);
+      const warnings = link.allowOverlap === true ? [] : this.warningsFor(link, input, plan);
       if (warnings.length > 0) this.warnings.set(link.id, warnings);
     }
   }
 
   /**
    * Route problems a reader has to know about, in plain words and in authored
-   * order. The document keeps the authored point; only the drawing and this
-   * message reflect that it cannot be honoured.
+   * order. The engine owns the skip decision and its reason code; the document
+   * keeps the authored point, so only this text and the drawing reflect it.
    */
   private warningsFor(
     link: DiagramLink,
@@ -1202,21 +1202,24 @@ export class CanvasController {
       from: Rect; to: Rect; obstacles: Rect[]; waypoints?: [number, number][];
       fromAnchor?: number; toAnchor?: number; allowOverlap?: boolean;
     },
-    points: Polyline,
+    plan: RoutePlan,
   ): string[] {
     const entities = [input.from, input.to, ...input.obstacles];
     const nameOf = (rect: Rect): string => {
       const owner = entities.find((o) => o === rect) as unknown as DiagramObject | undefined;
       return owner?.name ?? owner?.id ?? s('an entity');
     };
-    const out = invalidWaypoints(input).map((invalid) =>
-      s('{link}: bend {n} at ({x}, {y}) is inside {entity} — the route skips it.', {
-        link: link.label ?? link.id, n: invalid.index + 1,
-        x: invalid.point.x, y: invalid.point.y, entity: nameOf(invalid.rect),
-      }));
-    out.push(...crossingEntities(points, input).map((rect) =>
+    const label = link.label ?? link.id;
+    const out = plan.skips.map((skip) => skip.reason === 'inside-entity'
+      ? s('{link}: bend {n} at ({x}, {y}) is inside {entity} — the route skips it.', {
+          link: label, n: skip.index + 1, x: skip.point.x, y: skip.point.y, entity: nameOf(skip.rect),
+        })
+      : s('{link}: bend {n} at ({x}, {y}) is skipped because it makes the route reverse direction.', {
+          link: label, n: skip.index + 1, x: skip.point.x, y: skip.point.y,
+        }));
+    out.push(...crossingEntities(plan.points, input).map((rect) =>
       s('{link}: no clear route past {entity} — the connector still crosses it.', {
-        link: link.label ?? link.id, entity: nameOf(rect),
+        link: label, entity: nameOf(rect),
       })));
     return out;
   }

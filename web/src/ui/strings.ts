@@ -338,6 +338,7 @@ const EN = {
   "anchor link {endpoint}": "anchor link {endpoint}",
   "an entity": "an entity",
   "{link}: bend {n} at ({x}, {y}) is inside {entity} — the route skips it.": "{link}: bend {n} at ({x}, {y}) is inside {entity} — the route skips it.",
+  "{link}: bend {n} at ({x}, {y}) is skipped because it makes the route reverse direction.": "{link}: bend {n} at ({x}, {y}) is skipped because it makes the route reverse direction.",
   "{link}: no clear route past {entity} — the connector still crosses it.": "{link}: no clear route past {entity} — the connector still crosses it.",
   "Endpoints": "Endpoints",
   "Start": "Start",

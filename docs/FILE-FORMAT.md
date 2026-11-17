@@ -361,17 +361,30 @@ api -publishes-> events as L7 {
   reports it. `allow overlap` opts one link out of object and connector avoidance. It
   is emitted only when true; absence and false have identical default behavior.
 
-  Explicit `waypoint` geometry remains authoritative and bypasses *automatic*
-  avoidance with or without this override: a bend outside every shape is honoured even
-  when a shorter automatic route exists, and each leg between bends is still routed
-  around entity rectangles so a detour never becomes a crossing. A bend that lies
-  **inside** an entity cannot be drawn without covering the shape and its label, so it
-  is skipped rather than silently relocated: the printed document keeps the authored
-  `waypoint` line untouched, and the connector carries the reason (`data-route-warning`
-  and its accessible description), e.g. `charges: bend 2 at (432, 70) is inside Payment
-  provider — the route skips it.` Canvas, minimap, SVG/PNG and CLI use the committed
-  route polylines. Mermaid export declares `overlap overrides` as dropped because the
-  target has no equivalent data.
+  Explicit `waypoint` geometry on an **orthogonal** route is planned as a whole
+  path. This supersedes the earlier rule that every bend outside an entity was
+  authoritative: a bend that makes the connector run out and back is now skipped,
+  while an intentional detour that goes around an obstacle without reversing or
+  crossing anything is still honoured, even when it is longer than the automatic
+  route. A lone authored bend is that intentional detour: it is skipped only when
+  inside an entity, so reversal simplification starts at two authored bends. The
+  planner scores whole candidates in this order: entity crossings are
+  a hard constraint, then fewer full-path direction reversals (a sign change along
+  either axis), then fewer skipped bends, shorter Manhattan length and finally
+  authored-index ties that keep earlier bends. Work is bounded at O(n²) scored
+  routes: at most one bend is removed per step and at most n candidates are tried
+  per step.
+
+  A skipped bend is never relocated or deleted from the file. Its reason travels
+  with the connector as `inside-entity` (the point lies in an entity) or
+  `causes-reversal` (dropping it wins the whole-path score); the printed document
+  keeps every authored `waypoint` line unchanged in PDL and IR. The connector
+  carries the reason (`data-route-warning` and its accessible description), for
+  example `charges: bend 1 at (432, 254) is skipped because it makes the route
+  reverse direction.` Canvas, minimap, SVG/PNG and CLI use the same planned
+  polyline. Straight and curved routes are outside this rule and keep every
+  authored point verbatim. Mermaid export declares `overlap overrides` as dropped
+  because the target has no equivalent data.
 
 * **Connector sparks (FLOW-02, IR v7)**: `sparks <1..8>` sets how many tokens travel
   a link during a message step and `speed <0.25..4>` scales their motion, where `1`
