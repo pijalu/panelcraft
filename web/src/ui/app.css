@@ -2449,10 +2449,13 @@ marker .pc-arrow[fill='none'] {
   stroke: var(--pc-accent);
   transform-box: fill-box;
   transform-origin: center;
+  /* WAAPI reveals the border only for its scheduled pulse. */
+  opacity: 0;
 }
 
 .pc-token {
   fill: var(--pc-spark-core);
+  opacity: 0;
   /* Neon core: two tight halos, never wider than 8 px, so a spark can pass a
      label without washing it out (item 9). */
   filter: drop-shadow(0 0 3px var(--pc-spark-glow)) drop-shadow(0 0 8px var(--pc-spark-glow));
@@ -2460,15 +2463,16 @@ marker .pc-arrow[fill='none'] {
 
 /* Reduced motion: the arrived token is a still mark, same core and halo. */
 .pc-token-static {
+  opacity: 1;
   filter: drop-shadow(0 0 3px var(--pc-spark-glow)) drop-shadow(0 0 8px var(--pc-spark-glow));
 }
 
 .pc-trail {
   fill: none;
+  opacity: 0;
   stroke: var(--pc-spark-trail);
   stroke-width: 2;
   stroke-linecap: round;
-  opacity: 0.75;
   filter: drop-shadow(0 0 2px var(--pc-spark-glow));
 }
 

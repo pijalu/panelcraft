@@ -139,11 +139,14 @@ describe('illustration rendering (F-17)', () => {
     const a = animator();
     a.setIllustration('sequential-glow');
     a.play(MSG, ctx);
-    const ringDelays = fx.calls
-      .filter((c) => c.el.classList.contains('pc-ring'))
-      .map((c) => c.delayMs);
-    expect(ringDelays).toEqual([0, 90]);
-    expect(svg.querySelector('.pc-token')).not.toBeNull(); // FR-F4 preserved
+    const rings = fx.calls.filter((c) => c.el.classList.contains('pc-ring'));
+    const roles = rings.map((c) => c.el.getAttribute('data-role'));
+    expect(roles).toEqual(['source-pulse', 'target-pulse']);
+    // The glow is now sequenced, not a blanket stagger: the target border
+    // pulses when the spark arrives, well after the source pulse starts.
+    expect(rings[0]!.delayMs).toBe(0);
+    expect(rings[1]!.delayMs).toBeGreaterThan(0);
+    expect(svg.querySelector('[data-role="spark"]')).not.toBeNull(); // FR-F4 preserved
   });
 
   it('packet-burst: six packets leave the actor', () => {

@@ -5,6 +5,19 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Fixed — spark and border effects share one beat timeline
+
+- Connector sparks and actor border pulses no longer race on independent
+  timers. A pure numeric timeline schedules, for every spark and every
+  bidirectional leg, the source expansion, spark creation at peak expansion,
+  travel, disappearance, arrival expansion and final rest inside the beat's
+  dwell. The animator owns exactly the animations it creates and cancels them
+  on replay, step change, exit and file change; camera glides are untouched.
+  Reverse steps and bidirectional links pulse their resolved travel endpoints,
+  parallel lanes keep independent timelines, and reduced motion shows the same
+  settled frame without moving anything. A settled token now uses a unitless
+  SVG transform so Chromium actually paints it at the destination.
+
 ### Added — UX-08 application experience
 
 - **UX-08 WP13** Presenting is now a first-class action: a visible **Present** button (and the

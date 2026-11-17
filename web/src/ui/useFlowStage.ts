@@ -77,6 +77,12 @@ export function useFlowStage(deps: FlowStageDeps): FlowPlayerApi {
     setStage({ animator: new FlowAnimator(svg, { player: waapiPlayer, reducedMotion }), camera });
   }, [stage, canvas.svgRef, canvas.ctrlRef]);
 
+  // A file change invalidates the beat's actor ids and geometry. Cancel only
+  // this animator's work; camera glides and other players are untouched.
+  useEffect(() => {
+    if (stage !== null) stage.animator.stop();
+  }, [stage, deps.activePath]);
+
   // F-17: apply the flow's illustration choice to the animator
   useEffect(() => {
     if (stage === null) return;

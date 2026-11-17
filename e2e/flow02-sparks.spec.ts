@@ -56,7 +56,7 @@ async function selectLink(page: Page, id: string): Promise<void> {
   await expect(page.getByTestId('link-sparks')).toBeVisible();
 }
 
-const tokens = (page: Page) => page.getByTestId('canvas').locator('.pc-token');
+const tokens = (page: Page) => page.getByTestId('canvas').locator('[data-role="spark"]');
 
 for (const theme of ['light', 'dark'] as const) {
   test(`FLOW-02: spark count, speed, ping-pong and cleanup (${theme})`, async ({ page }) => {

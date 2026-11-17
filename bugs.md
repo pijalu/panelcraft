@@ -67,21 +67,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 **Validation.** The new failing case must fail before the fix and pass after it. Re-run the complete PWA spec, keyboard activation, light/dark and narrow-viewport screenshots, `npm run check` and `npm test`. Record the reproduction state in this item before closing it.
 
-## Spark and border effects need one beat timeline
-
-**Observed.** `FlowAnimator.play` pulses every actor immediately, while `travel` starts sparks immediately and leaves one-way tokens filled at their endpoints (`web/src/engine/anim/engine.ts:115-155,298-395`). This does not implement source-pulse → travel/disappear → target-pulse. Independent WAAPI calls have no shared lifecycle model, and clearing a layer does not itself prove that detached animations were cancelled.
-
-**Expected.** Each spark has a deterministic per-link sequence: source border expands; the spark is created at the defined expansion point and the source border returns to rest; the spark follows the resolved direction; on arrival it disappears and the target border expands and returns to rest. Multiple sparks repeat their own creation/reception effects. Reverse and bidirectional links use actual travel endpoints. All effects finish inside the beat’s dwell, and reduced motion shows only the final visible state.
-
-**Fix plan.**
-
-1. Specify the timeline numerically before editing: source start, spark creation, travel start/arrival, target pulse and final rest for every spark index. Clarify whether creation occurs at peak expansion or after unexpansion; tests must encode that choice rather than the ambiguous phrase “after expansion”.
-2. Build a pure timeline/value function shared by all spark counts and directions. Account for ring duration, staggering, minimum travel, arrival margin and total dwell so auto-advance cannot cut off the target pulse. Use `BeatLink.from`/`to`, not the unordered actor ring set.
-3. Give `FlowAnimator` explicit ownership of its animation handles/session and cancel that ownership on replay, step change, stop and file change. Keep the `BeatPlayer` boundary narrow; do not scatter timeouts through Preact components or globally cancel camera animations.
-4. Test event order and computed visibility, not element count alone. Include one/multiple sparks, flipped and bidirectional links, parallel lanes, very short dwell, pause/replay, step change, exit and reduced motion. Define how repeated bidirectional arrivals pulse borders rather than ignoring them.
-
-**Validation.** Deterministic timeline unit tests with fake player/clock, real Chromium WAAPI assertions and filmstrips at source pulse, mid-travel, arrival and settled state in both themes. Then run animation/presentation e2e, `npm run check` and `npm test`.
-
 ## Dedicated presentation URL anchor
 
 **Observed.** There is no location-hash/history integration in the presentation shell. `#present=<flow-id>` is absent. A flow id alone is not a globally shareable document address: workspace content is browser-local and the active file is restored locally.

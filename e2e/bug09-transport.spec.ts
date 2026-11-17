@@ -312,10 +312,10 @@ test.describe('presentation framing (item 9)', () => {
     await page.getByTestId('flow-play-main').click();
     await page.getByTestId('pb-present').click();
     await page.getByTestId('present-dot-2').click();
-    const token = canvas(page).locator('.pc-token').first();
+    const token = canvas(page).locator('[data-role="arrival-token"]').first();
     await expect(token).toHaveCount(1, { timeout: 5000 });
     // The beat-lifetime contract: travel ends inside the dwell, so the arrival
-    // is visible instead of the spark vanishing at its own 900 ms.
+    // is marked by a settled token instead of a spark vanishing at 900 ms.
     await expect
       .poll(
         async () =>
@@ -338,7 +338,8 @@ test.describe('presentation framing (item 9)', () => {
       return String(anim?.currentTime ?? -1);
     });
     expect(still).toBe(arrived);
-    await expect(canvas(page).locator('.pc-token')).toHaveCount(1);
+    await expect(canvas(page).locator('[data-role="arrival-token"]')).toHaveCount(1);
+    await expect(canvas(page).locator('[data-role="spark"]')).toHaveCount(1);
     await capture(page, 'item9-token-arrived-light');
     await page.emulateMedia({ colorScheme: 'dark' });
     await capture(page, 'item9-token-arrived-dark');
@@ -353,7 +354,7 @@ test.describe('presentation replay (item 9)', () => {
     await seed(page, MSG_FIRST_DOC);
     await page.getByTestId('flow-play-main').click();
     await page.getByTestId('pb-present').click();
-    const token = canvas(page).locator('.pc-token').first();
+    const token = canvas(page).locator('[data-role="spark"]').first();
     await expect(token).toHaveCount(1, { timeout: 5000 });
     const travelTime = (): Promise<number> =>
       token.evaluate((el) => Number((el as Element).getAnimations()[0]?.currentTime ?? -1));
@@ -412,14 +413,17 @@ test.describe('presentation replay (item 9)', () => {
     await page.getByTestId('present-restart').click();
     await page.getByTestId('present-dot-1').click();
     await expect(page.getByTestId('present-dock')).toHaveAttribute('data-status', 'paused');
+    const arrived = canvas(page).locator('[data-role="arrival-token"]').first();
     await expect
       .poll(async () =>
-        token.evaluate((el) => {
+        arrived.evaluate((el) => {
           const anim = (el as Element).getAnimations()[0];
           return anim === undefined ? 'gone' : anim.playState;
         }),
       )
       .toBe('finished');
+    const moving = canvas(page).locator('[data-role="spark"]').first();
+    await expect(moving).toHaveCSS('opacity', '0');
 
     // Exiting removes every animation layer, token and trail.
     await page.getByTestId('present-exit').click();

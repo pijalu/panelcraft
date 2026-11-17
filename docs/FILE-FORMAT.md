@@ -379,9 +379,15 @@ api -publishes-> events as L7 {
   behaviour exactly and are never printed. Counts are staggered deterministically
   along the path; a one-way link completes once per step, while a `<->`
   bidirectional link reverses at the far end and ping-pongs until the step ends.
-  `flip` only chooses the initial direction. Sparks never change flow timing, step
-  dwell or validation, and reduced motion keeps the static emphasis with no
-  moving tokens.
+  `flip` only chooses the initial direction. Each spark follows one numeric beat
+  timeline shared with the border pulses: the source border expands, the spark
+  is created at peak expansion while the border unexpands, it disappears at the
+  arrival endpoint as that border expands and returns to rest, and a settled
+  token holds the last endpoint until the step changes. Bidirectional arrivals
+  pulse alternating endpoints. Every phase, including stagger and the final
+  rest, fits inside the step's dwell; reduced motion shows only the settled
+  token and static emphasis. Sparks never change flow timing, step dwell or
+  validation.
 
 * **Arrow visual model (F-12)** — links accept these `style` keys, all optional:
 

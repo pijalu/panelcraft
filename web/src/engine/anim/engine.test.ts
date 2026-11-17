@@ -6,7 +6,8 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { FlowAnimator, type BeatCtx } from './engine';
 import type { AnimHandle, AnimPlayer } from './ports';
-import { MOTION, travelTiming } from './timings';
+import { MOTION } from './timings';
+import { beatTimeline } from './timeline';
 import type { Beat } from '../flows/plan';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -14,6 +15,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 interface PlayerCall {
   el: Element;
   kf: Record<string, string | number>[];
+  opts: { durationMs: number; delayMs?: number; fill?: string };
   durationMs: number;
   easing: string;
   fill: string;
@@ -28,6 +30,7 @@ const mkPlayer = (): { player: AnimPlayer; calls: PlayerCall[] } => {
         calls.push({
           el,
           kf: [...kf],
+          opts,
           durationMs: opts.durationMs,
           easing: opts.easing ?? 'linear',
           fill: opts.fill ?? 'none',
@@ -238,20 +241,23 @@ describe('FlowAnimator tokens, rings, badges (FR-F4)', () => {
     const layer = svg.querySelector('.pc-anim-layer');
     expect(layer?.querySelector('.pc-token')).not.toBeNull();
     expect(layer?.querySelector('.pc-trail')).not.toBeNull();
-    const tokenCall = fx.calls.find((c) => c.el.classList.contains('pc-token'));
+    const tokenCall = fx.calls.find((c) => c.el.getAttribute('data-role') === 'spark');
+    const settled = fx.calls.find((c) => c.el.getAttribute('data-role') === 'arrival-token');
     expect(tokenCall).toBeDefined();
-    // The beat owns the timing (item 9): the token arrives before the step
-    // changes and holds there instead of vanishing after its own 900 ms.
-    expect(tokenCall?.durationMs).toBe(travelTiming(MOTION.stepDelayMs, 1, 1).durationMs);
-    expect(tokenCall?.fill).toBe('forwards');
-    expect(tokenCall?.kf.length).toBeGreaterThan(1); // sampled travel keyframes
+    // One numeric timeline owns border pulses, travel and the settled token;
+    // the moving spark disappears at arrival, the settled one holds the beat.
+    const t = beatTimeline({ dwellMs: MOTION.stepDelayMs, count: 1, speed: 1 });
+    expect(tokenCall?.durationMs).toBe(t.sparks[0]!.passes[0]!.target.end);
+    expect(tokenCall?.kf.at(-1)?.opacity).toBe(0);
+    expect(settled?.opts.fill).toBe('forwards');
+    expect(tokenCall?.kf.length).toBeGreaterThan(1);
     expect(tokenCall?.kf[0]?.transform).toContain('translate(0');
   });
 
   it('flip reverses the token travel', () => {
     const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry() });
     anim.play(beatOf({ index: 2, kind: 'msg', actors: ['a', 'b'], links: [{ linkId: 'ab', from: 'b', to: 'a', flipped: true }] }), ctx);
-    const tokenCall = fx.calls.find((c) => c.el.classList.contains('pc-token'));
+    const tokenCall = fx.calls.find((c) => c.el.getAttribute('data-role') === 'spark');
     const first = tokenCall?.kf[0]?.transform ?? '';
     const last = tokenCall?.kf.at(-1)?.transform ?? '';
     expect(first).toContain('translate(100'); // starts at the step-to end
@@ -305,7 +311,7 @@ describe('FlowAnimator tokens, rings, badges (FR-F4)', () => {
           [{ index: 5, kind: 'process', title: '', actors: ['b'], links: [], dim: [], delayMs: 0, camera: { mode: 'hold' }, cameraIds: [] }],
         ],
       }), ctx);
-    const tokenCalls = fx.calls.filter((c) => c.el.classList.contains('pc-token'));
+    const tokenCalls = fx.calls.filter((c) => c.el.getAttribute('data-role') === 'spark');
     expect(tokenCalls.length).toBe(1);
     expect(svg.querySelectorAll('.pc-dim').length).toBe(2);
   });
