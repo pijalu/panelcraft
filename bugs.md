@@ -36,20 +36,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 - Keep changes small and cohesive. Extract a module only when it gives a rule one owner; do not build a general framework or mix opportunistic cleanup into a bug fix. Preserve existing ports where possible and remove an API only after tracing its callers.
 - A format change is atomic: TypeScript and Go parser/printer/IR/validation, format documentation, corpus regeneration and parity fixtures land together. UI work also needs keyboard, reduced-motion, narrow-viewport, light/dark and no-network verification as applicable.
 
-## Update banner click blockage is not reproduced
-
-**Observed.** A user reports a stuck “Update available” banner with unclickable controls. The current code and existing e2e do not establish that failure. Review check run after `npm run build`: `npx playwright test e2e/ux08-pwa.spec.ts` completed with **4 passed**, including real Restart and Later clicks, reload, and queueing during playback. Thus the original plan to change presentation queueing would risk fixing working behaviour.
-
-**Expected.** Whenever the banner is the topmost interactive surface, Restart and Later receive real pointer and keyboard activation. Later hides only the banner and leaves Restart available in the application menu. Presentation/modal behaviour remains intentional: a hidden or modal-covered banner is not expected to receive clicks, and a queued offer must not interrupt playback.
-
-**Review/fix plan.**
-
-1. Treat this as **unreproduced**, not as a proven z-index defect. Capture the exact shell state, waiting-worker state, console errors, bounding boxes, computed `pointer-events`, stacking contexts and `document.elementFromPoint` at both button centres. Cover narrow viewports, browser zoom, unapplied-code confirmation, menus/dialogs, presentation and reload.
-2. Add a failing Playwright case only when a concrete blocked state is identified; a synthetic forced `pointer-events: none` test would not reproduce the product bug. Verify actual state changes after the clicks, not merely button visibility.
-3. Make the smallest localized fix after the hit-test evidence. If the defect is lifecycle-related, keep `UpdateController` as the state owner rather than adding another flag. The unused `PwaHandle.playbackEnded` callback and duplicated controller/UI visibility are review risks to investigate, not proven causes and not licence for a broad rewrite.
-
-**Validation.** The new failing case must fail before the fix and pass after it. Re-run the complete PWA spec, keyboard activation, light/dark and narrow-viewport screenshots, `npm run check` and `npm test`. Record the reproduction state in this item before closing it.
-
 ## Hamburger menu needs task-based groups
 
 **Observed.** `buildAppMenu` is mostly separator-delimited, although Export is already a submenu (`web/src/ui/appMenuEntries.ts:68-107,258-278`). `Menu` already supports submenus. Converting every separator block mechanically into another level would bury frequent actions and contradict the stated goal of keeping common commands reachable.

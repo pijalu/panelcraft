@@ -4,6 +4,19 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-17 — the update offer leaves the presentation shell
+
+- A waiting-worker offer that was already visible no longer stays in the
+  chrome-free presentation shell under the transparent advance surface.
+  Presentation now hides the banner row with the rest of the editor chrome;
+  leaving presentation restores the same offer with Restart and Later
+  hit-testable. No lifecycle flag or service-worker behaviour changed.
+- The browser hit-test review covers narrow and zoomed viewports, menus, modals,
+  the presentation launcher, presentation and paused frames, and reload,
+  including real pointer and keyboard activation and the exact worker state,
+  hit stack and pointer-event data. Details:
+  [docs/archive/bugs-update-banner-hit-test.md](archive/bugs-update-banner-hit-test.md).
+
 ## 2026-11-17 — orthogonal waypoints have one whole-path simplification contract
 
 - Explicit bends on orthogonal links are now planned as one route instead of one

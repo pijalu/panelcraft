@@ -113,8 +113,8 @@ test.describe('dedicated presentation URL anchor', () => {
     await expect(page.getByTestId('app-shell')).toHaveAttribute('data-presenting', 'false');
     await expect.poll(() => hashOf(page)).toBe('');
     await page.goForward();
-    await expect(page.getByTestId('app-shell')).toHaveAttribute('data-presenting', 'true');
     await expect.poll(() => hashOf(page)).toBe(ANCHOR);
+    await expect(page.getByTestId('app-shell')).toHaveAttribute('data-presenting', 'true');
 
     await exitPresent(page);
     await expect.poll(() => hashOf(page)).toBe('');
@@ -180,6 +180,7 @@ test.describe('dedicated presentation URL anchor', () => {
     await page.getByTestId('tree-create-input').fill('other.pcd');
     await page.getByTestId('tree-create-input').press('Enter');
     await expect(page.getByTestId('tab-other.pcd')).toBeVisible();
+    await expect(page.locator('.cm-content')).toContainText('pcd 1.0');
     await page.evaluate((hash) => {
       window.history.replaceState(null, '', window.location.pathname + hash);
     }, ANCHOR);
