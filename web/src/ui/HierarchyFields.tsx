@@ -16,7 +16,7 @@ export interface HierarchyFieldsProps {
   /** Resolved relation of the selected element, or the reason it cannot open. */
   target: DrillTarget | null;
   /** Author a relation (one undoable step); `null` clears it. */
-  onSet: (path: string | null, view?: string) => void;
+  onSet: (path: string | null) => void;
   onOpen: () => void;
   /** True when the element already carries a source block. */
   hasSource: boolean;
@@ -41,19 +41,13 @@ function RelationStatus(props: { target: DrillTarget | null; onOpen: () => void 
   );
 }
 
-/** Path + view inputs; the relation is set from here, one commit per click. */
+/** Path input; the relation is set from here, one commit per click. */
 function RelationEditor(props: { target: DrillTarget | null; onSet: HierarchyFieldsProps['onSet'] }) {
   const current = props.target !== null && !isProblem(props.target) ? props.target : null;
   const [path, setPath] = useState(current?.path ?? '');
-  const [view, setView] = useState(current?.view ?? '');
   const apply = (): void => {
     const trimmedPath = path.trim();
-    const trimmedView = view.trim();
-    if (trimmedPath === '') {
-      props.onSet(null);
-      return;
-    }
-    props.onSet(trimmedPath, trimmedView === '' ? undefined : trimmedView);
+    props.onSet(trimmedPath === '' ? null : trimmedPath);
   };
   return (
     <>
@@ -64,15 +58,6 @@ function RelationEditor(props: { target: DrillTarget | null; onSet: HierarchyFie
           value={path}
           placeholder={s('containers/shop.pcd')}
           onInput={(e) => setPath((e.target as HTMLInputElement).value)}
-        />
-      </label>
-      <label class="field">
-        <span class="field-label">{s('Child view id (optional)')}</span>
-        <input
-          data-testid="prop-drill-view"
-          value={view}
-          placeholder={s('containers')}
-          onInput={(e) => setView((e.target as HTMLInputElement).value)}
         />
       </label>
       <div class="prop-row">

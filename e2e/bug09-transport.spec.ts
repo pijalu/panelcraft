@@ -219,12 +219,10 @@ system bank "Bank"
 ada -> shop : "browses"
 shop -requests-> bank : "charge" as L1
 
-view "Base" {
-  layout saved
-  position ada (120, 140)
-  position shop (360, 140)
-  position bank (700, 140)
-}
+layout saved
+position ada (120, 140)
+position shop (360, 140)
+position bank (700, 140)
 
 flow "Checkout" as main {
   intro "Kick off"

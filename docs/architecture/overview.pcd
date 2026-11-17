@@ -59,10 +59,8 @@ flow "Docs self-hosting" as docs {
   conclusion "Doc drift caught before release"
 }
 
-view "Topology" {
-  layout auto LR
-  hide tag internal
-}
+layout auto LR
+hide tag internal
 
 note n1 "No write endpoints exist server-side; storage stays in the browser" { attach idb }
 note n2 "Render CLI reuses the same SPA for pixel-identical output" { attach chrome }

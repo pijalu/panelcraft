@@ -16,12 +16,10 @@ system erp "ERP"
 user -requests-> shop as L1
 shop <-> erp as L2
 
-view "Base" {
-  layout saved
-  position user (60, 90)
-  position shop (300, 90)
-  position erp (540, 90)
-}
+layout saved
+position user (60, 90)
+position shop (300, 90)
+position erp (540, 90)
 
 flow "Burst" as burst {
   intro "Start"
@@ -38,7 +36,6 @@ async function seedDoc(page: Page): Promise<void> {
   await page.locator('.cm-content').press('ControlOrMeta+a');
   await page.keyboard.insertText(DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  await page.getByTestId('view-select').selectOption('Base');
   await page.getByTestId('collapse-code').click();
   await page.getByTestId('flow-row-burst').click();
 }

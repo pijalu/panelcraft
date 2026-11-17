@@ -4,14 +4,14 @@
     {
       "code": "P204",
       "message": "position overlap at (10, 20): \"a\" and \"b\"",
-      "line": 10,
-      "col": 3,
+      "line": 8,
+      "col": 1,
       "severity": "info"
     },
     {
       "code": "P203",
       "message": "style targets non-existent id \"ghost\"",
-      "line": 13,
+      "line": 11,
       "col": 1,
       "severity": "warning"
     }

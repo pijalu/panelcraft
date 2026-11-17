@@ -51,7 +51,7 @@ describe('FLOW-02 spark format', () => {
 
   it('round-trips through the workspace canvas state', () => {
     const doc = parsePDL(DOC).doc!;
-    const state = docToState(doc, undefined);
+    const state = docToState(doc);
     expect(state.links[0]?.sparks).toBe(3);
     expect(state.links[0]?.speed).toBe(2);
     const back = stateToDoc(state);

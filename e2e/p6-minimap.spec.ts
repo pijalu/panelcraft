@@ -12,13 +12,11 @@ system d "Store"
 a -> b : "request"
 b -> c : "enqueue"
 c -> d : "write"
-view "Default" {
-  layout saved
-  position a (40, 40)
-  position b (480, 60)
-  position c (80, 420)
-  position d (560, 440)
-}
+layout saved
+position a (40, 40)
+position b (480, 60)
+position c (80, 420)
+position d (560, 440)
 `;
 
 test('FR-C1: mini-map pans by pointer and keyboard and tracks the viewport', async ({ page }) => {

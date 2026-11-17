@@ -8,13 +8,12 @@ import { CanvasController, DEFAULT_SHAPE } from './ui/CanvasController';
 import { docToState } from './workspace/workspace';
 import { iconAssetsOf } from './engine/render/iconAssets';
 import { exportSvg } from './workspace/io';
-import { effectiveView, fadeSets, findView } from './ui/views/viewDoc';
+import { effectiveLayout, fadeSets } from './ui/layoutDoc';
 
 export interface CliRenderOptions {
   width: number;
   height?: number;
   theme: 'light' | 'dark';
-  view?: string;
 }
 
 export interface CliRenderResult {
@@ -81,9 +80,6 @@ export function renderDiagram(source: string, options: CliRenderOptions): CliRen
 
 function renderDiagramInTheme(source: string, options: CliRenderOptions): CliRenderResult {
   const doc = parseSource(source);
-  if (options.view !== undefined && findView(doc, options.view) === undefined) {
-    throw new Error(`view "${options.view}" not found`);
-  }
   const width = options.width;
   const height = options.height ?? Math.round(width * 9 / 16);
   if (!Number.isFinite(width) || width <= 0) throw new Error('width must be a positive number');
@@ -103,8 +99,8 @@ function renderDiagramInTheme(source: string, options: CliRenderOptions): CliRen
   const ctrl = new CanvasController(svg);
   ctrl.setIconAssets(iconAssetsOf(doc)); // IR v9: document icons render in exports
   try {
-    ctrl.loadState(docToState(doc, options.view));
-    const ev = effectiveView(doc, options.view);
+    ctrl.loadState(docToState(doc));
+    const ev = effectiveLayout(doc);
     if (ev.layout.mode === 'auto') {
       const current = ctrl.currentPositions();
       const parentOf = new Map<string, string>();

@@ -170,7 +170,7 @@ function checkKind(ctx: DrillCheckCtx, obj: Obj): boolean {
   return false;
 }
 
-/** Allowed level transition (`P214`) and view id (`P218`) of a readable child. */
+/** Allowed level transition (`P214`) of a readable child. */
 function checkChild(ctx: DrillCheckCtx, obj: Obj, targetPath: string): void {
   const allowed = ALLOWED_CHILD_LEVELS[obj.kind];
   if (allowed === undefined) return;
@@ -185,21 +185,6 @@ function checkChild(ctx: DrillCheckCtx, obj: Obj, targetPath: string): void {
       obj.pos.col,
     ));
   }
-  checkViewExists(ctx, obj, child, targetPath);
-}
-
-/** The optional `view` id must exist in the child file (`P218`). */
-function checkViewExists(ctx: DrillCheckCtx, obj: Obj, child: Doc, targetPath: string): void {
-  const view = obj.drilldown?.view;
-  if (view === undefined) return;
-  const declared = child.views.some((v) => v.id === view);
-  if (declared) return;
-  ctx.out.push(diag(
-    'P218',
-    `"${targetPath}" has no view with id "${view}" (add \`as ${view}\` to a view line)`,
-    obj.pos.line,
-    obj.pos.col,
-  ));
 }
 
 /** Target must be reachable, `.pcd`, inside the workspace and acyclic. */
@@ -271,7 +256,7 @@ function checkSource(doc: Doc, out: Diagnostic[]): void {
 }
 
 /**
- * Registers every hierarchy finding for `doc` (§3.2/§3.3, codes P211–P218).
+ * Registers every hierarchy finding for `doc` (§3.2/§3.3, codes P211–P216).
  * `file` is the document's workspace path and `read` its file probe: without them
  * only the local rules (kind, duplicate target, source limits, path shape) run.
  */

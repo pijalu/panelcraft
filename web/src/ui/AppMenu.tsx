@@ -17,6 +17,7 @@ import {
 import { downloadBlob, downloadText, readFileAsBytes, readFileAsText } from './download';
 import { baseName, stem } from './paths';
 import { s } from './strings';
+import type { CommandSelection, RouteResetTarget } from './commandPolicy';
 
 export interface AppMenuProps {
   manager: WorkspaceManager;
@@ -38,6 +39,10 @@ export interface AppMenuProps {
   update?: AppMenuUpdate;
   /** UX08-WP05: canvas grid preference (absent before the workspace loads). */
   grid?: AppMenuGrid;
+  /** Canvas selection for the shared reset-command policy. */
+  selection: CommandSelection;
+  onResetRoutes: (target: RouteResetTarget) => void;
+  onResetDiagramLayout: () => void;
 }
 
 export function AppMenu(props: AppMenuProps): ComponentChildren {
@@ -95,8 +100,11 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
     theme: props.theme.preference,
     privateMode: ready && props.privateMode,
     layout: props.ui.layout,
+    selection: props.selection,
     grid: props.grid,
     actions: {
+      resetDiagramLayout: props.onResetDiagramLayout,
+      resetRoutes: props.onResetRoutes,
       importFiles: () => filesRef.current?.click(),
       importZip: () => zipRef.current?.click(),
       exportCurrent,

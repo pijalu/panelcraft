@@ -12,6 +12,8 @@ function actions(): AppMenuActions {
     exportWorkspaceZip: vi.fn(),
     openPanel: vi.fn(),
     resetLayout: vi.fn(),
+    resetDiagramLayout: vi.fn(),
+    resetRoutes: vi.fn(),
     setTheme: vi.fn(),
     history: vi.fn(),
     present: vi.fn(),
@@ -31,6 +33,7 @@ function context(overrides: Partial<AppMenuContext> = {}): AppMenuContext {
     theme: 'system',
     privateMode: false,
     layout: defaultLayout(1600),
+    selection: { objects: [], links: [] },
     actions: actions(),
     ...overrides,
   };

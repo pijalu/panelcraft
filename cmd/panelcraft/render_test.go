@@ -16,11 +16,9 @@ const renderSource = `pcd 1.0
 person ada "Ada"
 system web "Web"
 ada -> web : "calls"
-view "Detail" {
-  layout saved
-  position ada (40, 60)
-  position web (280, 60)
-}
+layout saved
+position ada (40, 60)
+position web (280, 60)
 `
 
 func TestRenderValidation(t *testing.T) {
@@ -62,7 +60,7 @@ func TestRenderChromeSVGAndPNG(t *testing.T) {
 	t.Run("svg", func(t *testing.T) {
 		out := filepath.Join(dir, "diagram.svg")
 		var stdout, stderr strings.Builder
-		args := []string{input, "--out", out, "--width", "800", "--theme", "dark", "--view", "Detail", "--chrome", chrome}
+		args := []string{input, "--out", out, "--width", "800", "--theme", "dark", "--chrome", chrome}
 		if got := runRender(args, &stdout, &stderr); got != 0 {
 			t.Fatalf("render svg exit %d: %s", got, stderr.String())
 		}

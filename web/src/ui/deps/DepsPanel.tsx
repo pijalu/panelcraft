@@ -7,14 +7,13 @@ import { useEffect, useMemo } from 'preact/hooks';
 import { parsePDL } from '../../engine/format/parser';
 import type { Doc } from '../../engine/model/types';
 import type { CanvasController } from '../CanvasController';
-import { effectiveView } from '../views/viewDoc';
+import { effectiveLayout } from '../layoutDoc';
 import { adjacency, depsFade, type DepEntry } from './depsDoc';
 import { s } from '../strings';
 
 export interface DepsPanelProps {
   text: string | null;
   filePath: string | null;
-  viewName: string | undefined;
   /** Selected object id (objects only; links don't get a deps panel). */
   activeId: string | null;
   ctrl: CanvasController | null;
@@ -46,7 +45,7 @@ export function DepsPanel(props: DepsPanelProps) {
     return d;
   }, [props.text]);
 
-  const ev = useMemo(() => (doc ? effectiveView(doc, props.viewName) : null), [doc, props.viewName]);
+  const ev = useMemo(() => (doc ? effectiveLayout(doc) : null), [doc]);
 
   // Fade ownership: deps focus while an object is selected; view fade else.
   // No file → clear (canvas may outlive the file).

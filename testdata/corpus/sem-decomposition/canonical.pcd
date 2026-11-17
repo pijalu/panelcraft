@@ -3,7 +3,7 @@ title "Decomposition diagnostics"
 level context
 
 system shop "Webshop" {
-  drilldown "containers/shop.pcd" view components
+  drilldown "containers/shop.pcd"
 }
 system billing "Billing" {
   drilldown "containers/shop.pcd"

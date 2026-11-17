@@ -19,12 +19,10 @@ system erp "ERP"
 user -requests-> shop as L1
 shop -requests-> erp as L2
 
-view "Base" {
-  layout saved
-  position user (60, 80)
-  position shop (300, 80)
-  position erp (540, 80)
-}
+layout saved
+position user (60, 80)
+position shop (300, 80)
+position erp (540, 80)
 `;
 
 async function seedDoc(page: Page): Promise<void> {
@@ -34,7 +32,6 @@ async function seedDoc(page: Page): Promise<void> {
   await page.locator('.cm-content').press('ControlOrMeta+a');
   await page.keyboard.insertText(DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  await page.getByTestId('view-select').selectOption('Base');
   // The code panel takes canvas width; keep the three objects clickable.
   await page.getByTestId('collapse-code').click();
 }
@@ -162,7 +159,7 @@ for (const theme of ['light', 'dark'] as const) {
     await openWorkspacePanels(page, ['code']);
     await page.locator('.cm-content').click();
     await page.locator('.cm-content').press('ControlOrMeta+a');
-    await page.keyboard.insertText(DOC.replace('view "Base"', 'flow "Named" as named {\n  intro "hello"\n}\n\nview "Base"'));
+    await page.keyboard.insertText(DOC.replace('layout saved', 'flow "Named" as named {\n  intro "hello"\n}\n\nlayout saved'));
     await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
     await expect(page.getByTestId('flow-row-named')).toContainText('Named');
 

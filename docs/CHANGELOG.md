@@ -4,6 +4,22 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-18 — named views removed, layout state promoted
+
+- Named `view` blocks and the view bar are gone. One diagram now keeps its layout
+  in explicit top-level `layout`/`position`/`pin`/`hide` statements (IR v11);
+  `pcdToState` reads positions from that one block, so opening and editing a file
+  still restores the saved arrangement. Legacy `view "…" { … }` and
+  `drilldown "…" view <id>` are rejected with diagnostics E117/E118 and a manual
+  conversion is documented in FILE-FORMAT §7.1.
+- Route reset and diagram-layout reset are one undoable command each and use one
+  shared selection policy in both the application and canvas menus. Resetting
+  routes never changes object positions; Reset diagram layout clears positions
+  and persists deterministic auto-layout, distinct from Reset workspace layout.
+- TypeScript and Go parser, printer, IR, validation, CLI (`--view` removed),
+  corpus/parity fixtures and the architecture seeds changed atomically. Details:
+  [docs/adr/0007-remove-named-views.md](adr/0007-remove-named-views.md).
+
 ## 2026-11-17 — the update offer leaves the presentation shell
 
 - A waiting-worker offer that was already visible no longer stays in the

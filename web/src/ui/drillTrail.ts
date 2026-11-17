@@ -12,8 +12,6 @@ import { resolveDrilldown } from '../engine/model/hierarchy';
 export interface TrailEntry {
   /** Workspace path of the diagram at this depth. */
   path: string;
-  /** View id requested for that path, when the relation named one. */
-  view?: string;
   /** Present for every entry except the root: the element that was opened. */
   from?: {
     /** Workspace path of the parent diagram. */
@@ -53,7 +51,6 @@ export function pushEntry(
   trail: Trail,
   path: string,
   from: NonNullable<TrailEntry['from']>,
-  view?: string,
 ): { trail: Trail; problem?: TrailProblem } {
   if (trail.some((entry) => entry.path === path)) {
     return {
@@ -64,7 +61,7 @@ export function pushEntry(
       },
     };
   }
-  const entry: TrailEntry = view === undefined ? { path, from } : { path, from, view };
+  const entry: TrailEntry = { path, from };
   return { trail: [...trail, entry] };
 }
 
@@ -112,7 +109,7 @@ export function resolveTarget(
   file: string,
   objectId: string,
   read: (path: string) => string | null,
-): { path: string; view?: string } | TrailProblem {
+): { path: string } | TrailProblem {
   const text = read(file);
   if (text === null) return { code: 'escape', message: `cannot read ${file}` };
   const doc = parsePDL(text).doc;
@@ -130,7 +127,5 @@ export function resolveTarget(
         : `drilldown target escapes the workspace: "${obj.drilldown.path}"`,
     };
   }
-  return obj.drilldown.view === undefined
-    ? { path: target.path }
-    : { path: target.path, view: obj.drilldown.view };
+  return { path: target.path };
 }

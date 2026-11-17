@@ -32,7 +32,6 @@ const docOf = (icons: IconDecl[]): Doc => ({
   objects: [],
   links: [],
   flows: [],
-  views: [],
   styles: [],
 });
 

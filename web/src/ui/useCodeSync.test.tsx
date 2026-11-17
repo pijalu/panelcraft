@@ -152,12 +152,10 @@ describe('useCodeSync apply port', () => {
     await act(idle);
     rerender({ snap: w.snap }); // echo → clean
     expect(result.current.machine.snapshot().state).toBe('clean');
-    // apply-layout writes positions into a view: the doc's objects/links are
-    // unchanged, so the canvas emission serializes IDENTICALLY to the last
-    // one. The echo check must win over the emission dedupe, or the machine
-    // stays pending-apply and the chip shows a diverged false alarm.
-    const withPositions =
-      PDL_WITH_FLOW + '\nview "Default" {\n  position a (10, 20)\n}\n';
+    // apply-layout writes positions into top-level layout state: the doc's
+    // objects/links are unchanged, so the canvas emission serializes IDENTICALLY
+    // to the last one. The echo check must win over the emission dedupe.
+    const withPositions = PDL_WITH_FLOW + '\nposition a (10, 20)\n';
     act(() => {
       result.current.machine.textChanged(withPositions);
     });
@@ -166,8 +164,8 @@ describe('useCodeSync apply port', () => {
     const snap = result.current.machine.snapshot();
     expect(snap.state).toBe('clean');
     expect(snap.divergedFromSaved).toBe(false);
-    // the file keeps the FULL buffer text (view block survives D-M4-6)
-    expect(manager.text('a.pcd')).toContain('view "Default"');
+    // the file keeps the FULL buffer text (layout survives D-M4-6)
+    expect(manager.text('a.pcd')).toContain('position a (10, 20)');
     expect(manager.text('a.pcd')).toContain('position a (10, 20)');
   });
 

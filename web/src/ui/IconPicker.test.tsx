@@ -31,7 +31,6 @@ const doc = (over: Partial<Doc> = {}): Doc => ({
   objects: [],
   links: [],
   flows: [],
-  views: [],
   styles: [],
   ...over,
 });

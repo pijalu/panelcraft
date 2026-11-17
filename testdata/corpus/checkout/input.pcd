@@ -40,10 +40,8 @@ flow "Happy path" as happy {
   conclusion "Order stored"
 }
 
-view "Main" {
-  layout auto LR
-  position user (80, 120)
-  position api (420, 90)
-}
+layout auto LR
+position user (80, 120)
+position api (420, 90)
 
 style api { fill #2d6cdf }

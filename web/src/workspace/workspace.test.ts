@@ -139,20 +139,13 @@ describe('canvas ⇄ file (M3 mapping)', () => {
     expect(st.links).toEqual([{ id: 'L1', from: 'api', to: 'db', type: 'uses', label: 'reads' }]);
   });
 
-  it('stored view positions overlay the grid (M6 FR-V4 apply roundtrip)', () => {
-    const text =
-      stateToPcd(state()) +
-      '\nview "Default" {\n  position api (500, 10)\n}\n';
+  it('stored top-level layout positions overlay the grid', () => {
+    const text = stateToPcd(state()) + '\nposition api (500, 10)\n';
     const st = pcdToState(text);
     expect(st.objects[0]?.id).toBe('api');
     expect(st.objects[0]?.x).toBe(500); // stored position wins
     expect(st.objects[0]?.y).toBe(10);
     expect(st.objects[1]?.x).toBe(230); // unstored object keeps its grid slot
-    // a named view other than the active one does not leak
-    const st2 = pcdToState(
-      stateToPcd(state()) + '\nview "Other" {\n  position api (500, 10)\n}\n',
-    );
-    expect(st2.objects[0]?.x).toBe(40); // grid
   });
 
   it('saveCanvas writes text, flags dirty, and skips identical content', () => {
@@ -203,17 +196,15 @@ flow "Checkout" as f1 {
   intro "start"
 }
 
-view "Default" {
-  layout saved
-  position api (120, 240)
-}
+layout saved
+position api (120, 240)
 
 style api {
   fill #ff0000
 }
 `;
 
-  it('a simulated drag/rename keeps flow, view, position, style and link semantics', () => {
+  it('a simulated drag/rename keeps flow, layout, style and link semantics', () => {
     const ws = new WorkspaceManager({ skipWelcome: true });
     ws.createFileAt('a.pcd', RICH);
     const st = pcdToState(RICH);
@@ -224,7 +215,7 @@ style api {
     ws.saveCanvas('a.pcd', drag);
     const text = ws.text('a.pcd');
     expect(text).toContain('flow "Checkout" as f1');
-    expect(text).toContain('view "Default"');
+    expect(text).toContain('layout saved');
     expect(text).toContain('position api (120, 240)');
     expect(text).toContain('style api {');
     expect(text).toContain('waypoint (10, 20)');

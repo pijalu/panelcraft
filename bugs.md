@@ -46,23 +46,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 **Validation.** Focused model/component tests, complete menu e2e, axe scans, keyboard-only traversal and light/dark/narrow-viewport screenshots. Verify all previously available commands by stable id/test id, then run `npm run check` and `npm test`.
 
-## Remove named views without deleting diagram layout persistence
-
-**Observed.** ViewBar owns named views, tag chips, layout mode, positions, pin and hide (`web/src/ui/views/ViewBar.tsx:37-92,94-197`). Named `view` blocks also reach TypeScript/Go format and IR, hierarchy validation and CLI `--view`. The original proposal said to remove all layout/view helpers but simultaneously retain stored positions and Reset layout; that is internally incomplete.
-
-**Expected.** Remove ViewBar, named view switching and PDL `view` blocks. Preserve one diagram’s layout data by promoting the surviving single-view concepts—layout mode, positions and any intentionally retained pin/hide data—to explicit top-level document state. Resetting routes never changes object positions. **Reset diagram layout** clears those positions and performs deterministic auto-layout in one undoable command, distinct from the existing **Reset workspace layout** panel command.
-
-**Migration decision.** Reject legacy named `view` blocks and `drilldown ... view <id>` with clear diagnostics; no silent ignore or auto-migration. Document the manual conversion to top-level layout statements. Do not simply delete `Doc.views` and leave `pcdToState` with no position source.
-
-**Fix plan.**
-
-1. Define the post-view IR and top-level grammar first, including whether pin/hide/hideTag remain supported and where their UI lives. Update TypeScript and Go parser/printer/serializer/validation atomically, remove `viewName`/`useViewSession`/CLI view options and regenerate corpus/parity fixtures. Remove ViewBar CSS, strings and tests only after replacement behaviour is covered.
-2. Add pure document operations for route reset and layout reset. **Reset all routes** with no selection clears every link’s waypoints and endpoint anchors; **Reset route** with exactly one selected connection affects only that link; object, mixed and multiple selections disable route reset. Each multi-object operation is one undoable command, not a loop of commits.
-3. Put selection enablement in one shared command/policy model consumed by canvas and hamburger adapters. Keep CanvasController responsible for canvas commands and the layout engine behind its port. Auto-layout computes and persists all new positions atomically and deterministically.
-4. Update hierarchy/drilldown code, `FILE-FORMAT.md`, `USER-GUIDE.md`, `SPEC.md`, `CHANGELOG.md`, architecture seeds and corpus. Add TS and Go diagnostics for rejected legacy syntax.
-
-**Validation.** Test the full selection matrix, undo/redo, reload persistence, position preservation on route reset, deterministic layout and rejected legacy files. Run `npm run check`, `npm test`, `bash scripts/check-docs.sh`, `go test ./...`, `go vet ./...`, `staticcheck ./...`, complexity gates, corpus parity and built-app light/dark menu/context-menu e2e.
-
 ## Decomposition picker, complete embedded export and embedded editing
 
 **Observed.** The decomposition target is a free-text input (`web/src/ui/HierarchyFields.tsx:44-92`) even though `WorkspaceManager.files()` exposes known files. Current `.pcd` export downloads only the root text (`web/src/ui/AppMenu.tsx:48-51`; `web/src/workspace/workspace.ts:659-663`). Existing `source` blocks embed program text, not child diagrams; there is no embedded-decomposition grammar or editor identity for a child inside a root file.

@@ -34,6 +34,10 @@ export const E = {
   invalidIconMedia: 'E115',
   /** `source` block with no `text` line — nothing to show or print (§3.3). */
   emptySource: 'E116',
+  /** Legacy named `view` block — views were removed (ADR 0007). */
+  legacyView: 'E117',
+  /** Legacy `drilldown … view <id>` — named view on a child (ADR 0007). */
+  legacyDrilldownView: 'E118',
 } as const;
 
 export const diag = (

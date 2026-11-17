@@ -33,9 +33,9 @@ describe('P100 duplicate ids', () => {
     expect(ds.filter((d) => d.code === 'P100')).toHaveLength(1);
     expect(ds.find((d) => d.code === 'P100')?.line).toBe(3);
   });
-  it('flags duplicate flow and view ids', () => {
-    const ds = v(`${HEAD}flow "F" as f1 { intro "x" }\nflow "G" as f1 { intro "y" }\nview "V" as v1 { layout auto LR }\nview "W" as v1 { layout auto LR }\n`);
-    expect(ds.filter((d) => d.code === 'P100')).toHaveLength(2);
+  it('flags duplicate flow ids', () => {
+    const ds = v(`${HEAD}flow "F" as f1 { intro "x" }\nflow "G" as f1 { intro "y" }\n`);
+    expect(ds.filter((d) => d.code === 'P100')).toHaveLength(1);
   });
   it('distinct ids are clean', () => {
     expect(codes(`${HEAD}person a "A"\nsystem b "B"\nflow "F" as f1 { intro "x" }\n`)).not.toContain('P100');
@@ -183,13 +183,13 @@ describe('P203 style targets', () => {
 
 describe('P204 position overlaps', () => {
   it('two objects at same coords → info', () => {
-    const ds = v(`${HEAD}person a "A"\nperson b "B"\nview "V" { position a (10, 20)\nposition b (10, 20) }\n`);
+    const ds = v(`${HEAD}person a "A"\nperson b "B"\nposition a (10, 20)\nposition b (10, 20)\n`);
     const p204 = ds.filter((d) => d.code === 'P204');
     expect(p204).toHaveLength(1);
     expect(p204[0]?.severity).toBe('info');
   });
   it('distinct coords → clean', () => {
-    expect(codes(`${HEAD}person a "A"\nperson b "B"\nview "V" { position a (10, 20)\nposition b (30, 40) }\n`)).not.toContain('P204');
+    expect(codes(`${HEAD}person a "A"\nperson b "B"\nposition a (10, 20)\nposition b (30, 40)\n`)).not.toContain('P204');
   });
 });
 

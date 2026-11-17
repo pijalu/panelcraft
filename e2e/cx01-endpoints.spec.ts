@@ -21,11 +21,9 @@ source -> target as L1 {
   waypoint (360, 180)
 }
 
-view "Default" {
-  layout saved
-  position source (100, 120)
-  position target (500, 300)
-}
+layout saved
+position source (100, 120)
+position target (500, 300)
 `;
 
 async function seedDoc(page: Page): Promise<void> {

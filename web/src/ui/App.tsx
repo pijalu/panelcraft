@@ -14,7 +14,6 @@ import { FlowPane, type FlowCanvasContext, type FlowSelection, type ViewPoint } 
 import { invert } from '../engine/render/viewport';
 import { PlayBar } from './flows/PlayBar';
 import { useStagePresentation } from './useStagePresentation';
-import { ViewBar } from './views/ViewBar';
 import { AppHeader } from './AppHeader';
 import { AppDialogs } from './AppDialogs';
 import { AppOverlays } from './AppOverlays';
@@ -25,11 +24,12 @@ import { useUiLayout } from './useUiLayout';
 import { useAppTheme } from './useAppTheme';
 import { useCanvasGrid } from './useCanvasGrid';
 import { useHistory } from './useHistory';
-import { useViewSession } from './useViewSession';
 import { useShellUi } from './useShellUi';
 import { layoutStyle, PANELS, type DockId, type PanelId } from './uiLayout';
 import { CollapseButton, PanelRail } from './PanelChrome';
 import { CanvasMenu } from './CanvasMenu';
+import { useDiagramCommands } from './useDiagramCommands';
+import type { CommandSelection } from './commandPolicy';
 import { MiniMap } from './MiniMap';
 import { s } from './strings';
 import type { Doc, IconDecl, Obj } from '../engine/model/types';
@@ -206,16 +206,10 @@ function CanvasSplit(props: {
   );
 }
 
-/** Tab strip + view bar row (extracted to keep App under the length gate). */
+/** Tab strip above the canvas (extracted to keep App under the length gate). */
 function CanvasTopRow(props: {
   manager: WorkspaceManager;
   diverged: ReturnType<typeof useDivergedClose>;
-  activePath: string | null;
-  viewName: string | undefined;
-  onView(n: string | undefined): void;
-  onText(t: string): void;
-  ctrl: CanvasController | null;
-  selection: string[];
 }) {
   return (
     <>
@@ -228,14 +222,6 @@ function CanvasTopRow(props: {
         }}
         onClose={props.diverged.requestCloseTab}
         onReorder={(from, to) => props.manager.moveTabAt(from, to)}
-      />
-      <ViewBar
-        text={props.activePath !== null ? props.manager.text(props.activePath) : null}
-        viewName={props.viewName}
-        onView={props.onView}
-        onChangeText={props.onText}
-        ctrl={props.ctrl}
-        selection={props.selection}
       />
     </>
   );
@@ -441,7 +427,6 @@ function propsSlot(p: {
   manager: WorkspaceManager;
   sel: ReturnType<typeof selections>;
   activePath: string | null;
-  viewName: string | undefined;
   linkLabelRef: { current: HTMLInputElement | null };
   projectIcons?: IconDecl[];
   onManageIcons?: () => void;
@@ -454,7 +439,7 @@ function propsSlot(p: {
   const stored = selected == null ? undefined : p.doc?.objects.find((o) => o.id === selected.id);
   const hierarchy = selected == null || p.drill === undefined ? undefined : {
     target: p.drill.targetOf(selected.id),
-    onSet: (path: string | null, view?: string) => p.drill?.setDrilldown(selected.id, path, view),
+    onSet: (path: string | null) => p.drill?.setDrilldown(selected.id, path),
     onOpen: () => p.drill?.drill(selected.id),
     hasSource: stored?.source !== undefined,
     language: stored?.source?.language,
@@ -475,7 +460,6 @@ function propsSlot(p: {
       onFit={() => ctrl?.fitSelection()}
       depsText={p.activePath !== null ? p.manager.text(p.activePath) : null}
       activePath={p.activePath}
-      viewName={p.viewName}
       activeId={p.sel.obj?.id ?? null}
       ctrl={ctrl}
       sections={p.ui.layout.sections}
@@ -541,7 +525,7 @@ function bodyPanels(
   p: Parameters<typeof AppBody>[0],
   ctrl: CanvasController | null,
 ): Record<PanelId, ComponentChildren> {
-  const { ws, canvas, code, ui, player, activePath, viewName } = p;
+  const { ws, canvas, code, ui, player, activePath } = p;
   return {
     sidebar: <SidebarSlot ui={ui} manager={ws.manager} version={ws.version} />,
     flows: flowsSlot({
@@ -576,7 +560,6 @@ function bodyPanels(
       manager: ws.manager,
       sel: p.sel,
       activePath,
-      viewName,
       linkLabelRef: p.linkLabelRef,
       projectIcons: p.projectIcons,
       onManageIcons: p.onManageIcons,
@@ -595,8 +578,6 @@ function AppBody(p: {
   ui: ReturnType<typeof useUiLayout>;
   player: FlowPlayerApi;
   activePath: string | null;
-  viewName: string | undefined;
-  onView: (n: string | undefined) => void;
   onPresent: () => void;
   sel: ReturnType<typeof selections>;
   diverged: ReturnType<typeof useDivergedClose>;
@@ -615,8 +596,10 @@ function AppBody(p: {
   /** Parsed document of the open file (hierarchy + source authoring). */
   doc: Doc | null;
   onSourceOpen: (objectId: string) => void;
+  onResetDiagramLayout: () => void;
+  selection: CommandSelection;
 }) {
-  const { ws, canvas, code, ui, player, activePath, viewName } = p;
+  const { ws, canvas, code, ui, player, activePath } = p;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const ctrl = canvas.ctrlRef.current;
   const { drawer, dismiss } = useDrawer(ui);
@@ -643,8 +626,6 @@ function AppBody(p: {
         manager={ws.manager}
         diverged={p.diverged}
         activePath={activePath}
-        viewName={viewName}
-        onView={p.onView}
         onPresent={p.onPresent}
         drill={p.drill}
         onCanvasContextMenu={(event) => {
@@ -662,6 +643,8 @@ function AppBody(p: {
           y={menu.y}
           selectionCount={canvas.snap?.selection.objects.length ?? 0}
           linkCount={canvas.snap?.selection.links.length ?? 0}
+          selection={p.selection}
+          onResetDiagramLayout={p.onResetDiagramLayout}
           onClose={() => {
             setMenu(null);
             // The invoking surface is this canvas, whatever held focus before
@@ -686,13 +669,11 @@ function CenterColumn(props: {
   manager: WorkspaceManager;
   diverged: ReturnType<typeof useDivergedClose>;
   activePath: string | null;
-  viewName: string | undefined;
-  onView: (n: string | undefined) => void;
   onPresent: () => void;
   drill: DrilldownHandle;
   onCanvasContextMenu: (e: MouseEvent) => void;
 }) {
-  const { canvas, code, player } = props;
+  const { canvas, player } = props;
   const parent = props.drill.parent;
   return (
     <main class="canvas-col" data-parent={parent === undefined ? undefined : parent.label}>
@@ -703,12 +684,6 @@ function CenterColumn(props: {
       <CanvasTopRow
         manager={props.manager}
         diverged={props.diverged}
-        activePath={props.activePath}
-        viewName={props.viewName}
-        onView={props.onView}
-        onText={(t) => code.machine.textChanged(t)}
-        ctrl={canvas.ctrlRef.current}
-        selection={canvas.snap?.selection.objects ?? []}
       />
       <DrillBar drill={props.drill} />
       <CanvasSplit
@@ -724,7 +699,6 @@ function CenterColumn(props: {
 export function App() {
   const ws = useWorkspace();
   const activePath = ws.ready ? ws.manager.activePath : null;
-  const view = useViewSession(activePath);
   const shell = useShellUi();
   const { renaming, setRenaming, hover, setHover, illustration, setIllustration } = shell;
   const { flowSelection, setFlowSelection, historyOpen, setHistoryOpen } = shell;
@@ -732,7 +706,7 @@ export function App() {
   const ui = useUiLayout(ws.manager, ws.ready, ws.version);
   // controller → code-sync → project icons: one pipeline, one file writer
   const { canvas, inspect, code, icons } = useDocumentPipeline({
-    ws, view, ui, grid, activePath,
+    ws, ui, grid, activePath,
     onRename: setRenaming, // inline rename request from the canvas
     onGhostOpen: (path) => ws.manager.openFile(path), // F-20
     onHover: setHover, // hover card content
@@ -742,7 +716,6 @@ export function App() {
     activePath, manager, version: ws.version, revision: code.snapshot,
     ctrlRef: canvas.ctrlRef, commitDoc: code.commitDoc,
     openFile: (path) => manager.openFile(path),
-    onView: view.setViewName,
   });
   const sourceObj = layer.doc?.objects.find((o) => o.id === layer.sourceId) ?? null;
   const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = useShellDialogs();
@@ -750,10 +723,9 @@ export function App() {
   const appTheme = useAppTheme(manager, ws.ready, ws.version);
   const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null, setFlash);
   const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
-  const sel = selections(canvas.snap);
+  const { selection: commandSelection, resetRoutes: onResetRoutes, resetDiagramLayout: onResetDiagramLayout } = useDiagramCommands(canvas, manager);
   const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
   const pres = useStagePresentation({ player, activePath, ready: ws.ready, textOf: (path) => manager.text(path) });
-
   const { diverged, pwa } = useShellLifecycle({
     manager: ws.manager,
     activePath,
@@ -783,6 +755,9 @@ export function App() {
         onHistoryRequest={() => setHistoryOpen(true)}
         onPresentRequest={pres.launcher.show}
         pwa={pwa} grid={grid}
+        selection={commandSelection}
+        onResetRoutes={onResetRoutes}
+        onResetDiagramLayout={onResetDiagramLayout}
       />
       <AppBody
         ws={ws}
@@ -791,10 +766,8 @@ export function App() {
         ui={ui}
         player={player}
         activePath={activePath}
-        viewName={view.viewName}
-        onView={view.setViewName}
         onPresent={pres.start}
-        sel={sel}
+        sel={selections(canvas.snap)}
         diverged={diverged}
         illustration={illustration}
         onIllustration={setIllustration}
@@ -808,6 +781,8 @@ export function App() {
         drill={layer.drill}
         doc={layer.doc}
         onSourceOpen={layer.openSource}
+        onResetDiagramLayout={onResetDiagramLayout}
+        selection={commandSelection}
       />
       <SourceLayer layer={layer} obj={sourceObj} />
       <AppOverlays

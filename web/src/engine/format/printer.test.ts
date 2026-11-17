@@ -7,7 +7,7 @@ import { printDoc } from './printer';
 import { forAllSeeds, type Rng } from './fuzz';
 import {
   IR_VERSION, type Doc, type Flow, type FlowStep, type ImportStmt, type Link,
-  type Obj, type Pos, type StyleStmt, type View, type ViewLine,
+  type Obj, type Pos, type StyleStmt,
 } from '../model/types';
 import { serializeDoc } from '../model/serialize';
 import { CHECKOUT_SRC } from './format.testdata';
@@ -87,14 +87,15 @@ const genFlow = (rng: Rng): Flow => ({
   pos: pos(0),
 });
 
-const genView = (rng: Rng, firstId: string): View => ({
-  id: 'v1', name: rng.pick(NASTY), pos: pos(0),
-  lines: [
-    (rng.bool(0.5)
-      ? { type: 'layout', mode: 'auto', dir: rng.pick(['LR', 'TB', 'RL', 'BT'] as const), pos: pos(0) }
-      : { type: 'hide', id: 'db', pos: pos(0) }) as ViewLine,
-    { type: 'position', id: firstId, x: 0, y: 120, pos: pos(0) } as ViewLine,
-  ],
+const genLayout = (rng: Rng, firstId: string): NonNullable<Doc['layout']> => ({
+  directive: rng.bool(0.5)
+    ? { mode: 'auto', dir: rng.pick(['LR', 'TB', 'RL', 'BT'] as const) }
+    : { mode: 'saved' },
+  positions: [{ id: firstId, x: 0, y: 120 }],
+  pins: rng.bool(0.5) ? ['db'] : [],
+  hidden: rng.bool(0.5) ? ['web'] : [],
+  hiddenTags: rng.bool(0.5) ? ['external'] : [],
+  pos: pos(0),
 });
 
 const genStyleStmt = (rng: Rng, firstId: string): StyleStmt => ({
@@ -128,7 +129,7 @@ const genDoc = (rng: Rng): Doc => {
     objects: uniq.map((id) => genObject(rng, id)),
     links: uniq.length > 1 ? [genLink(rng, uniq)] : [],
     flows: rng.bool(0.7) ? [genFlow(rng)] : [],
-    views: rng.bool(0.5) ? [genView(rng, uniq[0]!)] : [],
+    layout: rng.bool(0.5) ? genLayout(rng, uniq[0]!) : undefined,
     styles: rng.bool(0.4) ? [genStyleStmt(rng, uniq[0]!)] : [],
   };
 };

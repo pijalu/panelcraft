@@ -12,9 +12,7 @@ c -> d as exception {
   allow overlap
 }
 
-view "Default" {
-  position a (40, 100)
-  position b (520, 100)
-  position c (40, 260)
-  position d (520, 260)
-}
+position a (40, 100)
+position b (520, 100)
+position c (40, 260)
+position d (520, 260)

@@ -279,20 +279,18 @@ flow "F" as f {
   },
   { name: 'flow-minimal-msg', src: 'pcd 1.0\nperson a "A"\nperson b "B"\nflow {\n a -> b\n}\n' },
   {
-    name: 'view-full',
+    name: 'layout-full',
     src: `pcd 1.0
 person a "A"
 person b "B"
 a -> b
-view "Main" as main {
-  layout auto LR
-  layout saved
-  hide a
-  hide tag admin
-  position a (10, 20)
-  position b (10, 20)
-  pin b
-}
+layout auto LR
+layout saved
+hide a
+hide tag admin
+position a (10, 20)
+position b (10, 20)
+pin b
 `,
   },
   {
@@ -319,7 +317,7 @@ person a "A" {
 # not a color
 `,
   },
-  { name: 'empty-strings', src: `pcd 1.0\ntitle ""\nimport i0 as ""\nperson a "" {\n  description ""\n  property k ""\n}\nperson b "B"\na -> b\nflow "" {\n  intro ""\n  a -> b : ""\n  alt "" {\n    "" {\n      process a ""\n    }\n  }\n}\nview "" {\n}\n` },
+  { name: 'empty-strings', src: `pcd 1.0\ntitle ""\nimport i0 as ""\nperson a "" {\n  description ""\n  property k ""\n}\nperson b "B"\na -> b\nflow "" {\n  intro ""\n  a -> b : ""\n  alt "" {\n    "" {\n      process a ""\n    }\n  }\n}\n` },
   { name: 'goto-empty-parts', src: 'pcd 1.0\nflow {\n goto "#f"\n goto "f#"\n}\n' },
   // --- document icons (IR v9, FILE-FORMAT §3.1) ---
   {
@@ -416,7 +414,7 @@ icon pic {
   { name: 'unclosed-flow', src: 'pcd 1.0\nflow {\n intro "x"\n' },
   { name: 'unclosed-alt-branch', src: 'pcd 1.0\nflow {\n alt {\n "a" {\n info "x"\n' },
   { name: 'unclosed-par-lane', src: 'pcd 1.0\nflow {\n par {\n {\n info "x"\n' },
-  { name: 'unclosed-view', src: 'pcd 1.0\nview "v" {\n pin a\n' },
+  { name: 'legacy-view', src: 'pcd 1.0\nview "v" {\n pin a\n}\n' },
   { name: 'duplicate-attr', src: 'pcd 1.0\nperson a "A" {\n icon x\n icon y\n' },
   { name: 'arrow-needs-head', src: 'pcd 1.0\nperson a "A"\nperson b "B"\na - b\n' },
   { name: 'stray-lt', src: 'pcd 1.0\nperson a "A"\n<\n' },
@@ -428,9 +426,9 @@ icon pic {
   { name: 'invalid-goto', src: 'pcd 1.0\nflow {\n goto 5\n}\n' },
   { name: 'goto-bad-return', src: 'pcd 1.0\nperson a "A"\nflow {\n goto x return sideways\n}\n' },
   { name: 'bad-number-in-flow', src: 'pcd 1.0\nperson a "A"\nflow {\n 5\n}\n' },
-  { name: 'bad-view-line', src: 'pcd 1.0\nview "v" {\n zoom 2\n}\n' },
-  { name: 'bad-layout-mode', src: 'pcd 1.0\nview "v" {\n layout zoomy\n}\n' },
-  { name: 'hide-missing-id', src: 'pcd 1.0\nview "v" {\n hide 5\n}\n' },
+  { name: 'bad-layout-mode', src: 'pcd 1.0\nlayout zoomy\n' },
+  { name: 'hide-missing-id', src: 'pcd 1.0\nhide 5\n' },
+  { name: 'legacy-drilldown-view', src: 'pcd 1.0\nsystem s "S" {\n drilldown "c.pcd" view detail\n}\n' },
   // --- semantic validation cases ---
   {
     name: 'dup-ids',
@@ -442,12 +440,6 @@ flow "f" as f1 {
 }
 flow "g" as f1 {
  info "y"
-}
-view "v1" as v1 {
- layout saved
-}
-view "v2" as v1 {
- layout saved
 }
 `,
   },
@@ -490,11 +482,9 @@ flow "Main" as main {
   u -> web
   web -> db as q
 }
-view "V" {
-  position u (0, 0)
-  position web (100, 0)
-  position db (200, 0)
-}
+position u (0, 0)
+position web (100, 0)
+position db (200, 0)
 style u {
   shape person
 }
@@ -502,10 +492,10 @@ style u {
   },
   // IR v10: C4 decomposition and embedded source (FILE-FORMAT §3.2, §3.3).
   {
-    name: 'drilldown-view',
+    name: 'drilldown-plain-named',
     src: `pcd 1.0
 system shop "Webshop" {
-  drilldown "containers/shop.pcd" view containers
+  drilldown "containers/shop.pcd"
 }
 `,
   },

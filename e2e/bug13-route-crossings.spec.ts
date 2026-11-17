@@ -25,11 +25,9 @@ system_ext pay "Payment provider"
 user -> app : "buys" as L1
 app -> pay : "charges" as L2
 
-view "Default" {
-  position app (248, 128)
-  position pay (348, 52)
-  position user (40, 40)
-}
+position app (248, 128)
+position pay (348, 52)
+position user (40, 40)
 `;
 
 /** The report's explicit-path fixture: the second bend sits inside the target. */

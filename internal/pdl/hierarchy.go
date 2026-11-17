@@ -247,7 +247,7 @@ func (c *hierarchyCtx) checkKind(obj *ir.Obj) bool {
 	return false
 }
 
-// checkChild applies the allowed level transition (P214) and view check (P218).
+// checkChild applies the allowed level transition (P214).
 func (c *hierarchyCtx) checkChild(obj *ir.Obj, target string) {
 	allowed := AllowedChildLevels[obj.Kind]
 	if c.src == nil {
@@ -263,21 +263,4 @@ func (c *hierarchyCtx) checkChild(obj *ir.Obj, target string) {
 			target, child.Level, obj.Kind, strings.Join(allowed, " or ")),
 			obj.Pos.Line, obj.Pos.Col))
 	}
-	c.checkViewExists(obj, child, target)
-}
-
-// checkViewExists reports a `view` id the target file does not declare (P218).
-func (c *hierarchyCtx) checkViewExists(obj *ir.Obj, child *ir.Doc, target string) {
-	view := obj.Drilldown.View
-	if view == "" {
-		return
-	}
-	for i := range child.Views {
-		if child.Views[i].ID == view {
-			return
-		}
-	}
-	c.out = append(c.out, diag("P218", fmt.Sprintf(
-		"\"%s\" has no view with id \"%s\" (add `as %s` to a view line)", target, view, view),
-		obj.Pos.Line, obj.Pos.Col))
 }

@@ -35,22 +35,12 @@ system tie "Tie" {
 
 auto -> front as L1
 
-view "Base" {
-  layout saved
-  position auto (80, 100)
-  position back (50, 80)
-  position zero (110, 120)
-  position front (140, 140)
-  position tie (170, 160)
-}
-view "Alt" {
-  layout saved
-  position auto (60, 90)
-  position back (40, 70)
-  position zero (100, 110)
-  position front (150, 150)
-  position tie (180, 170)
-}
+layout saved
+position auto (80, 100)
+position back (50, 80)
+position zero (110, 120)
+position front (140, 140)
+position tie (170, 160)
 `;
 
 /** Every object covers this world point, so a click proves the top-of-stack. */
@@ -70,7 +60,6 @@ async function seedDoc(page: Page): Promise<void> {
   await setDoc(page, DOC);
   await expect(page.getByTestId('canvas').locator('g.pc-obj')).toHaveCount(5);
   // Views carry the overlapping positions; the stacking order itself is view-blind.
-  await page.getByTestId('view-select').selectOption('Base');
 }
 
 /** Object ids in DOM (= paint) order, bottom first. */
@@ -193,10 +182,7 @@ for (const theme of ['light', 'dark'] as const) {
     const flash = page.getByTestId('banner-flash').getByRole('button', { name: 'dismiss' });
     if (await flash.isVisible()) await flash.click();
 
-    // A different view changes geometry only; the stacking order is untouched.
-    await page.getByTestId('view-select').selectOption('Alt');
-    await expectPaintOrder(page, ['auto', 'zero', 'front', 'tie', 'back']);
-    await page.getByTestId('view-select').selectOption('Base');
+    // Stacking order is unchanged by the geometry edit.
     await expectPaintOrder(page, ['auto', 'zero', 'front', 'tie', 'back']);
     await expect(content).toContainText('z 9');
 
@@ -205,7 +191,6 @@ for (const theme of ['light', 'dark'] as const) {
     await page.reload();
     await expect(page.getByTestId('canvas').locator('g.pc-obj')).toHaveCount(5);
     // View selection is not persisted, so re-apply the overlapping positions.
-    await page.getByTestId('view-select').selectOption('Base');
     await expect(page.locator('.cm-content')).toContainText('z 9');
     await expectPaintOrder(page, ['auto', 'zero', 'front', 'tie', 'back']);
     await clickOverlap(page);

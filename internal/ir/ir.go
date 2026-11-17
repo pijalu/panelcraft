@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 10
+const IRVersion = 11
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -77,12 +77,10 @@ type ObjSize struct {
 	H float64 `json:"h"`
 }
 
-// Drilldown is a C4 decomposition relation (IR v10, FILE-FORMAT §3.2):
-// `drilldown "<path>" [view <id>]` on the parent object only. View is optional
-// and names a view *id* inside the target file.
+// Drilldown is a C4 decomposition relation (IR v11, FILE-FORMAT §3.2):
+// `drilldown "<path>"` on the parent object only. Named views were removed (ADR 0007).
 type Drilldown struct {
 	Path string `json:"path"`
-	View string `json:"view,omitempty"`
 }
 
 // SourceBlock is embedded source text (IR v10, FILE-FORMAT §3.3): `language`
@@ -189,25 +187,29 @@ type Flow struct {
 	Pos         Pos      `json:"pos"`
 }
 
-// ViewLine is one view body line (§7.1); tagged union like Step.
-type ViewLine struct {
-	Type     string   `json:"type"`
-	Mode     string   `json:"mode,omitempty"` // layout
-	Dir      string   `json:"dir,omitempty"`  // layout auto
-	ID       string   `json:"id,omitempty"`
-	X        *float64 `json:"x,omitempty"` // position
-	Y        *float64 `json:"y,omitempty"` // position
-	Comments []string `json:"comments,omitempty"`
-	Pos      Pos      `json:"pos"`
+// LayoutDirective is the explicit `layout auto <dir>` / `layout saved` line.
+type LayoutDirective struct {
+	Mode string `json:"mode"`
+	Dir  string `json:"dir,omitempty"`
 }
 
-// View is a view statement (§7.1).
-type View struct {
-	ID       string     `json:"id,omitempty"`
-	Name     string     `json:"name"`
-	Lines    []ViewLine `json:"lines,omitempty"`
-	Comments []string   `json:"comments,omitempty"`
-	Pos      Pos        `json:"pos"`
+// LayoutPos is one `position <id> (<x>, <y>)` line.
+type LayoutPos struct {
+	ID string  `json:"id"`
+	X  float64 `json:"x"`
+	Y  float64 `json:"y"`
+}
+
+// LayoutState is the single top-level diagram layout state (ADR 0007, IR v11).
+// Absent means implicit auto layout with the document direction.
+type LayoutState struct {
+	Directive  *LayoutDirective `json:"directive,omitempty"`
+	Positions  []LayoutPos      `json:"positions,omitempty"`
+	Pins       []string         `json:"pins,omitempty"`
+	Hidden     []string         `json:"hidden,omitempty"`
+	HiddenTags []string         `json:"hiddenTags,omitempty"`
+	Comments   []string         `json:"comments,omitempty"`
+	Pos        Pos              `json:"pos"`
 }
 
 // StyleStmt is a top-level style override statement (§7.3).
@@ -238,7 +240,7 @@ type Doc struct {
 	Objects       []Obj        `json:"objects,omitempty"`
 	Links         []Link       `json:"links,omitempty"`
 	Flows         []Flow       `json:"flows,omitempty"`
-	Views         []View       `json:"views,omitempty"`
+	Layout        *LayoutState `json:"layout,omitempty"`
 	Styles        []StyleStmt  `json:"styles,omitempty"`
 }
 

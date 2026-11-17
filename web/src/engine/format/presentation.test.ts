@@ -37,8 +37,8 @@ describe('IR v8 contract', () => {
     expect(IR_VERSION).toBeGreaterThanOrEqual(9);
   });
 
-  it('keeps camera and description out of view lines', () => {
-    const src = `pcd 1.0\nview "V" {\n  layout auto LR\n  hide a\n}\n`;
+  it('keeps camera and description out of layout statements', () => {
+    const src = `pcd 1.0\nlayout auto LR\nhide a\n`;
     const json = serializeDoc(doc(src));
     expect(json).not.toContain('camera');
     expect(json).not.toContain('description');

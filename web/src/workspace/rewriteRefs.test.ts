@@ -17,7 +17,7 @@ describe('relativePath', () => {
 describe('rewriteDrilldownPaths', () => {
   const files = [
     { path: 'systems/shop.pcd', text: 'pcd 1.0\nsystem shop "Shop" {\n  drilldown "../containers/shop.pcd"\n}\n' },
-    { path: 'other/ref.pcd', text: 'pcd 1.0\nsystem s "S" {\n  drilldown "../containers/shop.pcd" view containers\n}\n' },
+    { path: 'other/ref.pcd', text: 'pcd 1.0\nsystem s "S" {\n  drilldown "../containers/shop.pcd"\n}\n' },
     { path: 'unrelated.pcd', text: 'pcd 1.0\nsystem u "U" {\n  drilldown "elsewhere.pcd"\n}\n' },
   ];
 
@@ -25,7 +25,7 @@ describe('rewriteDrilldownPaths', () => {
     const out = rewriteDrilldownPaths(files, 'containers/shop.pcd', 'containers/webshop.pcd');
     expect(out.map((f) => f.changed)).toEqual([true, true, false]);
     expect(out[0]?.text).toContain('drilldown "../containers/webshop.pcd"');
-    expect(out[1]?.text).toContain('drilldown "../containers/webshop.pcd" view containers');
+    expect(out[1]?.text).toContain('drilldown "../containers/webshop.pcd"');
     expect(out[0]?.text).not.toContain('webshop.pcd" view');
     expect(out[2]?.text).toBe(files[2]?.text);
   });

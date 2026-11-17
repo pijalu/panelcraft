@@ -2235,6 +2235,43 @@ export class CanvasController {
     );
   }
 
+  /**
+   * Reset every link's route in one undoable command (ADR 0007). Object
+   * positions are never touched — route state and layout state are separate.
+   */
+  resetAllRoutes(): void {
+    const changed = this.state.links.filter(
+      (l) => (l.waypoints?.length ?? 0) > 0 || l.fromAnchor !== undefined || l.toAnchor !== undefined,
+    );
+    if (changed.length === 0) return;
+    const before = new Map(changed.map((l) => [l.id, {
+      waypoints: l.waypoints?.map((w) => [w[0], w[1]] as [number, number]),
+      fromAnchor: l.fromAnchor,
+      toAnchor: l.toAnchor,
+    }]));
+    const set = (restore: boolean): void => {
+      this.state = {
+        ...this.state,
+        links: this.state.links.map((l) => {
+          const prior = before.get(l.id);
+          if (prior === undefined) return l;
+          return restore
+            ? { ...l, ...prior }
+            : { ...l, waypoints: undefined, fromAnchor: undefined, toAnchor: undefined };
+        }),
+      };
+      this.recomputeRoutes();
+      this.render();
+    };
+    this.undo.push({
+      label: s('reset all routes'),
+      undo: () => set(true),
+      redo: () => set(false),
+      coalesce: () => null,
+    });
+    set(false);
+  }
+
   /** UX08-WP09 `Reset bends`: drop the waypoints, keep the endpoint anchors. */
   resetLinkBends(id: string): void {
     const link = this.state.links.find((l) => l.id === id);

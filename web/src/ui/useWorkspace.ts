@@ -9,7 +9,7 @@ import type { Kind } from '../engine/model/types';
 import { stateToPcd, WorkspaceManager } from '../workspace/workspace';
 import { parsePDL } from '../engine/format/parser';
 import { printDoc } from '../engine/format/printer';
-import { applyLayoutToView } from '../engine/layout/apply';
+import { writePositions } from '../engine/layout/apply';
 import { createDefaultStorage } from '../workspace/store/idb';
 
 /** Structurally-equal empty DiagramState (controller + manager share shape). */
@@ -116,14 +116,13 @@ function useGridHandoff(
 }
 
 /**
- * F-14: persist drag/resize geometry into the active view (debounced 250 ms).
- * Only the ids that moved are written; other `position` lines, other views,
- * flows, styles and imports are untouched (applyLayoutToView replaces just
- * those ids). Never called for open/switch — only for interaction end.
+ * F-14: persist drag/resize geometry into the top-level layout (debounced 250
+ * ms). Only the ids that moved are written; other layout lines, flows, styles
+ * and imports are untouched (writePositions replaces just those ids). Never
+ * called for open/switch — only for interaction end.
  */
 function useGeometryCommit(
   manager: WorkspaceManager,
-  viewRef: { current: string | undefined },
   commitDocRef: { current: ((doc: import('../engine/model/types').Doc) => void) | null },
 ): (positions: Record<string, { x: number; y: number }>) => void {
   const geometryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,7 +138,7 @@ function useGeometryCommit(
       if (path === null) return;
       const { doc } = parsePDL(manager.text(path));
       if (doc === null) return;
-      const { doc: updated, written } = applyLayoutToView(doc, viewRef.current, moved);
+      const { doc: updated, written } = writePositions(doc, moved);
       if (written.length === 0) return;
       // F-14: go through the sync machine so the code view shows the commit
       // immediately (a bare file write would leave the buffer stale).
@@ -154,7 +153,6 @@ export function useCanvasController(
   manager: WorkspaceManager,
   ready: boolean,
   version: number,
-  viewRef: { current: string | undefined } = { current: undefined },
   commitDocRef: { current: ((doc: import('../engine/model/types').Doc) => void) | null } = {
     current: null,
   },
@@ -222,7 +220,7 @@ export function useCanvasController(
     manager.markClean(path);
   }, [ready, version, manager]);
 
-  const commitGeometry = useGeometryCommit(manager, viewRef, commitDocRef);
+  const commitGeometry = useGeometryCommit(manager, commitDocRef);
 
   const onCtrlState = (s: Snapshot): void => {
     setSnap(s);

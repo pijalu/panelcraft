@@ -97,11 +97,9 @@ flow "Checkout" as main {
   ada -> web : "request"
   conclusion "Done"
 }
-view "Default" {
-  layout saved
-  position ada (80, 100)
-  position web (360, 100)
-}
+layout saved
+position ada (80, 100)
+position web (360, 100)
 `;
 
 for (const theme of ['light', 'dark'] as const) {

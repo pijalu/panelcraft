@@ -21,12 +21,10 @@ system blocker "Blocker" {
 a -> b as L1
 a -> b as L2
 
-view "Default" {
-  layout saved
-  position a (40, 100)
-  position b (520, 100)
-  position blocker (280, 80)
-}
+layout saved
+position a (40, 100)
+position b (520, 100)
+position blocker (280, 80)
 `;
 
 const BLOCKED_DOC = DOC

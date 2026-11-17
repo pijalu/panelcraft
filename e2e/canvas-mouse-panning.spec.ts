@@ -13,11 +13,9 @@ system b "Beta"
 
 a -> b as L1
 
-view "Base" {
-  layout saved
-  position a (80, 100)
-  position b (360, 100)
-}
+layout saved
+position a (80, 100)
+position b (360, 100)
 `;
 
 async function seed(page: Page): Promise<string> {
@@ -33,7 +31,6 @@ async function seed(page: Page): Promise<string> {
   await expect(canvas.locator('g.pc-obj')).toHaveCount(2);
   const documentBefore = await editor.textContent();
   await page.getByTestId('collapse-code').click();
-  await page.getByTestId('view-select').selectOption('Base');
   return documentBefore ?? '';
 }
 

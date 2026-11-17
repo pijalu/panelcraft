@@ -38,7 +38,7 @@ describe('mermaid matrix (F-21)', () => {
         'group grp "G" {\n  contains a b\n}\nnote n "memo" {\n  attach a\n}\n\n' +
         'a -> b as L1 {\n  waypoint (1, 2)\n}\n\n' +
         'flow "F" {\n  intro "x"\n}\n\n' +
-        'view "V" {\n  position a (1, 2)\n}\n',
+        'position a (1, 2)\n',
     );
     expect(doc).not.toBeNull();
     const exported = docToMermaid(doc!, {});

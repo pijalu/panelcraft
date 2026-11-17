@@ -179,8 +179,10 @@ system shop "Webshop" {
 }
 ```
 
-- The path is workspace-relative (resolved from the file that declares it), and the
-  optional `view` is a view *id* (`view "Containers" as containers { … }`).
+- The path is workspace-relative (resolved from the file that declares it). A
+  decomposition names the file only; named views were removed, so there is no
+  `view` suffix. Layout state lives in top-level `layout`/`position`/`pin`/`hide`
+  statements in the child file.
 - **Opening it**: select the element and press **Open … diagram** in Properties.
   The child opens with breadcrumbs (`Back to shop.pcd › Webshop`), a dashed parent
   boundary naming the element and file, and a way back that keeps the trail. A
@@ -316,9 +318,9 @@ is formatted in place. Unsupported constructs produce named diagnostics rather
 than silent drops. Fatal input errors write no output.
 
 ### `panelcraft render INPUT.pcd --out OUTPUT.png|svg [flags]`
-Renders the selected view through headless Chrome. Flags: `--width 1920`,
-`--theme dark|light`, `--view NAME`, and `--chrome /path/to/chrome`. Output
-uses a deterministic 16:9 canvas; position-free/auto views use compound dagre
+Renders the document through headless Chrome. Flags: `--width 1920`,
+`--theme dark|light`, and `--chrome /path/to/chrome`. Output
+uses a deterministic 16:9 canvas; position-free/auto layout uses compound dagre
 layout so C4 boundaries contain their members. The renderer is isolated from
 IndexedDB, service workers, workspace storage, and external network access.
 Chrome startup, parse, view, and output errors are actionable; `--chrome` (or

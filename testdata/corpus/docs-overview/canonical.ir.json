@@ -1,5 +1,5 @@
 {
-  "irVersion": 10,
+  "irVersion": 11,
   "formatVersion": "1.0",
   "title": "PanelCraft deployment topology",
   "level": "deployment",
@@ -284,32 +284,17 @@
       }
     }
   ],
-  "views": [
-    {
-      "name": "Topology",
-      "lines": [
-        {
-          "type": "layout",
-          "mode": "auto",
-          "dir": "LR",
-          "pos": {
-            "line": 69,
-            "col": 3
-          }
-        },
-        {
-          "type": "hideTag",
-          "id": "internal",
-          "pos": {
-            "line": 70,
-            "col": 3
-          }
-        }
-      ],
-      "pos": {
-        "line": 68,
-        "col": 1
-      }
+  "layout": {
+    "directive": {
+      "mode": "auto",
+      "dir": "LR"
+    },
+    "hiddenTags": [
+      "internal"
+    ],
+    "pos": {
+      "line": 68,
+      "col": 1
     }
-  ]
+  }
 }

@@ -20,7 +20,7 @@ export interface ImportSource {
   /** Raw import paths declared by the (readable) file at `resolved`. */
   importsOf(resolved: string): string[];
   /** File text, or null when unknown. Used by the decomposition rules
-   * (P212/P214/P216/P218) which read the child diagram they point at. */
+   * (P212/P214/P216) which read the child diagram they point at. */
   read?(resolved: string): string | null;
 }
 
@@ -42,7 +42,6 @@ interface Ids {
   aliases: Set<string>;
   groups: Set<string>;
   flows: Set<string>;
-  views: Set<string>;
   links: Set<string>;
 }
 
@@ -51,7 +50,6 @@ const collectIds = (doc: Doc): Ids => ({
   aliases: new Set(doc.imports.map((i) => i.alias)),
   groups: new Set(doc.objects.filter((o) => o.kind === 'group').map((o) => o.id)),
   flows: new Set(doc.flows.flatMap((f) => (f.id === undefined ? [] : [f.id]))),
-  views: new Set(doc.views.flatMap((v) => (v.id === undefined ? [] : [v.id]))),
   links: new Set(doc.links.flatMap((l) => (l.id === undefined ? [] : [l.id]))),
 });
 
@@ -68,7 +66,6 @@ const checkDupIds = (doc: Doc, out: Diagnostic[]): void => {
   };
   dup('object', doc.objects);
   dup('flow', doc.flows);
-  dup('view', doc.views);
 };
 
 /** undirected link pairs "a|b" (both directions) for P104 pair matching. */
@@ -334,17 +331,14 @@ const checkStyles = (doc: Doc, ids: Ids, out: Diagnostic[]): void => {
 };
 
 const checkOverlaps = (doc: Doc, out: Diagnostic[]): void => {
-  for (const v of doc.views) {
-    const seen = new Map<string, string>();
-    for (const l of v.lines) {
-      if (l.type !== 'position') continue;
-      const key = `${l.x},${l.y}`;
-      const first = seen.get(key);
-      if (first !== undefined) {
-        out.push(diag('P204', `position overlap at (${l.x}, ${l.y}): "${first}" and "${l.id}"`, l.pos.line, l.pos.col, 'info'));
-      } else {
-        seen.set(key, l.id);
-      }
+  const seen = new Map<string, string>();
+  for (const p of doc.layout?.positions ?? []) {
+    const key = `${p.x},${p.y}`;
+    const first = seen.get(key);
+    if (first !== undefined) {
+      out.push(diag('P204', `position overlap at (${p.x}, ${p.y}): "${first}" and "${p.id}"`, doc.layout!.pos.line, doc.layout!.pos.col, 'info'));
+    } else {
+      seen.set(key, p.id);
     }
   }
 };

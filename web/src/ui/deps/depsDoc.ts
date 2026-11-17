@@ -2,7 +2,7 @@
 // Dependencies view model (M6-WP4, FR-V-table "dependencies view"): adjacency
 // for the selected element + deps-focus fade sets. Pure; no DOM.
 import type { Doc } from '../../engine/model/types';
-import { fadeSets, type EffectiveView } from '../views/viewDoc';
+import { fadeSets, type EffectiveLayout } from '../layoutDoc';
 
 export interface DepEntry {
   /** Canvas link id (l.id ?? `from-to`, mirroring the workspace projection). */
@@ -44,7 +44,7 @@ export function adjacency(doc: Doc, id: string): Adjacency {
  */
 export function depsFade(
   doc: Doc,
-  ev: EffectiveView,
+  ev: EffectiveLayout,
   activeId: string | null,
 ): { objects: Set<string>; links: Set<string> } {
   if (activeId === null || !doc.objects.some((o) => o.id === activeId)) {

@@ -16,7 +16,7 @@ level context
 person shopper "Shopper"
 system shop "Webshop" {
   description "Storefront"
-  drilldown "../containers/shop.pcd" view containers
+  drilldown "../containers/shop.pcd"
   source {
     language "ts"
     text "export function charge(total: number) {"
@@ -32,9 +32,7 @@ shop -requests-> psp : "charges"
 const CONTAINERS = `pcd 1.0
 title "Shop containers"
 level container
-view "Containers" as containers {
-  layout auto LR
-}
+layout auto LR
 container api "Checkout API" {
   drilldown "../components/api.pcd"
 }

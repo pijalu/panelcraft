@@ -20,14 +20,14 @@ import {
 } from './drillTrail';
 
 /** What the inspected element decomposes into, or why it cannot be opened. */
-export type DrillTarget = { path: string; view?: string; label: string } | TrailProblem;
+export type DrillTarget = { path: string; label: string } | TrailProblem;
 
 export interface DrilldownHandle {
   trail: Trail;
   crumbs: Crumb[];
   /** Element + file the current diagram is subordinate to (parent boundary). */
   parent: TrailEntry['from'] | undefined;
-  /** Findings about decomposition/source of the open file (P211–P218). */
+  /** Findings about decomposition/source of the open file (P211–P217). */
   issues: Diagnostic[];
   /** Last refused drill-down (cycle, escaping path, unreadable target). */
   notice: string | null;
@@ -41,7 +41,7 @@ export interface DrilldownHandle {
   /** Jump to a breadcrumb (0 = root). */
   goTo(index: number): void;
   /** Set or clear the decomposition relation of `objectId` (one undoable step). */
-  setDrilldown(objectId: string, path: string | null, view?: string): void;
+  setDrilldown(objectId: string, path: string | null): void;
   /** Replace or clear the embedded source of `objectId` (one undoable step). */
   setSource(objectId: string, source: SourceBlock | null): void;
 }
@@ -57,8 +57,6 @@ export interface DrilldownDeps {
   commitDoc: (doc: Doc) => void;
   /** Open a file (the shell's tab opener). */
   openFile: (path: string) => void;
-  /** Select the view a relation asked for (`undefined` = default view). */
-  onView: (view: string | undefined) => void;
 }
 
 const workspaceFiles = (manager: WorkspaceManager): AuditFile[] =>
@@ -108,7 +106,7 @@ export function useDrillLayer(deps: DrilldownDeps): DrillLayer {
 }
 
 export function useDrilldown(deps: DrilldownDeps): DrilldownHandle {
-  const { activePath, manager, version, revision, ctrlRef, commitDoc, openFile, onView } = deps;
+  const { activePath, manager, version, revision, ctrlRef, commitDoc, openFile } = deps;
   const [trail, setTrail] = useState<Trail>(emptyTrail);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -167,13 +165,12 @@ export function useDrilldown(deps: DrilldownDeps): DrilldownHandle {
       return;
     }
     const from = { path: activePath, objectId, label: obj === undefined ? objectId : labelOf(obj) };
-    const next = pushEntry(trail, resolved.path, from, resolved.view);
+    const next = pushEntry(trail, resolved.path, from);
     if (next.problem !== undefined) {
       setNotice(next.problem.message);
       return;
     }
     setNotice(null);
-    onView(resolved.view);
     setTrail(next.trail);
     openFile(resolved.path);
   };
@@ -183,7 +180,6 @@ export function useDrilldown(deps: DrilldownDeps): DrilldownHandle {
     if (entry === undefined) return;
     setNotice(null);
     setTrail(popTo(trail, index));
-    onView(entry.view);
     openFile(entry.path);
   };
 
@@ -196,13 +192,13 @@ export function useDrilldown(deps: DrilldownDeps): DrilldownHandle {
     commitDoc(updated);
   };
 
-  const setDrilldown = (objectId: string, path: string | null, view?: string): void => {
+  const setDrilldown = (objectId: string, path: string | null): void => {
     commit((source) => ({
       ...source,
       objects: source.objects.map((o) => {
         if (o.id !== objectId) return o;
         if (path === null) return omit(o, 'drilldown');
-        return { ...o, drilldown: view === undefined ? { path } : { path, view } };
+        return { ...o, drilldown: { path } };
       }),
     }), path === null ? 'Clear decomposition' : 'Set decomposition');
   };

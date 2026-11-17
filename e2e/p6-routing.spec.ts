@@ -26,13 +26,11 @@ a -> d as L3 {
   label "fallback"
 }
 
-view "Default" {
-  layout saved
-  position a (40, 40)
-  position b (400, 40)
-  position c (40, 280)
-  position d (400, 280)
-}
+layout saved
+position a (40, 40)
+position b (400, 40)
+position c (40, 280)
+position d (400, 280)
 `;
 
 async function seedDoc(page: Page, text: string): Promise<void> {

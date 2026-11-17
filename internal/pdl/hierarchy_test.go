@@ -66,12 +66,12 @@ func TestResolveDrilldown(t *testing.T) {
 	}
 }
 
-// TestDrilldownRoundTrip keeps path + view and the source lines byte-stable.
+// TestDrilldownRoundTrip keeps path and the source lines byte-stable.
 func TestDrilldownRoundTrip(t *testing.T) {
 	src := `pcd 1.0
 
 system shop "Shop" {
-  drilldown "containers/shop.pcd" view containers
+  drilldown "containers/shop.pcd"
   source {
     language "go"
     text ""
@@ -84,8 +84,8 @@ system shop "Shop" {
 		t.Fatalf("doc must parse: %v", res.Diagnostics)
 	}
 	drill := res.Doc.Objects[0].Drilldown
-	if drill == nil || drill.Path != "containers/shop.pcd" || drill.View != "containers" {
-		t.Fatalf("drilldown = %+v, want path + view", drill)
+	if drill == nil || drill.Path != "containers/shop.pcd" {
+		t.Fatalf("drilldown = %+v, want path", drill)
 	}
 	wantLines := []string{"", `say "hi"`}
 	if got := res.Doc.Objects[0].Source.Lines; strings.Join(got, "|") != strings.Join(wantLines, "|") {
@@ -108,12 +108,11 @@ func TestSourceBlockNeedsText(t *testing.T) {
 	}
 }
 
-// TestHierarchyValidation mirrors the TS cases: P212 missing, P214 level, P218
-// view, P215 kind, P213 path, P211 duplicate parent, P216 cycle.
+// TestHierarchyValidation mirrors the TS cases: P212 missing, P214 level,
+// P215 kind, P213 path, P211 duplicate parent, P216 cycle.
 func TestHierarchyValidation(t *testing.T) {
-	child := "pcd 1.0\nlevel container\nview \"Containers\" as containers {\n  layout auto LR\n}\ncontainer api \"API\"\n"
-	root := "pcd 1.0\nsystem shop \"Shop\" {\n  drilldown \"containers/shop.pcd\" view containers\n}\n"
-	rootNoView := "pcd 1.0\nsystem shop \"Shop\" {\n  drilldown \"containers/shop.pcd\" view missing\n}\n"
+	child := "pcd 1.0\nlevel container\ncontainer api \"API\"\n"
+	root := "pcd 1.0\nsystem shop \"Shop\" {\n  drilldown \"containers/shop.pcd\"\n}\n"
 
 	cases := []struct {
 		name  string
@@ -124,7 +123,6 @@ func TestHierarchyValidation(t *testing.T) {
 		{"ok", root, map[string]string{"containers/shop.pcd": child}, ""},
 		{"missing", root, map[string]string{}, "P212"},
 		{"level", root, map[string]string{"containers/shop.pcd": strings.Replace(child, "level container", "level context", 1)}, "P214"},
-		{"view", rootNoView, map[string]string{"containers/shop.pcd": child}, "P218"},
 		{"kind", "pcd 1.0\nperson u \"U\" {\n  drilldown \"u.pcd\"\n}\n", nil, "P215"},
 		{"escape", "pcd 1.0\nsystem s \"S\" {\n  drilldown \"../out.pcd\"\n}\n", nil, "P213"},
 		{"notpcd", "pcd 1.0\nsystem s \"S\" {\n  drilldown \"notes.md\"\n}\n", nil, "P213"},

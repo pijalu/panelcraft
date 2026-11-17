@@ -109,24 +109,21 @@ queue jobs "Asynchronous Fulfillment Queue" { icon cloud }
 group boundary "Commerce Platform Boundary" { icon cloud }
 note memo "Operational Support Note" { icon cloud }
 
-view "UX04" {
-  layout saved
-  position customer (20, 20)
-  position shop (270, 20)
-  position partner (520, 20)
-  position web (20, 180)
-  position checkout (270, 180)
-  position records (520, 180)
-  position jobs (20, 340)
-  position boundary (270, 340)
-  position memo (620, 340)
-}
+layout saved
+position customer (20, 20)
+position shop (270, 20)
+position partner (520, 20)
+position web (20, 180)
+position checkout (270, 180)
+position records (520, 180)
+position jobs (20, 340)
+position boundary (270, 340)
+position memo (620, 340)
 `;
 
 test('UX-04: every palette kind separates wrapped labels, glyphs and icons in both themes', async ({ page }) => {
   await page.goto('/');
   await seedDoc(page, ALL_KINDS);
-  await page.getByTestId('view-select').selectOption('UX04');
   const canvas = page.getByTestId('canvas');
   await expect(canvas.locator('g.pc-obj')).toHaveCount(9);
   await expectSeparated(page);
@@ -219,7 +216,6 @@ api -> shared.psp as importedLink
 test('UX08-WP07: icons sit top-center and label blocks centre in the remaining region', async ({ page }) => {
   await page.goto('/');
   await seedDoc(page, ALL_KINDS);
-  await page.getByTestId('view-select').selectOption('UX04');
   const canvas = page.getByTestId('canvas');
   await expect(canvas.locator('g.pc-obj')).toHaveCount(9);
 

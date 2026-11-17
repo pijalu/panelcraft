@@ -16,12 +16,10 @@ system wide "Width reference" {
 system tall "Height reference" {
   size 160 96
 }
-view "Default" {
-  layout saved
-  position target (100, 100)
-  position wide (440, 120)
-  position tall (440, 360)
-}
+layout saved
+position target (100, 100)
+position wide (440, 120)
+position tall (440, 360)
 `;
 
 async function seedDoc(page: Page, text = DOC): Promise<void> {

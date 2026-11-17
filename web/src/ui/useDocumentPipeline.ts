@@ -10,13 +10,13 @@ import type { CanvasController } from './CanvasController';
 import type { useWorkspace } from './useWorkspace';
 import type { useUiLayout } from './useUiLayout';
 import type { useCanvasGrid } from './useCanvasGrid';
-import type { useViewSession } from './useViewSession';
 import type { CodeSyncHandle } from './useCodeSync';
 import type { HoverInfo } from './hoverInfo';
 import { useAppCanvas } from './useAppCanvas';
 import { useCodeSync } from './useCodeSync';
 import { useProjectIcons, type ProjectIconsHandle } from './useProjectIcons';
-import { useEffect, useMemo } from 'preact/hooks';
+import { useEffect, useMemo, useRef } from 'preact/hooks';
+import type { Doc } from '../engine/model/types';
 import { iconAssetsOf } from '../engine/render/iconAssets';
 
 export interface DocumentPipeline {
@@ -28,7 +28,6 @@ export interface DocumentPipeline {
 
 export function useDocumentPipeline(p: {
   ws: ReturnType<typeof useWorkspace>;
-  view: ReturnType<typeof useViewSession>;
   ui: ReturnType<typeof useUiLayout>;
   grid: ReturnType<typeof useCanvasGrid>;
   activePath: string | null;
@@ -36,11 +35,12 @@ export function useDocumentPipeline(p: {
   onGhostOpen: (path: string) => void;
   onHover: (info: HoverInfo | null) => void;
 }): DocumentPipeline {
-  const { ws, view, activePath } = p;
+  const { ws, activePath } = p;
+  const commitDocRef = useRef<((doc: Doc) => void) | null>(null);
   const { canvas, inspect } = useAppCanvas({
     ws,
-    view,
     ui: p.ui,
+    commitDocRef,
     grid: p.grid,
     onRename: p.onRename,
     onGhostOpen: p.onGhostOpen,
@@ -53,9 +53,8 @@ export function useDocumentPipeline(p: {
     version: ws.version,
     ctrlRef: canvas.ctrlRef,
     snap: canvas.snap,
-    viewRef: view.viewNameRef,
   });
-  view.commitDocRef.current = code.commitDoc;
+  commitDocRef.current = code.commitDoc;
   const icons = useProjectIcons({
     activePath, manager: ws.manager, version: ws.version, revision: code.snapshot,
     ctrlRef: canvas.ctrlRef, commitDoc: code.commitDoc,

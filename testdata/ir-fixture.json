@@ -1,5 +1,5 @@
 {
-  "irVersion": 10,
+  "irVersion": 11,
   "formatVersion": "1.0",
   "title": "Checkout",
   "level": "container",
@@ -234,76 +234,32 @@
       }
     }
   ],
-  "views": [
-    {
-      "id": "main",
-      "name": "Main",
-      "lines": [
-        {
-          "type": "layout",
-          "mode": "auto",
-          "dir": "LR",
-          "pos": {
-            "line": 29,
-            "col": 3
-          }
-        },
-        {
-          "type": "hideTag",
-          "id": "external",
-          "pos": {
-            "line": 30,
-            "col": 3
-          }
-        },
-        {
-          "type": "hide",
-          "id": "dagre",
-          "pos": {
-            "line": 31,
-            "col": 3
-          }
-        },
-        {
-          "type": "position",
-          "id": "user",
-          "x": 0,
-          "y": 120.5,
-          "pos": {
-            "line": 32,
-            "col": 3
-          }
-        },
-        {
-          "type": "pin",
-          "id": "db",
-          "pos": {
-            "line": 33,
-            "col": 3
-          }
-        },
-        {
-          "type": "layout",
-          "mode": "saved",
-          "pos": {
-            "line": 34,
-            "col": 3
-          }
-        }
-      ],
-      "pos": {
-        "line": 28,
-        "col": 1
-      }
+  "layout": {
+    "directive": {
+      "mode": "auto",
+      "dir": "LR"
     },
-    {
-      "name": "Empty",
-      "pos": {
-        "line": 36,
-        "col": 1
+    "positions": [
+      {
+        "id": "user",
+        "x": 0,
+        "y": 120.5
       }
+    ],
+    "pins": [
+      "db"
+    ],
+    "hidden": [
+      "dagre"
+    ],
+    "hiddenTags": [
+      "external"
+    ],
+    "pos": {
+      "line": 28,
+      "col": 1
     }
-  ],
+  },
   "styles": [
     {
       "target": "api",

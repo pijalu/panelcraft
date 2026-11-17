@@ -25,13 +25,11 @@ shop -many-> bank as L2 {
 bank -rev-> ledger as L3
 shop <-> ledger as L4
 
-view "Base" {
-  layout saved
-  position ada (60, 120)
-  position shop (320, 120)
-  position bank (580, 120)
-  position ledger (840, 120)
-}
+layout saved
+position ada (60, 120)
+position shop (320, 120)
+position bank (580, 120)
+position ledger (840, 120)
 
 flow "Beats" as beats {
   intro "Start"
@@ -71,7 +69,6 @@ async function seed(page: Page, theme: 'light' | 'dark'): Promise<void> {
   await page.locator('.cm-content').press('ControlOrMeta+a');
   await page.keyboard.insertText(DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', { timeout: 10_000 });
-  await page.getByTestId('view-select').selectOption('Base');
   await openFlowSteps(page);
   await expect(page.getByTestId('flow-row-beats')).toBeVisible();
 }

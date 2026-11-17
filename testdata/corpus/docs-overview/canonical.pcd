@@ -65,7 +65,5 @@ flow "Docs self-hosting" as docs {
   conclusion "Doc drift caught before release"
 }
 
-view "Topology" {
-  layout auto LR
-  hide tag internal
-}
+layout auto LR
+hide tag internal

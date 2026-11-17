@@ -29,7 +29,6 @@ function Harness(props: Partial<DepsPanelProps> = {}) {
   const all: DepsPanelProps = {
     text: TEXT,
     filePath: 'systems/billing.pcd',
-    viewName: undefined,
     activeId: 'api',
     ctrl,
     onPick: (id) => picked.push(id),

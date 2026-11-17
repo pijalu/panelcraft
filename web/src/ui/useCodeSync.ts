@@ -46,7 +46,6 @@ function emptyDoc(): Doc {
     objects: [],
     links: [],
     flows: [],
-    views: [],
     styles: [],
   };
 }
@@ -79,11 +78,8 @@ export function useCodeSync(deps: {
   version: number;
   ctrlRef: { current: CanvasController | null };
   snap: Snapshot | null;
-  /** Active view name ref (M6 FR-V4): the apply port loads that view's
-   * stored positions so an apply roundtrip doesn't reset the layout. */
-  viewRef?: { current: string | undefined };
 }): CodeSyncHandle {
-  const { manager, ready, activePath, version, ctrlRef, snap, viewRef } = deps;
+  const { manager, ready, activePath, version, ctrlRef, snap } = deps;
   const lastLoadedRef = useRef<string | null>(null);
   const appliedTextRef = useRef<string | null>(null);
   const lastBridgeTextRef = useRef<string | null>(null);
@@ -98,10 +94,10 @@ export function useCodeSync(deps: {
           const ctrl = ctrlRef.current;
           if (ctrl) {
             // canvas is the projection: load through the same doc→state path
-            // the file open uses (grid layout for new objects; stored view
-            // positions overlay — M6 FR-V4); the canvas then emits and the
-            // bridge confirms via applied() (echo).
-            const state = docToState(doc, viewRef?.current);
+            // the file open uses (grid layout for new objects; stored top-level
+            // layout positions overlay — ADR 0007); the canvas then emits and
+            // the bridge confirms via applied() (echo).
+            const state = docToState(doc);
             appliedTextRef.current = stateToPcd(state);
             ctrl.loadState(state);
           }

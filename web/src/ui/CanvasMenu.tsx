@@ -8,6 +8,8 @@
 import type { CanvasController } from './CanvasController';
 import { s } from './strings';
 import { ContextMenu, type ContextEntry, type MenuItem, type MenuGroup } from './ContextMenu';
+import { routeResetTarget, type CommandSelection } from './commandPolicy';
+import { runRouteReset } from './diagramCommands';
 
 export interface CanvasMenuProps {
   ctrl: CanvasController;
@@ -17,6 +19,8 @@ export interface CanvasMenuProps {
   selectionCount: number;
   /** Link count in the current selection (UX08-WP08: inspect exactly one). */
   linkCount?: number;
+  selection: CommandSelection;
+  onResetDiagramLayout: () => void;
   onClose: () => void;
 }
 
@@ -36,7 +40,7 @@ function alignItems(ctrl: CanvasController, enabled: boolean): MenuItem[] {
 }
 
 /** Objects, edges, canvas: direct commands, then one Arrange group. */
-export function CanvasMenu({ ctrl, x, y, selectionCount, linkCount = 0, onClose }: CanvasMenuProps) {
+export function CanvasMenu({ ctrl, x, y, selectionCount, linkCount = 0, selection, onResetDiagramLayout, onClose }: CanvasMenuProps) {
   const many = selectionCount > 1;
   // UX08-WP08: the inspector exists for exactly one object or exactly one link;
   // the menu entry and Enter share controller.openProperties().
@@ -82,6 +86,23 @@ export function CanvasMenu({ ctrl, x, y, selectionCount, linkCount = 0, onClose 
     // The group stays reachable (its entries explain themselves when disabled),
     // so no capability is removed by the regrouping.
     ...(canArrange ? [arrange] : [{ ...arrange, disabled: true } as MenuGroup]),
+    {
+      id: 'reset-diagram-layout',
+      label: s('Reset diagram layout'),
+      onSelect: onResetDiagramLayout,
+    },
+    ...(routeResetTarget(selection).kind === 'one'
+      ? [{
+        id: 'reset-route',
+        label: s('Reset route'),
+        onSelect: () => runRouteReset(ctrl, routeResetTarget(selection)),
+      } as ContextEntry]
+      : [{
+        id: 'reset-all-routes',
+        label: s('Reset all routes'),
+        disabled: routeResetTarget(selection).kind === 'off',
+        onSelect: () => runRouteReset(ctrl, routeResetTarget(selection)),
+      } as ContextEntry]),
   ];
   return <ContextMenu x={x} y={y} items={items} onClose={onClose} />;
 }

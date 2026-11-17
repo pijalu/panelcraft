@@ -57,16 +57,10 @@ flow "Checkout" as f1 {
   api -> db : "query"
 }
 
-view "Default" {
-  layout saved
-  position api (120, 240)
-  position db (400, 240)
-  hide note1
-}
-
-view "Ops" {
-  layout auto TB
-}
+layout saved
+position api (120, 240)
+position db (400, 240)
+hide note1
 
 style api {
   fill #ff0000
@@ -125,7 +119,7 @@ describe('applyCanvasState (F-01)', () => {
 
     expect(text).toContain('import shared as "../shared.pcd"');
     expect(text).toContain('flow "Checkout" as f1');
-    expect(text).toContain('view "Default"');
+    expect(text).toContain('layout saved');
     expect(text).toContain('position api (120, 240)');
     expect(text).toContain('hide note1');
     expect(text).toContain('style api {');

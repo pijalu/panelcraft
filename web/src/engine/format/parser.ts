@@ -9,7 +9,7 @@ import {
   type Drilldown, FORMAT_VERSION, IR_VERSION,
   type Branch, type CameraSpec, type Comments, type Doc, type Flow, type FlowStep,
   type IconDecl, type ImportStmt, type Kind, type Link, type Obj, type Pos,
-  type SourceBlock, type StyleBlock, type StyleStmt, type View, type ViewLine,
+  type SourceBlock, type StyleBlock, type StyleStmt, type Dir, type LayoutState,
 } from '../model/types';
 
 export interface ParseResult {
@@ -25,6 +25,7 @@ const DIRS = new Set<string>(['LR', 'TB', 'RL', 'BT']);
 const META_LEVELS = new Set<string>(['context', 'container', 'component', 'deployment']);
 const THEMES = new Set<string>(['light', 'dark']);
 const STEP_KWS = new Set<string>(['intro', 'process', 'alt', 'par', 'goto', 'info', 'conclusion']);
+const LAYOUT_STMTS = new Set<string>(['layout', 'position', 'pin', 'hide']);
 const MAX_DEPTH = 32;
 /** UX08-WP11 camera bounds (IR v8): the existing canvas zoom limits, ms ≤ 300. */
 const CAMERA_ZOOM_MIN = 0.1;
@@ -113,7 +114,7 @@ class Parser {
     const doc: Doc = {
       irVersion: IR_VERSION,
       formatVersion: ver.text || FORMAT_VERSION,
-      imports: [], icons: [], objects: [], links: [], flows: [], views: [], styles: [],
+      imports: [], icons: [], objects: [], links: [], flows: [], styles: [],
     };
     // Pre-magic comments are doc-level (D-M1-2): the magic line is canonical first.
     const lead = this.takeComments();
@@ -179,9 +180,11 @@ class Parser {
       case 'import': return (d) => d.imports.push(this.parseImport());
       case 'icon': return (d) => d.icons.push(this.parseIcon());
       case 'flow': return (d) => d.flows.push(this.parseFlow());
-      case 'view': return (d) => d.views.push(this.parseView());
+      case 'view': return () => this.fail(this.next(), E.legacyView,
+        'named view blocks are no longer supported; move layout/position/pin/hide lines to the top level');
       case 'style': return (d) => d.styles.push(this.parseStyleStmt());
-      default: return undefined;
+      default:
+        return LAYOUT_STMTS.has(kw) ? (d) => this.parseLayoutStmt(kw, d) : undefined;
     }
   }
 
@@ -382,16 +385,16 @@ class Parser {
   }
 
   /**
-   * C4 decomposition (IR v10, FILE-FORMAT §3.2): `drilldown "<path>" [view <id>]`.
-   * The path is a quoted string, not an identifier — it is a workspace path — and the
-   * optional view is the child's view *id* (the `as <id>` of a `view` statement).
+   * C4 decomposition (IR v11, FILE-FORMAT §3.2): `drilldown "<path>"`.
+   * The path is a quoted string, not an identifier — it is a workspace path.
+   * A legacy `view <id>` suffix is rejected rather than silently dropped (ADR 0007).
    */
   private parseDrilldown(): Drilldown {
     const path = this.str();
     const peeked = this.peek();
     if (peeked.type === 'ident' && peeked.text === 'view') {
-      this.next();
-      return { path, view: this.ident() };
+      this.fail(this.next(), E.legacyDrilldownView,
+        'a named view on a drilldown is no longer supported; remove the "view <id>" suffix');
     }
     return { path };
   }
@@ -963,61 +966,68 @@ class Parser {
     }
   }
 
-  // ---- views ----------------------------------------------------------------
-  private parseView(): View {
-    const t0 = this.next();
-    const comments = this.takeComments();
-    const name = this.quoted(this.next(), 'view');
-    const v: View = { name, pos: tokPos(t0), lines: [] };
-    if (this.peek().type === 'ident' && this.peek().text === 'as') {
-      this.next();
-      v.id = this.ident();
-    }
-    this.expect('punct', '{');
-    while (!(this.peek().type === 'punct' && this.peek().text === '}')) {
-      this.skipComments();
-      if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed view block');
-      v.lines.push(this.parseViewLine());
-    }
-    this.next();
-    return comments.length ? { ...v, comments } : v;
+  // ---- top-level layout state (ADR 0007) -----------------------------------
+  private parseLayoutStmt(kw: string, doc: Doc): void {
+    if (kw === 'layout') this.parseLayout(doc);
+    else if (kw === 'position') this.parsePosition(doc);
+    else if (kw === 'pin') this.parsePin(doc);
+    else this.parseHide(doc);
   }
 
-  private parseViewLine(): ViewLine {
+  /** Lazily create the single top-level layout block at its first statement. */
+  private layoutState(doc: Doc, t: Token, comments: Comments): LayoutState {
+    if (doc.layout === undefined) {
+      doc.layout = { positions: [], pins: [], hidden: [], hiddenTags: [], pos: tokPos(t) };
+    }
+    if (comments.length > 0) (doc.layout.comments ??= []).push(...comments);
+    return doc.layout;
+  }
+
+  private parseLayout(doc: Doc): void {
     const t0 = this.next();
     const comments = this.takeComments();
-    const pos = tokPos(t0);
-    const mk = (line: Record<string, unknown>): ViewLine =>
-      ({ ...(comments.length ? { ...line, comments } : line), pos }) as ViewLine;
-    switch (t0.text) {
-      case 'layout': {
-        const mode = this.expect('ident').text;
-        if (mode === 'saved') return mk({ type: 'layout', mode });
-        if (mode !== 'auto') this.fail(t0, E.unexpected, `invalid layout mode '${mode}'`);
-        const dir = this.expect('ident').text;
-        if (!DIRS.has(dir)) this.fail(t0, E.unexpected, `invalid layout dir '${dir}'`);
-        return mk({ type: 'layout', mode: 'auto', dir });
-      }
-      case 'hide': {
-        const t = this.next();
-        if (t.type === 'ident' && t.text === 'tag') return mk({ type: 'hideTag', id: this.ident() });
-        if (t.type !== 'ident') this.fail(t, E.unexpected, 'hide needs an id');
-        return mk({ type: 'hide', id: this.ident(t) });
-      }
-      case 'position': {
-        const id = this.ident();
-        this.expect('punct', '(');
-        const x = this.num(this.next());
-        this.expect('punct', ',');
-        const y = this.num(this.next());
-        this.expect('punct', ')');
-        return mk({ type: 'position', id, x, y });
-      }
-      case 'pin':
-        return mk({ type: 'pin', id: this.ident() });
-      default:
-        this.fail(t0, E.unexpected, `unknown view line '${t0.text}'`);
+    const layout = this.layoutState(doc, t0, comments);
+    const mode = this.expect('ident').text;
+    if (mode === 'saved') {
+      layout.directive = { mode: 'saved' };
+      return;
     }
+    if (mode !== 'auto') this.fail(t0, E.unexpected, `invalid layout mode '${mode}'`);
+    const dir = this.expect('ident').text;
+    if (!DIRS.has(dir)) this.fail(t0, E.unexpected, `invalid layout dir '${dir}'`);
+    layout.directive = { mode: 'auto', dir: dir as Dir };
+  }
+
+  private parsePosition(doc: Doc): void {
+    const t0 = this.next();
+    const comments = this.takeComments();
+    const layout = this.layoutState(doc, t0, comments);
+    const id = this.ident();
+    this.expect('punct', '(');
+    const x = this.num(this.next());
+    this.expect('punct', ',');
+    const y = this.num(this.next());
+    this.expect('punct', ')');
+    layout.positions.push({ id, x, y });
+  }
+
+  private parsePin(doc: Doc): void {
+    const t0 = this.next();
+    const comments = this.takeComments();
+    this.layoutState(doc, t0, comments).pins.push(this.ident());
+  }
+
+  private parseHide(doc: Doc): void {
+    const t0 = this.next();
+    const comments = this.takeComments();
+    const layout = this.layoutState(doc, t0, comments);
+    const t = this.next();
+    if (t.type === 'ident' && t.text === 'tag') {
+      layout.hiddenTags.push(this.ident());
+      return;
+    }
+    if (t.type !== 'ident') this.fail(t, E.unexpected, 'hide needs an id');
+    layout.hidden.push(this.ident(t));
   }
 }
 

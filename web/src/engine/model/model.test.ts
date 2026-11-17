@@ -55,20 +55,14 @@ const sample: Doc = {
     },
     { title: 'Bare', steps: [], pos: { line: 26, col: 1 } },
   ],
-  views: [
-    {
-      id: 'main', name: 'Main', pos: { line: 28, col: 1 },
-      lines: [
-        { type: 'layout', mode: 'auto', dir: 'LR', pos: { line: 29, col: 3 } },
-        { type: 'hideTag', id: 'external', pos: { line: 30, col: 3 } },
-        { type: 'hide', id: 'dagre', pos: { line: 31, col: 3 } },
-        { type: 'position', id: 'user', x: 0, y: 120.5, pos: { line: 32, col: 3 } },
-        { type: 'pin', id: 'db', pos: { line: 33, col: 3 } },
-        { type: 'layout', mode: 'saved', pos: { line: 34, col: 3 } },
-      ],
-    },
-    { name: 'Empty', lines: [], pos: { line: 36, col: 1 } },
-  ],
+  layout: {
+    directive: { mode: 'auto', dir: 'LR' },
+    hiddenTags: ['external'],
+    hidden: ['dagre'],
+    positions: [{ id: 'user', x: 0, y: 120.5 }],
+    pins: ['db'],
+    pos: { line: 28, col: 1 },
+  },
   styles: [{ target: 'api', style: { fill: '#2d6cdf', shape: 'cyl' }, pos: { line: 38, col: 1 } }],
 };
 

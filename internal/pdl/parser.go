@@ -211,7 +211,9 @@ func (p *parser) statement(doc *ir.Doc) {
 	case "flow":
 		doc.Flows = append(doc.Flows, p.parseFlow())
 	case "view":
-		doc.Views = append(doc.Views, p.parseView())
+		p.fail(t, ErrLegacyView, "named view blocks are no longer supported; move layout/position/pin/hide lines to the top level")
+	case "layout", "position", "pin", "hide":
+		p.parseLayoutStmt(t.Text, doc)
 	case "style":
 		doc.Styles = append(doc.Styles, p.parseStyleStmt())
 	default:
@@ -448,15 +450,13 @@ func (p *parser) once(seen map[string]bool, t Token, key string) {
 	seen[key] = true
 }
 
-// parseDrilldown reads `"<path>" [view <id>]` (IR v10, FILE-FORMAT §3.2). The
-// path is a quoted workspace path, not an identifier; the optional view is the
-// child's view id.
+// parseDrilldown reads `"<path>"` (IR v11, FILE-FORMAT §3.2). The path is a
+// quoted workspace path. A legacy `view <id>` suffix is rejected (ADR 0007).
 func (p *parser) parseDrilldown() *ir.Drilldown {
 	d := &ir.Drilldown{Path: p.str()}
 	peeked := p.peek()
 	if peeked.Type == TokIdent && peeked.Text == "view" {
-		p.next()
-		d.View = p.ident()
+		p.fail(p.next(), ErrLegacyDrilldownView, "a named view on a drilldown is no longer supported; remove the \"view <id>\" suffix")
 	}
 	return d
 }
@@ -1132,88 +1132,56 @@ func (p *parser) parseMsgStep() ir.Step {
 	}
 }
 
-// ---- views ------------------------------------------------------------------
+// ---- top-level layout state (ADR 0007) --------------------------------------
 
-func (p *parser) parseView() ir.View {
+func (p *parser) layoutState(doc *ir.Doc, t0 Token, comments []string) *ir.LayoutState {
+	if doc.Layout == nil {
+		doc.Layout = &ir.LayoutState{Pos: tokPos(t0)}
+	}
+	doc.Layout.Comments = append(doc.Layout.Comments, comments...)
+	return doc.Layout
+}
+
+func (p *parser) parseLayoutStmt(kw string, doc *ir.Doc) {
 	t0 := p.next()
 	comments := p.takeComments()
-	name := p.quoted(p.next(), "view")
-	v := ir.View{Name: name, Pos: tokPos(t0)}
-	if p.peek().Type == TokIdent && p.peek().Text == "as" {
-		p.next()
-		v.ID = p.ident()
-	}
-	p.expect(TokPunct, "{")
-	for !(p.peek().Type == TokPunct && p.peek().Text == "}") {
-		p.skipComments()
-		if p.peek().Type == TokEOF {
-			p.fail(t0, ErrUnclosedBlock, "unclosed view block")
-		}
-		v.Lines = append(v.Lines, p.parseViewLine())
-	}
-	p.next()
-	v.Comments = comments
-	return v
-}
-
-func (p *parser) parseViewLine() ir.ViewLine {
-	t0 := p.next()
-	l := ir.ViewLine{Type: t0.Text, Comments: p.takeComments(), Pos: tokPos(t0)}
-	switch t0.Text {
+	l := p.layoutState(doc, t0, comments)
+	switch kw {
 	case "layout":
-		p.layoutLine(&l, t0)
-	case "hide":
-		p.hideLine(&l)
+		mode := p.expect(TokIdent, "").Text
+		if mode == "saved" {
+			l.Directive = &ir.LayoutDirective{Mode: "saved"}
+			return
+		}
+		if mode != "auto" {
+			p.fail(t0, ErrUnexpected, fmt.Sprintf("invalid layout mode '%s'", mode))
+		}
+		dir := p.expect(TokIdent, "").Text
+		if !dirs[dir] {
+			p.fail(t0, ErrUnexpected, fmt.Sprintf("invalid layout dir '%s'", dir))
+		}
+		l.Directive = &ir.LayoutDirective{Mode: "auto", Dir: dir}
 	case "position":
-		p.positionLine(&l)
+		id := p.ident()
+		p.expect(TokPunct, "(")
+		x := p.num(p.next())
+		p.expect(TokPunct, ",")
+		y := p.num(p.next())
+		p.expect(TokPunct, ")")
+		l.Positions = append(l.Positions, ir.LayoutPos{ID: id, X: x, Y: y})
 	case "pin":
-		l.ID = p.ident()
-	default:
-		p.fail(t0, ErrUnexpected, fmt.Sprintf("unknown view line '%s'", t0.Text))
+		l.Pins = append(l.Pins, p.ident())
+	case "hide":
+		t := p.next()
+		if t.Type == TokIdent && t.Text == "tag" {
+			l.HiddenTags = append(l.HiddenTags, p.ident())
+			return
+		}
+		if t.Type != TokIdent {
+			p.fail(t, ErrUnexpected, "hide needs an id")
+		}
+		l.Hidden = append(l.Hidden, p.identTok(t))
 	}
-	return l
-}
-
-func (p *parser) layoutLine(l *ir.ViewLine, t0 Token) {
-	mode := p.expect(TokIdent, "").Text
-	if mode == "saved" {
-		l.Mode = "saved"
-		return
-	}
-	if mode != "auto" {
-		p.fail(t0, ErrUnexpected, fmt.Sprintf("invalid layout mode '%s'", mode))
-	}
-	dir := p.expect(TokIdent, "").Text
-	if !dirs[dir] {
-		p.fail(t0, ErrUnexpected, fmt.Sprintf("invalid layout dir '%s'", dir))
-	}
-	l.Mode = "auto"
-	l.Dir = dir
-}
-
-func (p *parser) hideLine(l *ir.ViewLine) {
-	t := p.next()
-	if t.Type == TokIdent && t.Text == "tag" {
-		l.Type = "hideTag"
-		l.ID = p.ident()
-		return
-	}
-	if t.Type != TokIdent {
-		p.fail(t, ErrUnexpected, "hide needs an id")
-	}
-	l.ID = p.identTok(t)
-}
-
-func (p *parser) positionLine(l *ir.ViewLine) {
-	id := p.ident()
-	p.expect(TokPunct, "(")
-	x := p.num(p.next())
-	p.expect(TokPunct, ",")
-	y := p.num(p.next())
-	p.expect(TokPunct, ")")
-	l.ID = id
-	l.X = &x
-	l.Y = &y
 }
 
 // ---- entry ------------------------------------------------------------------

@@ -7,6 +7,7 @@ import { panelLabel } from './WorkspacePanels';
 import type { AppThemePreference } from './appTheme';
 import type { GridType } from '../engine/render/grid';
 import { s } from './strings';
+import { routeResetTarget, type CommandSelection, type RouteResetTarget } from './commandPolicy';
 
 export interface AppMenuActions {
   importFiles: () => void;
@@ -15,6 +16,8 @@ export interface AppMenuActions {
   exportWorkspaceZip: () => void;
   openPanel: (panel: PanelId) => void;
   resetLayout: () => void;
+  resetDiagramLayout: () => void;
+  resetRoutes: (target: RouteResetTarget) => void;
   setTheme: (theme: AppThemePreference) => void;
   history: () => void;
   present: () => void;
@@ -45,6 +48,8 @@ export interface AppMenuContext {
   theme: AppThemePreference;
   privateMode: boolean;
   layout: UiLayout;
+  /** Current canvas selection for the shared reset-command policy. */
+  selection: CommandSelection;
   grid?: AppMenuGrid;
   actions: AppMenuActions;
   install?: AppMenuInstall;
@@ -167,6 +172,41 @@ function viewEntries(ctx: AppMenuContext): MenuEntry[] {
   ];
 }
 
+/**
+ * Diagram reset commands (ADR 0007). Enablement comes from one pure selection
+ * policy shared with the canvas context menu, never from a second rule here.
+ */
+function diagramEntries(ctx: AppMenuContext): MenuEntry[] {
+  const target = routeResetTarget(ctx.selection);
+  const resetAll: MenuEntry = {
+    kind: 'item',
+    id: 'reset-all-routes',
+    label: s('Reset all routes'),
+    testId: 'menu-reset-all-routes',
+    disabled: target.kind === 'off' || ctx.activePath === null,
+    onSelect: () => ctx.actions.resetRoutes(target),
+  };
+  const resetOne: MenuEntry = {
+    kind: 'item',
+    id: 'reset-route',
+    label: s('Reset route'),
+    testId: 'menu-reset-route',
+    disabled: target.kind !== 'one',
+    onSelect: () => ctx.actions.resetRoutes(target),
+  };
+  return [
+    {
+      kind: 'item',
+      id: 'reset-diagram-layout',
+      label: s('Reset diagram layout'),
+      testId: 'menu-reset-diagram-layout',
+      disabled: ctx.activePath === null,
+      onSelect: ctx.actions.resetDiagramLayout,
+    },
+    target.kind === 'one' ? resetOne : resetAll,
+  ];
+}
+
 function flowEntries(ctx: AppMenuContext): MenuEntry[] {
   return [
     {
@@ -262,6 +302,8 @@ export function buildAppMenu(ctx: AppMenuContext): MenuEntry[] {
     { kind: 'separator', id: 'group-file' },
     ...viewEntries(ctx),
     { kind: 'separator', id: 'group-view' },
+    ...diagramEntries(ctx),
+    { kind: 'separator', id: 'group-diagram' },
     ...flowEntries(ctx),
     { kind: 'separator', id: 'group-flows' },
     {

@@ -48,7 +48,7 @@ import billing as "../billing/system.pcd"    ← 0..n, see §5
 <objects>                    ← 0..n, see §3
 <links>                      ← 0..n, see §4
 <flows>                      ← 0..n, see §6
-<views>                      ← 0..n, see §7
+<layout>                     ← 0..1, see §7 (top-level layout state)
 <style-overrides>            ← 0..n, see §7.3
 ```
 
@@ -78,7 +78,7 @@ attach id                   ← note only: anchored object id
 icon name                   ← built-in icon id (M5)
 size <w> <h>                ← explicit canvas geometry in document units (IR v2, F-13)
 z <int>                     ← explicit stacking order; absent = auto (IR v6, CX-03)
-drilldown "path.pcd" [view id]  ← C4 decomposition, IR v10 (§3.2)
+drilldown "path.pcd"            ← C4 decomposition, IR v11 (§3.2)
 source { … }                ← embedded source text, IR v10 (§3.3)
 ```
 
@@ -187,22 +187,21 @@ never points back at its parent — so every edge has exactly one author and the
 ends can never disagree.
 
 ```
-ObjectAttr += "drilldown" QuotedPath [ "view" Ident ]
+ObjectAttr += "drilldown" QuotedPath
 ```
 
 ```
 system shop "Webshop" {
   description "Storefront SPA"
-  drilldown "containers/shop.pcd" view containers
+  drilldown "containers/shop.pcd"
 }
 ```
 
 * **Target** — workspace-relative POSIX path to a `.pcd` file, resolved from the
   declaring file's directory. Absolute paths, backslashes, paths that escape the
   workspace root and non-`.pcd` suffixes are errors (`P213`).
-* **View** — optional view *id* inside the target file (the `as <id>` of a `view`
-  statement, §7.1). Absent, the child opens its default (implicit or first) view; a
-  view id the target does not declare is an error (`P218`).
+* **One diagram per file** — a decomposition names a workspace path only. Named
+  views were removed (ADR 0007); the child opens with its own top-level layout state.
 * **Allowed transitions** — decomposition follows C4's zoom levels:
 
   | parent kind | child `level` (§2) |
@@ -225,8 +224,8 @@ system shop "Webshop" {
   the parent element and its file; imported ghosts (§5) stay visually distinct.
 * **Navigation** — a drill-down is opened from a visible, keyboard-reachable
   affordance on the entity (properties panel action and canvas context action); the
-  trail shows breadcrumbs back to the root, and returning keeps the previous view
-  and camera. A broken, cyclic or duplicate relation keeps the current context and
+  trail shows breadcrumbs back to the root, and returning keeps the camera. A
+  broken, cyclic or duplicate relation keeps the current context and
   reports the reason instead of opening anything.
 * **Editing** — `drilldown` is a document line like any other: setting, changing or
   clearing it is one undoable command, so undo/redo never desynchronises the trail
@@ -441,7 +440,7 @@ import Alias as "./relative/path.pcd"
   endpoints may reference them; flows may include them.
 * Import graph must be **acyclic**; missing files are warnings with problem markers,
   not parse errors (diagram still renders).
-* What is *not* imported: flows, views, styles, links of the imported file (links always
+* What is *not* imported: flows, layout state, styles, links of the imported file (links always
   live in the file that draws them).
 
 ## 6. Flows
@@ -506,7 +505,7 @@ Rules:
   Absent metadata prints nothing, so a pre-v8 document keeps its canonical form byte for
   byte. The canonical block order is description, camera, duration, regardless of source
   order, and metadata is only ever stored here — never in a UI-only side channel. Camera
-  and step descriptions are flow concepts and never appear on `view` lines. Mermaid export
+  and step descriptions are flow concepts and never appear on layout lines. Mermaid export
   declares them as drops (see MERMAID-MATRIX).
 
 Example (see SPEC §7 for semantics):
@@ -530,28 +529,41 @@ flow "Happy path" as happy {
 }
 ```
 
-## 7. Views, positions, styles
+## 7. Layout, positions, styles
 
-### 7.1 Views
+### 7.1 Top-level layout state
+
+Named `view` blocks were removed (IR v11, ADR 0007). One diagram has one layout
+state, expressed as top-level statements:
 
 ```
-ViewStmt := "view" QuotedName ["as" Id] "{" ViewLine* "}"
-ViewLine := "layout" ("auto" Dir | "saved")
-          | "hide" "tag" Ident                       // repeatable
-          | "hide" Id                                 // repeatable (element-level)
-          | "position" Id "(" Number "," Number ")"   // saved coords, canvas units
-          | "pin" Id                                  // excluded from auto-layout
+LayoutStmt := "layout" ("auto" Dir | "saved")
+            | "hide" "tag" Ident                       // repeatable
+            | "hide" Id                                 // repeatable (element-level)
+            | "position" Id "(" Number "," Number ")"   // saved coords, canvas units
+            | "pin" Id                                  // excluded from auto-layout
 ```
 
-* A file with no `view` gets the implicit default view (auto layout, everything visible).
-* `layout saved` uses the `position` lines; nodes without position are auto-placed.
+* A file with no layout statements uses implicit auto layout in the document
+  direction with everything visible. There is no view selector and no view session.
+* `layout saved` uses the `position` lines; nodes without a position are auto-placed.
+* `pin`/`hide`/`hide tag` remain document display state; their UI lives in the
+  properties panel and application menu, not a removed view bar.
 * Camera state (zoom/scroll) is **never persisted** in PDL (session concern).
+
+**Legacy files.** `view "…" { … }` and `drilldown "…" view <id>` are rejected with
+diagnostics E117/E118 — never silently ignored. To convert by hand, delete the
+`view` wrapper, move its `layout`/`position`/`pin`/`hide` lines to the top level, and
+drop the `view <id>` suffix from any decomposition.
 
 ### 7.2 Coordinates
 
 Canvas units: 1 = 1 px at 100% zoom; origin top-left; y grows downward. Auto-layout
 (dagre) outputs are written back only when the user explicitly commits layout ("apply
-layout to file") — never silently.
+layout to file") — never silently. **Reset diagram layout** clears saved positions
+and persists deterministic auto-layout in one undoable command; it is distinct from
+**Reset workspace layout**, which only restores panel geometry. Resetting routes never
+changes object positions.
 
 Group boundaries are compound layout parents, so a link whose endpoint is a `group`
 is drawn from the boundary's computed rectangle but does not steer auto-layout; the
@@ -612,7 +624,7 @@ nested subgraph ids): warning + skipped, never silent.
 * Tags → mermaid `classDef` (one class per tag), applied via `class` statements.
 * Fill colors of `style` overrides → `style id fill:#…`.
 
-**Dropped (declared, per SPEC FR-M4):** flows, positions/layout, views, imports
+**Dropped (declared, per SPEC FR-M4):** flows, positions/layout, imports
 (exported file is flattened: imported objects inlined and marked via comment `%%
 imported from …`), properties, notes detach, icons (built-in and document-declared), endpoint perimeter anchors,
 waypoints, overlap overrides, object stacking order, custom shapes, decomposition
@@ -625,7 +637,7 @@ fallback flowchart.
 
 | Code | Severity | Rule |
 |---|---|---|
-| P100 | error | duplicate object/flow/view id |
+| P100 | error | duplicate object/flow id |
 | P101 | error | link/flow-step endpoint resolves to nothing |
 | P102 | error | import cycle |
 | P103 | error | import path escapes workspace |
@@ -636,7 +648,7 @@ fallback flowchart.
 | P201 | warning | orphan object (no links, no flow references) |
 | P202 | warning | empty flow / flow without visual steps |
 | P203 | warning | `style` targets non-existent id |
-| P204 | info | position overlaps (view-time concern; reported, not fixed) |
+| P204 | info | position overlaps (reported, not fixed) |
 | P206 | error | duplicate document icon handle |
 | P207 | error | document icon handle collides with a built-in icon |
 | P208 | error | icon payload/declaration count over the §3.1 limits |
@@ -649,7 +661,6 @@ fallback flowchart.
 | P215 | error | this object kind cannot own a subordinate diagram (§3.2) |
 | P216 | error | decomposition cycle (the chain returns to a file already in the trail) |
 | P217 | error | embedded source over the §3.3 limits (64 KiB / 4096 lines / 256 KiB per doc) |
-| P218 | error | decomposition `view` id is not declared by the target file |
 
 Exit codes per SPEC FR-X. All findings carry `line:col` of the offending token.
 
@@ -673,7 +684,7 @@ Exit codes per SPEC FR-X. All findings carry `line:col` of the offending token.
 ```ebnf
 file        = "pcd" version , { stmt } ;
 version     = number , [ "." number ] ;
-stmt        = meta | import | icon | object | link | flow | view | style ;
+stmt        = meta | import | icon | object | link | flow | layoutstmt | style ;
 meta        = ("title" string) | ("level" ident) | ("direction" ident) | ("theme" ident) ;
 import      = "import" ident "as" path ;
 icon        = "icon" ident "{" , [ "label" string ] , "media" string , "data" string , "}" ;
@@ -682,7 +693,7 @@ attr        = ("description" , string) | ("technology" , string) | ("tag" , iden
             | ("property" , ident , string) | ("contains" , ident { ident })
             | ("attach" , ident) | ("icon" , ident)
             | ("size" , number , number) | ("z" , number)
-            | ("drilldown" , string , [ "view" , ident ])
+            | ("drilldown" , string)
             | ("source" , "{" , [ "language" , string ] , { "text" , string } , "}" ) ;
 link        = ident , arrow , ident , [ ":" , string ] , [ "as" , ident ] , [ linkblock ] ;
 arrow       = [ "<" ] , "-" , [ ident , "-" ] , [ ">" ] ;   (* <-, ->, <->, -type-> *)
@@ -695,7 +706,9 @@ par         = "par" , [ string ] , "{" , { lane } , "}" ;
 lane        = "{" , { step } , "}" ;
 goto        = "goto" , [ path , "#" ] , ident , [ "return" , ("end"|"here") ] ;
 anchor      = "anchor" , ("from" | "to") , number ;   (* normalized 0 <= n < 1 *)
-view        = "view" , string , [ "as" , ident ] , "{" , { viewline } , "}" ;
+layoutstmt  = ("layout" , ("auto" , ident | "saved"))
+            | ("position" , ident , "(" , number , "," , number , ")")
+            | ("pin" , ident) | ("hide" , [ "tag" ] , ident) ;
 style       = "style" , ident , "{" , { styleline } , "}" ;
 (* IR v10: `drilldown` and `source` are object attributes — see `attr` above. *)
 ```
@@ -751,11 +764,9 @@ flow "Happy path" as happy {
   conclusion "Order stored"
 }
 
-view "Main" {
-  layout auto LR
-  position user (80, 120)
-  position api (420, 90)
-}
+layout auto LR
+position user (80, 120)
+position api (420, 90)
 
 style api { fill #2d6cdf }
 ```
@@ -795,7 +806,7 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
 - E-08 Duplicate meta directives: first wins, warning W100 (§2).
 - E-09 Tagged-id lists (`tag`, `contains`) are line-scoped: members must sit on
   the same line as the keyword (§3).
-- E-10 Link/flow/view ids are data: the canonical printer emits `as <id>`
+- E-10 Link/flow ids are data: the canonical printer emits `as <id>`
   whenever an id was recorded, including unreferenced link ids — lossless
   round-trip wins over §4's minimal-noise sketch (§1.2).
 - E-11 Empty collections (`tags`, `contains`, `waypoints`) vanish in canonical
@@ -812,7 +823,7 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   Base64; `E115` = the `media` string names a type this version cannot draw.
   Both abort the file: the declaration could never be rendered, and re-printing
   it would emit a file the app refuses to load.
-- E-15 Syntax errors (E100–E115) abort the whole file (doc = null + diagnostics);
+- E-15 Syntax errors (E100–E118) abort the whole file (doc = null + diagnostics);
   semantic findings never abort (§10, §14 sample).
 
 **Validation**
@@ -847,10 +858,10 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   `{files,errors,warnings,infos}`.
 
 **Decomposition and source (IR v10)**
-- E-22 `drilldown` is written `drilldown "<path>" [view <ident>]`, one per object;
-  the target path is a quoted string (a path, not an identifier) and the view is the
-  child's view *id*, not its display name. The canonical printer emits the two
-  lines after `size`/`z` and before the object's `style` block, `drilldown` first.
+- E-22 `drilldown` is written `drilldown "<path>"`, one per object; the target path
+  is a quoted string (a path, not an identifier). A legacy `view <ident>` suffix is
+  rejected with E118. The canonical printer emits the line after `size`/`z` and before
+  the object's `style` block.
 - E-23 A `source` block holds `language "…"` at most once and any number of `text
   "…"` lines in document order (one per source line). No `text` line is `E116`
   (nothing to show, and the printed file would lose the block); any other line
@@ -858,5 +869,5 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   lines separately (`source.lines`) so a reader never re-splits on `\n`.
 - E-24 `drilldown`/`source` are object attributes, so they inherit §12: unknown
   attributes still become raw data, and the two new ones are never silently
-  downgraded to it. Diagnostics P211–P218 are semantic (§10) and therefore never
+  downgraded to it. Diagnostics P211–P217 are semantic (§10) and therefore never
   abort a parse.

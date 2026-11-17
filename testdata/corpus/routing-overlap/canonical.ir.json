@@ -1,5 +1,5 @@
 {
-  "irVersion": 10,
+  "irVersion": 11,
   "formatVersion": "1.0",
   "title": "Connector overlap avoidance",
   "comments": [
@@ -64,55 +64,32 @@
       }
     }
   ],
-  "views": [
-    {
-      "name": "Default",
-      "lines": [
-        {
-          "type": "position",
-          "id": "a",
-          "x": 40,
-          "y": 100,
-          "pos": {
-            "line": 16,
-            "col": 3
-          }
-        },
-        {
-          "type": "position",
-          "id": "b",
-          "x": 520,
-          "y": 100,
-          "pos": {
-            "line": 17,
-            "col": 3
-          }
-        },
-        {
-          "type": "position",
-          "id": "c",
-          "x": 40,
-          "y": 260,
-          "pos": {
-            "line": 18,
-            "col": 3
-          }
-        },
-        {
-          "type": "position",
-          "id": "d",
-          "x": 520,
-          "y": 260,
-          "pos": {
-            "line": 19,
-            "col": 3
-          }
-        }
-      ],
-      "pos": {
-        "line": 15,
-        "col": 1
+  "layout": {
+    "positions": [
+      {
+        "id": "a",
+        "x": 40,
+        "y": 100
+      },
+      {
+        "id": "b",
+        "x": 520,
+        "y": 100
+      },
+      {
+        "id": "c",
+        "x": 40,
+        "y": 260
+      },
+      {
+        "id": "d",
+        "x": 520,
+        "y": 260
       }
+    ],
+    "pos": {
+      "line": 15,
+      "col": 1
     }
-  ]
+  }
 }

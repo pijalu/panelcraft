@@ -32,7 +32,7 @@ Every string below can appear in `dropped[]`; anything starting with
 - `flow descriptions`
 - `step descriptions`
 - `camera overrides`
-- `views (positions/layout)`
+- `layout (positions/pins/hides)`
 - `descriptions/technology`
 - `properties`
 - `unknown attributes`
@@ -52,7 +52,7 @@ Every string below can appear in `dropped[]`; anything starting with
 - `groups (no C4 boundary element)`
 - `notes (no C4 annotation element)`
 - `flows`
-- `views (positions/layout)`
+- `layout (positions/pins/hides)`
 - `imports (flattened)`
 - `link style beyond a label`
 

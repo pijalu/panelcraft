@@ -6,15 +6,15 @@ import { useCallback, useRef } from 'preact/hooks';
 import type { PropertiesRequest } from './CanvasController';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useUiLayout } from './useUiLayout';
-import { useViewSession } from './useViewSession';
 import type { useCanvasGrid } from './useCanvasGrid';
 import type { HoverInfo } from './hoverInfo';
 import { usePropertiesRequest, type PropertiesRequestHandle } from './usePropertiesRequest';
 
 export interface AppCanvasOptions {
   ws: ReturnType<typeof useWorkspace>;
-  view: ReturnType<typeof useViewSession>;
   ui: ReturnType<typeof useUiLayout>;
+  /** Ref filled by the pipeline once the code-sync writer exists. */
+  commitDocRef: { current: ((doc: import('../engine/model/types').Doc) => void) | null };
   grid: ReturnType<typeof useCanvasGrid>;
   onRename: (id: string) => void;
   onGhostOpen: (path: string) => void;
@@ -33,8 +33,7 @@ export function useAppCanvas(
     p.ws.manager,
     p.ws.ready,
     p.ws.version,
-    p.view.viewNameRef,
-    p.view.commitDocRef,
+    p.commitDocRef,
     p.onRename,
     p.onGhostOpen,
     p.onHover,

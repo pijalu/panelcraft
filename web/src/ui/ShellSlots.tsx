@@ -77,7 +77,6 @@ export interface PropsSlotProps {
   onFit: () => void;
   depsText: string | null;
   activePath: string | null;
-  viewName: string | undefined;
   activeId: string | null;
   ctrl: CanvasController | null;
   /** F-11 section expand state + toggler (persisted with the layout). */
@@ -119,7 +118,6 @@ export function PropsSlot(props: PropsSlotProps) {
       <DepsPanel
         text={props.depsText}
         filePath={props.activePath}
-        viewName={props.viewName}
         activeId={props.activeId}
         ctrl={props.ctrl}
         onPick={(id) => props.ctrl?.reveal(id)}

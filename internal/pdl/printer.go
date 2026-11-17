@@ -273,15 +273,11 @@ func objectAttrLines(o ir.Obj, p *printer) {
 	hierarchyLines(o, p)
 }
 
-// hierarchyLines prints the IR v10 decomposition and source lines (§3.2, §3.3):
-// `drilldown` first, then the nested `source` block.
+// hierarchyLines prints the IR v11 decomposition and source lines (§3.2, §3.3):
+// `drilldown` first, then the nested `source` block. No named view (ADR 0007).
 func hierarchyLines(o ir.Obj, p *printer) {
 	if o.Drilldown != nil {
-		line := indent + "drilldown " + Quote(o.Drilldown.Path)
-		if o.Drilldown.View != "" {
-			line += " view " + o.Drilldown.View
-		}
-		p.add(line)
+		p.add(indent + "drilldown " + Quote(o.Drilldown.Path))
 	}
 	if o.Source == nil {
 		return
@@ -428,37 +424,28 @@ func presentationLines(s ir.Step, depth int, p *printer) {
 	}
 }
 
-func printViewLine(l ir.ViewLine, p *printer) {
-	p.comment(l.Comments, 1)
-	switch l.Type {
-	case "layout":
-		if l.Mode == "saved" {
-			p.add(indent + "layout saved")
+// printLayout prints the single top-level layout block (ADR 0007).
+func printLayout(l *ir.LayoutState, p *printer) {
+	p.comment(l.Comments, 0)
+	if l.Directive != nil {
+		if l.Directive.Mode == "saved" {
+			p.add("layout saved")
 		} else {
-			p.add(indent + "layout auto " + l.Dir)
+			p.add("layout auto " + l.Directive.Dir)
 		}
-	case "hideTag":
-		p.add(indent + "hide tag " + l.ID)
-	case "hide":
-		p.add(indent + "hide " + l.ID)
-	case "position":
-		p.add(indent + "position " + l.ID + " (" + jsNum(*l.X) + ", " + jsNum(*l.Y) + ")")
-	case "pin":
-		p.add(indent + "pin " + l.ID)
 	}
-}
-
-func printView(v ir.View, p *printer) {
-	p.comment(v.Comments, 0)
-	head := "view " + Quote(v.Name)
-	if v.ID != "" {
-		head += " as " + v.ID
+	for _, pos := range l.Positions {
+		p.add("position " + pos.ID + " (" + jsNum(pos.X) + ", " + jsNum(pos.Y) + ")")
 	}
-	p.add(head + " {")
-	for _, l := range v.Lines {
-		printViewLine(l, p)
+	for _, id := range l.Pins {
+		p.add("pin " + id)
 	}
-	p.add("}")
+	for _, id := range l.Hidden {
+		p.add("hide " + id)
+	}
+	for _, tag := range l.HiddenTags {
+		p.add("hide tag " + tag)
+	}
 }
 
 func printStyleStmt(st ir.StyleStmt, p *printer) {
@@ -519,7 +506,10 @@ func PrintDoc(doc *ir.Doc) string {
 	printSection(p, doc.Objects, printObject)
 	printSection(p, doc.Links, printLink)
 	printSection(p, doc.Flows, printFlow)
-	printSection(p, doc.Views, printView)
+	if doc.Layout != nil {
+		p.blank()
+		printLayout(doc.Layout, p)
+	}
 	printSection(p, doc.Styles, printStyleStmt)
 	return p.text()
 }
