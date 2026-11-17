@@ -67,16 +67,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 **Validation.** The new failing case must fail before the fix and pass after it. Re-run the complete PWA spec, keyboard activation, light/dark and narrow-viewport screenshots, `npm run check` and `npm test`. Record the reproduction state in this item before closing it.
 
-## Presentation step badge is vertically miscentred
-
-**Observed.** The affected circle is the **SVG beat badge**, not the dock’s text counter. `FlowAnimator.badge` sets the circle centre to `y` but the text baseline to `y + 4` while CSS also uses `dominant-baseline: central` (`web/src/engine/anim/engine.ts:277-295`; `web/src/ui/app.css:2480-2489`). The existing unit test checks only the text value. The original plan to inspect `.present-counter` would measure the wrong element.
-
-**Expected.** The step number is optically and geometrically centred in `.pc-badge-dot`, without clipping, for one-, two- and three-digit values in both themes.
-
-**Fix plan.** Add a failing SVG geometry assertion for text centre versus circle centre and a Chromium measurement using `getBBox()` in SVG coordinates. Inspect the extra 4-unit offset, baseline and font metrics before changing anything; do not alter the unrelated dock counter. Keep centre calculation in the badge renderer and use the existing type/spacing tokens.
-
-**Validation.** Unit-test 1, 10 and 100, then run presentation e2e with measured centre offset and light/dark captures. Review screenshots against the style-guide checklist, then run `npm run check` and `npm test`.
-
 ## Presentation Play must replay the current beat
 
 **Observed.** The presentation toggle calls `FlowRunner.resume`, which resumes the existing animation timeline (`web/src/ui/PresentDock.tsx:49-55`; `web/src/ui/flows/flowController.ts:324-338`). It therefore cannot start a fresh spark cycle after Pause or after a step was settled.

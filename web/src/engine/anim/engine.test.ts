@@ -237,6 +237,25 @@ describe('FlowAnimator tokens, rings, badges (FR-F4)', () => {
     expect(svg.querySelector('.pc-badge text')?.textContent).toBe('4');
   });
 
+  it('centres the step number on the badge circle for 1, 10 and 100', () => {
+    // .pc-badge-num is styled with text-anchor: middle and
+    // dominant-baseline: central, so its x/y attributes are the rendered
+    // glyph box's horizontal and vertical centre. They must coincide with
+    // the dot's centre for every digit count — an extra offset pushes the
+    // number low inside the circle.
+    for (const index of [1, 10, 100]) {
+      const s = mkSvg();
+      const anim = new FlowAnimator(s, { player: mkPlayer().player, geometry: mkGeometry() });
+      anim.play(beatOf({ index, kind: 'process', actors: ['c'] }), ctx);
+      const circle = s.querySelector('.pc-badge-dot')!;
+      const text = s.querySelector('.pc-badge-num')!;
+      const cx = Number(circle.getAttribute('cx'));
+      const cy = Number(circle.getAttribute('cy'));
+      expect(Number(text.getAttribute('x'))).toBe(cx);
+      expect(Number(text.getAttribute('y'))).toBe(cy);
+    }
+  });
+
   it('par beats animate all lane links concurrently under one dim pass', () => {
     const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry() });
     anim.play(

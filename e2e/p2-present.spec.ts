@@ -74,6 +74,26 @@ test('F-16: presenting hides chrome, advances by click and key, Esc restores', a
     .poll(async () => page.getByTestId('present-counter').innerText())
     .not.toBe(afterClick);
 
+  // The SVG beat badge (not the dock's text counter) must centre its number
+  // on the dot. Measure real glyph geometry in SVG user units: getBBox() is
+  // local to the badge group, so both boxes are directly comparable.
+  const badge = await page.locator('.pc-badge').first().evaluate((g) => {
+    const circle = g.querySelector('circle.pc-badge-dot') as SVGCircleElement;
+    const text = g.querySelector('text.pc-badge-num') as SVGTextElement;
+    const cb = circle.getBBox();
+    const tb = text.getBBox();
+    return {
+      circleMidY: cb.y + cb.height / 2,
+      textMidY: tb.y + tb.height / 2,
+      circleMidX: cb.x + cb.width / 2,
+      textMidX: tb.x + tb.width / 2,
+      label: text.textContent,
+    };
+  });
+  console.log('BADGE_GEOMETRY', JSON.stringify(badge));
+  expect(Math.abs(badge.textMidY - badge.circleMidY)).toBeLessThan(1.5);
+  expect(Math.abs(badge.textMidX - badge.circleMidX)).toBeLessThan(1.5);
+
   await capture(page, 'p2-present-light');
   await page.emulateMedia({ colorScheme: 'dark' });
   await capture(page, 'p2-present-dark');

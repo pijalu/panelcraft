@@ -4,6 +4,14 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-17 — presentation step number sits on its badge centre
+
+- The number in the presentation's SVG beat badge no longer sits four units low
+  inside its circle. The renderer now places it exactly on the dot's centre,
+  which already uses a central baseline, so one-, two- and three-digit steps
+  are centred in both themes. The dock's text counter is unaffected.
+  Details: [docs/archive/bugs-presentation-badge-centering.md](archive/bugs-presentation-badge-centering.md).
+
 ## 2026-11-16 — the hosted site proves its own revision (item 11)
 
 - Every bundle now carries the commit it was built from: `build-info.json` (sha,

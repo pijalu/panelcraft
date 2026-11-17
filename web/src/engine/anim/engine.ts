@@ -287,7 +287,10 @@ export class FlowAnimator {
     c.setAttribute('r', '11');
     const t = mkEl('text', 'pc-badge-num');
     t.setAttribute('x', String(x));
-    t.setAttribute('y', String(y + 4));
+    // CSS gives .pc-badge-num text-anchor: middle and dominant-baseline:
+    // central, so x/y are the glyph box centre. Put the number exactly on
+    // the dot's centre; an extra offset pushes it low inside the circle.
+    t.setAttribute('y', String(y));
     t.setAttribute('text-anchor', 'middle');
     t.textContent = String(beat.index);
     g.appendChild(c);
