@@ -58,3 +58,4 @@ Closed items, in the order they were archived:
 - `bugs-browser-assessment-round-3.md` — step properties are visible on selection, spark count is a spaced maximum, beats can cycle until a click, and delay edits no longer stall the UI.
 - `bugs-critical-assessment-round-2.md` — the assessment of this whole round: the presentation filmstrip e2e no longer depends on machine load, and a settled delay edit writes once.
 - `bugs-curve-arrow-endpoint.md` — a curved connector's arrowhead always points into the entity it ends on.
+- `bugs-tab-close-outside.md` — a tab's close cross sits inside the tab's own outline.

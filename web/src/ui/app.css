@@ -1863,23 +1863,34 @@ marker .pc-arrow[fill='none'] {
 .tab {
   display: inline-flex;
   align-items: center;
-  gap: 0; /* button carries the visual tab chrome now (N5 restructure) */
-  border: none;
-  padding: 0;
+  gap: var(--pc-space-1);
+  /* The chrome belongs to the tab, not to its name button: the close cross is a
+     sibling of the name, so chrome on the name left the cross painted outside
+     the tab's own outline. */
+  padding: 3px 2px 3px 8px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--pc-radius-sm) var(--pc-radius-sm) 0 0;
   background: transparent;
   font-size: var(--pc-text-sm);
+}
+
+.tab.tab-active {
+  border-color: var(--pc-tab-border);
+  background: var(--pc-tab-active-bg);
+  font-weight: 600;
 }
 
 .tab > .tab-name {
   display: inline-flex;
   align-items: center;
   gap: var(--pc-space-1);
-  padding: 3px 6px 3px 8px;
-  border: 1px solid var(--pc-tab-border);
-  border-bottom: none;
-  border-radius: var(--pc-radius-sm) var(--pc-radius-sm) 0 0;
-  background: var(--pc-tab-active-bg);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   font-weight: inherit;
+  min-width: 0; /* a long name ellipsizes inside the chrome, not past it */
 }
 
 .tab > .tab-main {
@@ -1887,22 +1898,18 @@ marker .pc-arrow[fill='none'] {
 }
 
 .tab > .tab-close {
-  margin-left: -2px;
-  padding-bottom: 3px;
-  align-self: stretch;
+  padding: 0 2px;
+  align-self: center;
 }
 
 .tab > .tab-name[data-active="true"] {
-  border-color: var(--pc-tab-border);
-  border-bottom-color: var(--pc-tab-active-bg);
-  background: var(--pc-tab-active-bg);
   color: var(--pc-tab-active-fg);
-  font-weight: 600;
 }
 
 .tab > .tab-name[data-active="false"] {
   background: transparent;
   border-color: transparent;
+  color: var(--pc-tab-inactive-fg);
 }
 
 .tab > .tab-name[data-active="false"] .tab-name {
