@@ -38,6 +38,41 @@ function docOf(text: string): Doc | null {
   return parsePDL(text).doc;
 }
 
+/**
+ * The canvas projection of `text` — what the canvas emits after loading it. It
+ * is a projection (objects/links only), so it never equals the file text; only
+ * comparing like with like identifies a load.
+ */
+function projectionOf(text: string): string | null {
+  const doc = docOf(text);
+  return doc === null ? null : stateToPcd(docToState(doc));
+}
+
+/**
+ * What a canvas emission means: 'apply' confirms a pending apply, 'load' is the
+ * canvas reading the open file, 'edit' is a real change to carry into the code.
+ */
+function echoKind(text: string, applied: string | null, loaded: string | null): 'apply' | 'load' | 'edit' {
+  if (text === applied) return 'apply';
+  if (text === loaded) return 'load';
+  return 'edit';
+}
+
+/**
+ * What a canvas change is merged into: the buffer the user sees, else the file's
+ * own text, else a blank document. The buffer first, because a canvas edit must
+ * preserve the parts of the document the canvas cannot model (flows, views,
+ * styles) exactly as the user is reading them.
+ */
+function mergeBase(
+  machine: SyncMachine,
+  manager: WorkspaceManager,
+  current: DocumentSource | undefined,
+): Doc {
+  const file = manager.activePath === null ? '' : manager.text(manager.activePath);
+  return docOf(machine.snapshot().codeText) ?? docOf(current?.text ?? file) ?? emptyDoc();
+}
+
 /** Blank document — the merge base when neither buffer nor file parse. */
 function emptyDoc(): Doc {
   return {
@@ -56,6 +91,13 @@ export interface CodeSyncHandle {
   machine: SyncMachine;
   /** Latest machine snapshot (sync-state chip, FR-K5 close prompt). */
   snapshot: SyncSnapshot;
+  /**
+   * The machine holds the open file's text. False while the workspace is still
+   * starting: the buffer is empty and "clean" at that point only because
+   * nothing has been loaded yet, so the editor must not be offered for typing —
+   * a keystroke in that window would be overwritten by the incoming file text.
+   */
+  loaded: boolean;
   /** Format button / save hook (FR-K4). */
   formatNow: () => void;
   /**
@@ -90,6 +132,8 @@ export function useCodeSync(deps: {
   const lastLoadedRef = useRef<string | null>(null);
   const appliedTextRef = useRef<string | null>(null);
   const lastBridgeTextRef = useRef<string | null>(null);
+  /** Projection the canvas emits when it loads the open file (not an edit). */
+  const loadEchoRef = useRef<string | null>(null);
   const sourceRef = useRef(docSource);
   sourceRef.current = docSource;
   const documentKey = docSource?.key ?? activePath;
@@ -128,17 +172,28 @@ export function useCodeSync(deps: {
   );
 
   const [snapshot, setSnapshot] = useState<SyncSnapshot>(machine.snapshot());
+  // Sticky: once a file's text is in the machine it stays true (a file switch
+  // replaces the buffer in place, and unmounting the editor on every switch
+  // would throw away its scroll and cursor for nothing).
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => machine.subscribe(setSnapshot), [machine]);
 
 /* active document → machine (reset buffer on file or nested ref switch) */
 useEffect(() => {
   if (!ready) return;
+  // Nothing to load: with no open file the (empty) buffer is already the truth.
+  if (documentKey === null) setLoaded(true);
   if (documentKey === lastLoadedRef.current) return;
   lastLoadedRef.current = documentKey;
   const text = docSource?.text ?? (activePath === null ? '' : manager.text(activePath));
   appliedTextRef.current = null;
   lastBridgeTextRef.current = null;
+  // Remember what the canvas will emit when it loads this text: opening a file
+  // is not a canvas edit, and on a slow start that load lands *after* the user
+  // may already have typed a different document (see the bridge below).
+  loadEchoRef.current = projectionOf(text);
   machine.loadFile(text);
+  setLoaded(true);
 }, [ready, documentKey, version, manager, machine, docSource]);
 
   /* canvas → machine bridge (echo-suppressed; deduped by serialized text) */
@@ -166,24 +221,27 @@ useEffect(() => {
     };
     // Echo check FIRST: a position-only apply (auto-layout, FR-V3) changes
     // neither the serialized projection nor the buffer — the dedupe below
-    // would swallow the emission and the machine would stay pending-apply.
-    if (text === appliedTextRef.current) {
-      appliedTextRef.current = null;
+    // would swallow the emission and the machine would stay pending-apply. The
+    // canvas loading the open file is a second such non-edit: without it, a load
+    // that finishes after the user started typing hands the code view the file's
+    // entities while keeping the typed flows, so the buffer shows a document
+    // nobody wrote (and, with dangling flow steps, a parse error). Compared by
+    // content, so the gate does not depend on which load won the race.
+    const echo = echoKind(text, appliedTextRef.current, loadEchoRef.current);
+    if (echo !== 'edit') {
+      if (echo === 'apply') {
+        appliedTextRef.current = null;
+        machine.applied(); // no-op unless pending-apply (formatNow applies from clean)
+      } else {
+        loadEchoRef.current = null;
+      }
       lastBridgeTextRef.current = text;
-      machine.applied(); // no-op unless pending-apply (formatNow applies from clean)
       machine.markSaved(saved());
       return;
     }
     if (text === lastBridgeTextRef.current) return; // drags/selection/viewport spam
     lastBridgeTextRef.current = text;
-    // Canvas changes are merged into the live document (F-01), so flows, views,
-    // styles and imports never disappear when the canvas writes: the base is
-    // the buffer the user sees (falling back to the file, then an empty doc).
-    const base =
-      docOf(machine.snapshot().codeText) ??
-      docOf(current?.text ?? (manager.activePath === null ? '' : manager.text(manager.activePath))) ??
-      emptyDoc();
-    machine.canvasChanged(applyCanvasState(base, state));
+    machine.canvasChanged(applyCanvasState(mergeBase(machine, manager, current), state));
     // the emission's saveCanvas (onCtrlState) already wrote the projection
     // to the file synchronously — record it, or the chip would show a
     // diverged false alarm whenever canvas edits re-canonicalize ids/types.
@@ -201,5 +259,11 @@ useEffect(() => {
     machine.markSaved(printDoc(doc));
   };
 
-  return { machine, snapshot, formatNow: () => machine.formatNow(), commitDoc };
+  return {
+    machine,
+    snapshot,
+    loaded,
+    formatNow: () => machine.formatNow(),
+    commitDoc,
+  };
 }

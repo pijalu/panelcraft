@@ -231,3 +231,128 @@ describe('useCodeSync apply port', () => {
     expect(manager.files()).toEqual([]);
   });
 });
+
+/**
+ * Readiness: the machine is empty and "clean" until the open file's text is
+ * loaded, so the pane needs a signal that separates "loaded and clean" from
+ * "nothing loaded yet". Without it the editor is offered for typing while the
+ * buffer is still empty, and the incoming file text overwrites the keystroke
+ * (observed as a duplicated header and a permanent parse error).
+ */
+describe('useCodeSync readiness', () => {
+  it('reports not loaded while the workspace is still starting', () => {
+    const manager = new WorkspaceManager({ storage: new MemoryStorage(), skipWelcome: true });
+    manager.createFileAt('a.pcd', 'pcd 1.0\n\nsystem a "A" {\n}\n');
+    manager.openFile('a.pcd');
+    const w = wiredCtrl(manager);
+    const { result } = renderHook(() =>
+      useCodeSync({
+        manager,
+        ready: false, // workspace not initialized yet
+        activePath: 'a.pcd',
+        version: 1,
+        ctrlRef: w.ctrl,
+        snap: null,
+      }),
+    );
+    expect(result.current.loaded).toBe(false);
+    expect(result.current.machine.snapshot().codeText).toBe('');
+    expect(result.current.machine.snapshot().state).toBe('clean'); // the false signal
+  });
+
+  it('reports loaded once the file text is in the machine', () => {
+    const manager = new WorkspaceManager({ storage: new MemoryStorage(), skipWelcome: true });
+    manager.createFileAt('a.pcd', 'pcd 1.0\n\nsystem a "A" {\n}\n');
+    manager.openFile('a.pcd');
+    const w = wiredCtrl(manager);
+    const { result } = mountSync(manager, w);
+    expect(result.current.loaded).toBe(true);
+    expect(result.current.machine.snapshot().codeText).toContain('system a "A"');
+  });
+  it('reports loaded for a workspace with no open file (nothing to wait for)', () => {
+    const manager = new WorkspaceManager({ storage: new MemoryStorage(), skipWelcome: true });
+    const w = wiredCtrl(manager);
+    const { result } = mountSync(manager, w, { activePath: null });
+    expect(result.current.loaded).toBe(true);
+    expect(result.current.machine.snapshot().codeText).toBe('');
+  });
+});
+
+/**
+ * A canvas emission must never leave the buffer unparsable. The canvas loads the
+ * open file on startup; on a slow machine that load emission can land *after*
+ * the user has already typed a different document. The merge replaces the
+ * document's entities with the canvas's (they come from the file the canvas
+ * loaded) while keeping the buffer's flows, so flow steps end up pointing at
+ * entities that no longer exist — a permanent parse error in the code view.
+ * The buffer the user can see is the source of truth once it parses: the bridge
+ * refuses the merge instead of corrupting it.
+ */
+describe('useCodeSync merge safety', () => {
+  const TYPED = `pcd 1.0
+
+person user "Shopper"
+system shop "Webshop"
+
+user -> shop as L1
+
+flow "Checkout" as checkout {
+  intro "Start"
+  user -> shop : "browse"
+  conclusion "Done"
+}
+`;
+
+  const STARTUP_FILE = 'pcd 1.0\n\nsystem a "A" {\n}\nsystem b "B" {\n}\n\na -> b as La\n';
+
+  it('a late load emission does not corrupt a document the user typed', async () => {
+    // The file the canvas loads at startup is NOT the document the user types.
+    const manager = new WorkspaceManager({ storage: new MemoryStorage(), skipWelcome: true });
+    manager.createFileAt('a.pcd', STARTUP_FILE);
+    manager.openFile('a.pcd');
+    const w = wiredCtrl(manager);
+    const { result, rerender } = mountSync(manager, w);
+    act(() => {
+      result.current.machine.textChanged(TYPED);
+    });
+    // The canvas finishes loading a *different* document (the startup file) and
+    // emits its state after the typing: it becomes the queued canvas change.
+    w.emit(
+      emitSnap(
+        [
+          { id: 'a', kind: 'system', x: 0, y: 0, w: 160, h: 60, name: 'A' },
+          { id: 'b', kind: 'system', x: 300, y: 0, w: 160, h: 60, name: 'B' },
+        ],
+        [{ id: 'La', from: 'a', to: 'b' }],
+      ),
+    );
+    rerender({ snap: w.snap });
+    await act(idle); // idle parse → pending-apply → apply
+    rerender({ snap: w.snap }); // echo → applied() → reachClean flushes the queue
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 250)); // 150 ms code re-render
+    });
+    const snap = result.current.machine.snapshot();
+    // The typed document survives: its entities, its flow, and a parsable buffer.
+    expect(snap.codeText).toContain('person user "Shopper"');
+    expect(snap.codeText).toContain('system shop "Webshop"');
+    expect(snap.state).not.toBe('error');
+  });
+
+  it('a canvas edit still wins while the buffer parses', async () => {
+    const manager = await makeManager();
+    const w = wiredCtrl(manager);
+    const { result, rerender } = mountSync(manager, w);
+    act(() => {
+      result.current.machine.textChanged('pcd 1.0\n\nsystem api "API" {\n}\n');
+    });
+    await act(idle); // apply → canvas loaded
+    rerender({ snap: w.snap }); // echo → clean
+    w.addTestObject({ id: 'o9', kind: 'system', x: 0, y: 200, w: 160, h: 60, name: 'Worker' });
+    rerender({ snap: w.snap });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 250));
+    });
+    expect(result.current.machine.snapshot().codeText).toContain('Worker');
+  });
+});
