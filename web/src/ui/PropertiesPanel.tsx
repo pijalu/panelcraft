@@ -21,6 +21,12 @@ import { HierarchyFields } from './HierarchyFields';
 import type { DrillTarget, PathCandidate } from './useDrilldown';
 import type { IconDecl } from '../engine/model/types';
 import { anchorToChoice, choiceToAnchor, ANCHOR_SIDES, type AnchorSide } from '../engine/render/anchorControls';
+import {
+  SPARK_COUNT_BOUNDS,
+  SPARK_SPEED_BOUNDS,
+  validSparkCount,
+  validSparkSpeed,
+} from '../engine/flows/linkStyle';
 import { s } from './strings';
 
 type ObjectChange = CanvasController['updateObject'];
@@ -428,14 +434,14 @@ function ConnectorStyleControls(props: { link: DiagramLink; onChange: LinkChange
       <Field label={s("Spark count")}>
         <input
           type="number"
-          min={1}
-          max={8}
-          step={1}
+          min={SPARK_COUNT_BOUNDS.min}
+          max={SPARK_COUNT_BOUNDS.max}
+          step="1"
           data-testid="link-sparks"
           value={link.sparks ?? 1}
           onInput={(e) => {
             const v = Number((e.target as HTMLInputElement).value);
-            if (!Number.isInteger(v) || v < 1 || v > 8) return;
+            if (!validSparkCount(v)) return;
             onChange(link.id, { sparks: v === 1 ? undefined : v });
           }}
         />
@@ -443,14 +449,14 @@ function ConnectorStyleControls(props: { link: DiagramLink; onChange: LinkChange
       <Field label={s("Spark speed")}>
         <input
           type="number"
-          min={0.25}
-          max={4}
-          step={0.25}
+          min={SPARK_SPEED_BOUNDS.min}
+          max={SPARK_SPEED_BOUNDS.max}
+          step={SPARK_SPEED_BOUNDS.step}
           data-testid="link-speed"
           value={link.speed ?? 1}
           onInput={(e) => {
             const v = Number((e.target as HTMLInputElement).value);
-            if (!Number.isFinite(v) || v < 0.25 || v > 4) return;
+            if (!validSparkSpeed(v)) return;
             onChange(link.id, { speed: v === 1 ? undefined : v });
           }}
         />

@@ -4,7 +4,17 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
-## 2026-11-17 — flow Markdown notes with presentation panel
+## 2026-11-17 — selected flow-step properties edit the shared link
+
+- The inline step inspector keeps its single selection path and kind-correct
+  fields. Message endpoints are read-only context; picking a connector now
+  keeps its reference in sync, so a later edit resolves the same link.
+- For a message with a resolvable connector, the inspector exposes spark count
+  and speed as shared link animation, with one source of truth for the 1–8 and
+  0.25–4× bounds. Unknown or ambiguous references disable the controls and
+  explain why instead of editing a guessed link. Other step kinds show no spark
+  editor, and editing a derived flow's connector style does not materialise the
+  flow. Details: [docs/archive/bugs-step-properties.md](archive/bugs-step-properties.md).
 
 - Flows can carry an atomic multiline `description` block and a `presentation` flag
   (IR v13), alongside the legacy one-line form. TypeScript and Go parser, printer,

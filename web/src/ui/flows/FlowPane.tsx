@@ -12,6 +12,16 @@ import { ILLUSTRATION_IDS, type IllustrationId } from '../../engine/anim/illustr
 import { parsePDL } from '../../engine/format/parser';
 import { flowToMermaid } from '../../engine/format/mermaidSequenceExport';
 import { flowMarkdown, flowsMarkdown, markdownFileName } from '../../engine/format/flowMarkdown';
+import {
+  SPARK_COUNT_BOUNDS,
+  SPARK_SPEED_BOUNDS,
+  patchMsgLinkStyle,
+  resolveMsgLink,
+  validSparkCount,
+  validSparkSpeed,
+  type LinkStylePatch,
+  type LinkStyleTarget,
+} from '../../engine/flows/linkStyle';
 import { downloadText } from '../download';
 import { stem } from '../paths';
 import type { Branch, CameraSpec, Doc, Flow, FlowStep } from '../../engine/model/types';
@@ -101,6 +111,8 @@ interface InspectActions {
   addLane: () => void;
   /** UX08-WP13: set (or clear, `null`) the step's camera override. */
   camera: (spec: CameraSpec | null) => void;
+  /** Edit the resolved connector's shared animation style (message steps only). */
+  linkStyle: (patch: LinkStylePatch) => void;
 }
 
 const ILLUSTRATION_LABELS = {
@@ -272,7 +284,7 @@ function MsgFields({
           type="button"
           data-testid="insp-pick-from"
           disabled={picked.length !== 1}
-          onClick={() => patch({ from: picked[0]! })}
+          onClick={() => patch({ from: picked[0]!, linkRef: undefined } as Partial<FlowStep>)}
         >
           {s('From selection')}
         </button>
@@ -280,7 +292,7 @@ function MsgFields({
           type="button"
           data-testid="insp-pick-to"
           disabled={picked.length !== 1}
-          onClick={() => patch({ to: picked[0]! })}
+          onClick={() => patch({ to: picked[0]!, linkRef: undefined } as Partial<FlowStep>)}
         >
           {s('To selection')}
         </button>
@@ -290,7 +302,9 @@ function MsgFields({
           disabled={canvas?.link == null}
           onClick={() => {
             const link = canvas?.link;
-            if (link) patch({ from: link.from, to: link.to });
+            // Keep the reference beside the endpoints: an old id must not keep
+            // pointing at another connector after a canvas pick.
+            if (link) patch({ from: link.from, to: link.to, linkRef: link.id } as Partial<FlowStep>);
           }}
         >
           {s('Use connector')}
@@ -312,6 +326,60 @@ function MsgFields({
         />
       </label>
     </>
+  );
+}
+
+/** Shared connector animation for the selected message, not a step field. */
+function SparkFields({ target, patch }: { target: LinkStyleTarget; patch: (p: LinkStylePatch) => void }) {
+  const style = target.status === 'ok' ? target.link.style : undefined;
+  const reason =
+    target.status === 'unresolved-ref'
+      ? s('This step points to connector {ref}, which is not in the diagram.', { ref: target.ref })
+      : target.status === 'ambiguous'
+        ? s('Several connectors match these endpoints. Select one on the canvas to set its reference.')
+        : target.status === 'missing'
+          ? s("No connector matches this step's endpoints.")
+          : null;
+  const edit = (key: 'sparks' | 'speed', raw: string, valid: (n: number) => boolean, fallback: number): void => {
+    if (target.status !== 'ok') return;
+    const value = Number(raw);
+    if (raw.trim() === '' || !valid(value)) return;
+    patch({ [key]: value === fallback ? null : value });
+  };
+  return (
+    <div class="flow-shared-style" role="group" aria-label={s('Shared link animation')} data-testid="insp-shared-style">
+      <span class="flow-field-label">{s('Shared link animation')}</span>
+      <p class="flow-hint">{s('Changes apply to every step using this connector.')}</p>
+      <label class="flow-field">
+        <span class="flow-field-label">{s('Spark count')}</span>
+        <input
+          type="number"
+          min={SPARK_COUNT_BOUNDS.min}
+          max={SPARK_COUNT_BOUNDS.max}
+          step="1"
+          data-testid="insp-sparks"
+          disabled={reason !== null}
+          value={style?.sparks ?? 1}
+          onInput={(e) => edit('sparks', (e.target as HTMLInputElement).value, validSparkCount, 1)}
+        />
+      </label>
+      <label class="flow-field">
+        <span class="flow-field-label">{s('Spark speed')}</span>
+        <input
+          type="number"
+          min={SPARK_SPEED_BOUNDS.min}
+          max={SPARK_SPEED_BOUNDS.max}
+          step={SPARK_SPEED_BOUNDS.step}
+          data-testid="insp-speed"
+          disabled={reason !== null}
+          value={style?.speed ?? 1}
+          onInput={(e) => edit('speed', (e.target as HTMLInputElement).value, validSparkSpeed, 1)}
+        />
+      </label>
+      {reason !== null && (
+        <p class="flow-hint flow-unresolved" role="status" data-testid="insp-spark-reason">{reason}</p>
+      )}
+    </div>
   );
 }
 
@@ -530,12 +598,13 @@ interface InspectorTargets {
   flowsOf(path: string): string[];
 }
 
-function StepInspector({ step, a, canvas, view, targets }: {
+function StepInspector({ step, a, canvas, view, targets, sparkTarget }: {
   step: FlowStep;
   a: InspectActions;
   canvas?: FlowCanvasContext;
   view?: () => ViewPoint | null;
   targets: InspectorTargets;
+  sparkTarget: LinkStyleTarget | null;
 }) {
   return (
     <div class="flow-inspector" data-testid="flow-inspector">
@@ -562,7 +631,10 @@ function StepInspector({ step, a, canvas, view, targets }: {
       />
       <CameraFields step={step} camera={a.camera} {...(view === undefined ? {} : { view })} />
       {step.type === 'msg' ? (
-        <MsgFields step={step} patch={a.patch} canvas={canvas} />
+        <>
+          <MsgFields step={step} patch={a.patch} canvas={canvas} />
+          {sparkTarget !== null && <SparkFields target={sparkTarget} patch={a.linkStyle} />}
+        </>
       ) : step.type === 'process' ? (
         <ProcessFields step={step} patch={a.patch} canvas={canvas} objects={targets.objects} />
       ) : step.type === 'alt' ? (
@@ -1044,6 +1116,7 @@ function mutator(
 function makeActions(
   mutateSel: (fn: (f: Flow, path: number[]) => void) => void,
   step: FlowStep | null,
+  linkStyle: (patch: LinkStylePatch) => void,
 ): InspectActions {
   return {
     patch: (p) => mutateSel((f, path) => patchStep(f, path, p)),
@@ -1057,6 +1130,7 @@ function makeActions(
       mutateSel((f, path) => addBranch(f, path, s('option {n}', { n: (step?.type === 'alt' ? step.branches.length : 0) + 1 }))),
     addLane: () => mutateSel((f, path) => addLane(f, path)),
     camera: (spec) => mutateSel((f, path) => setStepCamera(f, path, spec)),
+    linkStyle,
   };
 }
 
@@ -1137,6 +1211,37 @@ function usePendingText(text: string, version: number): { read(): string; write(
   };
 }
 
+/** Closed domains for the inspector's known-value pickers. */
+function inspectorTargets(pane: FlowPaneProps, names: Names): InspectorTargets {
+  return {
+    objects: Array.from(names, ([value, label]) => ({ value, label })),
+    files: pane.files ?? [],
+    flowsOf: (path) => flowsInFile(path === '' ? (pane.activePath ?? '') : path, pane.textOf),
+  };
+}
+
+/**
+ * Inspector callbacks. The link-style edit applies to the parsed document, not
+ * to a flow: a virtual derived flow must stay virtual when only a connector's
+ * shared animation changes.
+ */
+function inspectorActions(
+  step: FlowStep | null,
+  mutateSel: (fn: (f: Flow, path: number[]) => void) => void,
+  apply: (fn: (d: Doc) => void) => void,
+): InspectActions {
+  return makeActions(mutateSel, step, (patch) => {
+    if (step?.type !== 'msg') return;
+    apply((d) => {
+      patchMsgLinkStyle(d, step, patch);
+    });
+  });
+}
+
+function sparkTargetFor(doc: Doc, step: FlowStep | null): LinkStyleTarget | null {
+  return step?.type === 'msg' ? resolveMsgLink(doc, step) : null;
+}
+
 /** The authored half of the pane: one parsed document, one selection. */
 function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
   const source = usePendingText(text, pane.version);
@@ -1148,16 +1253,10 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
     }
   };
   const names = objectNames(doc);
-  // Closed domains for the inspector's known-value pickers. Object labels use
-  // the same name map as the step cards; a `goto` file's flows are read through
-  // the text port, so no second source of truth is introduced.
-  const targets: InspectorTargets = {
-    objects: Array.from(names, ([value, label]) => ({ value, label })),
-    files: pane.files ?? [],
-    flowsOf: (path) => flowsInFile(path === '' ? (pane.activePath ?? '') : path, pane.textOf),
-  };
+  const targets = inspectorTargets(pane, names);
   const { flows, virtual, effective } = displayState(doc, sel);
   const { flow, step, flat } = locate(doc, effective);
+  const sparkTarget = sparkTargetFor(doc, step);
   const selKey = effective?.flow ?? '';
   const selStep = effective?.step ?? [];
   const ready = canvasReady(pane.canvas);
@@ -1168,7 +1267,7 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
   const withFlow = (fn: (f: Flow) => void): void => {
     apply((d) => editFlow(d, selKey, fn));
   };
-  const actions = makeActions(mutator(effective, apply), step);
+  const actions = inspectorActions(step, mutator(effective, apply), apply);
   const ops: StepOps = {
     select: (p) => {
       setSel({ flow: selKey, step: p });
@@ -1257,7 +1356,7 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
           <StepList steps={flat} sel={selStep} ops={ops} names={names} />
           <HiddenConnections doc={doc} flow={flow} names={names} onShow={(index) => apply((d) => showFlowLink(d, selKey, index))} />
           <ActionBar ready={ready} onAdd={(kind) => addKindStep(apply, selKey, kind, pane.canvas)} />
-          {step !== null && <StepInspector step={step} a={actions} canvas={pane.canvas} targets={targets} {...(pane.currentView === undefined ? {} : { view: pane.currentView })} />}
+          {step !== null && <StepInspector step={step} a={actions} canvas={pane.canvas} targets={targets} sparkTarget={sparkTarget} {...(pane.currentView === undefined ? {} : { view: pane.currentView })} />}
         </>
       )}
     </div>

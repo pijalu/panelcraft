@@ -46,21 +46,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 **Validation.** Focused model/component tests, complete menu e2e, axe scans, keyboard-only traversal and light/dark/narrow-viewport screenshots. Verify all previously available commands by stable id/test id, then run `npm run check` and `npm test`.
 
-## Selected flow-step properties: correct the existing model, do not recreate it
-
-**Observed.** Step selection and an inline `StepInspector` already exist below the step list (`web/src/ui/flows/FlowPane.tsx:425-468,884-930,1089-1093`). Description and Camera are already common fields; msg/alt/par labels already exist. **Advanced step** is a disclosure for adding alt/par/goto, not a dialog containing this inspector. Message endpoints are currently editable text fields. Spark count/speed belong to the resolved **link style**, not to the step (`web/src/engine/model/types.ts:93-96,217-225`; `web/src/engine/flows/plan.ts:145-180`).
-
-**Expected.** Keep one inline inspector and make its primary fields kind-correct: existing Label/Text/Note where supported, common Description and Camera, and read-only link endpoint context for message steps. Do not invent a Label for kinds whose IR has no label. For a message with a resolvable link, expose Spark count and Spark speed as **shared link animation** controls; other step kinds show no spark editor. Values use the existing 1–8 and 0.25–4× bounds.
-
-**Fix plan.**
-
-1. Reuse the existing `FlowSelection` and `makeActions`/`retext` path; no second selection store and no new Advanced-step dialog. Reorder/relabel the current inspector fields and make From/To read-only without dropping `linkRef` resolution or flip behaviour.
-2. Resolve the selected message through the existing `resolveMsg`, including `linkRef` and direction-insensitive fallback. Add one pure operation that patches the resolved link’s style through `retext`. An unresolved/ambiguous message disables spark controls with a reason; never silently edit the first plausible link when `linkRef` is invalid.
-3. Label the controls so users know the change affects every step using that link. If truly per-step busyness is wanted instead, that is a separate format/IR feature and must not be disguised as a link-style edit.
-4. Centralize numeric bounds/validation rather than adding a fourth copy in the component. Preserve draft-focus behaviour for text edits and ensure editing a derived flow’s link style does not unnecessarily materialize a virtual flow.
-
-**Validation.** Test each step kind, label/text mapping, read-only endpoints, identified and fallback link resolution, unresolved links, shared-style visibility across steps, invalid numeric input, undo/reload and derived-flow non-materialization. Run focused flow suites, flow e2e, axe, light/dark screenshots, `npm run check` and `npm test`.
-
 ## Previously closed
 
 Closed items from the last round stay in [docs/archive/](docs/archive/). The coordinated plan that drove them stays in [docs/BUGS-RESOLUTION-PLAN.md](docs/BUGS-RESOLUTION-PLAN.md) as the record of how each one was triaged and gated.
@@ -78,3 +63,4 @@ Closed items, in the order they were archived:
 - `bugs-entity-label-centering.md` — labels sit on their rendered centre.
 - `bugs-project-icon-registry.md` — 43 built-ins plus portable project icons.
 - `bugs-c4-drill-down.md` — genuine C4 decomposition with embedded source.
+- `bugs-step-properties.md` — selected message steps edit their resolved link's shared animation.

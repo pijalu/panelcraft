@@ -733,3 +733,165 @@ describe('FlowPane notes + presentation flag', () => {
     expect(out()).toContain('presentation');
   });
 });
+
+const STYLE_DOC = `pcd 1.0
+
+person a "Ada"
+system b "Web"
+
+a -> b as ab {
+  style {
+    sparks 2
+    speed 2
+  }
+}
+
+flow "Main" as main {
+  intro "start"
+  a -> b : "order"
+  conclusion "done"
+}
+`;
+
+const selectMessage = (doc?: string): string => {
+  mount(undefined, { doc: doc ?? STYLE_DOC });
+  fireEvent.click(screen.getByTestId('flow-row-main'));
+  fireEvent.click(screen.getByTestId('step-1'));
+  return screen.getByTestId('text-out').textContent ?? '';
+};
+
+describe('StepInspector selected message properties', () => {
+  it('edits the resolved connector style and keeps the change across a reload', () => {
+    const before = selectMessage();
+    expect(before).toContain('sparks 2');
+    const count = screen.getByTestId('insp-sparks') as HTMLInputElement;
+    const speed = screen.getByTestId('insp-speed') as HTMLInputElement;
+    expect(count.value).toBe('2');
+    expect(speed.value).toBe('2');
+    fireEvent.input(count, { target: { value: '4' } });
+    fireEvent.input(speed, { target: { value: '0.5' } });
+    const after = screen.getByTestId('text-out').textContent ?? '';
+    expect(after).toContain('sparks 4');
+    expect(after).toContain('speed 0.5');
+    expect(after).not.toContain('sparks 2');
+    const reloaded = parsePDL(after).doc;
+    expect(reloaded?.links[0]?.style?.sparks).toBe(4);
+    expect(reloaded?.links[0]?.style?.speed).toBe(0.5);
+  });
+
+  it('shows the shared link scope and documents the 1–8 / 0.25–4× bounds', () => {
+    selectMessage();
+    expect(screen.getByTestId('insp-shared-style').textContent).toContain('every step');
+    const count = screen.getByTestId('insp-sparks') as HTMLInputElement;
+    const speed = screen.getByTestId('insp-speed') as HTMLInputElement;
+    expect(count.min).toBe('1');
+    expect(count.max).toBe('8');
+    expect(speed.min).toBe('0.25');
+    expect(speed.max).toBe('4');
+  });
+
+  it('ignores out-of-range and non-integer spark input', () => {
+    const before = selectMessage();
+    fireEvent.input(screen.getByTestId('insp-sparks'), { target: { value: '9' } });
+    expect(screen.getByTestId('text-out').textContent).toBe(before);
+    fireEvent.input(screen.getByTestId('insp-sparks'), { target: { value: '1.5' } });
+    expect(screen.getByTestId('text-out').textContent).toBe(before);
+    fireEvent.input(screen.getByTestId('insp-speed'), { target: { value: '0.1' } });
+    expect(screen.getByTestId('text-out').textContent).toBe(before);
+  });
+
+  it('shows one link style on every step that resolves to that link', () => {
+    const shared = STYLE_DOC.replace(
+      '  a -> b : "order"\n',
+      '  a -> b : "order"\n  a -> b : "confirm"\n',
+    );
+    selectMessage(shared);
+    fireEvent.input(screen.getByTestId('insp-sparks'), { target: { value: '5' } });
+    fireEvent.click(screen.getByTestId('step-2'));
+    expect((screen.getByTestId('insp-sparks') as HTMLInputElement).value).toBe('5');
+    expect(screen.getByTestId('insp-label')).not.toBeNull();
+  });
+
+});
+
+describe('StepInspector message link resolution and kind fields', () => {
+  it('keeps link resolution when endpoints are set from the connector', () => {
+    const canvas = { objects: ['b'], link: { id: 'L2', from: 'a', to: 'b' } };
+    const refs = STYLE_DOC.replace(
+      'a -> b as ab {\n  style {\n    sparks 2\n    speed 2\n  }\n}',
+      'a -> b as L1 {\n  style {\n    sparks 2\n  }\n}\nb -> a as L2 {\n  style {\n    sparks 3\n  }\n}',
+    ).replace('a -> b : "order"', 'a -> b : "order" as L1');
+    mount(canvas, { doc: refs });
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-1'));
+    expect((screen.getByTestId('insp-sparks') as HTMLInputElement).value).toBe('2');
+    fireEvent.click(screen.getByTestId('insp-pick-link'));
+    const after = screen.getByTestId('text-out').textContent ?? '';
+    expect(after).toContain('a -> b : "order" as L2');
+    expect((screen.getByTestId('insp-sparks') as HTMLInputElement).value).toBe('3');
+  });
+
+  it('disables the spark controls with a reason for an unknown link reference', () => {
+    const broken = STYLE_DOC.replace('a -> b : "order"', 'a -> b : "order" as ghost');
+    const before = selectMessage(broken);
+    const count = screen.getByTestId('insp-sparks') as HTMLInputElement;
+    const speed = screen.getByTestId('insp-speed') as HTMLInputElement;
+    expect(count.disabled).toBe(true);
+    expect(speed.disabled).toBe(true);
+    expect(screen.getByTestId('insp-spark-reason').textContent).toContain('ghost');
+    fireEvent.input(count, { target: { value: '8' } });
+    expect(screen.getByTestId('text-out').textContent).toBe(before);
+  });
+
+  it('disables the spark controls with a reason when the endpoints are ambiguous', () => {
+    const ambiguous = STYLE_DOC.replace(
+      'a -> b as ab {\n  style {\n    sparks 2\n    speed 2\n  }\n}',
+      'a -> b as L1 {\n  style {\n    sparks 2\n  }\n}\nb -> a as L2',
+    );
+    selectMessage(ambiguous);
+    expect((screen.getByTestId('insp-sparks') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByTestId('insp-spark-reason').textContent).toContain('Several connectors');
+  });
+
+  it('edits a derived flow connector style without materialising the flow', () => {
+    const derived = `pcd 1.0\nperson a "Ada"\nsystem b "Web"\na -> b as ab {\n  style {\n    sparks 2\n  }\n}\n`;
+    mount(undefined, { doc: derived });
+    fireEvent.click(screen.getByTestId('flow-row-flow1'));
+    fireEvent.click(screen.getByTestId('step-0'));
+    expect((screen.getByTestId('insp-sparks') as HTMLInputElement).value).toBe('2');
+    fireEvent.input(screen.getByTestId('insp-sparks'), { target: { value: '5' } });
+    const after = screen.getByTestId('text-out').textContent ?? '';
+    expect(after).toContain('sparks 5');
+    expect(after).not.toContain('flow ');
+    expect(screen.getByTestId('flow-derived-hint')).not.toBeNull();
+  });
+
+  it('uses kind-correct fields and offers shared animation only for messages', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    const selectStep = (id: string): void => {
+      fireEvent.click(screen.getByTestId(id));
+    };
+    selectStep('step-0'); // intro
+    expect((screen.getByTestId('insp-text') as HTMLInputElement).value).toBe('start');
+    expect(screen.queryByTestId('insp-label')).toBeNull();
+    expect(screen.queryByTestId('insp-shared-style')).toBeNull();
+    expect(screen.getByTestId('insp-description')).not.toBeNull();
+    expect(screen.getByTestId('insp-camera-block')).not.toBeNull();
+    selectStep('step-1'); // msg
+    expect((screen.getByTestId('insp-label') as HTMLInputElement).value).toBe('order');
+    expect(screen.getByTestId('insp-shared-style')).not.toBeNull();
+    selectStep('step-2'); // alt
+    expect((screen.getByTestId('insp-alt-label') as HTMLInputElement).value).toBe('how?');
+    expect(screen.queryByTestId('insp-shared-style')).toBeNull();
+    selectStep('step-5'); // par
+    expect((screen.getByTestId('insp-par-label') as HTMLInputElement).value).toBe('both');
+    selectStep('step-7'); // process inside alt
+    expect((screen.getByTestId('insp-process-note') as HTMLInputElement).value).toBe('');
+    expect(screen.queryByTestId('insp-label')).toBeNull();
+    expect(screen.queryByTestId('insp-shared-style')).toBeNull();
+    selectStep('step-8'); // goto
+    expect(screen.queryByTestId('insp-label')).toBeNull();
+    expect(screen.queryByTestId('insp-shared-style')).toBeNull();
+  });
+});

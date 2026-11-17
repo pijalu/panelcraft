@@ -2368,6 +2368,18 @@ marker .pc-arrow[fill='none'] {
   gap: 4px;
 }
 
+.flow-shared-style {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--pc-panel-border);
+}
+
+.flow-shared-style > .flow-field-label {
+  min-width: 0;
+}
+
 .flow-field-label {
   color: var(--pc-muted);
   font-size: var(--pc-text-xs);
@@ -2375,6 +2387,7 @@ marker .pc-arrow[fill='none'] {
 }
 
 .flow-field input[type='text'],
+.flow-field input[type='number'],
 .flow-field input:not([type]) {
   flex: 1;
   min-width: 0;
