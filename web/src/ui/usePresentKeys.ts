@@ -18,7 +18,7 @@ export function applyPresentAction(p: FlowPlayerApi, action: PresentAction): voi
       return;
     case 'toggle':
       if (p.state.status === 'playing') p.pause();
-      else p.resume();
+      else p.replay();
       return;
     case 'restart':
       p.restart();

@@ -67,20 +67,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 **Validation.** The new failing case must fail before the fix and pass after it. Re-run the complete PWA spec, keyboard activation, light/dark and narrow-viewport screenshots, `npm run check` and `npm test`. Record the reproduction state in this item before closing it.
 
-## Presentation Play must replay the current beat
-
-**Observed.** The presentation toggle calls `FlowRunner.resume`, which resumes the existing animation timeline (`web/src/ui/PresentDock.tsx:49-55`; `web/src/ui/flows/flowController.ts:324-338`). It therefore cannot start a fresh spark cycle after Pause or after a step was settled.
-
-**Expected.** Pause freezes the current beat. Play in the presentation dock replays that beat from time zero with a full dwell, without advancing twice or retaining old animations. Step changes and Restart retain their existing meanings. Reduced motion renders the settled state immediately.
-
-**Fix plan.**
-
-1. Add a controller regression that pauses, then verifies Play creates a new current-beat animation and exactly one full-duration advance timer. Add a browser assertion on WAAPI `currentTime`/`playState` and visible spark position.
-2. Model **replay current beat** explicitly in the runner instead of overloading “resume” in the UI. Decide and test whether ordinary PlayBar resume continues or also replays; do not let the two transport surfaces acquire accidental different semantics. Reuse the current beat and scheduling path without re-entering a goto or duplicating navigation side effects.
-3. Before replay, cancel only animations owned by the old beat. Do not leave detached WAAPI animations registered and do not cancel unrelated camera work through a global convenience call.
-
-**Validation.** Cover playing→paused→replay, parked step→replay, Restart, step change, exit, file change and reduced motion. Run focused controller/animator tests, presentation e2e, light/dark captures, `npm run check` and `npm test`.
-
 ## Spark and border effects need one beat timeline
 
 **Observed.** `FlowAnimator.play` pulses every actor immediately, while `travel` starts sparks immediately and leaves one-way tokens filled at their endpoints (`web/src/engine/anim/engine.ts:115-155,298-395`). This does not implement source-pulse → travel/disappear → target-pulse. Independent WAAPI calls have no shared lifecycle model, and clearing a layer does not itself prove that detached animations were cancelled.

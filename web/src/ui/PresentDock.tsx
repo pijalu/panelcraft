@@ -50,7 +50,7 @@ export function PresentDock({ player: p }: PresentDockProps) {
           type="button"
           data-testid="present-toggle"
           aria-label={st.status === 'playing' ? s('Pause') : s('Play')}
-          onClick={() => (st.status === 'playing' ? p.pause() : p.resume())}
+          onClick={() => (st.status === 'playing' ? p.pause() : p.replay())}
         >
           {st.status === 'playing' ? <PauseIcon /> : <PlayIcon />}
         </button>

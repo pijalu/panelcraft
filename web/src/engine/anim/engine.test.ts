@@ -179,6 +179,42 @@ describe('FlowAnimator dims (FR-F4)', () => {
     expect(resumed).toBe(1);
   });
 
+  it('replay cancels only the old beat animations, never camera work', () => {
+    let seq = 0;
+    const cancelled: number[] = [];
+    let globalCancels = 0;
+    const player: AnimPlayer = {
+      animate: (): AnimHandle => {
+        seq += 1;
+        const id = seq;
+        return { cancel: () => cancelled.push(id) };
+      },
+      cancelAll: () => {
+        globalCancels += 1;
+      },
+    };
+    const anim = new FlowAnimator(svg, { player, geometry: mkGeometry() });
+    // The camera uses the same AnimPlayer port but is not owned by a beat.
+    const cameraWork = player.animate(svg, [], { durationMs: 100 });
+    anim.play(beatOf({
+      index: 1,
+      kind: 'msg',
+      actors: ['a'],
+      links: [{ linkId: 'ab', from: 'a', to: 'b', flipped: false }],
+      dim: [],
+    }), ctx);
+    expect(cancelled).toEqual([]);
+
+    anim.play(beatOf({ index: 2, kind: 'process', actors: ['b'], dim: [] }), ctx);
+    expect(cancelled.length).toBeGreaterThan(0);
+    expect(cancelled).not.toContain(1); // camera glide untouched
+    anim.stop();
+    expect(cancelled).not.toContain(1);
+    expect(globalCancels).toBe(0);
+    cameraWork.cancel();
+    expect(cancelled).toContain(1);
+  });
+
   it('beats without participants touch nothing (intro overview)', () => {
     const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry() });
     anim.play(beatOf({ index: 1, kind: 'intro', title: 'hello' }), ctx);
@@ -298,5 +334,23 @@ describe('FlowAnimator reduced motion (FR-F5)', () => {
     expect(svg.querySelector('.pc-obj[data-id="c"]')?.classList.contains('pc-dim')).toBe(true);
     expect(svg.querySelector('.pc-obj[data-id="a"]')?.classList.contains('pc-emph')).toBe(true);
     expect(svg.querySelector('.pc-obj[data-id="b"]')?.classList.contains('pc-emph')).toBe(true);
+  });
+
+  it('replaying a beat under reduced motion keeps only the settled state', () => {
+    const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry(), reducedMotion: true });
+    const beat = beatOf({
+      index: 2,
+      kind: 'msg',
+      actors: ['a', 'b'],
+      links: [{ linkId: 'ab', from: 'a', to: 'b', flipped: false }],
+      dim: [],
+    });
+    anim.play(beat, ctx);
+    anim.play(beat, ctx); // the runner's replay path calls play again on the same beat
+    expect(fx.calls.length).toBe(0);
+    const layer = svg.querySelector('.pc-anim-layer');
+    expect(layer?.querySelectorAll('.pc-token-static')).toHaveLength(1);
+    expect(layer?.querySelector('.pc-ring')).toBeNull();
+    expect(layer?.querySelectorAll('.pc-badge')).toHaveLength(1);
   });
 });

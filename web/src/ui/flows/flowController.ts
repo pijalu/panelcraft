@@ -95,6 +95,9 @@ export class FlowRunner {
   private choices: Record<string, number> = {};
   private timer: number | null = null;
   private rects: FlowRects = { rectOf: () => null };
+  /** Where to start again when Play follows a natural end (the frame stack is
+   * empty by then). Cleared on exit so an idle runner cannot restart itself. */
+  private origin: { file: string; flowKey: string } | null = null;
   constructor(readonly io: ControllerIO) {}
 
   setRectProvider(r: FlowRects): void {
@@ -259,6 +262,7 @@ export class FlowRunner {
   start(file: string, flowKey: string): void {
     this.cancelTimer();
     this.io.animator.stop();
+    this.origin = { file, flowKey };
     this.stack = [];
     this.choices = {};
     this.io.camera.save(this.io.currentViewport());
@@ -315,6 +319,10 @@ export class FlowRunner {
   }
 
   restart(): void {
+    if (this.stack.length === 0) {
+      this.replay(); // natural end: start the last flow over
+      return;
+    }
     this.choices = {};
     this.frame().index = 0;
     this.io.publish({ ...FRESH, status: 'playing', breadcrumb: this.breadcrumbOf() });
@@ -327,6 +335,27 @@ export class FlowRunner {
     // a token that keeps travelling while paused is an orphan (item 9).
     this.io.animator.pause();
     this.io.publish({ status: 'paused' });
+  }
+
+  /** Transport Play: replay the current beat from time zero. This is not the
+   * low-level `resume` (continue a frozen animation): a paused or parked beat
+   * gets a fresh animation and exactly one full-duration advance timer. The
+   * beat's goto/alt navigation is not re-entered. */
+  replay(): void {
+    if (this.stack.length === 0) {
+      if (this.origin !== null) {
+        const { file, flowKey } = this.origin;
+        this.start(file, flowKey);
+      }
+      return; // exited (no origin): Play has nothing to replay
+    }
+    const f = this.frame();
+    const beat = f.plan.beats[f.index];
+    // An open chooser must stay parked until a branch is picked.
+    if (beat === undefined || beat.kind === 'alt') return;
+    this.cancelTimer();
+    this.io.publish({ status: 'playing' });
+    this.runBeat(false);
   }
 
   resume(): void {
@@ -342,6 +371,7 @@ export class FlowRunner {
     this.io.animator.stop();
     this.io.camera.restoreSaved(this.io.currentViewport());
     this.stack = [];
+    this.origin = null;
     this.io.publish({ ...FRESH });
   }
 }

@@ -344,6 +344,11 @@ test.describe('presentation framing (item 9)', () => {
     await capture(page, 'item9-token-arrived-dark');
   });
 
+});
+
+// Replay is a transport contract, kept in its own suite so each describe stays
+// reviewable. Same seed and canvas helpers as the framing cases above.
+test.describe('presentation replay (item 9)', () => {
   test('pausing freezes the beat, stepping and exiting leave no orphans', async ({ page }) => {
     await seed(page, MSG_FIRST_DOC);
     await page.getByTestId('flow-play-main').click();
@@ -356,14 +361,51 @@ test.describe('presentation framing (item 9)', () => {
     await page.waitForTimeout(300);
     await page.getByTestId('present-toggle').click();
     await expect(page.getByTestId('present-dock')).toHaveAttribute('data-status', 'paused');
+    // The dock state is synchronous; WAAPI commits pause on the next frame.
+    // Sampling before that gives a false "still moving" reading.
+    await expect
+      .poll(async () =>
+        token.evaluate((el) => {
+          const anim = (el as Element).getAnimations()[0];
+          return anim === undefined ? 'none' : anim.playState;
+        }),
+      )
+      .toBe('paused');
     const frozen = await travelTime();
     await page.waitForTimeout(250);
-    expect(await travelTime()).toBe(frozen);
-    // Resume: the same token continues (it is paused, not replaced).
+    // WAAPI currentTime drifts by a fraction of a millisecond after pausing;
+    // anything beyond a few ms would mean the beat kept travelling.
+    expect(Math.abs((await travelTime()) - frozen)).toBeLessThan(5);
+    // Replay: a fresh spark on the current beat, starting from time zero.
+    const oldToken = await token.elementHandle();
     await page.getByTestId('present-toggle').click();
     await expect(page.getByTestId('present-dock')).toHaveAttribute('data-status', 'playing');
+    // The old WAAPI animation is cancelled with its detached element; the new
+    // one belongs to the same beat, not to a resumed mid-flight token.
+    expect(await oldToken?.evaluate((el) => el.isConnected)).toBe(false);
+    await expect
+      .poll(async () =>
+        token.evaluate((el) => {
+          const anim = (el as Element).getAnimations()[0];
+          return anim === undefined ? 'none' : anim.playState;
+        }),
+      )
+      .toBe('running');
+    const replayed = await token.evaluate((el) => {
+      const anim = (el as Element).getAnimations()[0];
+      return { currentTime: Number(anim?.currentTime ?? -1), state: anim?.playState };
+    });
+    console.log('REPLAY_WAAPI', JSON.stringify({ frozen, replayed }));
+    expect(replayed.state).toBe('running');
+    expect(replayed.currentTime).toBeGreaterThanOrEqual(0);
+    expect(replayed.currentTime).toBeLessThan(frozen);
+    // The visible spark moves again along the same connector, and the step is
+    // not advanced twice by the fresh full-duration dwell timer.
+    const atStart = await token.boundingBox();
     await page.waitForTimeout(200);
-    expect(await travelTime()).toBeGreaterThan(frozen);
+    const later = await token.boundingBox();
+    expect(Math.abs((later?.x ?? 0) - (atStart?.x ?? 0))).toBeGreaterThan(2);
+    await expect(page.getByTestId('present-counter')).toContainText('1 / 2');
 
     // A parked step really is parked: the dot jump settles the token at the
     // endpoint, so "paused" never coexists with a travelling spark.

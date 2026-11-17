@@ -4,6 +4,15 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-17 — presentation Play replays the current beat
+
+- Play in the presentation dock, the play bar and the presentation keyboard
+  toggle now ask the playback runner to replay the parked beat from time zero
+  with one full dwell, instead of resuming a frozen animation. Navigation is
+  not re-entered, and only the old beat's own animations are cancelled, so
+  camera work sharing the animation player is left alone.
+  Details: [docs/archive/bugs-presentation-replay-beat.md](archive/bugs-presentation-replay-beat.md).
+
 ## 2026-11-17 — presentation step number sits on its badge centre
 
 - The number in the presentation's SVG beat badge no longer sits four units low

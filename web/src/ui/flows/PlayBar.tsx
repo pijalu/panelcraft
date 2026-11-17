@@ -18,7 +18,7 @@ function transportLabel(p: FlowPlayerApi): string {
   const s = p.state.status;
   if (s === 'idle') return 'play';
   if (s === 'playing') return 'pause';
-  if (s === 'paused') return p.state.awaitingChoice === null ? 'resume' : 'choose';
+  if (s === 'paused') return p.state.awaitingChoice === null ? 'replay' : 'choose';
   return 'replay';
 }
 
@@ -62,8 +62,7 @@ export function PlayBar({ player: p, onPresent }: PlayBarProps) {
         title={transportLabel(p)}
         onClick={() => {
           if (st.status === 'playing') p.pause();
-          else if (st.status === 'ended') p.restart();
-          else p.resume();
+          else p.replay();
         }}
       >
         {st.status === 'playing' ? <PauseIcon /> : <PlayIcon />}

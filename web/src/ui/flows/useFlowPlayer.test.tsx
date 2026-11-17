@@ -104,10 +104,12 @@ const mkCamera = () => {
 const mkClock = () => {
   let seq = 0;
   const timers = new Map<number, { fn: () => void }>();
+  const delays: number[] = [];
   const clock: Clock = {
     now: () => 0,
-    delay: (fn) => {
+    delay: (fn, ms) => {
       seq += 1;
+      delays.push(ms);
       timers.set(seq, { fn });
       return seq;
     },
@@ -117,6 +119,7 @@ const mkClock = () => {
   };
   return {
     clock,
+    delays,
     fireNext: () => {
       const first = [...timers.entries()][0];
       if (first === undefined) return false;
@@ -274,6 +277,7 @@ describe('useFlowPlayer transport (M5-WP5)', () => {
     expect(h.clk.pending()).toBe(1);
   });
 
+  // Replay cases live in the focused suite below.
   it('goto pushes a cross-file frame: opens the file, plays sub-plan, returns', () => {
     const files = h.files;
     files.set(
@@ -289,9 +293,11 @@ describe('useFlowPlayer transport (M5-WP5)', () => {
     // beats: 1 intro, 2 msg, 3 alt, 4 branch "fast", 5 goto, 6 conclusion
     startAt(h, 5);
     act(() => {
-      h.result.current.resume(); // stepTo parks paused — restart the auto-advance
+      h.result.current.replay(); // parked step — restart this beat's animation/timer, not the goto
     });
-    expect(h.opened).toEqual(['other.pcd']);
+    expect(h.opened).toEqual(['other.pcd']); // replay must not re-enter the goto
+    expect(h.result.current.state.status).toBe('playing');
+    expect(h.clk.pending()).toBe(1);
     expect(h.result.current.state.breadcrumb).toEqual(['Main']);
     expect(h.result.current.state.narration).toBe('refund flow');
     expect(h.result.current.state.progress).toEqual({ index: 1, total: 2 });
@@ -302,6 +308,112 @@ describe('useFlowPlayer transport (M5-WP5)', () => {
     expect(h.result.current.state.breadcrumb).toEqual([]);
     expect(h.result.current.state.narration).toBe('done');
     expect(h.result.current.state.progress).toEqual({ index: 6, total: 6 });
+  });
+});
+
+// Transport Play must replay the parked beat rather than continue a frozen
+// animation. Same harness as above; split out to keep each suite reviewable.
+describe('useFlowPlayer replay transport', () => {
+  let h: ReturnType<typeof setup>;
+  beforeEach(() => {
+    h = setup();
+  });
+
+  it('pause then replay restarts the current beat with one full dwell timer', () => {
+    const fullDwell = h.clk.delays[0];
+    act(() => {
+      h.result.current.pause();
+    });
+    const before = h.animator.played.length;
+    act(() => {
+      h.result.current.replay();
+    });
+    // A fresh current-beat animation, not a resumed one from mid-flight.
+    expect(h.animator.played.length).toBe(before + 1);
+    expect(h.animator.played.at(-1)).toBe(1);
+    // Exactly one timer, and it is the beat's full dwell — not the leftover
+    // time from before the pause (which would cut the replay short).
+    expect(h.clk.delays).toHaveLength(2);
+    expect(h.clk.delays[1]).toBe(fullDwell);
+    expect(h.clk.pending()).toBe(1);
+    expect(h.result.current.state.status).toBe('playing');
+    expect(h.result.current.state.progress).toEqual({ index: 1, total: 5 });
+  });
+
+  it('replay from a parked step keeps that beat and arms one timer', () => {
+    startAt(h, 2);
+    const before = h.animator.played.length;
+    act(() => {
+      h.result.current.replay();
+    });
+    expect(h.animator.played.length).toBe(before + 1);
+    expect(h.animator.played.at(-1)).toBe(2);
+    expect(h.result.current.state.progress).toEqual({ index: 2, total: 5 });
+    expect(h.result.current.state.status).toBe('playing');
+    expect(h.clk.pending()).toBe(1);
+  });
+
+  it('restart still returns to beat 1 and replay then repeats beat 1', () => {
+    startAt(h, 3);
+    act(() => {
+      h.result.current.restart();
+    });
+    expect(h.animator.played.at(-1)).toBe(1);
+    expect(h.result.current.state.progress).toEqual({ index: 1, total: 5 });
+    const before = h.animator.played.length;
+    act(() => {
+      h.result.current.replay();
+    });
+    expect(h.animator.played.length).toBe(before + 1);
+    expect(h.animator.played.at(-1)).toBe(1);
+    expect(h.clk.pending()).toBe(1);
+  });
+
+  it('replay after a natural end starts the flow over', () => {
+    act(() => {
+      h.result.current.start('other.pcd', 'refund');
+    });
+    fire(h);
+    fire(h); // two-beat flow: timer closes the last frame
+    expect(h.result.current.state.status).toBe('ended');
+    const before = h.animator.played.length;
+    act(() => {
+      h.result.current.replay();
+    });
+    expect(h.animator.played.length).toBe(before + 1);
+    expect(h.animator.played.at(-1)).toBe(1);
+    expect(h.result.current.state.status).toBe('playing');
+    expect(h.result.current.state.progress).toEqual({ index: 1, total: 2 });
+    expect(h.clk.pending()).toBe(1);
+  });
+
+  it('replay after exit is inert: no beat, no timer, still idle', () => {
+    act(() => {
+      h.result.current.exit();
+    });
+    const before = h.animator.played.length;
+    act(() => {
+      h.result.current.replay();
+    });
+    expect(h.animator.played).toHaveLength(before);
+    expect(h.clk.pending()).toBe(0);
+    expect(h.result.current.state.status).toBe('idle');
+  });
+
+  it('replay after a file change uses the new file, not the old beat', () => {
+    act(() => {
+      h.result.current.start('other.pcd', 'refund');
+    });
+    expect(h.result.current.state.narration).toBe('refund flow');
+    const before = h.animator.played.length;
+    act(() => {
+      h.result.current.replay();
+    });
+    expect(h.animator.played.length).toBe(before + 1);
+    expect(h.animator.played.at(-1)).toBe(1);
+    expect(h.result.current.state.narration).toBe('refund flow');
+    expect(h.result.current.state.progress).toEqual({ index: 1, total: 2 });
+    expect(h.clk.pending()).toBe(1);
   });
 });
 

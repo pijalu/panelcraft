@@ -33,6 +33,8 @@ export interface FlowPlayerApi {
   exit(): void;
   pause(): void;
   resume(): void;
+  /** Transport Play: replay the current beat from time zero. */
+  replay(): void;
   restart(): void;
   stepTo(index1: number): void;
   /** Play on from a 1-based beat (the flow pane's per-step play button). */
@@ -75,6 +77,7 @@ export function useFlowPlayer(deps: FlowPlayerDeps): FlowPlayerApi {
     exit: () => runner.exit(),
     pause: () => runner.pause(),
     resume: () => runner.resume(),
+    replay: () => runner.replay(),
     restart: () => runner.restart(),
     stepTo: (index1) => runner.stepTo(index1),
     playFrom: (index1) => runner.playFrom(index1),

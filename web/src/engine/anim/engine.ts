@@ -11,7 +11,7 @@
 // transition (app.css), reduced-motion kills it via media query.
 import type { Beat, BeatLink } from '../flows/plan';
 import { MOTION, travelTiming } from './timings';
-import type { AnimPlayer, Keyframe } from './ports';
+import type { AnimHandle, AnimPlayer, Keyframe } from './ports';
 
 export interface PathGeometry {
   length(path: Element): number;
@@ -66,6 +66,9 @@ export class FlowAnimator {
   private previous = new Set<string>();
   /** F-17: flow-level illustration choice (null = auto per beat kind). */
   private illustration: IllustrationId | null = null;
+  /** Handles created for the current beat. The camera shares the AnimPlayer
+   * port but is not ours to cancel when a beat is replayed. */
+  private beatAnimations: AnimHandle[] = [];
 
   constructor(svg: SVGSVGElement, deps: AnimatorDeps) {
     this.svg = svg;
@@ -112,8 +115,10 @@ export class FlowAnimator {
     return [...beat.actors, ...(beat.lanes ?? []).flat().flatMap((b) => b.actors)];
   }
 
-  /** Play a beat: clears the previous one, applies dim/emphasis/visuals. */
+  /** Play a beat: cancel the previous beat's motion, clear visuals, then apply
+   * dim/emphasis/visuals. Called again for replay and every step change. */
   play(beat: Beat, ctx: BeatCtx): void {
+    this.cancelBeatAnimations();
     this.clearVisuals();
     for (const id of beat.dim) {
       const el = this.findEl(id);
@@ -206,7 +211,7 @@ export class FlowAnimator {
       const dot = mkEl('circle', 'pc-burst');
       dot.setAttribute('r', '3');
       layer.appendChild(dot);
-      this.player.animate(
+      this.track(this.player.animate(
         dot,
         [
           { transform: `translate(${cx}px, ${cy}px)`, opacity: 1 },
@@ -216,7 +221,7 @@ export class FlowAnimator {
           },
         ],
         { durationMs: this.motion.ringMs, easing: 'ease-out' },
-      );
+      ));
     }
   }
 
@@ -244,14 +249,22 @@ export class FlowAnimator {
     this.ensureLayer().textContent = '';
   }
 
+  private track(handle: AnimHandle): void {
+    this.beatAnimations.push(handle);
+  }
+
+  /** Cancel only the animations this animator started for the last beat.
+   * Detached WAAPI animations must not stay registered; camera glides must. */
+  private cancelBeatAnimations(): void {
+    for (const handle of this.beatAnimations) handle.cancel();
+    this.beatAnimations = [];
+  }
+
   /** Cancel nothing (CSS transitions finish naturally) but restore the scene. */
   stop(): void {
+    this.cancelBeatAnimations();
     this.clearVisuals();
     this.previous.clear();
-    // Explicitly drop live animations too: clearing the layer removes their
-    // elements, but a paused or infinitely-iterating animation would otherwise
-    // stay registered on the player (item 9).
-    this.player.cancelAll?.();
     // And remove the emptied layer: leaving one behind after playback is an
     // orphan element that accumulates across presentations.
     this.svg.querySelector('.pc-anim-layer')?.remove();
@@ -310,7 +323,7 @@ export class FlowAnimator {
       ring.setAttribute('height', String(r.h + 12));
       ring.setAttribute('rx', '12');
       layer.appendChild(ring);
-      this.player.animate(
+      this.track(this.player.animate(
         ring,
         [
           { opacity: 1, transform: 'scale(1)' },
@@ -318,7 +331,7 @@ export class FlowAnimator {
           { opacity: 1, transform: 'scale(1)' },
         ],
         { durationMs: this.motion.ringMs, easing: 'ease-in-out', delayMs: staggerMs * i },
-      );
+      ));
     });
   }
 
@@ -343,14 +356,14 @@ export class FlowAnimator {
       trail.setAttribute('d', pathEl.getAttribute('d') ?? '');
       trail.setAttribute('stroke-dasharray', `${trailLen} ${len + trailLen}`);
       layer.appendChild(trail);
-      this.player.animate(
+      this.track(this.player.animate(
         trail,
         [
           { strokeDashoffset: len },
           { strokeDashoffset: -trailLen },
         ],
         { durationMs, easing: 'linear' },
-      );
+      ));
     }
     if (!withToken) return; // trail-fade: the dash is the whole illustration
     for (let i = 0; i < count; i++) {
@@ -385,7 +398,7 @@ export class FlowAnimator {
       // back to the start point, without repeating the far endpoint frame
       ? [...forward, ...forward.slice(0, -1).reverse()]
       : forward;
-    this.player.animate(token, kf, {
+    this.track(this.player.animate(token, kf, {
       durationMs: timing.durationMs,
       easing: 'linear',
       delayMs: timing.delayMs,
@@ -394,7 +407,7 @@ export class FlowAnimator {
       // A one-way token STAYS at its endpoint: the arrival is the point of the
       // beat, so it must not snap back to the path start (item 9).
       fill: pingPong ? 'none' : 'forwards',
-    });
+    }));
   }
 }
 
