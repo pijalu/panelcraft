@@ -103,3 +103,34 @@ test('a click-driven beat cycles until the presentation advances', async ({ page
   await capture(page, 'round3-click-advance');
   await axe(page);
 });
+
+test('a settled delay edit is one undoable write, and a keystroke burst is not', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/');
+  await openWorkspacePanels(page, ['code', 'flows']);
+  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await page.locator('.cm-content').click();
+  await page.locator('.cm-content').press('ControlOrMeta+a');
+  await page.keyboard.insertText(FLOW_DOC);
+  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await page.getByTestId('flow-row-checkout').click();
+
+  // The code view stays open: the document is the observable under test.
+  const source = page.locator('.cm-content');
+  await page.getByTestId('step-1').click();
+  const input = page.getByTestId('step-delay-1');
+  await input.click();
+  await page.keyboard.type('1500');
+  // Nothing is written per keystroke: the value waits for the quiet period.
+  await expect(source).toContainText('delay 1500');
+
+  // Leaving the field must not write the same settled value again; one undo
+  // reverts the whole delay edit back to the authored step line.
+  await page.keyboard.press('Tab');
+  await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
+  await page.keyboard.press('Control+z');
+  await expect(source).not.toContainText('delay 1500');
+  await expect(page.getByTestId('step-delay-1')).toHaveValue('');
+  await axe(page);
+});

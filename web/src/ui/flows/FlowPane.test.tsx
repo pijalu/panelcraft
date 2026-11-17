@@ -915,6 +915,46 @@ describe('Flow Steps browser feedback and input responsiveness', () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(out()).toContain('delay 1500');
   });
+
+  it('writes the settled delay once, not again when the field is left', async () => {
+    const writes: string[] = [];
+    render(
+      <FlowPane
+        textOf={() => DOC}
+        activePath="main.pcd"
+        version={1}
+        onChangeText={(t) => writes.push(t)}
+        onPlay={() => undefined}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-1'));
+    const input = screen.getByTestId('step-delay-1') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: '1500' } });
+    await new Promise((resolve) => setTimeout(resolve, 200)); // quiet period commits
+    fireEvent.blur(input, { target: { value: '1500' } });
+    await new Promise((resolve) => setTimeout(resolve, 200)); // a stale timer must not re-fire
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toContain('delay 1500');
+  });
+
+  it('leaving the delay field untouched writes nothing', () => {
+    const writes: string[] = [];
+    render(
+      <FlowPane
+        textOf={() => DOC}
+        activePath="main.pcd"
+        version={1}
+        onChangeText={(t) => writes.push(t)}
+        onPlay={() => undefined}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-1'));
+    const input = screen.getByTestId('step-delay-1') as HTMLInputElement;
+    fireEvent.blur(input, { target: { value: '' } });
+    expect(writes).toHaveLength(0);
+  });
 });
 describe('per-step advance trigger editor', () => {
   it('exposes the advance trigger and writes click-driven steps explicitly', () => {

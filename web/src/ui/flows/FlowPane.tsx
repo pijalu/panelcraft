@@ -739,11 +739,21 @@ function DelayField({ index, value, onCommit }: {
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The value the document already holds, in the input's own spelling. The quiet
+  // period can fire before the field is left, so blur must not write the same
+  // delay a second time: one settled edit is one document write (and one undo).
+  const written = useRef<string>(value === undefined ? '' : String(value));
+  useEffect(() => {
+    written.current = value === undefined ? '' : String(value);
+  }, [value]);
   useEffect(() => () => {
     if (timer.current !== null) clearTimeout(timer.current);
   }, []);
   const commit = (raw: string): void => {
-    onCommit(raw === '' ? undefined : Number(raw));
+    if (raw !== written.current) {
+      written.current = raw;
+      onCommit(raw === '' ? undefined : Number(raw));
+    }
     setDraft(null);
   };
   const edit = (raw: string): void => {
