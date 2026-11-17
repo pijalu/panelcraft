@@ -752,7 +752,7 @@ export function App() {
   const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
   const sel = selections(canvas.snap);
   const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
-  const pres = useStagePresentation({ player, activePath, textOf: (path) => manager.text(path) });
+  const pres = useStagePresentation({ player, activePath, ready: ws.ready, textOf: (path) => manager.text(path) });
 
   const { diverged, pwa } = useShellLifecycle({
     manager: ws.manager,

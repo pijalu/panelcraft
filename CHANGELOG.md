@@ -5,6 +5,18 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Added — dedicated presentation links
+
+- Presenting an authored flow now publishes `#present=<encoded-flow-id>` in the
+  address bar. A direct load or reload opens that flow from the restored active
+  file once browser storage is ready; Back leaves the presentation and Forward
+  opens it again. Exit, natural end and external file switches clear the anchor
+  without pushing extra history entries, while a cross-file `goto` keeps the
+  link of the presentation that is still running. Malformed, unknown and
+  non-authored ids fall back safely and never change the document. The hash
+  carries only an encoded authored id, is never document input, and cannot give
+  another browser profile access to this browser's local workspace.
+
 ### Fixed — spark and border effects share one beat timeline
 
 - Connector sparks and actor border pulses no longer race on independent

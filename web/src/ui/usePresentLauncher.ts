@@ -21,8 +21,9 @@ export interface PresentLauncherDeps {
   activePath: string | null;
   /** File text lookup (workspace adapter); null when the file is absent. */
   textOf(path: string): string | null;
-  /** Start playback of `flowKey` in the active file and enter presentation. */
-  start(flowKey: string): void;
+  /** Start playback of `flowKey` in the active file and enter presentation.
+   *  `flowId` is the authored id, when there is one (the only linkable address). */
+  start(flowKey: string, flowId: string | null): void;
 }
 
 /** Parse for the catalog; a broken file simply presents nothing. */
@@ -43,10 +44,10 @@ export function usePresentLauncher(deps: PresentLauncherDeps): PresentLauncherHa
   const entries = open ? flowCatalog(catalogOf(deps)) : [];
   const present = useCallback(
     (key: string) => {
-      deps.start(key);
+      deps.start(key, entries.find((entry) => entry.key === key)?.flowId ?? null);
       setOpen(false);
     },
-    [deps],
+    [deps, entries],
   );
   return {
     open,

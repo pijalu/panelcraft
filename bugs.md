@@ -67,20 +67,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 **Validation.** The new failing case must fail before the fix and pass after it. Re-run the complete PWA spec, keyboard activation, light/dark and narrow-viewport screenshots, `npm run check` and `npm test`. Record the reproduction state in this item before closing it.
 
-## Dedicated presentation URL anchor
-
-**Observed.** There is no location-hash/history integration in the presentation shell. `#present=<flow-id>` is absent. A flow id alone is not a globally shareable document address: workspace content is browser-local and the active file is restored locally.
-
-**Expected.** In the same browser profile, `#present=<encoded-flow-id>` opens that flow from the restored active file once storage and the document are ready. Reload and Back/Forward preserve the navigation contract. Unknown/malformed ids and flows without an authored id fall back safely without changing document text. File changes and presentation exit cannot leave a stale anchor. No `#view=<name>` is introduced because named PDL views are being removed.
-
-**Fix plan.**
-
-1. Add a small pure hash codec and a narrow History/location port. Keep URL policy out of the UI-agnostic `FlowRunner`; a shell controller coordinates workspace readiness, player state and history.
-2. Specify transition semantics before coding: direct load, explicit Present, natural end, explicit Exit, external file switch, cross-file flow goto, unknown flow and hash-originated start. Prevent feedback loops between hash writes and player state, and use push versus replace deliberately so Back does not trap the user.
-3. Encode/decode the id, do not concatenate raw flow text into a hash, and never use the hash as document input. Direct links cannot promise access to another browser’s local workspace; document that limitation.
-
-**Validation.** Unit-test codec and transition table with fake history. Browser-test direct load, reload, Back/Forward, unknown/malformed values, active-file mismatch, exit, file switch and upgrading client. Assert no document mutation and no external request, then run `npm run check`, `npm test` and built-app e2e.
-
 ## Hamburger menu needs task-based groups
 
 **Observed.** `buildAppMenu` is mostly separator-delimited, although Export is already a submenu (`web/src/ui/appMenuEntries.ts:68-107,258-278`). `Menu` already supports submenus. Converting every separator block mechanically into another level would bury frequent actions and contradict the stated goal of keeping common commands reachable.
@@ -180,6 +166,7 @@ Closed items from the last round stay in [docs/archive/](docs/archive/). The coo
 
 Closed items, in the order they were archived:
 
+- `bugs-present-hash-anchor.md` — a presentation link resolves in the reader's own workspace.
 - `bugs-menu-viewport-contract.md` — one viewport-safe contract for every menu.
 - `bugs-long-filenames-file-actions.md` — a long name never hides file actions.
 - `bugs-presentation-playback.md` — presentation framing, sparks and transport.

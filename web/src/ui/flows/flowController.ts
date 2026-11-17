@@ -47,6 +47,9 @@ export interface CameraCam {
 
 export interface FlowPlayerState {
   status: 'idle' | 'playing' | 'paused' | 'ended';
+  /** Authored id of the flow being played, null for derived/title-only flows.
+   *  A fact for the shell to publish as a link, never a URL policy here. */
+  flowId: string | null;
   narration: string;
   /** one-line prose of the current step (UX08-WP13; '' when none) */
   description: string;
@@ -58,6 +61,7 @@ export interface FlowPlayerState {
 /** Fully-reset player state (idle). */
 export const FRESH: FlowPlayerState = {
   status: 'idle',
+  flowId: null,
   narration: '',
   description: '',
   breadcrumb: [],
@@ -269,6 +273,7 @@ export class FlowRunner {
     const found = this.findFlow(this.io.textOf(file), flowKey);
     if (found === null) return;
     const plan = buildPlan({ doc: found.doc, flow: found.flow });
+    const authoredId = found.doc.flows.includes(found.flow) ? found.flow.id ?? null : null;
     this.stack.push({
       plan,
       doc: found.doc,
@@ -278,7 +283,7 @@ export class FlowRunner {
       returnTo: -1,
       retHere: false,
     });
-    this.io.publish({ ...FRESH, status: 'playing' });
+    this.io.publish({ ...FRESH, status: 'playing', flowId: authoredId });
     this.runBeat();
   }
 
