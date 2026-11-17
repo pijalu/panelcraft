@@ -89,6 +89,69 @@ async function seek(page: Page, at: number): Promise<void> {
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
 }
 
+interface LiveState {
+  count: number;
+  state: string;
+  time: number;
+}
+
+/**
+ * Freeze the beat's animation layer the moment its first spark exists.
+ *
+ * A finished `fill: none` animation no longer affects its element, so Chromium
+ * drops it from `Element.getAnimations()`: a later seek to an earlier instant
+ * silently skips it and the ring stays at the invisible base opacity the CSS
+ * gives rings before their animation reveals them. Parking the transport after
+ * a fixed wait raced exactly that boundary. Freezing the layer inside the task
+ * that first sees the spark keeps every pulse seekable, and the transport is
+ * still parked separately by the caller.
+ */
+async function freezeLayer(page: Page): Promise<LiveState> {
+  return page.evaluate(() => new Promise<LiveState>((resolve) => {
+    const deadline = performance.now() + 5000;
+    const step = (): void => {
+      const spark = document.querySelector('.pc-anim-layer [data-role="spark"]');
+      if (spark === null) {
+        if (performance.now() > deadline) {
+          resolve({ count: 0, state: 'missing', time: -1 });
+          return;
+        }
+        requestAnimationFrame(step);
+        return;
+      }
+      // Real Chromium WAAPI, not a fake player: read the live state first, then
+      // freeze the layer so every later seek can rewind every phase.
+      const animation = spark.getAnimations()[0];
+      const live: LiveState = {
+        count: spark.getAnimations().length,
+        state: animation?.playState ?? 'none',
+        time: Number(animation?.currentTime ?? -1),
+      };
+      const layer = document.querySelector('.pc-anim-layer');
+      if (layer !== null) {
+        for (const el of layer.querySelectorAll('*')) {
+          for (const a of el.getAnimations()) a.pause();
+        }
+      }
+      resolve(live);
+    };
+    step();
+  }));
+}
+
+/** Drop the finished camera glide so the transform its own clock timer applied
+ *  is the one on screen; a paused mid-glide animation would otherwise keep
+ *  framing the endpoints half-way. */
+async function cancelCamera(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      const target = (animation.effect as KeyframeEffect | null)?.target;
+      if (!(target instanceof Element) || target.closest('.pc-anim-layer') !== null) continue;
+      animation.cancel();
+    }
+  });
+}
+
 interface Sample {
   source: number | null;
   target: number | null;
@@ -141,27 +204,21 @@ for (const theme of ['light', 'dark'] as const) {
       };
 
       await page.getByTestId(`step-play-${scenario.step}`).click();
-      const spark = page.locator('.pc-anim-layer [data-role="spark"]').first();
-      await expect(spark).toBeVisible({ timeout: 5000 });
-      // Real Chromium WAAPI, not a fake player: the spark owns a live running
-      // animation before the transport is parked for deterministic sampling.
-      const live = await spark.evaluate((el) => {
-        const animation = el.getAnimations()[0];
-        return {
-          count: el.getAnimations().length,
-          state: animation?.playState ?? 'none',
-          time: Number(animation?.currentTime ?? -1),
-        };
-      });
+      // Freeze the layer as soon as the spark exists, then read the WAAPI state
+      // it had while running: parking the transport after a fixed wait raced the
+      // source pulse's own end and made the filmstrip flaky under load.
+      const live = await freezeLayer(page);
       expect(live.count).toBeGreaterThan(0);
       expect(live.state).toBe('running');
       expect(live.time).toBeGreaterThanOrEqual(0);
 
-      // Let the 300 ms camera glide finish before pausing: pauseAll freezes
-      // camera work too, and a half-glided frame would hide the endpoints.
+      // The camera glide lands through its own clock timer, so let it land (the
+      // layer is already frozen), park the transport, then drop the glide so the
+      // applied framing is the visible one.
       await page.waitForTimeout(MOTION.cameraMs + 80);
       await page.getByTestId('pb-toggle').click();
       await expect(page.getByTestId('playbar')).toHaveAttribute('data-status', 'paused');
+      await cancelCamera(page);
 
       await seek(page, shots.source);
       const atSource = await sample(page);
@@ -232,8 +289,12 @@ for (const theme of ['light', 'dark'] as const) {
     // Parallel lanes run their own spark timelines under one beat.
     await page.getByTestId('step-play-5').click();
     await expect(page.getByTestId('playbar')).toBeVisible();
+    // Freeze first for the same reason as the scenarios above: a finished pulse
+    // cannot be rewound by seek(), and this capture shows the settled frame.
+    await freezeLayer(page);
     await page.waitForTimeout(MOTION.cameraMs + 80);
     await page.getByTestId('pb-toggle').click();
+    await cancelCamera(page);
     // Lane one has one spark; lane two uses the three-spark connector.
     await expect(page.locator('.pc-anim-layer [data-role="source-pulse"]')).toHaveCount(4);
     await seek(page, MOTION.stepDelayMs);
