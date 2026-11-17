@@ -4,6 +4,18 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-17 — application menu grouped by task
+
+- The hamburger menu now keeps the frequent file, flow and history commands on
+  its root surface and groups the rest into three named submenus: File & data,
+  Layout & workspace and Application. Every command keeps its id, checked and
+  disabled state and action; no menu state is persisted for the grouping.
+- Keyboard navigation of nested menus was hardened: ArrowRight focuses inside
+  a newly measured submenu, navigation keys no longer jump back to the root,
+  and an internal submenu scroll no longer shrinks its own placement. Details,
+  membership matrix and evidence:
+  [docs/archive/bugs-hamburger-task-groups.md](archive/bugs-hamburger-task-groups.md).
+
 ## 2026-11-17 — selected flow-step properties edit the shared link
 
 - The inline step inspector keeps its single selection path and kind-correct

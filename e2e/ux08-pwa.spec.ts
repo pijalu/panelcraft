@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { openFlowSteps, openWorkspacePanels, setAppTheme } from './lib/panels';
+import { openAppGroup, openFlowSteps, openWorkspacePanels, setAppTheme } from './lib/panels';
 import { capture } from './lib/screenshots';
 
 /** A document with one playable flow: enough to start playback from Flows. */
@@ -119,6 +119,7 @@ test('an update waits, offers a restart, and Later keeps the offer', async ({ pa
   await page.getByTestId('update-later').click();
   await expect(page.getByTestId('banner-update')).toHaveCount(0);
   await page.getByTestId('app-menu').click();
+  await openAppGroup(page, 'menu-group-application');
   await expect(page.getByTestId('app-update-restart')).toBeVisible();
   await capture(page, 'ux08-app-menu-update');
   await page.keyboard.press('Escape');

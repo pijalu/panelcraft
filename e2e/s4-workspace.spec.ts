@@ -8,7 +8,7 @@
 import { unzipSync } from 'fflate';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { chooseAppMenu, openWorkspacePanels } from './lib/panels';
+import { chooseAppMenu, openAppGroup, openWorkspacePanels } from './lib/panels';
 
 const EXTERNAL = /^https?:\/\/(?!localhost|127\.0\.0\.1)/;
 
@@ -218,6 +218,7 @@ test('S4: quota failure degrades to in-memory session with banner (FR-S3)', asyn
   await expect(page.getByTestId('banner-quota')).toBeVisible({ timeout: 5000 });
   await expect(canvas.locator('g.pc-obj')).toHaveCount(1); // work kept in memory
   await page.getByTestId('app-menu').click();
+  await openAppGroup(page, 'menu-group-application');
   await expect(page.getByTestId('tb-ephemeral')).toHaveAttribute('aria-checked', 'true');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('banner-ephemeral')).toHaveCount(0); // quota banner replaces the badge
@@ -226,6 +227,7 @@ test('S4: quota failure degrades to in-memory session with banner (FR-S3)', asyn
 test('S4: private mode toggle shows the ephemeral banner (FR-S2)', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('app-menu').click();
+  await openAppGroup(page, 'menu-group-application');
   await expect(page.getByTestId('tb-ephemeral')).toHaveAttribute('aria-checked', 'false');
   await expect(page.getByTestId('banner-ephemeral')).toHaveCount(0);
   await page.getByTestId('tb-ephemeral').click();

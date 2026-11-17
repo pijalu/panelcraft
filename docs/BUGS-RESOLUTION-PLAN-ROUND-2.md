@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 # Coordinated plan for the second bug round
 
-**Status:** Open. Twelve items are queued in [`../bugs.md`](../bugs.md). This
-document is the order of work and the evidence contract; each item's detailed
-fix plan stays in `bugs.md` until it is copied into its own archive write-up.
+**Status:** Closed. All twelve items were archived from [`../bugs.md`](../bugs.md),
+which now holds only the reporting guidelines and the closed-item list. This
+document keeps the order of work and the evidence contract; each item's
+detailed fix plan was copied into its own archive write-up.
 **Branch:** `feat/bugs-round-2`. **Execution:** one active goal at a time, with a
 fresh context per item, followed by one commit per tested and archived item.
 No parallel edits: several items touch the flow player, the format, or the menu.
@@ -260,8 +261,9 @@ keyboard-only traversal, light/dark/narrow captures, `npm run check`, `npm test`
 
 ## Final integration
 
-After item 12, rebuild from the final sources, rerun every full gate and the
-complete e2e suite, review the light/dark shell again, run
-`bash scripts/check-repo-clean.sh --worktree`, and remove the remaining open
-content from `bugs.md`. No separate release or hosted deployment is in scope for
-this round.
+Completed with item 12. The final sources were rebuilt and the full suite ran
+green (`npx playwright test --workers=4 --reporter=line` — 227 passed); the
+member-item archive records the model, quality and screenshot evidence. The
+light/dark shell was reviewed again in the new menu captures. The
+repo-clean check is run after the closing commit. No separate release or hosted
+deployment is in scope for this round.

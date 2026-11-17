@@ -4,7 +4,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { chooseAppMenu, chooseExport, choosePanelMenu, openWorkspacePanels, setAppTheme } from './lib/panels';
+import { chooseAppMenu, chooseExport, choosePanelMenu, openAppGroup, openWorkspacePanels, setAppTheme } from './lib/panels';
 
 const root = (page: Page) => page.locator('html');
 
@@ -16,6 +16,7 @@ async function chooseTheme(page: Page, preference: 'system' | 'light' | 'dark'):
 async function expectTheme(page: Page, preference: 'system' | 'light' | 'dark'): Promise<void> {
   const trigger = page.getByTestId('app-menu');
   if ((await trigger.getAttribute('aria-expanded')) !== 'true') await trigger.click();
+  await openAppGroup(page, 'menu-group-application');
   await expect(page.getByTestId(`app-theme-${preference}`)).toHaveAttribute('aria-checked', 'true');
   await page.keyboard.press('Escape');
 }
@@ -124,6 +125,7 @@ for (const theme of ['light', 'dark'] as const) {
     await axe(page);
 
     await page.getByTestId('app-menu').click();
+    await openAppGroup(page, 'menu-group-application');
     await expect(page.getByTestId(`app-theme-${theme}`)).toBeVisible();
     await capture(page, `ux05-app-menu-${theme}`);
     await axe(page);

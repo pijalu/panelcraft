@@ -5,7 +5,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { openAppGroup, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 title "Layout contract"
@@ -50,6 +50,7 @@ test('route reset keeps saved positions; layout reset persists one deterministic
 
   // No selection: application menu offers "Reset all routes".
   await page.getByTestId('app-menu').click();
+  await openAppGroup(page, 'menu-group-layout');
   await expect(page.getByTestId('menu-reset-all-routes')).toBeEnabled();
   await page.getByTestId('menu-reset-all-routes').click();
   await expect(editor).not.toContainText('waypoint (140, 30)');

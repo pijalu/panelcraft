@@ -44,6 +44,17 @@ async function pressMenuItem(page: Page, triggerId: string, itemId: string): Pro
   await expect(menu).toBeVisible();
   await expect(menu.locator('[role="menuitem"]:focus')).toHaveCount(1);
   const item = page.getByTestId(itemId);
+  if (await item.count() === 0) {
+    // Grouped commands only exist after their submenu opens; reach it with the
+    // same ArrowRight a keyboard user would use.
+    const groups = menu.locator('button[aria-haspopup="menu"]');
+    const count = await groups.count();
+    for (let index = 0; index < count; index++) {
+      await groups.nth(index).focus();
+      await page.keyboard.press('ArrowRight');
+      if (await item.count() > 0) break;
+    }
+  }
   await item.focus();
   await page.keyboard.press('Enter');
 }

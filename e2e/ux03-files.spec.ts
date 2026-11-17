@@ -165,6 +165,8 @@ test('UX-03: keyboard close preserves dirty tabs, code, search and toolbar comma
   await expect(page.getByTestId('search-overlay')).toHaveCount(0);
   await page.getByTestId('app-menu').focus();
   await page.keyboard.press('Enter');
+  await page.getByTestId('menu-group-layout').focus();
+  await page.keyboard.press('ArrowRight');
   await page.getByTestId('view-panel-sidebar').focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('file-tree')).toBeVisible();

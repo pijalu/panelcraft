@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { MenuEntry } from './Menu';
 import { buildAppMenu, type AppMenuActions, type AppMenuContext } from './appMenuEntries';
-import { closePanel, defaultLayout, type PanelId } from './uiLayout';
+import { closePanel, defaultLayout, PANELS, type PanelId } from './uiLayout';
 
 function actions(): AppMenuActions {
   return {
@@ -65,14 +65,74 @@ function select(entries: MenuEntry[], testId: string): void {
   entry.onSelect();
 }
 
+/** Stable test id -> entry and the submenu chain that owns it. */
+function locate(entries: MenuEntry[]): Map<string, { entry: MenuEntry; path: string[] }> {
+  const found = new Map<string, { entry: MenuEntry; path: string[] }>();
+  const walk = (items: MenuEntry[], path: string[]): void => {
+    for (const entry of items) {
+      if (entry.kind === 'separator') continue;
+      const key = entry.testId ?? entry.id;
+      expect(found.has(key), `duplicate menu test id ${key}`).toBe(false);
+      found.set(key, { entry, path });
+      if (entry.kind === 'submenu') walk(entry.items, [...path, entry.id]);
+    }
+  };
+  walk(entries, []);
+  return found;
+}
+
 describe('application menu model', () => {
-  it('groups every former header action in Jakob-friendly order', () => {
-    const entries = buildAppMenu(context());
-    const ids = entries.flatMap((entry) => (entry.kind === 'separator' ? [] : [entry.id]));
-    expect(ids.slice(0, 4)).toEqual(['import-files', 'import-zip', 'export-current', 'export-zip']);
-    expect(ids).toContain('history');
-    expect(ids.indexOf('history')).toBeGreaterThan(ids.indexOf('present'));
-    expect(ids.indexOf('snapshots')).toBeGreaterThan(ids.indexOf('history'));
+  it('keeps frequent commands on the root and groups advanced ones by task', () => {
+    const entries = buildAppMenu(contextWith({
+      grid: { type: 'dots', snap: true, setType: vi.fn(), setSnap: vi.fn() },
+    }));
+    const root = entries
+      .filter((entry): entry is Exclude<MenuEntry, { kind: 'separator' }> => entry.kind !== 'separator')
+      .map((entry) => entry.id);
+    expect(root).toEqual([
+      'import-files', 'export-current', 'group-file', 'open-flows', 'present',
+      'group-layout', 'history', 'group-application',
+    ]);
+
+    const located = locate(entries);
+    for (const id of [
+      'tb-import-files', 'menu-export-current', 'app-menu-flows', 'app-menu-present', 'history-open',
+    ]) {
+      expect(located.get(id)?.path, id).toEqual([]);
+    }
+    for (const id of ['tb-import-zip', 'tb-export-zip', 'tb-snapshots', 'tb-clear-data']) {
+      expect(located.get(id)?.path, id).toEqual(['group-file']);
+    }
+    for (const id of [
+      ...PANELS.map((panel) => `view-panel-${panel}`),
+      'view-grid-dots', 'view-grid-snap', 'reset-workspace-layout',
+      'menu-reset-diagram-layout', 'menu-reset-all-routes',
+    ]) {
+      expect(located.get(id)?.path, id).toEqual(['group-layout']);
+    }
+    for (const id of ['app-theme-system', 'app-theme-light', 'app-theme-dark', 'tb-ephemeral']) {
+      expect(located.get(id)?.path, id).toEqual(['group-application']);
+    }
+  });
+
+  it('keeps one owner and one stable test id for every command', () => {
+    const ctx = contextWith({
+      grid: { type: 'dots', snap: true, setType: vi.fn(), setSnap: vi.fn() },
+      install: { availability: 'ready', promptInstall: vi.fn() },
+      update: { state: 'available', restart: vi.fn(), unapplied: null },
+    });
+    const ids = [...locate(buildAppMenu(ctx)).keys()].sort();
+    expect(ids).toEqual([
+      'tb-import-files', 'menu-export-current',
+      'tb-export-pcd', 'tb-export-mmd', 'tb-export-svg', 'tb-export-png',
+      'app-menu-flows', 'app-menu-present', 'history-open',
+      'menu-group-file', 'tb-import-zip', 'tb-export-zip', 'tb-snapshots', 'tb-clear-data',
+      'menu-group-layout', ...PANELS.map((panel) => `view-panel-${panel}`),
+      'view-grid-off', 'view-grid-dots', 'view-grid-lines', 'view-grid-snap',
+      'reset-workspace-layout', 'menu-reset-diagram-layout', 'menu-reset-all-routes',
+      'menu-group-application', 'app-theme-system', 'app-theme-light', 'app-theme-dark',
+      'tb-ephemeral', 'app-install', 'app-update-restart',
+    ].sort());
   });
 
   it('disables export and present without an active file', () => {

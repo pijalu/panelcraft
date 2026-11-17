@@ -5,7 +5,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { openAppGroup, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -127,6 +127,7 @@ test('F-14: Reset diagram layout reorganises, undo restores, stays one command',
   const dragged = await transforms(page);
 
   await page.getByTestId('app-menu').click();
+  await openAppGroup(page, 'menu-group-layout');
   await page.getByTestId('menu-reset-diagram-layout').click();
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,

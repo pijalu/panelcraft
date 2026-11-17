@@ -9,7 +9,31 @@ export type WorkspacePanel = 'sidebar' | 'flows' | 'palette' | 'code' | 'props';
 async function revealMenuItem(page: Page, triggerId: string, testId: string): Promise<void> {
   const trigger = page.getByTestId(triggerId);
   if ((await trigger.getAttribute('aria-expanded')) !== 'true') await trigger.click();
-  await page.getByTestId(testId).click();
+  const target = page.getByTestId(testId);
+  // A grouped command is not in the DOM until its named submenu opens. Walk the
+  // root submenu rows rather than duplicating the group membership in tests.
+  if (await target.count() === 0) {
+    const menuId = await trigger.getAttribute('aria-controls');
+    if (menuId !== null) {
+      const rows = page.locator(`#${menuId} [aria-haspopup="menu"]`);
+      const count = await rows.count();
+      for (let index = 0; index < count; index++) {
+        const row = rows.nth(index);
+        if ((await row.getAttribute('aria-expanded')) !== 'true') await row.click();
+        if (await target.count() > 0) break;
+      }
+    }
+  }
+  await target.click();
+}
+
+/** Open a named application-menu group by its stable test id. */
+export async function openAppGroup(page: Page, groupTestId: string): Promise<void> {
+  const trigger = page.getByTestId('app-menu');
+  if ((await trigger.getAttribute('aria-expanded')) !== 'true') await trigger.click();
+  const row = page.getByTestId(groupTestId);
+  await expect(row).toBeVisible();
+  if ((await row.getAttribute('aria-expanded')) !== 'true') await row.click();
 }
 
 export async function chooseAppMenu(page: Page, testId: string): Promise<void> {
@@ -43,8 +67,7 @@ export async function openWorkspacePanels(
     if (await expand.count()) {
       await expand.click();
     } else {
-      await page.getByTestId('app-menu').click();
-      await page.getByTestId(`view-panel-${panel}`).click();
+      await chooseAppMenu(page, `view-panel-${panel}`);
     }
     await expect(page.locator(`[data-panel="${panel}"]`)).toBeVisible();
   }

@@ -9,7 +9,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { openAppGroup, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -69,7 +69,13 @@ test.describe('menu viewport contract (item 7)', () => {
     });
     expect(overlap).toBe('clear');
 
-    const scrolls = await pop.evaluate((el) => ({
+    // Task grouping keeps the root short; the long command list is now the
+    // Layout & workspace submenu, which must scroll internally instead.
+    await capture(page, 'item7-app-menu-short');
+    await openAppGroup(page, 'menu-group-layout');
+    const group = page.locator('#group-layout-menu');
+    await expectInsideViewport(page, '#group-layout-menu');
+    const scrolls = await group.evaluate((el) => ({
       scrollHeight: el.scrollHeight,
       clientHeight: el.clientHeight,
       overflowY: getComputedStyle(el).overflowY,
@@ -77,11 +83,12 @@ test.describe('menu viewport contract (item 7)', () => {
     expect(scrolls.scrollHeight).toBeGreaterThan(scrolls.clientHeight);
     expect(scrolls.overflowY).toBe('auto');
     // The surface itself reports that it scrolls (visible overflow cue).
-    await expect(pop).toHaveClass(/menu-scrolls/);
+    await expect(group).toHaveClass(/menu-scrolls/);
 
     // End jumps to the last command and scrolls it into view inside the menu.
+    await page.locator('#group-layout-menu button:not([disabled])').first().focus();
     await page.keyboard.press('End');
-    const last = await pop.evaluate((el) => {
+    const last = await group.evaluate((el) => {
       const items = [...el.querySelectorAll<HTMLElement>('[data-menu-index]')];
       const focused = document.activeElement as HTMLElement | null;
       return {
@@ -94,7 +101,7 @@ test.describe('menu viewport contract (item 7)', () => {
     // The document itself never scrolled instead of the menu.
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     await axe(page);
-    await capture(page, 'item7-app-menu-short');
+    await capture(page, 'item7-app-menu-group-short');
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('app-menu')).toHaveAttribute('aria-expanded', 'false');
   });

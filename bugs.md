@@ -36,16 +36,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 - Keep changes small and cohesive. Extract a module only when it gives a rule one owner; do not build a general framework or mix opportunistic cleanup into a bug fix. Preserve existing ports where possible and remove an API only after tracing its callers.
 - A format change is atomic: TypeScript and Go parser/printer/IR/validation, format documentation, corpus regeneration and parity fixtures land together. UI work also needs keyboard, reduced-motion, narrow-viewport, light/dark and no-network verification as applicable.
 
-## Hamburger menu needs task-based groups
-
-**Observed.** `buildAppMenu` is mostly separator-delimited, although Export is already a submenu (`web/src/ui/appMenuEntries.ts:68-107,258-278`). `Menu` already supports submenus. Converting every separator block mechanically into another level would bury frequent actions and contradict the stated goal of keeping common commands reachable.
-
-**Expected.** Group File, Layout/Workspace, Flows and Application by user task. Keep high-frequency commands prominent, advanced commands one level down, and every command’s id, checked state, disabled state and action intact. Persist no new UI state merely to represent grouping.
-
-**Fix plan.** Write the top-level/group membership matrix first, including what stays top-level and why. Build that matrix in the existing pure `appMenuEntries` model and reuse `Menu`’s submenu primitive; do not create a third menu model or duplicate selection state in `AppMenu`. Update flat-order tests to assert the new structure and add browser keyboard tests for ArrowRight/ArrowLeft, Escape, focus return and viewport-safe placement. “Existing Menu tests cover this” is not sufficient evidence for the new hierarchy.
-
-**Validation.** Focused model/component tests, complete menu e2e, axe scans, keyboard-only traversal and light/dark/narrow-viewport screenshots. Verify all previously available commands by stable id/test id, then run `npm run check` and `npm test`.
-
 ## Previously closed
 
 Closed items from the last round stay in [docs/archive/](docs/archive/). The coordinated plan that drove them stays in [docs/BUGS-RESOLUTION-PLAN.md](docs/BUGS-RESOLUTION-PLAN.md) as the record of how each one was triaged and gated.
@@ -64,3 +54,4 @@ Closed items, in the order they were archived:
 - `bugs-project-icon-registry.md` — 43 built-ins plus portable project icons.
 - `bugs-c4-drill-down.md` — genuine C4 decomposition with embedded source.
 - `bugs-step-properties.md` — selected message steps edit their resolved link's shared animation.
+- `bugs-hamburger-task-groups.md` — the menu is grouped by user task without losing a command.

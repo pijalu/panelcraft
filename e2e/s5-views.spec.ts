@@ -7,7 +7,7 @@
 // (STYLE-GUIDE §visual).
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { openAppGroup, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -81,6 +81,7 @@ test('S5: Reset diagram layout is deterministic across two runs (FR-V3/V4)', asy
   let first: Record<string, string> | undefined;
   for (let run = 0; run < 2; run++) {
     await page.getByTestId('app-menu').click();
+    await openAppGroup(page, 'menu-group-layout');
     await page.getByTestId('menu-reset-diagram-layout').click();
     await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
       timeout: 5000,
