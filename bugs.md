@@ -60,3 +60,5 @@ Closed items, in the order they were archived:
 - `bugs-curve-arrow-endpoint.md` — a curved connector's arrowhead always points into the entity it ends on.
 - `bugs-tab-close-outside.md` — a tab's close cross sits inside the tab's own outline.
 - `bugs-stale-review-captures.md` — the curated review captures show the interface that actually ships, and a shell change re-shoots them.
+- `bugs-flow-panel-model.md` — Flow Steps lists the flow; the Properties panel edits the selected step, and the two selections exclude each other.
+- `bugs-late-canvas-load.md` — a canvas load that finishes after the user starts typing no longer replaces the typed document, and the code view opens only once the file is in the buffer.

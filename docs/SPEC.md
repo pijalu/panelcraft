@@ -182,6 +182,13 @@ IcePanel-style visual storytelling over the static diagram.
   an optional atomic multiline Markdown `descriptionLines` block and a `presentation`
   flag for showing those notes during playback; each step may carry its own `description`.
   All of them live in the file (IR v8/v13), never in a UI-only store.
+  The step list shows the flow — order, type, title, participants, play and
+  duplicate — and the selected step's properties (type and description, camera,
+  playback, the connector animation its link shares, advanced fields) are edited
+  in the Properties panel, which also shows the flow's own properties when the
+  flow rather than a step is selected. A flow selection and a canvas selection
+  are mutually exclusive: picking a step clears the canvas selection and pressing
+  the diagram clears the step.
   A document with connections and no authored flow has a virtual default
   flow derived from those connections (stable topological order, labels and parallel links
   preserved, creation order as the cycle fallback). It is never persisted: opening,

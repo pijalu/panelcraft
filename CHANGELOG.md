@@ -5,6 +5,27 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Changed — Flow Steps lists the flow, Properties edits the step
+
+- Flow Steps is a list again: one row per step with its number, type, title, the
+  participants it moves between and a warning marker when the step does not
+  resolve, plus play-from-here and duplicate. Adding a flow, adding a step
+  (message, process, note, alternative, parallel, goto) and the all-flows export
+  stay in the column; hidden connections are still reachable there.
+- Selecting a step moves its properties to the Properties panel, grouped from
+  what changes most to what changes least: kind and description, camera, playback
+  (delay, advance), the connector animation shared by the step's link, then the
+  advanced fields (flip, connector reference, hide connection). Selecting the
+  flow shows the flow's own properties there — title, purpose, notes, the
+  presentation toggle and illustration, and the exports. Introduction and
+  Conclusion are always offered and dropped again when left empty.
+- The two selections exclude each other: picking a flow or a step clears the
+  canvas selection, and a press on the diagram clears the flow selection. The
+  canvas reports that press itself, so a document reload cannot silently swap the
+  panel while a step is being edited. Message endpoints are chosen from the
+  document's own entities in closed-domain selects, which replaces the canvas
+  pick buttons.
+
 ### Fixed — assessment of the second bug round
 
 - The identifier-clarity gate is green again: thirteen lines this branch added

@@ -72,5 +72,16 @@ then swapped the panel *while the user was typing*.
   `e2e/p2-illustrations.spec.ts`, `e2e/flow01-canvas-flows.spec.ts`,
   `e2e/flow02-sparks.spec.ts` — moved controls, same guarantees; all pass.
 - `npm run check` clean, `npx vitest run` 1662 passed, `npx playwright test`
-  239 passed, curated captures re-shot with `UPDATE_GOLDENS=1` and reviewed in
-  light and dark.
+  239 passed (twice), `go test -count=1 -race -cover ./...` green.
+
+## Vision review
+
+The four curated captures (`p6-minimap-light/dark`, `p6-routing-light/dark`) were
+re-shot with `UPDATE_GOLDENS=1` and read in both themes, because they photograph
+the whole shell and the Properties column now hosts flow content. Checked against
+the style guide's checklist: panel headers and rails align, the collapsed flow
+column keeps its label, the empty Properties state reads as one sentence rather
+than a blank column, the dependencies block sits below it with its own heading,
+the tab's close cross stays inside the tab outline, and light/dark contrast holds
+on the canvas labels, the panel text and the minimap. No new defect was found, so
+no follow-up item was filed.
