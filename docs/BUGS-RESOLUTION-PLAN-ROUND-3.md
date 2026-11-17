@@ -81,3 +81,29 @@ Each item gets an archive write-up with the RED command/output, the GREEN
 commands, captured screenshots reviewed against the style guide, and the exact
 bug entry removed from `bugs.md`. The coordinated plan and CHANGELOG are updated
 before the final commit; `scripts/check-repo-clean.sh` runs after it.
+
+## Post-close validation and corrections
+
+The four items were re-checked after closing, with the whole suite re-run on the
+branch head. Two issues were found and fixed; neither changes an item's
+decision, and both are recorded with their evidence in
+[archive/bugs-critical-assessment-round-2.md](archive/bugs-critical-assessment-round-2.md).
+
+- **Item 1's filmstrip was load-dependent.** Parking the transport after a fixed
+  wait let the source pulse finish before the animation layer was rewound; a
+  finished `fill: none` animation leaves `Element.getAnimations()`, so the sample
+  read the rings' invisible base opacity. The spec now freezes the layer as soon
+  as the spark exists and lets the camera's own clock timer land before dropping
+  its finished glide. This also replaces the "browser filmstrip samples several
+  token transforms at one instant" wording with something the spec can actually
+  observe: every scenario samples its own phase values from frozen animations.
+- **Item 4's validation was not delivered as written, and its commit path wrote
+twice.** The plan promised a browser probe for the delay draft; only component
+tests existed. `e2e/round3-browser-fixes.spec.ts` now proves that a typed delay
+reaches the code view once and is reverted by a single undo. The field itself no
+longer repeats a settled value on blur, and two component tests pin "one settled
+edit is one document write" and "an untouched field writes nothing".
+
+The item 2 and item 3 claims were re-verified without change: the spark cap is
+fed the measured connector length at both `beatTimeline` call sites, and every
+advance surface leaves a click-driven cycle because `stepTo` cancels its timer.

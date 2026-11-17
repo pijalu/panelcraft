@@ -4,7 +4,9 @@
 **Status:** Closed. All twelve items were archived from [`../bugs.md`](../bugs.md),
 which now holds only the reporting guidelines and the closed-item list. This
 document keeps the order of work and the evidence contract; each item's
-detailed fix plan was copied into its own archive write-up.
+detailed fix plan was copied into its own archive write-up. A later assessment
+of the whole round re-checked every item and fixed two issues it found; see
+[`archive/bugs-critical-assessment-round-2.md`](archive/bugs-critical-assessment-round-2.md).
 **Branch:** `feat/bugs-round-2`. **Execution:** one active goal at a time, with a
 fresh context per item, followed by one commit per tested and archived item.
 No parallel edits: several items touch the flow player, the format, or the menu.

@@ -5,6 +5,25 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Fixed — assessment of the second bug round
+
+- The identifier-clarity gate is green again: thirteen lines this branch added
+  (comments, test titles, one doc line) leaned on short plan tags such as a
+  milestone or requirement number, so the CI step that rejects them failed.
+  Each now says what it means in words.
+
+- The presentation filmstrip browser scenario no longer depends on machine load:
+  a pulse that had already finished dropped out of the element's animation list,
+  so rewinding the layer silently skipped it and the sample read the rings'
+  invisible base opacity. The scenario freezes the animation layer as soon as the
+  spark exists and drops the finished camera glide after its own timer applied
+  the framing.
+- The flow step delay field no longer writes the same settled value twice. The
+  quiet period and the blur both committed, and leaving an untouched field wrote
+  once; the field now remembers the document's value and writes only a change.
+  A browser scenario also proves a typed delay reaches the file once and is
+  reverted by a single undo.
+
 ### Changed — known-value inputs and property hierarchy
 
 - The icon control is now one searchable combobox with a single accessible name
