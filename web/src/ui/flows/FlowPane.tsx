@@ -66,6 +66,8 @@ export interface FlowPaneProps {
   onIllustration?(id: IllustrationId | 'auto'): void;
   /** FLOW-01 canvas context for assisted targeting (never invents links). */
   canvas?: FlowCanvasContext;
+  /** Closed domain for `goto` file picks: workspace `.pcd` paths (may be empty). */
+  files?: string[];
   /** FLOW-01: fade everything except these participants (null clears). */
   onHighlight?(ids: string[] | null): void;
   /** UX08-WP13: current viewport centre in canvas coords + zoom ("use current view"). */
@@ -163,6 +165,61 @@ function Field(props: { label: string; value: string; onInput: (v: string) => vo
   );
 }
 
+/** One option of a closed-domain step target. `reason` disables the choice. */
+interface TargetOption {
+  value: string;
+  label: string;
+  reason?: string;
+}
+
+/**
+ * A known-value step target as a native select. The stored value stays selected
+ * even when the domain no longer contains it — shown as a disabled choice with
+ * a diagnostic — so loading or editing a file cannot silently drop a target.
+ */
+function KnownValueField(props: {
+  label: string;
+  testid: string;
+  value: string;
+  options: TargetOption[];
+  noneLabel?: string;
+  onChange(value: string): void;
+}) {
+  const match = props.options.find((option) => option.value === props.value);
+  const unresolved = props.value !== '' && match === undefined;
+  return (
+    <>
+      <label class="flow-field">
+        <span class="flow-field-label">{props.label}</span>
+        <select
+          data-testid={props.testid}
+          aria-label={props.label}
+          value={props.value}
+          onChange={(e) => props.onChange((e.target as HTMLSelectElement).value)}
+        >
+          {props.noneLabel !== undefined && <option value="">{props.noneLabel}</option>}
+          {props.options.map((option) => (
+            <option key={option.value} value={option.value} disabled={option.reason !== undefined} title={option.reason}>
+              {option.label}
+            </option>
+          ))}
+          {unresolved && (
+            <option value={props.value} disabled>{s('{value} (unresolved)', { value: props.value })}</option>
+          )}
+        </select>
+      </label>
+      {unresolved && (
+        <p class="flow-hint flow-unresolved" role="status" data-testid={`${props.testid}-unresolved`}>
+          {s('“{value}” is not available here. Choose a known value.', { value: props.value })}
+        </p>
+      )}
+      {match?.reason !== undefined && (
+        <p class="flow-hint flow-unresolved" role="status">{match.reason}</p>
+      )}
+    </>
+  );
+}
+
 function TextArea(props: { label: string; value: string; hint: string; onInput: (v: string) => void; testid: string }) {
   const draft = useDraft(props.value);
   return (
@@ -200,8 +257,15 @@ function MsgFields({
   const picked = canvas?.objects ?? [];
   return (
     <>
-      <Field label={s('From')} value={step.from} onInput={(v) => patch({ from: v })} testid="insp-from" />
-      <Field label={s('To')} value={step.to} onInput={(v) => patch({ to: v })} testid="insp-to" />
+      <div class="flow-field">
+        <span class="flow-field-label">{s('From')}</span>
+        <output data-testid="insp-from">{step.from === '' ? s('— none —') : step.from}</output>
+      </div>
+      <div class="flow-field">
+        <span class="flow-field-label">{s('To')}</span>
+        <output data-testid="insp-to">{step.to === '' ? s('— none —') : step.to}</output>
+      </div>
+      <p class="flow-hint">{s('Set from the canvas selection')}</p>
       <div class="flow-picks" data-testid="insp-picks">
         <button
           type="button"
@@ -254,15 +318,24 @@ function ProcessFields({
   step,
   patch,
   canvas,
+  objects,
 }: {
   step: Extract<FlowStep, { type: 'process' }>;
   patch: Patch;
   canvas?: FlowCanvasContext;
+  objects: TargetOption[];
 }) {
   const picked = canvas?.objects ?? [];
   return (
     <>
-      <Field label={s('Target')} value={step.target} onInput={(v) => patch({ target: v })} testid="insp-target" />
+      <KnownValueField
+        label={s('Target')}
+        testid="insp-target"
+        value={step.target}
+        options={objects}
+        noneLabel={s('— none —')}
+        onChange={(target) => patch({ target })}
+      />
       <div class="flow-picks">
         <button
           type="button"
@@ -304,11 +377,38 @@ function AltFields({ step, patch, addBranch }: { step: Extract<FlowStep, { type:
   );
 }
 
-function GotoFields({ step, patch }: { step: Extract<FlowStep, { type: 'goto' }>; patch: Patch }) {
+function GotoFields({
+  step,
+  patch,
+  files,
+  flowsOf,
+}: {
+  step: Extract<FlowStep, { type: 'goto' }>;
+  patch: Patch;
+  files: string[];
+  flowsOf(path: string): string[];
+}) {
+  const fileOptions: TargetOption[] = files.map((path) => ({ value: path, label: path }));
+  // Flow choices depend on the chosen file; without one, use this file's flows.
+  const file = step.file ?? '';
+  const flowOptions: TargetOption[] = flowsOf(file).map((key) => ({ value: key, label: key }));
   return (
     <>
-      <Field label={s('File')} value={step.file ?? ''} onInput={(v) => patch({ file: v === '' ? undefined : v })} testid="insp-goto-file" />
-      <Field label={s('Flow')} value={step.flow} onInput={(v) => patch({ flow: v })} testid="insp-goto-flow" />
+      <KnownValueField
+        label={s('File')}
+        testid="insp-goto-file"
+        value={file}
+        options={fileOptions}
+        noneLabel={s('Same file')}
+        onChange={(value) => patch({ file: value === '' ? undefined : value })}
+      />
+      <KnownValueField
+        label={s('Flow')}
+        testid="insp-goto-flow"
+        value={step.flow}
+        options={flowOptions}
+        onChange={(flow) => patch({ flow })}
+      />
       <label class="flow-field">
         <span class="flow-field-label">{s('Return here')}</span>
         <input
@@ -422,7 +522,20 @@ function clampNumber(raw: string, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
-function StepInspector({ step, a, canvas, view }: { step: FlowStep; a: InspectActions; canvas?: FlowCanvasContext; view?: () => ViewPoint | null }) {
+/** Closed domains offered by the inspector for known-value step targets. */
+interface InspectorTargets {
+  objects: TargetOption[];
+  files: string[];
+  flowsOf(path: string): string[];
+}
+
+function StepInspector({ step, a, canvas, view, targets }: {
+  step: FlowStep;
+  a: InspectActions;
+  canvas?: FlowCanvasContext;
+  view?: () => ViewPoint | null;
+  targets: InspectorTargets;
+}) {
   return (
     <div class="flow-inspector" data-testid="flow-inspector">
       <div class="flow-insp-head">
@@ -450,7 +563,7 @@ function StepInspector({ step, a, canvas, view }: { step: FlowStep; a: InspectAc
       {step.type === 'msg' ? (
         <MsgFields step={step} patch={a.patch} canvas={canvas} />
       ) : step.type === 'process' ? (
-        <ProcessFields step={step} patch={a.patch} canvas={canvas} />
+        <ProcessFields step={step} patch={a.patch} canvas={canvas} objects={targets.objects} />
       ) : step.type === 'alt' ? (
         <AltFields step={step} patch={a.patch} addBranch={a.addBranch} />
       ) : step.type === 'par' ? (
@@ -459,7 +572,7 @@ function StepInspector({ step, a, canvas, view }: { step: FlowStep; a: InspectAc
           <button type="button" data-testid="insp-lane-add" onClick={a.addLane}>{s('+ lane')}</button>
         </>
       ) : step.type === 'goto' ? (
-        <GotoFields step={step} patch={a.patch} />
+        <GotoFields step={step} patch={a.patch} files={targets.files} flowsOf={targets.flowsOf} />
       ) : (
         <TextFields step={step} patch={a.patch} />
       )}
@@ -935,6 +1048,14 @@ function flowKey(flow: Flow): string {
   return flow.id ?? flow.title ?? '';
 }
 
+/** Flow keys of a workspace file, read through the same text port as the editor. */
+function flowsInFile(path: string, textOf: FlowPaneProps['textOf']): string[] {
+  const text = textOf(path);
+  if (text === null) return [];
+  const doc = parseForEditor(text);
+  return doc === null ? [] : flowsForDisplay(doc).map(flowKey);
+}
+
 /**
  * Append a step of `kind` seeded from the canvas selection. Impossible actions
  * (no selected connector/shape) append nothing — the editor never invents links.
@@ -988,6 +1109,14 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
     if (next !== null) pane.onChangeText(next);
   };
   const names = objectNames(doc);
+  // Closed domains for the inspector's known-value pickers. Object labels use
+  // the same name map as the step cards; a `goto` file's flows are read through
+  // the text port, so no second source of truth is introduced.
+  const targets: InspectorTargets = {
+    objects: Array.from(names, ([value, label]) => ({ value, label })),
+    files: pane.files ?? [],
+    flowsOf: (path) => flowsInFile(path === '' ? (pane.activePath ?? '') : path, pane.textOf),
+  };
   const { flows, virtual, effective } = displayState(doc, sel);
   const { flow, step, flat } = locate(doc, effective);
   const selKey = effective?.flow ?? '';
@@ -1089,7 +1218,7 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
           <StepList steps={flat} sel={selStep} ops={ops} names={names} />
           <HiddenConnections doc={doc} flow={flow} names={names} onShow={(index) => apply((d) => showFlowLink(d, selKey, index))} />
           <ActionBar ready={ready} onAdd={(kind) => addKindStep(apply, selKey, kind, pane.canvas)} />
-          {step !== null && <StepInspector step={step} a={actions} canvas={pane.canvas} {...(pane.currentView === undefined ? {} : { view: pane.currentView })} />}
+          {step !== null && <StepInspector step={step} a={actions} canvas={pane.canvas} targets={targets} {...(pane.currentView === undefined ? {} : { view: pane.currentView })} />}
         </>
       )}
     </div>

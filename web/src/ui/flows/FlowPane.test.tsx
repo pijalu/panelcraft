@@ -35,12 +35,33 @@ flow "Main" as main {
 }
 `;
 
+const OTHER_DOC = `pcd 1.0
+
+system s "Service"
+
+flow "Refund" as refund {
+  intro "start"
+  process s
+}
+
+flow "Refund two" as refund2 {
+  intro "start"
+  process s
+}
+`;
+
 /** Harness: keeps the document text in state, like App does via the machine. */
-function Harness({ canvas }: { canvas?: FlowCanvasContext } = {}) {
-  const [text, setText] = useState(DOC);
+interface MountOpts {
+  files?: string[];
+  otherDoc?: string;
+  doc?: string;
+}
+
+function Harness({ canvas, files, otherDoc, doc: initial }: MountOpts & { canvas?: FlowCanvasContext } = {}) {
+  const [text, setText] = useState(initial ?? DOC);
   const played: string[] = [];
   const props: FlowPaneProps = {
-    textOf: () => text,
+    textOf: (path) => (path === 'other.pcd' ? (otherDoc ?? null) : text),
     activePath: 'main.pcd',
     version: 1,
     onChangeText: (t) => setText(t),
@@ -48,6 +69,7 @@ function Harness({ canvas }: { canvas?: FlowCanvasContext } = {}) {
       played.push(k);
     },
     ...(canvas === undefined ? {} : { canvas }),
+    ...(files === undefined ? {} : { files }),
   };
   return (
     <div>
@@ -57,8 +79,8 @@ function Harness({ canvas }: { canvas?: FlowCanvasContext } = {}) {
   );
 }
 
-function mount(canvas?: FlowCanvasContext) {
-  render(<Harness canvas={canvas} />);
+function mount(canvas?: FlowCanvasContext, opts: MountOpts = {}) {
+  render(<Harness canvas={canvas} {...opts} />);
   const out = (): string => screen.getByTestId('text-out').textContent ?? '';
   return { out };
 }
@@ -257,13 +279,14 @@ describe('FlowPane step editing (M5-WP4)', () => {
     expect(par?.type === 'par' ? par.lanes.length : 0).toBe(3);
   });
 
-  it('edits a goto target flow id', () => {
-    const { out } = mount();
+  it('edits a goto target flow id from the dependent flow list', () => {
+    const { out } = mount(undefined, { files: ['other.pcd'], otherDoc: OTHER_DOC });
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-8')); // goto
-    const f = screen.getByTestId('insp-goto-flow') as HTMLInputElement;
+    const f = screen.getByTestId('insp-goto-flow') as HTMLSelectElement;
+    expect(f.tagName).toBe('SELECT');
     expect(f.value).toBe('refund');
-    fireEvent.input(f, { target: { value: 'refund2' } });
+    fireEvent.change(f, { target: { value: 'refund2' } });
     expect(out()).toContain('goto "other.pcd#refund2" return here');
   });
 
@@ -280,11 +303,12 @@ describe('FlowPane canvas-assisted editing (FLOW-01)', () => {
   const canvas = { objects: ['b'], link: { id: 'ab', from: 'a', to: 'b' } };
 
   it('targets a message step from the selected connector and objects', () => {
-    const { out } = mount(canvas);
+    const wrong = DOC.replace('a -> b : "order"', 'b -> a : "order"');
+    const { out } = mount(canvas, { doc: wrong });
     fireEvent.click(screen.getByTestId('flow-row-main'));
-    fireEvent.click(screen.getByTestId('step-1')); // msg a -> b
-    // Start from a wrong pair, then repair it through the canvas controls.
-    fireEvent.input(screen.getByTestId('insp-from'), { target: { value: 'b' } });
+    fireEvent.click(screen.getByTestId('step-1')); // msg, initially b -> a
+    expect(out()).toContain('b -> a : "order"');
+    // endpoints are read-only; the canvas controls are the way to set them
     fireEvent.click(screen.getByTestId('insp-pick-link'));
     expect(out()).toContain('a -> b : "order"');
     fireEvent.click(screen.getByTestId('insp-pick-to'));
@@ -614,5 +638,73 @@ describe('FlowPane presentation inspector (UX08-WP13)', () => {
     fireEvent.change(screen.getByTestId('insp-duration'), { target: { value: '900' } });
     expect(h.out()).toContain('duration 300');
     expect(h.out()).not.toContain('duration 900');
+  });
+});
+
+describe('known-value step targets (property hierarchy)', () => {
+  const selectGoto = (): void => {
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-8'));
+  };
+
+  it('goto file and flow are closed selects with dependent options', () => {
+    const { out } = mount(undefined, { files: ['main.pcd', 'other.pcd'], otherDoc: OTHER_DOC });
+    selectGoto();
+    const file = screen.getByTestId('insp-goto-file') as HTMLSelectElement;
+    const flow = screen.getByTestId('insp-goto-flow') as HTMLSelectElement;
+    expect(file.tagName).toBe('SELECT');
+    expect(flow.tagName).toBe('SELECT');
+    expect(Array.from(file.options).map((o) => o.value)).toEqual(['', 'main.pcd', 'other.pcd']);
+    expect(file.value).toBe('other.pcd');
+    expect(Array.from(flow.options).map((o) => o.value)).toEqual(['refund', 'refund2']);
+    // changing the file re-derives the flow choices from that file
+    fireEvent.change(file, { target: { value: 'main.pcd' } });
+    expect(out()).toContain('goto "main.pcd#refund"');
+    expect(Array.from(flow.options).map((o) => o.value)).toContain('main');
+  });
+
+  it('keeps an unresolved goto target visible with diagnostics', () => {
+    mount(undefined, { files: [], doc: DOC.replace('other.pcd#refund', 'missing.pcd#ghost') });
+    selectGoto();
+    const file = screen.getByTestId('insp-goto-file') as HTMLSelectElement;
+    const flow = screen.getByTestId('insp-goto-flow') as HTMLSelectElement;
+    expect(file.value).toBe('missing.pcd');
+    expect(screen.getByTestId('insp-goto-file-unresolved').textContent).toContain('missing.pcd');
+    expect(flow.value).toBe('ghost');
+    expect(screen.getByTestId('insp-goto-flow-unresolved').textContent).toContain('ghost');
+  });
+
+  it('process target is a closed select over the diagram shapes', () => {
+    const { out } = mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-7')); // process a
+    const target = screen.getByTestId('insp-target') as HTMLSelectElement;
+    expect(target.tagName).toBe('SELECT');
+    expect(Array.from(target.options).map((o) => o.value)).toEqual(['', 'a', 'b']);
+    expect(target.value).toBe('a');
+    fireEvent.change(target, { target: { value: 'b' } });
+    expect(out()).toContain('process b');
+  });
+
+  it('keeps an unresolved process target with a diagnostic', () => {
+    mount(undefined, { doc: DOC.replace('process a', 'process ghost') });
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-7'));
+    const target = screen.getByTestId('insp-target') as HTMLSelectElement;
+    expect(target.value).toBe('ghost');
+    expect(screen.getByTestId('insp-target-unresolved').textContent).toContain('ghost');
+  });
+
+  it('message endpoints are read-only and set through the selection controls', () => {
+    const { out } = mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-1')); // msg a -> b
+    const from = screen.getByTestId('insp-from');
+    const to = screen.getByTestId('insp-to');
+    expect(from.tagName).toBe('OUTPUT');
+    expect(to.tagName).toBe('OUTPUT');
+    expect(from.textContent).toContain('a');
+    fireEvent.input(from, { target: { value: 'b' } }); // no editor, no write
+    expect(out()).toContain('a -> b : "order"');
   });
 });

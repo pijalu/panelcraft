@@ -46,21 +46,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 **Validation.** Focused model/component tests, complete menu e2e, axe scans, keyboard-only traversal and light/dark/narrow-viewport screenshots. Verify all previously available commands by stable id/test id, then run `npm run check` and `npm test`.
 
-## Known-value inputs and property hierarchy
-
-**Observed.** `IconField` combines a free-text handle with a separate picker button (`web/src/ui/IconPicker.tsx:157-211`). Other known domains also have free-text fields, notably decomposition paths and flow goto file/flow or process target ids. Conversely, names, descriptions, technology, tags and custom properties are legitimately free text. Object sections currently order Identity → Metadata → Style → Decomposition → Advanced (`web/src/ui/PropertiesPanel.tsx:249-344`), and Icon is inside Style even though it writes the object’s identity-level `icon` field.
-
-**Expected.** When the valid values are known at edit time, use a picker rather than requiring transcription. Icon is one direct dropdown/combobox control showing current preview and label—no adjacent text input plus extra picker button. Preserve search, project icons, Manage project icons, no-icon and unknown-legacy states. Property sections follow task priority: **Identity** (Name, Kind, Icon), **Style**, **Metadata**, **Decomposition**, **Advanced**. This ordering is a Laws-of-UX/task heuristic, not unsupported usage telemetry.
-
-**Fix plan.**
-
-1. Replace IconField’s two-editor model with one select-like control; a searchable rich popover is acceptable for the large icon catalogue, but it must have one trigger, one accessible name and one value. Support keyboard navigation/typeahead, Escape with focus return, outside dismissal and viewport-safe placement. Keep an unknown stored handle visible as a disabled/unresolved choice so loading a legacy file cannot erase it.
-2. Extract the existing “write object icon and clear stale style override” operation as one reusable command; moving the control must not duplicate or lose that patch behaviour. Keep catalog filtering and icon-management operations separate from the trigger component.
-3. Audit known-value fields and convert only actual closed domains: decomposition target, flow goto file/flow and process target are candidates; message endpoints become read-only under the selected-step item instead of gaining another editor. Use dependent options where goto flow depends on file, and preserve unresolved current values with diagnostics. Leave genuinely open text alone.
-4. Move Icon into Identity and Style before Metadata without changing section ids or persisted expansion preferences. Add a DOM order assertion and verify that object/link property commands remain unchanged.
-
-**Validation.** Replace free-text icon tests with selection behaviour tests; cover built-in/project/none/unknown icons, legacy override clearing, keyboard and focus, dependent pickers and section order. Update affected e2e selectors deliberately. Run property/icon/flow suites, axe, light/dark and narrow-viewport screenshots, `npm run check` and `npm test`.
-
 ## Flow Markdown notes with presentation panel
 
 **Observed.** Flow description is parsed as one quoted line (`web/src/engine/format/parser.ts:691-699`) and exported through `prose`, which deliberately flattens and escapes it (`web/src/engine/format/flowMarkdown.ts:17-23,129-132`). The UI already uses a textarea, but an actual newline cannot safely round-trip through the current quoted-string printer/lexer. There is no presentation flag or Markdown renderer. Playback also reuses `description` for the current step and later for flow-level closing text, so adding a side panel must not overload that field again.

@@ -168,7 +168,9 @@ function FlowStepsPane(props: {
         <CollapseButton id="flows" label={s('flow steps')} onCollapse={props.onCollapse} />
       </div>
       <FlowPane
-        textOf={(path) => path === props.source?.label ? props.source.text : props.manager.text(path)}
+        textOf={(path) => path === props.source?.label
+          ? props.source.text
+          : (props.manager.hasFile(path) ? props.manager.text(path) : null)}
         activePath={props.source?.label ?? props.activePath}
         version={props.version}
         onChangeText={props.onText}
@@ -180,6 +182,7 @@ function FlowStepsPane(props: {
         selection={props.selection}
         onSelection={props.onSelection}
         canvas={props.canvasContext}
+        files={props.manager.files().map((file) => file.path)}
         onHighlight={props.onHighlight}
         {...(props.currentView === undefined ? {} : { currentView: props.currentView })}
       />

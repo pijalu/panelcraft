@@ -157,7 +157,9 @@ test('UX-04: live icons and explicit resize retain content regions across reload
   const canvas = page.getByTestId('canvas');
   const api = canvas.locator('g.pc-obj[data-id="api"]');
   await api.click();
-  await page.getByTestId('prop-style-icon').fill('cloud');
+  await page.getByTestId('prop-style-icon').click();
+  await page.getByTestId('icon-search').fill('cloud');
+  await page.getByTestId('icon-option-cloud').click();
   await expect(api.locator('.pc-glyph-icon')).not.toHaveCount(0);
   await expectSeparated(page);
   await capture(page, 'ux04-selected-icon-light');

@@ -2285,6 +2285,28 @@ marker .pc-arrow[fill='none'] {
   min-width: 0;
 }
 
+.flow-field select,
+.flow-field output {
+  flex: 1;
+  min-width: 0;
+}
+
+.flow-field output {
+  padding: 3px 6px;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-fg);
+  background: var(--pc-canvas);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-unresolved {
+  color: var(--pc-warn, var(--pc-accent));
+}
+
 /* Play bar overlay (canvas-wrap is the positioning context) */
 .canvas-wrap {
   position: relative;
@@ -3766,9 +3788,35 @@ marker .pc-arrow[fill='none'] {
   align-items: center;
 }
 
-.icon-field > input {
+.icon-picker-trigger.icon-field-trigger {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 8px;
+  height: auto;
+  min-height: 28px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: var(--pc-text-sm);
+}
+
+.icon-field-value {
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-option-unresolved {
+  color: var(--pc-muted);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.icon-picker[data-placement='above'] {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .icon-picker-trigger {

@@ -5,6 +5,21 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Changed — known-value inputs and property hierarchy
+
+- The icon control is now one searchable combobox with a single accessible name
+  and value: the old free-text handle plus separate picker button is gone. It
+  keeps project icons, built-ins, search, Manage project icons, no icon and a
+  disabled unresolved choice for legacy handles, with keyboard navigation,
+  Escape-to-focus-return and viewport-safe placement. All icon writes go through
+  one command that also clears a stale style override in the same undo step.
+- Object properties are ordered by task priority — Identity (name, kind, icon),
+  Style, Metadata, Decomposition, Advanced — with section ids and persisted
+  expansion unchanged. Flow `goto` file/flow and `process` targets are now closed
+  domain selects with dependent flow options and visible diagnostics for values
+  a file no longer contains; message endpoints are read-only and set from the
+  canvas selection.
+
 ### Added — dedicated presentation links
 
 - Presenting an authored flow now publishes `#present=<encoded-flow-id>` in the

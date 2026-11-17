@@ -167,11 +167,17 @@ for (const theme of THEMES) {
     await settle(page);
     await capture(page, `ux08-flow-authoring-nested-${theme}`);
 
-    // An invalid reference is explained beside the step, then repairable.
+    // Message endpoints are read-only in the inspector: the canvas buttons set
+    // them, never free-text transcription of a shape id. The step card still
+    // diagnoses a stale reference, and picking the target repairs it.
     await page.getByTestId('step-0').click();
-    await page.getByTestId('insp-to').fill('ghost');
-    await expect(page.getByTestId('step-warn-0')).toContainText('ghost', { timeout: 15_000 });
-    await capture(page, `ux08-flow-authoring-invalid-${theme}`);
+    const from = page.getByTestId('insp-from');
+    const to = page.getByTestId('insp-to');
+    expect(await from.evaluate((el) => el.tagName)).toBe('OUTPUT');
+    expect(await to.evaluate((el) => el.tagName)).toBe('OUTPUT');
+    await expect(from).toContainText(ids[0] ?? 'o1');
+    await expect(to).toContainText(ids[1] ?? 'o2');
+    await capture(page, `ux08-flow-authoring-endpoints-${theme}`);
     await page.getByTestId('canvas').locator('g.pc-obj[data-id="o2"]').click();
     await page.getByTestId('insp-pick-to').click();
     await expect(page.getByTestId('step-warn-0')).toHaveCount(0, { timeout: 15_000 });
