@@ -3,7 +3,7 @@
 // Normative shape: docs/FILE-FORMAT.md §7 + docs/milestones/M1.md decisions.
 // Versioning rule: `irVersion` (int) bumps on any schema change; forward-only.
 
-export const IR_VERSION = 12;
+export const IR_VERSION = 13;
 export const FORMAT_VERSION = '1.0';
 
 /** 1-based source position attached to every statement (FILE-FORMAT §10). */
@@ -243,6 +243,10 @@ export interface Flow {
   title?: string;
   /** One-line summary shown before the flow runs (UX08-WP11). */
   description?: string;
+  /** Multiline Markdown notes. Mutually exclusive with the one-line form. */
+  descriptionLines?: string[];
+  /** Show the flow notes in the non-modal presentation aside. */
+  presentation?: boolean;
   steps: FlowStep[];
   comments?: Comments;
   pos: Pos;

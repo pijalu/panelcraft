@@ -401,6 +401,16 @@ func printFlow(f ir.Flow, p *printer) {
 	if f.Description != nil {
 		p.add(indent + "description " + Quote(*f.Description))
 	}
+	if len(f.DescriptionLines) > 0 {
+		p.add(indent + "description {")
+		for _, line := range f.DescriptionLines {
+			p.add(indent + indent + "text " + Quote(line))
+		}
+		p.add(indent + "}")
+	}
+	if f.Presentation {
+		p.add(indent + "presentation")
+	}
 	for _, s := range f.Steps {
 		stepText(s, 1, p)
 	}

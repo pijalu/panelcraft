@@ -38,6 +38,8 @@ export const E = {
   legacyView: 'E117',
   /** Legacy `drilldown … view <id>` — named view on a child (ADR 0007). */
   legacyDrilldownView: 'E118',
+  /** Flow description block with no `text` line (§6). */
+  emptyFlowDescription: 'E119',
 } as const;
 
 export const diag = (

@@ -819,25 +819,68 @@ func (p *parser) parseFlow() ir.Flow {
 		f.ID = p.ident()
 	}
 	p.expect(TokPunct, "{")
-	if d := p.flowDescription(); d != nil {
-		f.Description = d
-	}
+	p.flowHeader(&f)
 	f.Steps = p.parseSteps(1)
 	p.expectClose(t0, "flow")
 	f.Comments = comments
 	return f
 }
 
-// flowDescription reads an optional `description "…"` at the top of a flow
-// body (UX08-WP11): a flow attribute, not a step.
-func (p *parser) flowDescription() *string {
-	t := p.peek()
-	if t.Type != TokIdent || t.Text != "description" {
-		return nil
+// flowHeader reads the atomic flow attributes before any step: one quoted
+// description or one multiline block, plus the presentation flag. Each may
+// appear once, in any source order.
+func (p *parser) flowHeader(f *ir.Flow) {
+	seen := map[string]bool{}
+	for {
+		p.skipComments()
+		t := p.peek()
+		if t.Type != TokIdent {
+			return
+		}
+		switch t.Text {
+		case "description":
+			p.once(seen, t, "description")
+			p.next()
+			if p.peek().Type == TokPunct && p.peek().Text == "{" {
+				f.DescriptionLines = p.descriptionBlock(t)
+			} else {
+				v := p.quoted(p.next(), "description")
+				f.Description = &v
+			}
+		case "presentation":
+			p.once(seen, t, "presentation")
+			p.next()
+			f.Presentation = true
+		default:
+			return
+		}
 	}
-	p.next()
-	v := p.quoted(p.next(), "description")
-	return &v
+}
+
+// descriptionBlock reads one text line per authored Markdown line, including
+// blank ones. An empty block is E119: it would not survive a print round-trip.
+func (p *parser) descriptionBlock(t0 Token) []string {
+	p.expect(TokPunct, "{")
+	var lines []string
+	for {
+		p.skipComments()
+		if p.peek().Type == TokEOF {
+			p.fail(t0, ErrUnclosedBlock, "unclosed description block")
+		}
+		if p.peek().Type == TokPunct && p.peek().Text == "}" {
+			p.next()
+			break
+		}
+		t := p.expect(TokIdent, "")
+		if t.Text != "text" {
+			p.fail(t, ErrUnexpected, fmt.Sprintf("unknown description line '%s'", t.Text))
+		}
+		lines = append(lines, p.str())
+	}
+	if len(lines) == 0 {
+		p.fail(t0, ErrEmptyFlowDescription, "description block needs at least one text line")
+	}
+	return lines
 }
 
 func (p *parser) parseSteps(depth int) []ir.Step {

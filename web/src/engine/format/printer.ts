@@ -303,6 +303,12 @@ const printFlow = (f: Doc['flows'][number], p: Printer): void => {
   if (f.id !== undefined) head += ` as ${f.id}`;
   p.add(head + ' {');
   if (f.description !== undefined) p.add(`${INDENT}description ${quote(f.description)}`);
+  if (f.descriptionLines !== undefined) {
+    p.add(`${INDENT}description {`);
+    for (const line of f.descriptionLines) p.add(`${INDENT}${INDENT}text ${quote(line)}`);
+    p.add(`${INDENT}}`);
+  }
+  if (f.presentation === true) p.add(`${INDENT}presentation`);
   for (const s of f.steps) stepText(s, 1, p);
   p.add('}');
 };

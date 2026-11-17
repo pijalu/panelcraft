@@ -725,22 +725,59 @@ class Parser {
       f.id = this.ident();
     }
     this.expect('punct', '{');
-    const description = this.flowDescription();
-    if (description !== undefined) f.description = description;
+    this.flowHeader(f);
     f.steps = this.parseSteps(1);
     this.expectClose(t0, 'flow');
     return comments.length ? { ...f, comments } : f;
   }
 
   /**
-   * UX08-WP11: an optional `description "…"` line at the top of a flow body.
-   * It is a flow attribute, not a step, so it is consumed before step parsing.
+   * Flow-level attributes before any step: either one quoted line or one
+   * multiline description block, plus the presentation flag. Each is atomic
+   * and may appear at most once, in any source order; printing has one order.
    */
-  private flowDescription(): string | undefined {
-    const t = this.peek();
-    if (t.type !== 'ident' || t.text !== 'description') return undefined;
-    this.next();
-    return this.quoted(this.next(), 'description');
+  private flowHeader(f: Flow): void {
+    const seen = new Set<string>();
+    for (;;) {
+      this.skipComments();
+      const t = this.peek();
+      if (t.type !== 'ident') return;
+      if (t.text === 'description') {
+        this.once(seen, t, 'description');
+        this.next();
+        if (this.peek().type === 'punct' && this.peek().text === '{') {
+          f.descriptionLines = this.descriptionBlock(t);
+        } else {
+          f.description = this.quoted(this.next(), 'description');
+        }
+        continue;
+      }
+      if (t.text === 'presentation') {
+        this.once(seen, t, 'presentation');
+        this.next();
+        f.presentation = true;
+        continue;
+      }
+      return;
+    }
+  }
+
+  /** One `text "…"` line per source line, including intentional blank lines. */
+  private descriptionBlock(t0: Token): string[] {
+    this.expect('punct', '{');
+    const lines: string[] = [];
+    for (;;) {
+      this.skipComments();
+      if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed description block');
+      if (this.peek().type === 'punct' && this.peek().text === '}') { this.next(); break; }
+      const t = this.expect('ident');
+      if (t.text !== 'text') this.fail(t, E.unexpected, `unknown description line '${t.text}'`);
+      lines.push(this.str());
+    }
+    if (lines.length === 0) {
+      this.fail(t0, E.emptyFlowDescription, 'description block needs at least one text line');
+    }
+    return lines;
   }
 
   private parseSteps(depth: number): FlowStep[] {

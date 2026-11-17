@@ -1,0 +1,26 @@
+pcd 1.0
+title "Flow notes documentation"
+
+person a "Ada"
+system b "Web"
+
+a -> b as ab
+
+flow "Checkout" as checkout {
+  description {
+    text "# Notes"
+    text ""
+    text "**Pay** by _card_ or use [invoice](https://example.test/invoice)"
+    text ""
+    text "- one"
+    text "- two"
+    text ""
+    text "1. first"
+    text "2. second"
+  }
+  presentation
+  intro "Start"
+  a -> b : "send" presentation {
+    description "Current step prose stays separate."
+  }
+}

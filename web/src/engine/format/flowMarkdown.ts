@@ -3,6 +3,7 @@
 // Renders the parsed IR — never flattened playback beats — so the output is a
 // faithful, reviewable description of what the flow does.
 import type { CameraSpec, Doc, Flow, FlowStep } from '../model/types';
+import { parseSafeMarkdown, serializeSafeMarkdown } from './safeMarkdown';
 
 /** One nesting level; three spaces keeps ordered and bullet lists aligned. */
 const INDENT = '   ';
@@ -120,16 +121,36 @@ function children(doc: Doc, step: FlowStep, depth: number, inner: string, lines:
   }
 }
 
+/**
+ * The authored notes source. The multiline block wins when both forms exist
+ * in a hand-built IR; the editor always keeps them mutually exclusive.
+ */
+function notesSource(flow: Flow): string | undefined {
+  return flow.descriptionLines?.join('\n');
+}
+
+/**
+ * Notes are parsed with the same AST as the presentation panel and printed
+ * with headings shifted under the flow heading, never flattened to prose.
+ */
+function noteOutline(flow: Flow, headingOffset: number): string | undefined {
+  const source = notesSource(flow);
+  if (source === undefined || source.trim() === '') return undefined;
+  return serializeSafeMarkdown(parseSafeMarkdown(source), headingOffset).trimEnd() || undefined;
+}
+
 function titleOf(doc: Doc, flow: Flow): string {
   if (flow.title !== undefined && flow.title.trim() !== '') return flow.title;
   if (flow.id !== undefined && flow.id !== '') return flow.id;
   return `Flow ${doc.flows.indexOf(flow) + 1}`;
 }
 
-function outline(doc: Doc, flow: Flow, lines: string[]): void {
+function outline(doc: Doc, flow: Flow, lines: string[], headingOffset: number): void {
   if (flow.description !== undefined && flow.description !== '') {
     lines.push('', `_${prose(flow.description)}_`);
   }
+  const notes = noteOutline(flow, headingOffset);
+  if (notes !== undefined) lines.push('', notes);
   if (flow.steps.length > 0) lines.push('', ...bodies(doc, flow));
 }
 
@@ -142,7 +163,7 @@ function bodies(doc: Doc, flow: Flow): string[] {
 /** One flow as a Markdown outline: heading, purpose, numbered steps. */
 export function flowMarkdown(doc: Doc, flow: Flow): string {
   const lines = [`# ${prose(titleOf(doc, flow))}`];
-  outline(doc, flow, lines);
+  outline(doc, flow, lines, 1);
   return `${lines.join('\n')}\n`;
 }
 
@@ -151,7 +172,7 @@ export function flowsMarkdown(doc: Doc): string {
   const lines = ['# Flows'];
   for (const flow of doc.flows) {
     lines.push('', `## ${prose(titleOf(doc, flow))}`);
-    outline(doc, flow, lines);
+    outline(doc, flow, lines, 2);
   }
   return `${lines.join('\n')}\n`;
 }

@@ -465,7 +465,11 @@ import Alias as "./relative/path.pcd"
 ## 6. Flows
 
 ```
-FlowStmt    := "flow" [QuotedName] ["as" Id] "{" ["description" QuotedText] Step* "}"
+FlowStmt    := "flow" [QuotedName] ["as" Id] "{" FlowHeader? Step* "}"
+FlowHeader  := (FlowDescription | FlowFlag)+
+FlowDescription := "description" (QuotedText | "{" FlowTextLine+ "}")
+FlowTextLine    := "text" QuotedText
+FlowFlag    := "presentation"
 ```
 
 Steps (ordered; each becomes one numbered beat in playback):
@@ -497,6 +501,15 @@ PresentationLine := "description" QuotedText
 
 Rules:
 
+* **Flow description**: the legacy `description "…"` line and the multiline
+  `description { text "…" … }` block are two forms of the same flow attribute.
+  Either may appear at most once and never together (duplicate → `E110`); a block
+  without a `text` line is `E119`. Blank lines are authored as `text ""` and kept
+  verbatim. The source text lives in the IR as `description` or `descriptionLines`;
+  no rendered HTML is stored.
+* **Presentation flag**: a bare `presentation` at the top of a flow body (at most
+  once) persists **Show during presentation**. It is distinct from a step's
+  `presentation { … }` block, which follows a step on its own line.
 * **MsgStep resolution**: the `(from,to)` pair (direction-insensitive) must match ≥1
   existing link in the file (or via imports). `as RefId` disambiguates; `flip` plays the
   step reversed (e.g. a response) without altering the underlying link.
@@ -720,7 +733,11 @@ attr        = ("description" , string) | ("technology" , string) | ("tag" , iden
             | ("source" , "{" , [ "language" , string ] , { "text" , string } , "}" ) ;
 link        = ident , arrow , ident , [ ":" , string ] , [ "as" , ident ] , [ linkblock ] ;
 arrow       = [ "<" ] , "-" , [ ident , "-" ] , [ ">" ] ;   (* <-, ->, <->, -type-> *)
-flow        = "flow" , [ string ] , [ "as" , ident ] , "{" , { step } , "}" ;
+flow        = "flow" , [ string ] , [ "as" , ident ] , "{" ,
+              [ "description" , string
+              | "description" , "{" , { "text" , string } , "}"
+              | "presentation" ] ,
+              { step } , "}" ;
 step        = ( intro | msg | process | alt | par | goto | info | conclusion ) , [ delay ] ;
 delay       = "delay" , number ;   (* per-step dwell in ms, F-18 *)
 alt         = "alt" , [ string ] , "{" , { branch } , "}" ;
@@ -846,7 +863,7 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   Base64; `E115` = the `media` string names a type this version cannot draw.
   Both abort the file: the declaration could never be rendered, and re-printing
   it would emit a file the app refuses to load.
-- E-15 Syntax errors (E100–E118) abort the whole file (doc = null + diagnostics);
+- E-15 Syntax errors (E100–E119) abort the whole file (doc = null + diagnostics);
   semantic findings never abort (§10, §14 sample).
 
 **Validation**
@@ -867,6 +884,17 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
 - E-19 Key order is fixed (TS builder order = Go struct field order); empty
   arrays omitted; `true`-only booleans (`bidir`, `flip`, `dashed`); 2-space
   indent + trailing newline; no HTML escaping in `<`, `>`, `&` (§11).
+
+- E-25 Flow notes (IR v13): `description { text "…" … }` is one atomic block with
+  one `text` line per authored Markdown line; an empty block is E119. The optional
+  bare `presentation` flag stores the **Show during presentation** setting. Both
+  are flow attributes printed before steps, in the order description, block, flag.
+  The supported Markdown is a local typed subset — headings, bold, italic, inline
+  code, bullet and numbered lists and links — parsed once and reused by the
+  presentation aside and the `.md` export; raw HTML is text, images are unsupported,
+  and only http(s), mailto and relative URLs become links. Exported notes headings
+  are nested one level below a single-flow heading (`#`) and two below the
+  all-flows flow heading (`##`).
 
 **Import converters (§8)**
 - E-20 Converters are best-effort and never silent: presentation directives →

@@ -7,7 +7,7 @@
 // surfaces as onChangeText(newText) — App forwards to code.machine.textChanged so
 // the sync machine stays the single writer (D-M4-6). The pane takes narrow ports
 // (textOf, canvas) and never invents a diagram link.
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { ILLUSTRATION_IDS, type IllustrationId } from '../../engine/anim/illustrations';
 import { parsePDL } from '../../engine/format/parser';
 import { flowToMermaid } from '../../engine/format/mermaidSequenceExport';
@@ -35,6 +35,7 @@ import {
   setStepCamera,
   showFlowLink,
   type FlatStep,
+  type FlowPatch,
 } from './flowDoc';
 import { derivedFlow, findFlow, flowForEdit, flowsForDisplay } from './derivedFlow';
 
@@ -939,7 +940,7 @@ function ActionBar(props: {
 function FlowMeta(props: {
   flow: Flow;
   dirty?: boolean;
-  onPatch(patch: { title?: string; description?: string }): void;
+  onPatch(patch: FlowPatch): void;
   onPresent(): void;
   onExport(): void;
   onExportDoc(): void;
@@ -979,6 +980,22 @@ function FlowMeta(props: {
           onInput={(v) => props.onPatch({ description: v })}
           testid="flow-description"
         />
+        <TextArea
+          label={s('Flow notes (Markdown)')}
+          hint={s('Headings, bold, italic, code, lists and links')}
+          value={props.flow.descriptionLines?.join('\n') ?? ''}
+          onInput={(v) => props.onPatch({ notes: v })}
+          testid="flow-notes"
+        />
+        <label class="flow-field">
+          <span class="flow-field-label">{s('Show during presentation')}</span>
+          <input
+            type="checkbox"
+            data-testid="flow-present-notes"
+            checked={props.flow.presentation === true}
+            onChange={(e) => props.onPatch({ presentation: (e.currentTarget as HTMLInputElement).checked })}
+          />
+        </label>
       </div>
     </>
   );
@@ -1102,11 +1119,33 @@ function displayState(doc: Doc, sel: FlowSelection | null): { flows: Flow[]; vir
   return { flows, virtual: derivedFlow(doc) !== null, effective };
 }
 
+/**
+ * The file round-trip is asynchronous. Keep the last applied source so a
+ * second edit immediately after the first cannot rebuild from stale text and
+ * silently drop it; a workspace version bump means the file is authoritative.
+ */
+function usePendingText(text: string, version: number): { read(): string; write(next: string): void } {
+  const pending = useRef(text);
+  const seen = useRef(version);
+  if (seen.current !== version) {
+    seen.current = version;
+    pending.current = text;
+  }
+  return {
+    read: () => pending.current,
+    write: (next) => { pending.current = next; },
+  };
+}
+
 /** The authored half of the pane: one parsed document, one selection. */
 function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
+  const source = usePendingText(text, pane.version);
   const apply = (fn: (d: Doc) => void): void => {
-    const next = retext(text, fn);
-    if (next !== null) pane.onChangeText(next);
+    const next = retext(source.read(), fn);
+    if (next !== null) {
+      source.write(next);
+      pane.onChangeText(next);
+    }
   };
   const names = objectNames(doc);
   // Closed domains for the inspector's known-value pickers. Object labels use
@@ -1147,7 +1186,7 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
     apply((d) => addFlow(d, s('New flow'), seq));
     pick(`flow${seq}`);
   };
-  const onPatch = (patch: { title?: string; description?: string }): void => {
+  const onPatch = (patch: FlowPatch): void => {
     withFlow((f) => patchFlow(f, patch));
     // A flow written without `as <id>` is keyed by its title; follow the rename.
     if (flow !== null && flow.id === undefined && patch.title !== undefined) pick(patch.title);

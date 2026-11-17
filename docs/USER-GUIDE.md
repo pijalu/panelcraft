@@ -230,6 +230,10 @@ system shop "Webshop" {
    and **New flow**, whose new flow also starts with the diagram's existing connections;
    creation order breaks ties. Fill in **Flow name** and **Flow purpose** — the purpose is printed
    as the flow's `description`, so it travels with the file instead of living in the UI.
+   For longer walkthrough text use **Flow notes (Markdown)**: headings, bold, italic, inline
+   code, bullet/numbered lists and links. The notes are saved as source text in the file.
+   Tick **Show during presentation** to show them alongside the running flow; both the
+   text and the tick survive reload.
 3. **Add steps from what you selected** — no ids to type. **Add message** needs a selected
    connector and takes both endpoints from it; **Add process** needs exactly one selected shape;
    **Add note**, **Add introduction** and **Add conclusion** are always available. An impossible
@@ -261,7 +265,10 @@ system shop "Webshop" {
    shell: click or press Space/→ to advance, ← to go back, `P` pauses, `R`
    restarts, `Esc` exits and restores the previous chrome and viewport. The step's
    **Description** appears under the narration line (an ARIA live region), so a
-   walkthrough can be read without the editor.
+   walkthrough can be read without the editor. Flow notes, when enabled, appear in a
+   labelled side panel: a non-modal aside that does not take focus, refits the camera to
+   the space it leaves, and stacks above the canvas on narrow screens. Raw HTML is shown as
+   text; images and unsafe links are never rendered as active content.
    The camera frames each step by itself: an introduction or conclusion shows the
    whole diagram, a message shows both participants together with the connector
    and its label, a process step shows its shape, and a parallel step shows all
@@ -281,7 +288,9 @@ system shop "Webshop" {
   in one document. The outline is generated from the parsed file, not from
   playback, so it lists each step in order with its nesting, the readable names
   *and* the stable ids, every description, the dwell, the camera behaviour
-  (automatic/hold/focus with its zoom and transition) and any `goto` target. A
+  (automatic/hold/focus with its zoom and transition) and any `goto` target.
+   Flow notes keep their supported Markdown structure; their headings nest under
+   each flow heading. Raw HTML stays escaped text and unsafe URLs are dropped. A
   shape the diagram does not define stays in the outline marked *(not in this
   diagram)* instead of disappearing. Both downloads are offline, name themselves
   after the file plus the flow, and never touch the document, the selection or

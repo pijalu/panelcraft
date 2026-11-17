@@ -53,6 +53,10 @@ export interface FlowPlayerState {
   narration: string;
   /** one-line prose of the current step (UX08-WP13; '' when none) */
   description: string;
+  /** Authored flow-level Markdown source (never rendered HTML). */
+  flowDescription: string;
+  /** True only when flow notes exist and their presentation flag is set. */
+  showFlowNotes: boolean;
   breadcrumb: string[]; // titles of the frames above the current one
   awaitingChoice: AltInfo | null;
   progress: { index: number; total: number } | null;
@@ -64,10 +68,29 @@ export const FRESH: FlowPlayerState = {
   flowId: null,
   narration: '',
   description: '',
+  flowDescription: '',
+  showFlowNotes: false,
   breadcrumb: [],
   awaitingChoice: null,
   progress: null,
 };
+
+/**
+ * Flow-level notes are a distinct playback fact: they never replace the
+ * current step's one-line description, including on the closing card.
+ */
+function notesOf(flow?: Flow): Pick<FlowPlayerState, 'flowDescription' | 'showFlowNotes'> {
+  const source = flow?.descriptionLines?.join('\n') ?? flow?.description ?? '';
+  return {
+    flowDescription: source,
+    showFlowNotes: flow?.presentation === true && source.trim() !== '',
+  };
+}
+
+/** Panel visibility: one predicate shared by the shell class and the layer. */
+export function flowNotesVisible(state: FlowPlayerState): boolean {
+  return state.showFlowNotes && state.flowDescription.trim() !== '';
+}
 
 interface Frame {
   plan: PlaybackPlan;
@@ -147,6 +170,7 @@ export class FlowRunner {
     this.io.publish({
       narration: beat.title,
       description: beat.description ?? '',
+      ...notesOf(f.flow),
       progress: { index: f.index + 1, total: f.plan.beats.length },
       awaitingChoice: null,
     });
@@ -229,7 +253,8 @@ export class FlowRunner {
       this.io.publish({
         status: 'ended',
         narration: done === undefined ? '' : done.plan.flowTitle,
-        description: done?.plan.flowDescription ?? '',
+        description: '',
+        ...notesOf(done?.flow),
         breadcrumb: [],
         progress: done === undefined ? null : { index: total, total },
       });
@@ -283,7 +308,7 @@ export class FlowRunner {
       returnTo: -1,
       retHere: false,
     });
-    this.io.publish({ ...FRESH, status: 'playing', flowId: authoredId });
+    this.io.publish({ ...FRESH, status: 'playing', flowId: authoredId, ...notesOf(found.flow) });
     this.runBeat();
   }
 

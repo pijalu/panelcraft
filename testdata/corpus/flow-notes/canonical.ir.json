@@ -1,0 +1,76 @@
+{
+  "irVersion": 13,
+  "formatVersion": "1.0",
+  "title": "Flow notes",
+  "objects": [
+    {
+      "kind": "person",
+      "id": "a",
+      "name": "Ada",
+      "pos": {
+        "line": 4,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "b",
+      "name": "Web",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "ab",
+      "from": "a",
+      "to": "b",
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "id": "checkout",
+      "title": "Checkout",
+      "descriptionLines": [
+        "# Checkout notes",
+        "",
+        "**Pay** by card or [invoice](https://example.test/invoice)",
+        "",
+        "- card",
+        "- invoice"
+      ],
+      "presentation": true,
+      "steps": [
+        {
+          "type": "intro",
+          "text": "Start",
+          "pos": {
+            "line": 19,
+            "col": 3
+          }
+        },
+        {
+          "type": "msg",
+          "from": "a",
+          "to": "b",
+          "label": "send",
+          "description": "The current step, not the flow notes.",
+          "pos": {
+            "line": 20,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 9,
+        "col": 1
+      }
+    }
+  ]
+}

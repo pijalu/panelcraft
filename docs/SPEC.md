@@ -179,8 +179,10 @@ IcePanel-style visual storytelling over the static diagram.
 
 * **FR-F1** Multiple named flows per diagram; flow editor: ordered step list, drag to
   reorder, per-step title + description. A flow carries its own one-line `description`,
-  and each step may carry a `description` — both live in the file (IR v8), never in a
-  UI-only store. A document with connections and no authored flow has a virtual default
+  an optional atomic multiline Markdown `descriptionLines` block and a `presentation`
+  flag for showing those notes during playback; each step may carry its own `description`.
+  All of them live in the file (IR v8/v13), never in a UI-only store.
+  A document with connections and no authored flow has a virtual default
   flow derived from those connections (stable topological order, labels and parallel links
   preserved, creation order as the cycle fallback). It is never persisted: opening,
   presenting, saving and reloading leave the file unchanged, and the first explicit edit
@@ -354,7 +356,7 @@ Object    { id, kind(person|system|system_ext|container|component|datastore|queu
                      | { kind: 'embedded', path, doc: Doc },
             source?{ language?, lines[] } }                            ← IR v12
 Link      { id, from, to, type, label, direction(uni|bi), style{}, waypoints[] }
-Flow      { id, title, description?, steps[] }
+Flow      { id, title, description?, descriptionLines?[], presentation?, steps[] }  ← IR v13
 Step      { type(intro|msg|process|alt|par|goto|info|conclusion), description?,
             camera?{ mode(auto|hold|focus), x?, y?, zoom?, durationMs? }, delayMs?,
             payload (per type: from/to/linkRef | on | branches[](label,steps[]) | branches[](steps[]) |

@@ -197,6 +197,8 @@ const flowStmt = (f: Flow): JSONRecord =>
     ['id', f.id],
     ['title', f.title],
     ['description', f.description],
+    ['descriptionLines', f.descriptionLines],
+    ['presentation', f.presentation === true ? true : undefined],
     ['steps', arr(f.steps.map(stepToJSON))],
     comments(f.comments),
     ['pos', pos(f.pos)],

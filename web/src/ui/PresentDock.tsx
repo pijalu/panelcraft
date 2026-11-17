@@ -2,7 +2,11 @@
 // Present-mode transport dock (F-16): step counter, progress dots, speaker
 // notes and the minimal transport (back / play-pause / next / restart / exit).
 // Docked at the bottom so the diagram keeps the whole viewport.
+import { useEffect, useMemo, useRef } from 'preact/hooks';
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
+import { flowNotesVisible } from './flows/flowController';
+import { parseSafeMarkdown } from '../engine/format/safeMarkdown';
+import { NOTES_LABEL, SafeMarkdown } from './flows/SafeMarkdown';
 import { progressDots } from './present';
 import { CloseIcon, PauseIcon, PlayIcon, RestartIcon, StepBackIcon, StepForwardIcon } from './icons';
 import { s } from './strings';
@@ -11,11 +15,59 @@ export interface PresentDockProps {
   player: FlowPlayerApi;
 }
 
+/**
+ * Non-modal flow notes. No role=dialog, no backdrop and no focus call: the
+ * canvas and transport keep their focus and pointer behaviour.
+ */
+function FlowNotesAside({ text }: { text: string }) {
+  const blocks = useMemo(() => parseSafeMarkdown(text), [text]);
+  return (
+    <aside
+      class="present-notes-aside"
+      data-testid="flow-notes-panel"
+      aria-label={NOTES_LABEL}
+    >
+      <h2 class="present-notes-title">{NOTES_LABEL}</h2>
+      <SafeMarkdown blocks={blocks} />
+    </aside>
+  );
+}
+
 /** Advance surface + dock: the whole canvas is the "next" target (F-16). */
 export function PresentLayer({ player }: PresentDockProps) {
   const index = player.state.progress?.index ?? 1;
+  const visible = flowNotesVisible(player.state);
+  const shown = useRef<boolean | null>(null);
+  const refit = useRef(player.refit);
+  refit.current = player.refit;
+  useEffect(() => {
+    const first = shown.current === null;
+    if (!first && shown.current === visible) return;
+    shown.current = visible;
+    if (first && !visible) return;
+    if (typeof requestAnimationFrame === 'function') {
+      const id = requestAnimationFrame(() => refit.current());
+      return () => cancelAnimationFrame(id);
+    }
+    refit.current();
+    return undefined;
+  }, [visible]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let frame = 0;
+    const onResize = (): void => {
+      if (frame !== 0) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => refit.current());
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      if (frame !== 0) cancelAnimationFrame(frame);
+    };
+  }, []);
   return (
     <>
+      {visible && <FlowNotesAside text={player.state.flowDescription} />}
       <button
         type="button"
         class="present-advance"

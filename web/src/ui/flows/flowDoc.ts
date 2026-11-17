@@ -280,15 +280,35 @@ export function addFlow(doc: Doc, title: string, seq: number): void {
   doc.flows.push({ title, id: `flow${seq}`, steps, pos: { line: 0, col: 0 } });
 }
 
+export interface FlowPatch {
+  title?: string;
+  description?: string;
+  notes?: string;
+  presentation?: boolean;
+}
+
 /**
  * UX08-WP12: flow-level metadata edits. An empty title is ignored (the grammar
- * needs one) and an empty description removes the line rather than printing `""`.
+ * needs one). The two description forms are atomic: editing one removes the
+ * other, so a flow never carries two competing sources of prose.
  */
-export function patchFlow(flow: Flow, patch: { title?: string; description?: string }): void {
+export function patchFlow(flow: Flow, patch: FlowPatch): void {
   if (patch.title !== undefined && patch.title !== '') flow.title = patch.title;
-  if (patch.description === undefined) return;
-  if (patch.description === '') delete flow.description;
-  else flow.description = patch.description;
+  if (patch.description !== undefined) {
+    delete flow.descriptionLines;
+    if (patch.description === '') delete flow.description;
+    else flow.description = patch.description;
+  }
+  if (patch.notes !== undefined) {
+    delete flow.description;
+    const value = patch.notes.replace(/\r\n?/g, '\n');
+    if (value === '') delete flow.descriptionLines;
+    else flow.descriptionLines = value.split('\n');
+  }
+  if (patch.presentation !== undefined) {
+    if (patch.presentation) flow.presentation = true;
+    else delete flow.presentation;
+  }
 }
 
 /** Parse → mutate → print. null when the text does not parse (editor blocked).

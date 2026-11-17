@@ -708,3 +708,28 @@ describe('known-value step targets (property hierarchy)', () => {
     expect(out()).toContain('a -> b : "order"');
   });
 });
+
+describe('FlowPane notes + presentation flag', () => {
+  it('edits one multiline block and persists the presentation flag', () => {
+    const { out } = mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.input(screen.getByTestId('flow-notes'), { target: { value: '# Notes\n\n- **bold** item' } });
+    fireEvent.click(screen.getByTestId('flow-present-notes'));
+    expect(out()).toContain('description {\n    text "# Notes"\n    text ""\n    text "- **bold** item"\n  }');
+    expect(out()).toContain('  presentation\n');
+    // The two forms are atomic: typing notes replaces a legacy one-line summary.
+    expect(out()).not.toContain('description "');
+  });
+
+  it('loads authored notes and the flag into the editor', () => {
+    const { out } = mount(undefined, {
+      doc: `pcd 1.0\nflow "Notes" as n {\n  description {\n    text "# Heading"\n    text "body"\n  }\n  presentation\n  info "one"\n}\n`,
+    });
+    fireEvent.click(screen.getByTestId('flow-row-n'));
+    expect((screen.getByTestId('flow-notes') as HTMLTextAreaElement).value).toBe('# Heading\nbody');
+    expect((screen.getByTestId('flow-present-notes') as HTMLInputElement).checked).toBe(true);
+    fireEvent.input(screen.getByTestId('flow-notes'), { target: { value: '' } });
+    expect(out()).not.toContain('description {');
+    expect(out()).toContain('presentation');
+  });
+});

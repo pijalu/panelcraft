@@ -53,6 +53,8 @@ const (
 	ErrLegacyView = "E117"
 	// ErrLegacyDrilldownView: named view on a decomposition removed (ADR 0007).
 	ErrLegacyDrilldownView = "E118"
+	// ErrEmptyFlowDescription: flow description block without a text line.
+	ErrEmptyFlowDescription = "E119"
 )
 
 // Semantic warning codes mirrored from TS validate.ts.

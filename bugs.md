@@ -46,21 +46,6 @@ per item with a short title, the observed behavior, and the expected behavior.
 
 **Validation.** Focused model/component tests, complete menu e2e, axe scans, keyboard-only traversal and light/dark/narrow-viewport screenshots. Verify all previously available commands by stable id/test id, then run `npm run check` and `npm test`.
 
-## Flow Markdown notes with presentation panel
-
-**Observed.** Flow description is parsed as one quoted line (`web/src/engine/format/parser.ts:691-699`) and exported through `prose`, which deliberately flattens and escapes it (`web/src/engine/format/flowMarkdown.ts:17-23,129-132`). The UI already uses a textarea, but an actual newline cannot safely round-trip through the current quoted-string printer/lexer. There is no presentation flag or Markdown renderer. Playback also reuses `description` for the current step and later for flow-level closing text, so adding a side panel must not overload that field again.
-
-**Expected.** Existing one-line descriptions remain valid. Flow text supports headings, bold, italic, inline code, bullet/numbered lists and links, with a persisted **Show during presentation** flag. When enabled and non-empty, presentation shows sanitized flow-level Markdown in a non-modal side panel; otherwise no panel appears. Raw HTML is text, never markup; images and active/embed content are unsupported; links never auto-fetch and unsafe URL schemes are rejected. Markdown documentation export preserves supported structure rather than flattening it.
-
-**Fix plan.**
-
-1. Define a multiline flow-description block and presentation flag while retaining the legacy one-line form. Keep source text in IR; do not store rendered HTML. Land TS/Go parser/printer/serializer/diagnostics/corpus changes atomically and add multiline round-trip tests.
-2. Implement one small, local safe-Markdown parser that returns a typed AST for exactly the listed subset. Render Preact elements/text nodes rather than `dangerouslySetInnerHTML`. Centralize URL policy and raw-HTML handling. Reuse the AST/policy for documentation export so app rendering and export cannot drift into different sanitization rules; define how headings nest under the exported flow heading.
-3. Add separate `flowDescription` and current-step `description` state to the player. The panel is a labelled `aside`, does not steal focus, has a responsive narrow-screen layout, and triggers presentation refit when its presence changes available canvas size. Links are ordinary user-activated links with safe `rel` behaviour where relevant.
-4. Update editor copy, strings, `FILE-FORMAT.md`, `USER-GUIDE.md`, `SPEC.md`, `CHANGELOG.md` and Markdown-export goldens. No remote renderer, webfont, image fetch or new runtime service; any proposed dependency would require the repository’s ADR process and is unnecessary for this subset.
-
-**Validation.** Test every supported construct, nesting/escapes, multiline round-trip, raw HTML, `javascript:`/`data:` URLs, empty text, toggle persistence and no-panel state. DOM/e2e tests cover editing, reload, presentation visibility, canvas refit, keyboard/focus, axe and light/dark/narrow screenshots. Run focused vitest, `npm test`, `npm run check`, corpus parity, docs and no-network e2e.
-
 ## Selected flow-step properties: correct the existing model, do not recreate it
 
 **Observed.** Step selection and an inline `StepInspector` already exist below the step list (`web/src/ui/flows/FlowPane.tsx:425-468,884-930,1089-1093`). Description and Camera are already common fields; msg/alt/par labels already exist. **Advanced step** is a disclosure for adding alt/par/goto, not a dialog containing this inspector. Message endpoints are currently editable text fields. Spark count/speed belong to the resolved **link style**, not to the step (`web/src/engine/model/types.ts:93-96,217-225`; `web/src/engine/flows/plan.ts:145-180`).

@@ -4,6 +4,22 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-17 — flow Markdown notes with presentation panel
+
+- Flows can carry an atomic multiline `description` block and a `presentation` flag
+  (IR v13), alongside the legacy one-line form. TypeScript and Go parser, printer,
+  IR and corpus parity changed together; new syntax error `E119` rejects an empty
+  block. Flow-level notes are separate from the current step's description in the
+  player, including on the closing card.
+- A local typed Markdown subset is shared by the presentation aside and the `.md`
+  export: headings, bold, italic, inline code, lists and links render as Preact
+  nodes, with one URL policy. Raw HTML stays text, images are unsupported, and
+  unsafe or active URL schemes never become links.
+- The notes panel is a labelled non-modal aside that does not steal focus,
+  refits the camera when it appears or disappears and on viewport resize, and
+  stacks above the canvas on narrow screens. Details and evidence:
+  [docs/archive/bugs-flow-markdown-panel.md](archive/bugs-flow-markdown-panel.md).
+
 ## 2026-11-19 — complete decomposition picker and embedded export
 
 - Decomposition targets are a discriminated IR v12 value: a linked workspace

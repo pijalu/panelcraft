@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 12
+const IRVersion = 13
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -182,12 +182,16 @@ type Step struct {
 
 // Flow is a flow statement (§6).
 type Flow struct {
-	ID          string   `json:"id,omitempty"`
-	Title       *string  `json:"title,omitempty"`
-	Description *string  `json:"description,omitempty"`
-	Steps       []Step   `json:"steps,omitempty"`
-	Comments    []string `json:"comments,omitempty"`
-	Pos         Pos      `json:"pos"`
+	ID          string  `json:"id,omitempty"`
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
+	// DescriptionLines is the multiline form; one entry per authored source line.
+	DescriptionLines []string `json:"descriptionLines,omitempty"`
+	// Presentation shows the flow notes in the non-modal presentation aside.
+	Presentation bool     `json:"presentation,omitempty"`
+	Steps        []Step   `json:"steps,omitempty"`
+	Comments     []string `json:"comments,omitempty"`
+	Pos          Pos      `json:"pos"`
 }
 
 // LayoutDirective is the explicit `layout auto <dir>` / `layout saved` line.

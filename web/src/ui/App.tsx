@@ -52,6 +52,7 @@ import { useDrawer } from './useDrawer';
 import { useShellDialogs } from './useShellDialogs';
 
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
+import { flowNotesVisible } from './flows/flowController';
 import type { CodeSyncHandle } from './useCodeSync';
 import type { WorkspaceManager } from '../workspace/workspace';
 
@@ -815,7 +816,7 @@ export function App() {
 
   return (
     <div
-      class={`app-shell${pres.presenting ? ' presenting' : ''}`}
+      class={`app-shell${pres.presenting ? ' presenting' : ''}${pres.presenting && flowNotesVisible(player.state) ? ' has-flow-notes' : ''}`}
       data-presenting={pres.presenting ? 'true' : 'false'}
       data-testid="app-shell"
       data-panels={Object.entries(ui.layout.panels).map(([k, v]) => `${k}:${v}`).join(',')}

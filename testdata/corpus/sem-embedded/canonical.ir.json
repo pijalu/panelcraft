@@ -1,5 +1,5 @@
 {
-  "irVersion": 12,
+  "irVersion": 13,
   "formatVersion": "1.0",
   "title": "Embedded decomposition",
   "level": "context",
@@ -15,7 +15,7 @@
         "kind": "embedded",
         "path": "containers/shop.pcd",
         "doc": {
-          "irVersion": 12,
+          "irVersion": 13,
           "formatVersion": "1.0",
           "title": "Containers",
           "level": "container",
@@ -28,7 +28,7 @@
                 "kind": "embedded",
                 "path": "components/api.pcd",
                 "doc": {
-                  "irVersion": 12,
+                  "irVersion": 13,
                   "formatVersion": "1.0",
                   "title": "Components",
                   "level": "component",

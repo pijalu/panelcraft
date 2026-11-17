@@ -593,6 +593,32 @@ system s "S" {
 }
 `,
   },
+  {
+    // Flow notes are one multiline block plus the persisted presentation flag;
+    // the legacy one-line description stays valid. Both sides must agree.
+    name: 'flow-notes',
+    src: `pcd 1.0
+flow "Notes" as n {
+  description {
+    text "# Title"
+    text ""
+    text "**Bold** [link](https://example.test/)"
+  }
+  presentation
+  info "one"
+}
+flow "Legacy" as legacy {
+  description "one line"
+  info "start"
+}
+`,
+  },
+  { name: 'flow-notes-empty', src: 'pcd 1.0\nflow "F" {\n  description {\n  }\n}\n' },
+  {
+    // Atomic forms: mixing a legacy description with a multiline block aborts.
+    name: 'flow-notes-mixed',
+    src: 'pcd 1.0\nflow "F" {\n  description "one"\n  description {\n    text "two"\n  }\n}\n',
+  },
 ];
 
 const run = (c: Case): FXCase => {
