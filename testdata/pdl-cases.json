@@ -166,6 +166,30 @@
       "validateDiags": []
     },
     {
+      "name": "flow-advance",
+      "src": "pcd 1.0\nsystem a \"A\"\nsystem b \"B\"\na -> b as L1\nflow \"Wait\" as wait {\n  intro \"start\" advance click\n  a -> b : \"go\" delay 1200 advance end\n}\n",
+      "doc": "{\n  \"irVersion\": 13,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"system\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"wait\",\n      \"title\": \"Wait\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"start\",\n          \"advance\": \"click\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"go\",\n          \"delayMs\": 1200,\n          \"advance\": \"end\",\n          \"pos\": {\n            \"line\": 7,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nsystem a \"A\"\nsystem b \"B\"\n\na -> b as L1\n\nflow \"Wait\" as wait {\n  intro \"start\" advance click\n  a -> b : \"go\" delay 1200 advance end\n}\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "flow-advance-invalid",
+      "src": "pcd 1.0\nflow \"Wait\" as wait {\n  intro \"start\" advance later\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E100",
+          "message": "advance must be click or end",
+          "line": 3,
+          "col": 25,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
       "name": "link-sparks",
       "src": "pcd 1.0\nperson a \"A\"\nsystem b \"B\"\na -requests-> b as L1 {\n  style {\n    sparks 3\n    speed 2\n  }\n}\nb <-> a as L2\n",
       "doc": "{\n  \"irVersion\": 13,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"system\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"L1\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"type\": \"requests\",\n      \"style\": {\n        \"sparks\": 3,\n        \"speed\": 2\n      },\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    },\n    {\n      \"id\": \"L2\",\n      \"from\": \"b\",\n      \"to\": \"a\",\n      \"bidir\": true,\n      \"pos\": {\n        \"line\": 10,\n        \"col\": 1\n      }\n    }\n  ]\n}",

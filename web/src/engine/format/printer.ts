@@ -74,9 +74,11 @@ const arrowFor = (l: Pick<Link, 'type' | 'bidir'>): string =>
 
 type StepPrinter = (s: FlowStep, depth: number, p: Printer) => void;
 
-/** Append the optional per-step dwell (F-18). */
-const withDelay = (line: string, step: { delayMs?: number }): string =>
-  step.delayMs === undefined ? line : `${line} delay ${jsNum(step.delayMs)}`;
+/** Append the optional per-step dwell and advance trigger. */
+const withDelay = (line: string, step: { delayMs?: number; advance?: 'click' | 'end' }): string => {
+  const withMs = step.delayMs === undefined ? line : `${line} delay ${jsNum(step.delayMs)}`;
+  return step.advance === undefined ? withMs : `${withMs} advance ${step.advance}`;
+};
 
 const printSimpleStep: StepPrinter = (s, depth, p) => {
   const t = s as { type: string; text: string };

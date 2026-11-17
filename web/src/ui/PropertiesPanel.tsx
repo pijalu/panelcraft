@@ -431,7 +431,7 @@ function ConnectorStyleControls(props: { link: DiagramLink; onChange: LinkChange
           }}
         />
       </Field>
-      <Field label={s("Spark count")}>
+      <Field label={s("Max sparks")}>
         <input
           type="number"
           min={SPARK_COUNT_BOUNDS.min}

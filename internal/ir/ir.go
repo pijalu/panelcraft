@@ -173,6 +173,8 @@ type Step struct {
 	Ret      string   `json:"ret,omitempty"`      // goto: "here" only
 	// DelayMs overrides the beat dwell (F-18)
 	DelayMs *float64 `json:"delayMs,omitempty"`
+	// Advance chooses click-driven cycling over end-driven auto-advance.
+	Advance *string `json:"advance,omitempty"`
 	// Description is one line of prose for this step (UX08-WP11).
 	Description *string  `json:"description,omitempty"`
 	Camera      *Camera  `json:"camera,omitempty"`

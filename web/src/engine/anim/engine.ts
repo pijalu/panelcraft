@@ -202,7 +202,7 @@ export class FlowAnimator {
     const len = this.geometry.length(pathEl);
     // Reduced motion shows the final visible state of the same timeline: one
     // settled token at the last arrival endpoint, plus static emphasis.
-    const timeline = beatTimeline({ dwellMs: this.motion.stepDelayMs, count: link.sparks, speed: link.speed, bidir: link.bidir });
+    const timeline = beatTimeline({ dwellMs: this.motion.stepDelayMs, count: link.sparks, speed: link.speed, bidir: link.bidir, distance: len });
     const endpoint = timeline.sparks[0]!.finalTo;
     const geometry = this.linkGeometry(pathEl, len, link, ctx);
     const p = this.geometry.pointAt(pathEl, endpoint === 'from' ? geometry.fromDist : geometry.toDist);
@@ -538,6 +538,7 @@ export class FlowAnimator {
       count: link.sparks,
       speed: link.speed,
       bidir: link.bidir,
+      distance: len,
       motion: { ringMs: this.motion.ringMs, tokenMs: this.motion.tokenMs },
     });
     const geometry = this.linkGeometry(pathEl, len, link, ctx);

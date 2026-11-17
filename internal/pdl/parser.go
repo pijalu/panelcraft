@@ -934,7 +934,7 @@ func (p *parser) refID() string {
 	return first
 }
 
-// stepDelay consumes an optional trailing `delay <ms>` on the step's line (F-18).
+// stepDelay consumes an optional trailing `delay <ms>` on a step's line (F-18).
 func (p *parser) stepDelay(line int, s *ir.Step) {
 	t := p.peek()
 	if t.Type != TokIdent || t.Text != "delay" || t.Line != line {
@@ -946,6 +946,23 @@ func (p *parser) stepDelay(line int, s *ir.Step) {
 		p.fail(t, ErrUnexpected, "delay must not be negative")
 	}
 	s.DelayMs = &ms
+}
+
+// stepModifiers consumes the optional trailing `delay <ms>` and
+// `advance click|end` on a step's own line.
+func (p *parser) stepModifiers(line int, s *ir.Step) {
+	p.stepDelay(line, s)
+	t := p.peek()
+	if t.Type != TokIdent || t.Text != "advance" || t.Line != line {
+		return
+	}
+	p.next()
+	v := p.expect(TokIdent, "")
+	if v.Text != "click" && v.Text != "end" {
+		p.fail(v, ErrUnexpected, "advance must be click or end")
+	}
+	a := v.Text
+	s.Advance = &a
 }
 
 func (p *parser) parseKeywordStep(kw string, depth int) ir.Step {
@@ -970,7 +987,7 @@ func (p *parser) parseKeywordStep(kw string, depth int) ir.Step {
 		p.parseGoto(&s)
 	}
 	if kw != "alt" && kw != "par" {
-		p.stepDelay(t0.Line, &s)
+		p.stepModifiers(t0.Line, &s)
 	}
 	p.presentation(t0, &s)
 	return s
@@ -1176,18 +1193,9 @@ func (p *parser) parseGoto(s *ir.Step) {
 	}
 }
 
-func (p *parser) parseMsgStep() ir.Step {
-	t0 := p.next()
-	comments := p.takeComments()
-	from := p.refIDFrom(t0)
-	arrow := p.expect(TokArrow, "")
-	to := p.refID()
-	info := arrow.Arrow
-	if info != nil && info.Tail && !info.Head {
-		from, to = to, from
-	}
-	s := ir.Step{Type: "msg", From: from, To: to, Comments: comments, Pos: tokPos(t0)}
-	// Modifiers are order-free (errata D-M1-9): : "label", as Ref, flip.
+// parseMsgModifiers consumes the order-free message modifiers and then
+// hands the step to the shared presentation parser.
+func (p *parser) parseMsgModifiers(t0 Token, s *ir.Step) {
 	for {
 		t := p.peek()
 		switch {
@@ -1201,15 +1209,30 @@ func (p *parser) parseMsgStep() ir.Step {
 		case t.Type == TokIdent && t.Text == "flip":
 			p.next()
 			s.Flip = true
-		case t.Type == TokIdent && t.Text == "delay" && t.Line == t0.Line:
-			p.stepDelay(t0.Line, &s)
-			p.presentation(t0, &s)
-			return s
+		case t.Type == TokIdent && (t.Text == "delay" || t.Text == "advance") && t.Line == t0.Line:
+			p.stepModifiers(t0.Line, s)
+			p.presentation(t0, s)
+			return
 		default:
-			p.presentation(t0, &s)
-			return s
+			p.presentation(t0, s)
+			return
 		}
 	}
+}
+
+func (p *parser) parseMsgStep() ir.Step {
+	t0 := p.next()
+	comments := p.takeComments()
+	from := p.refIDFrom(t0)
+	arrow := p.expect(TokArrow, "")
+	to := p.refID()
+	info := arrow.Arrow
+	if info != nil && info.Tail && !info.Head {
+		from, to = to, from
+	}
+	s := ir.Step{Type: "msg", From: from, To: to, Comments: comments, Pos: tokPos(t0)}
+	p.parseMsgModifiers(t0, &s)
+	return s
 }
 
 // ---- top-level layout state (ADR 0007) --------------------------------------

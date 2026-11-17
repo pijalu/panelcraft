@@ -809,6 +809,21 @@ class Parser {
     return { delayMs: ms };
   }
 
+  /** Optional trailing step modifiers, authored on the step's own line. */
+  private stepModifiers(line: number): { delayMs?: number; advance?: 'click' | 'end' } {
+    const out: { delayMs?: number; advance?: 'click' | 'end' } = this.stepDelay(line);
+    const t = this.peek();
+    if (t.type === 'ident' && t.text === 'advance' && t.line === line) {
+      this.next();
+      const value = this.expect('ident');
+      if (value.text !== 'click' && value.text !== 'end') {
+        this.fail(value, E.unexpected, 'advance must be click or end');
+      }
+      out.advance = value.text as 'click' | 'end';
+    }
+    return out;
+  }
+
   private parseKeywordStep(kw: string, depth: number): FlowStep {
     const t0 = this.next();
     const comments = this.takeComments();
@@ -818,7 +833,7 @@ class Parser {
         ...(comments.length ? { ...base, comments } : base),
         type: kw,
         pos,
-        ...(kw === 'alt' || kw === 'par' ? {} : this.stepDelay(t0.line)),
+        ...(kw === 'alt' || kw === 'par' ? {} : this.stepModifiers(t0.line)),
       }) as unknown as FlowStep);
     switch (kw) {
       case 'intro':
@@ -911,9 +926,9 @@ class Parser {
       pos: tokPos(t0),
       ...(comments.length ? { comments } : {}),
     } as { type: 'msg'; from: string; to: string; pos: Pos; label?: string; linkRef?: string; flip?: boolean; comments?: Comments };
-    this.msgModifiers(t0, step);
-    const delay = this.stepDelay(t0.line);
-    return this.presentation(t0, delay.delayMs === undefined ? step : { ...step, ...delay });
+    this.msgModifiers(step);
+    const mods = this.stepModifiers(t0.line);
+    return this.presentation(t0, mods.delayMs === undefined ? { ...step, ...mods } : { ...step, ...mods });
   }
 
   // ---- presentation metadata (UX08-WP11 / IR v8) ---------------------------
@@ -1020,7 +1035,6 @@ class Parser {
 
   /** Order-free msg modifiers (errata D-M1-9): : "label", as Ref, flip. */
   private msgModifiers(
-    t0: Token,
     step: { label?: string; linkRef?: string; flip?: boolean },
   ): void {
     for (;;) {

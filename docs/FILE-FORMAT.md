@@ -336,6 +336,11 @@ a <-> b                         bidirectional
   `a -> b : "hi" delay 1200`. It overrides the beat's default auto-advance time for
   that step only; the printer emits it only when present, and the IR carries it as
   `delayMs`. `alt`/`par` blocks do not take a delay (their beats follow the branches).
+* **Per-step advance trigger**: a leaf step may also carry `advance click` or
+  `advance end`, after any `delay`. `end` is the default and keeps the current
+  auto-advance after the step's dwell. `click` cycles the current beat until the
+  presenter clicks to move on; the choice is stored in the IR as `advance` and
+  printed only when authored. `alt`/`par` blocks do not take an advance trigger.
 
 * Block form for link attributes (rare; printer uses it only when needed):
 
@@ -404,13 +409,14 @@ api -publishes-> events as L7 {
   authored point verbatim. Mermaid export declares `overlap overrides` as dropped
   because the target has no equivalent data.
 
-* **Connector sparks (FLOW-02, IR v7)**: `sparks <1..8>` sets how many tokens travel
-  a link during a message step and `speed <0.25..4>` scales their motion, where `1`
-  is the historical single-token default speed. Absent values reproduce the old
-  behaviour exactly and are never printed. Counts are staggered deterministically
-  along the path; a one-way link completes once per step, while a `<->`
-  bidirectional link reverses at the far end and ping-pongs until the step ends.
-  `flip` only chooses the initial direction. Each spark follows one numeric beat
+* **Connector sparks (FLOW-02, IR v7)**: `sparks <1..8>` is the **maximum**
+  number of tokens visible on a link during a message step and `speed <0.25..4>`
+  scales their motion, where `1` is the historical single-token default speed.
+  Absent values reproduce the old behaviour exactly and are never printed. The
+  renderer measures the connector and derives the spacing and stagger so tokens
+  never all start together and a short line carries fewer tokens; a `<->`
+  bidirectional link reverses at the far end and ping-pongs between elements
+  until the step ends. `flip` only chooses the initial direction. Each spark follows one numeric beat
   timeline shared with the border pulses: the source border expands, the spark
   is created at peak expansion while the border unexpands, it disappears at the
   arrival endpoint as that border expands and returns to rest, and a settled
@@ -738,8 +744,9 @@ flow        = "flow" , [ string ] , [ "as" , ident ] , "{" ,
               | "description" , "{" , { "text" , string } , "}"
               | "presentation" ] ,
               { step } , "}" ;
-step        = ( intro | msg | process | alt | par | goto | info | conclusion ) , [ delay ] ;
+step        = ( intro | msg | process | alt | par | goto | info | conclusion ) , [ delay ] , [ advance ] ;
 delay       = "delay" , number ;   (* per-step dwell in ms, F-18 *)
+advance     = "advance" , ( "click" | "end" ) ;  (* click cycles until the next click *)
 alt         = "alt" , [ string ] , "{" , { branch } , "}" ;
 branch      = string , "{" , { step } , "}" ;
 par         = "par" , [ string ] , "{" , { lane } , "}" ;

@@ -74,6 +74,8 @@ export interface TimelineInput {
   count?: number;
   speed?: number;
   bidir?: boolean;
+  /** Measured connector length; caps concurrent tokens by their spacing. */
+  distance?: number;
   motion?: Pick<MotionConfig, 'ringMs' | 'tokenMs'>;
 }
 
@@ -84,6 +86,8 @@ export const clampSpeed = (n: number | undefined): number =>
   n === undefined || !Number.isFinite(n) ? 1 : Math.min(4, Math.max(0.25, n));
 
 const RING_DWELL_FRACTION = 0.25;
+/** SVG units reserved for each visible spark on a connector. */
+export const SPARK_SPACING = 28;
 const SETTLE_FRACTION = 0.02;
 const STAGGER_FRACTION = 0.15;
 const MAX_PASSES = 8;
@@ -100,11 +104,28 @@ const EVENT_PRIORITY: Record<EventKind, number> = {
 
 const other = (e: Endpoint): Endpoint => (e === 'from' ? 'to' : 'from');
 
+/** A token needs its own stretch of the connector; the count is a ceiling. */
+const fitCount = (input: TimelineInput): number => {
+  const requested = clampCount(input.count);
+  if (input.distance === undefined || !Number.isFinite(input.distance)) return requested;
+  return Math.min(requested, Math.max(1, Math.floor(input.distance / SPARK_SPACING)));
+};
+
+/** Distance-derived start gap; null leaves the time-budget stagger in charge. */
+const distanceStagger = (
+  count: number,
+  travelMs: number,
+  distance: number | undefined,
+): number | null =>
+  distance !== undefined && Number.isFinite(distance) && distance > 0 && count > 1
+    ? Math.floor(travelMs / (count + 1))
+    : null;
+
 /** Compute the whole beat timeline. Motion is compressed only when dwell is. */
 export function beatTimeline(input: TimelineInput): BeatTimeline {
   const motion = input.motion ?? MOTION;
   const dwellMs = Math.max(1, Number.isFinite(input.dwellMs) ? input.dwellMs : MOTION.stepDelayMs);
-  const count = clampCount(input.count);
+  const count = fitCount(input);
   const speed = clampSpeed(input.speed);
   const settleMs = Math.min(
     Math.max(0, ARRIVAL_MS - motion.ringMs),
@@ -123,9 +144,13 @@ export function beatTimeline(input: TimelineInput): BeatTimeline {
   const travelBudget = Math.max(0.1, chainRoom - peak - ringMs);
   const natural = motion.tokenMs / speed;
   const travelMs = Math.max(0.1, Math.min(travelBudget, natural * MAX_STRETCH));
-  const staggerMs = count > 1
+  const baseStagger = count > 1
     ? Math.max(0, Math.min(Math.floor(staggerBudget / (count - 1)), Math.floor(travelMs / 2)))
     : 0;
+  // With a measured distance, spread starts by the distance each token needs:
+  // spacing = distance / (count + 1), expressed on the same travel timeline.
+  const gap = distanceStagger(count, travelMs, input.distance);
+  const staggerMs = gap === null ? baseStagger : Math.max(1, Math.min(baseStagger, gap));
   const chain = peak + travelMs + ringMs;
 
   const sparks: SparkTimes[] = [];

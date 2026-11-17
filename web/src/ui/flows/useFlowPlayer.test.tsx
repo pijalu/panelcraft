@@ -131,9 +131,9 @@ const mkClock = () => {
   };
 };
 
-function setup() {
+function setup(doc = DOC_A) {
   const files = new Map<string, string>([
-    ['main.pcd', DOC_A],
+    ['main.pcd', doc],
     ['other.pcd', DOC_B],
   ]);
   const animator = mkAnimator();
@@ -529,5 +529,20 @@ describe('presentation camera + description (UX08-WP13)', () => {
     });
     expect(h.camera.restored()).toBe(1);
     expect(h.result.current.state.description).toBe('');
+  });
+});
+
+describe('click-driven advance (browser assessment round 3)', () => {
+  it('cycles a click-driven beat until the transport advances explicitly', () => {
+    const clickDoc = DOC_A.replace('intro "start"', 'intro "start" advance click');
+    const h = setup(clickDoc);
+    expect(h.animator.played).toEqual([1]);
+    fire(h); // the beat loops instead of advancing to step 2
+    expect(h.animator.played).toEqual([1, 1]);
+    expect(h.result.current.state.progress).toEqual({ index: 1, total: 5 });
+    const next = (h.result.current as unknown as { next?: () => void }).next;
+    expect(typeof next).toBe('function');
+    act(() => next!());
+    expect(h.animator.played.at(-1)).toBe(2);
   });
 });

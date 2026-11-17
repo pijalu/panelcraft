@@ -176,6 +176,7 @@ export class FlowRunner {
     });
     if (nav && beat.kind === 'alt') this.awaitChoice(beat);
     else if (nav && beat.kind === 'goto') this.enterGoto(f, beat);
+    else if (beat.advance === 'click') this.scheduleCycle(beat.delayMs);
     else this.scheduleAdvance(beat.delayMs);
   }
 
@@ -233,6 +234,21 @@ export class FlowRunner {
       this.timer = null;
       this.advance();
     }, ms);
+  }
+
+  private scheduleCycle(ms: number): void {
+    this.cancelTimer();
+    this.timer = this.io.clock.delay(() => {
+      this.timer = null;
+      this.replay();
+    }, ms);
+  }
+
+  /** Presentation click: leave a click-driven beat and play the next one. */
+  next(): void {
+    if (this.stack.length === 0) return;
+    this.cancelTimer();
+    this.advance();
   }
 
   private advance(): void {

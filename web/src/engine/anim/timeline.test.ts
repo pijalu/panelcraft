@@ -79,6 +79,36 @@ describe('beatTimeline', () => {
     expect([pass.travel.from, pass.travel.to] satisfies Endpoint[]).toEqual(['from', 'to']);
   });
 
+  it('treats spark count as a maximum derived from connector distance', () => {
+    const short = beatTimeline({ dwellMs: DWELL, count: 8, distance: 60 });
+    expect(short.sparks.length).toBeGreaterThan(0);
+    expect(short.sparks.length).toBeLessThan(8);
+    expect(short.staggerMs).toBeGreaterThan(0);
+    const long = beatTimeline({ dwellMs: DWELL, count: 8, distance: 600 });
+    expect(long.sparks).toHaveLength(8);
+    expect(new Set(long.sparks.map((s) => s.start)).size).toBe(8);
+  });
+
+  it('keeps at most the effective spark count travelling at one instant', () => {
+    const t = beatTimeline({ dwellMs: DWELL, count: 8, distance: 160 });
+    const effective = t.sparks.length;
+    expect(effective).toBeGreaterThan(1);
+    const events = t.sparks.flatMap((s) => s.passes.map((p) => ({
+      start: p.travel.start,
+      end: p.travel.arrival,
+    })));
+    const worst = Math.max(...events.map((a) => events.filter((b) => a.start >= b.start && a.start < b.end).length));
+    expect(worst).toBeLessThanOrEqual(effective);
+  });
+
+  it('alternates bidirectional endpoints when distance caps the count', () => {
+    const t = beatTimeline({ dwellMs: DWELL, count: 8, distance: 100, bidir: true });
+    const passes = t.sparks[0]!.passes;
+    expect(passes.length).toBeGreaterThanOrEqual(2);
+    expect(passes[0]!.travel.to).toBe('to');
+    expect(passes[1]!.travel.to).toBe('from');
+  });
+
   it('compresses all phases into a very short dwell without crossing them', () => {
     const t = beatTimeline({ dwellMs: 300, count: 2, speed: 0.25, bidir: true });
     expect(t.finalRestMs + t.settleMs).toBeLessThanOrEqual(300);

@@ -185,6 +185,7 @@ const stepToJSON = (s: FlowStep): JSONRecord => {
     ['type', s.type],
     ...payload,
     ['delayMs', s.delayMs],
+    ['advance', s.advance],
     ['description', s.description],
     cameraJSON(s.camera),
     comments(s.comments),

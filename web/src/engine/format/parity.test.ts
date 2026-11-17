@@ -98,6 +98,14 @@ container cart "Cart"
     src: 'pcd 1.0\nsystem a "A" {\n  z 1.5\n}\n',
   },
   {
+    name: 'flow-advance',
+    src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -> b as L1\nflow "Wait" as wait {\n  intro "start" advance click\n  a -> b : "go" delay 1200 advance end\n}\n',
+  },
+  {
+    name: 'flow-advance-invalid',
+    src: 'pcd 1.0\nflow "Wait" as wait {\n  intro "start" advance later\n}\n',
+  },
+  {
     name: 'link-sparks',
     src: 'pcd 1.0\nperson a "A"\nsystem b "B"\na -requests-> b as L1 {\n  style {\n    sparks 3\n    speed 2\n  }\n}\nb <-> a as L2\n',
   },

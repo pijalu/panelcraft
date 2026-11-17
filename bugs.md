@@ -55,3 +55,4 @@ Closed items, in the order they were archived:
 - `bugs-c4-drill-down.md` — genuine C4 decomposition with embedded source.
 - `bugs-step-properties.md` — selected message steps edit their resolved link's shared animation.
 - `bugs-hamburger-task-groups.md` — the menu is grouped by user task without losing a command.
+- `bugs-browser-assessment-round-3.md` — step properties are visible on selection, spark count is a spaced maximum, beats can cycle until a click, and delay edits no longer stall the UI.

@@ -895,3 +895,37 @@ describe('StepInspector message link resolution and kind fields', () => {
     expect(screen.queryByTestId('insp-shared-style')).toBeNull();
   });
 });
+
+describe('Flow Steps browser feedback and input responsiveness', () => {
+  it('keeps one inspector wrapper for the selected step', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-1'));
+    expect(screen.getByTestId('step-inspector').className).toContain('flow-step-inspector');
+    expect(screen.getByTestId('insp-label')).not.toBeNull();
+  });
+
+  it('commits a delay edit when the value settles, not on every keystroke', async () => {
+    const { out } = mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-1'));
+    const input = screen.getByTestId('step-delay-1') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: '1500' } });
+    expect(out()).not.toContain('delay 1500');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(out()).toContain('delay 1500');
+  });
+});
+describe('per-step advance trigger editor', () => {
+  it('exposes the advance trigger and writes click-driven steps explicitly', () => {
+    const { out } = mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-0'));
+    const select = screen.getByTestId('insp-advance') as HTMLSelectElement;
+    expect(select.value).toBe('end');
+    fireEvent.change(select, { target: { value: 'click' } });
+    expect(out()).toContain('advance click');
+    fireEvent.change(screen.getByTestId('insp-advance'), { target: { value: 'end' } });
+    expect(out()).not.toContain('advance click');
+  });
+});

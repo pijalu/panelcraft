@@ -35,6 +35,8 @@ export interface FlowPlayerApi {
   resume(): void;
   /** Transport Play: replay the current beat from time zero. */
   replay(): void;
+  /** Presentation click: advance even when a click-driven beat was cycling. */
+  next(): void;
   restart(): void;
   stepTo(index1: number): void;
   /** Play on from a 1-based beat (the flow pane's per-step play button). */
@@ -78,6 +80,7 @@ export function useFlowPlayer(deps: FlowPlayerDeps): FlowPlayerApi {
     pause: () => runner.pause(),
     resume: () => runner.resume(),
     replay: () => runner.replay(),
+    next: () => runner.next(),
     restart: () => runner.restart(),
     stepTo: (index1) => runner.stepTo(index1),
     playFrom: (index1) => runner.playFrom(index1),

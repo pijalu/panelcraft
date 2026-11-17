@@ -215,6 +215,8 @@ export interface CameraSpec {
 interface FlowStepBase extends StmtBase {
   /** Per-step dwell before auto-advance (F-18; overrides the beat default). */
   delayMs?: number;
+  /** Who moves the flow on: at the beat's end or on the next click. */
+  advance?: 'click' | 'end';
   /** What this step shows, in one line of prose (UX08-WP11). */
   description?: string;
   /** Optional camera override for this step (UX08-WP11). */

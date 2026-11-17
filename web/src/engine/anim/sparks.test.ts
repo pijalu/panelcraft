@@ -31,7 +31,7 @@ const mkPlayer = (): { player: AnimPlayer; calls: Call[] } => {
 };
 
 const geometry = {
-  length: () => 100,
+  length: () => 400,
   pointAt: (_path: Element, dist: number) => ({ x: dist, y: 0 }),
 };
 
@@ -52,7 +52,7 @@ const mkSvg = (): SVGSVGElement => {
   link.setAttribute('data-id', 'ab');
   const path = document.createElementNS(NS, 'path');
   path.setAttribute('class', 'pc-route');
-  path.setAttribute('d', 'M0 0 L100 0');
+  path.setAttribute('d', 'M0 0 L400 0');
   link.appendChild(path);
   world.appendChild(link);
   return svg;
@@ -128,14 +128,14 @@ describe('FLOW-02 connector sparks on one beat timeline', () => {
     const call = roleCalls(fx.calls, 'spark')[0]!;
     const xs = call.kf.map((kf) => Number(/translate\(([-\d.]+)px/.exec(String(kf.transform))?.[1] ?? NaN));
     expect(xs.at(-1)).toBeCloseTo(0); // return leg ends back at the source
-    expect(Math.max(...xs)).toBeCloseTo(100);
+    expect(Math.max(...xs)).toBeCloseTo(400);
 
     svg = mkSvg();
     fx = mkPlayer();
     play(linkOf({ bidir: true, flipped: true, from: 'b', to: 'a' }));
     const flipped = roleCalls(fx.calls, 'spark')[0]!;
     const flippedXs = flipped.kf.map((kf) => Number(/translate\(([-\d.]+)px/.exec(String(kf.transform))?.[1] ?? NaN));
-    expect(flippedXs[0]).toBeCloseTo(100);
+    expect(flippedXs[0]).toBeCloseTo(400);
   });
 
   it('reduced motion animates nothing and shows only the settled state', () => {

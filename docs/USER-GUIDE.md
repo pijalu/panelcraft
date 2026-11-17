@@ -94,7 +94,7 @@ and the CLI's `--theme` option.
   **Auto**, **Top**, **Right**, **Bottom** or **Left** plus a side-relative percentage (stored
   as `anchor from` / `anchor to`); **Reset bends** drops the waypoints and **Reset route**
   returns the link to fully automatic routing.
-- **Sparks**: a link can carry **Spark count** (1–8) and **Spark speed** (0.25–4×) for
+- **Sparks**: a link can carry **Max sparks** (1–8) and **Spark speed** (0.25–4×) for
   flow playback, saved as `sparks n` / `speed n` inside its style block. Several sparks
   stagger along the path; a bidirectional (`<->`) link ping-pongs until the step ends,
   while a one-way link completes once. Speed changes only the spark motion, never the

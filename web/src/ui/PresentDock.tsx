@@ -35,7 +35,6 @@ function FlowNotesAside({ text }: { text: string }) {
 
 /** Advance surface + dock: the whole canvas is the "next" target (F-16). */
 export function PresentLayer({ player }: PresentDockProps) {
-  const index = player.state.progress?.index ?? 1;
   const visible = flowNotesVisible(player.state);
   const shown = useRef<boolean | null>(null);
   const refit = useRef(player.refit);
@@ -72,8 +71,8 @@ export function PresentLayer({ player }: PresentDockProps) {
         type="button"
         class="present-advance"
         data-testid="present-advance"
-                  aria-label={s('Next step')}
-        onClick={() => player.stepTo(index + 1)}
+        aria-label={s('Next step')}
+        onClick={() => player.next()}
       />
       <PresentDock player={player} />
     </>

@@ -4,6 +4,20 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-17 — browser assessment round 3
+
+- Selecting a flow step now shows its inspector directly in the Flow Steps
+  panel, above the cards, instead of leaving the fields below the fold.
+- Spark count is an at-most value: the beat timeline measures connector length,
+  caps concurrent tokens by their spacing and staggers their starts. A
+  bidirectional connector still travels between both elements and back.
+- Steps can set `advance click` to cycle the current beat until the presenter
+  clicks, or `advance end` for the previous auto-advance. The choice is stored
+  in the document and printed only when authored.
+- Delay edits commit once after a short quiet period instead of rewriting the
+  file on every keystroke; autosave stays debounced. Details and evidence:
+  [docs/archive/bugs-browser-assessment-round-3.md](archive/bugs-browser-assessment-round-3.md).
+
 ## 2026-11-17 — application menu grouped by task
 
 - The hamburger menu now keeps the frequent file, flow and history commands on

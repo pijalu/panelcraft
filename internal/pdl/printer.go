@@ -143,12 +143,15 @@ func arrowFor(typ string, bidir bool) string {
 	return s + ">"
 }
 
-// withDelay appends the optional per-step dwell (F-18).
+// withDelay appends the optional per-step dwell and advance trigger.
 func withDelay(line string, s ir.Step) string {
-	if s.DelayMs == nil {
-		return line
+	if s.DelayMs != nil {
+		line += " delay " + jsNum(*s.DelayMs)
 	}
-	return line + " delay " + jsNum(*s.DelayMs)
+	if s.Advance != nil {
+		line += " advance " + *s.Advance
+	}
+	return line
 }
 
 func stepText(s ir.Step, depth int, p *printer) {

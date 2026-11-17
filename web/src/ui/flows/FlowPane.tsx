@@ -7,7 +7,7 @@
 // surfaces as onChangeText(newText) — App forwards to code.machine.textChanged so
 // the sync machine stays the single writer (D-M4-6). The pane takes narrow ports
 // (textOf, canvas) and never invents a diagram link.
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { ILLUSTRATION_IDS, type IllustrationId } from '../../engine/anim/illustrations';
 import { parsePDL } from '../../engine/format/parser';
 import { flowToMermaid } from '../../engine/format/mermaidSequenceExport';
@@ -351,7 +351,7 @@ function SparkFields({ target, patch }: { target: LinkStyleTarget; patch: (p: Li
       <span class="flow-field-label">{s('Shared link animation')}</span>
       <p class="flow-hint">{s('Changes apply to every step using this connector.')}</p>
       <label class="flow-field">
-        <span class="flow-field-label">{s('Spark count')}</span>
+        <span class="flow-field-label">{s('Max sparks')}</span>
         <input
           type="number"
           min={SPARK_COUNT_BOUNDS.min}
@@ -629,6 +629,20 @@ function StepInspector({ step, a, canvas, view, targets, sparkTarget }: {
         onInput={(v) => a.patch({ description: v === '' ? undefined : v })}
         testid="insp-description"
       />
+      <label class="flow-field">
+        <span class="flow-field-label">{s('Advance')}</span>
+        <select
+          data-testid="insp-advance"
+          value={step.advance ?? 'end'}
+          onChange={(e) => {
+            const value = (e.target as HTMLSelectElement).value as 'click' | 'end';
+            a.patch({ advance: value === 'end' ? undefined : value });
+          }}
+        >
+          <option value="end">{s('At end of animation')}</option>
+          <option value="click">{s('At click')}</option>
+        </select>
+      </label>
       <CameraFields step={step} camera={a.camera} {...(view === undefined ? {} : { view })} />
       {step.type === 'msg' ? (
         <>
@@ -717,6 +731,49 @@ export interface StepOps {
 
 const isBlockStep = (t: FlowStep['type']): boolean => t === 'alt' || t === 'par';
 
+/** Delay keystrokes stay local until the value settles, then one file edit. */
+function DelayField({ index, value, onCommit }: {
+  index: number;
+  value?: number;
+  onCommit(ms: number | undefined): void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current !== null) clearTimeout(timer.current);
+  }, []);
+  const commit = (raw: string): void => {
+    onCommit(raw === '' ? undefined : Number(raw));
+    setDraft(null);
+  };
+  const edit = (raw: string): void => {
+    setDraft(raw);
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      commit(raw);
+    }, 120);
+  };
+  return (
+    <input
+      type="number"
+      min={0}
+      step={100}
+      class="flow-step-delay"
+      data-testid={`step-delay-${index}`}
+      aria-label={s('Step {n} delay in milliseconds', { n: index + 1 })}
+      placeholder={s('delay')}
+      value={draft ?? value ?? ''}
+      onInput={(e) => edit((e.target as HTMLInputElement).value)}
+      onBlur={(e) => {
+        if (timer.current !== null) clearTimeout(timer.current);
+        timer.current = null;
+        commit((e.target as HTMLInputElement).value);
+      }}
+    />
+  );
+}
+
 function StepCard(props: { row: FlatStep; index: number; selected: boolean; ops: StepOps; names: Names }) {
   const { row, index, ops, names } = props;
   const parent = row.path.slice(0, -1).join('.');
@@ -802,19 +859,10 @@ function StepCard(props: { row: FlatStep; index: number; selected: boolean; ops:
         <CopyIcon />
       </button>
       {!isBlockStep(row.step.type) && (
-        <input
-          type="number"
-          min={0}
-          step={100}
-          class="flow-step-delay"
-          data-testid={`step-delay-${index}`}
-          aria-label={s('Step {n} delay in milliseconds', { n: index + 1 })}
-          placeholder={s('delay')}
-          value={row.step.delayMs ?? ''}
-          onInput={(e) => {
-            const raw = (e.target as HTMLInputElement).value;
-            ops.delay(row.path, raw === '' ? undefined : Number(raw));
-          }}
+        <DelayField
+          index={index}
+          value={row.step.delayMs}
+          onCommit={(ms) => ops.delay(row.path, ms)}
         />
       )}
       {problems.length > 0 && (
@@ -1245,6 +1293,7 @@ function sparkTargetFor(doc: Doc, step: FlowStep | null): LinkStyleTarget | null
 /** The authored half of the pane: one parsed document, one selection. */
 function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
   const source = usePendingText(text, pane.version);
+  const inspectorRef = useRef<HTMLDivElement>(null);
   const apply = (fn: (d: Doc) => void): void => {
     const next = retext(source.read(), fn);
     if (next !== null) {
@@ -1353,10 +1402,14 @@ function FlowEditor({ pane, text, doc, sel, setSel }: EditorProps) {
               downloadText(flowMarkdown(doc, flow), markdownFileName(flow, pane.activePath), 'text/markdown');
             }}
           />
+          {step !== null && (
+            <div ref={inspectorRef} class="flow-step-inspector" data-testid="step-inspector">
+              <StepInspector step={step} a={actions} canvas={pane.canvas} targets={targets} sparkTarget={sparkTarget} {...(pane.currentView === undefined ? {} : { view: pane.currentView })} />
+            </div>
+          )}
           <StepList steps={flat} sel={selStep} ops={ops} names={names} />
           <HiddenConnections doc={doc} flow={flow} names={names} onShow={(index) => apply((d) => showFlowLink(d, selKey, index))} />
           <ActionBar ready={ready} onAdd={(kind) => addKindStep(apply, selKey, kind, pane.canvas)} />
-          {step !== null && <StepInspector step={step} a={actions} canvas={pane.canvas} targets={targets} sparkTarget={sparkTarget} {...(pane.currentView === undefined ? {} : { view: pane.currentView })} />}
         </>
       )}
     </div>

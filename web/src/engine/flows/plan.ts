@@ -84,6 +84,8 @@ export interface Beat {
   dim: string[];
   /** auto-advance delay (FR-F3; theme config default) */
   delayMs: number;
+  /** click-driven beats cycle instead of auto-advancing */
+  advance?: 'click' | 'end';
   /** alt beats: label of the chosen branch */
   branch?: string;
   /** par beats: lane sub-beat lists, played concurrently under the same index */
@@ -394,6 +396,7 @@ function beatsForStep(s: FlowStep, ctx: ResolveCtx, index: number, next: { i: nu
   const produced = stepBeats(s, ctx, index, next);
   for (const b of produced) {
     if (s.delayMs !== undefined) b.delayMs = s.delayMs;
+    if (s.advance !== undefined) b.advance = s.advance;
     if (s.description !== undefined) b.description = s.description;
     if (s.camera !== undefined) b.camera = cameraOverride(s.camera);
     // an explicit hold means "no camera work" — drop the default target ids
