@@ -118,7 +118,7 @@ test('Top-level layout positions survive a reload without a view session', async
   }
 });
 
-test('F-14: Reset diagram layout reorganises, undo restores, stays one command', async ({ page }) => {
+test('Reset diagram layout reorganises, undo restores and stays one command', async ({ page }) => {
   await page.goto('/');
   await seedDoc(page, DOC);
   const canvas = page.getByTestId('canvas');

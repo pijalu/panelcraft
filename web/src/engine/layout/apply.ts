@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// "Apply layout to file" (M6-WP3, FILE-FORMAT §7.2, ADR 0007) — explicit-commit
+// "Apply layout to file" (canonical layout serialization, ADR 0007) — explicit-commit
 // pure function. Writes computed positions into the single top-level `layout`
 // state; nothing else mutates the doc. Never called automatically.
 import type { Doc } from '../model/types';

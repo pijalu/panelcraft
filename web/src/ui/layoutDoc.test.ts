@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Top-level layout model tests (ADR 0007): effective layout resolution, the
-// document hide/pin mutations, and fade computation (FR-V1).
+// document hide/pin mutations, and fade computation.
 import { describe, expect, it } from 'vitest';
 import { parsePDL } from '../engine/format/parser';
 import { printDoc } from '../engine/format/printer';
@@ -87,7 +87,7 @@ describe('layout mutations via print round-trip', () => {
   });
 });
 
-describe('fadeSets (FR-V1)', () => {
+describe('fadeSets', () => {
   it('no hides → nothing fades', () => {
     const d = docOf(SRC);
     const f = fadeSets(d, effectiveLayout(docOf('pcd 1.0\nsystem api "API"\n')));

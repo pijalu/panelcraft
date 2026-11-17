@@ -934,7 +934,7 @@ func (p *parser) refID() string {
 	return first
 }
 
-// stepDelay consumes an optional trailing `delay <ms>` on a step's line (F-18).
+// stepDelay consumes an optional trailing `delay <ms>` on a step's line.
 func (p *parser) stepDelay(line int, s *ir.Step) {
 	t := p.peek()
 	if t.Type != TokIdent || t.Text != "delay" || t.Line != line {

@@ -27,7 +27,7 @@ export interface RouteInput {
   allowOverlap?: boolean;
   clearance?: number;
   /**
-   * Explicit user waypoints (F-19). Orthogonal routes plan the whole path and
+   * Explicit user waypoints. Orthogonal routes plan the whole path and
    * may skip an authored bend with a structured reason; straight and curved
    * routes pass the authored points through unchanged. The authored array is
    * never modified, printed or reordered by routing.

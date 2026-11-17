@@ -146,7 +146,7 @@ describe('illustration rendering (F-17)', () => {
     // pulses when the spark arrives, well after the source pulse starts.
     expect(rings[0]!.delayMs).toBe(0);
     expect(rings[1]!.delayMs).toBeGreaterThan(0);
-    expect(svg.querySelector('[data-role="spark"]')).not.toBeNull(); // FR-F4 preserved
+    expect(svg.querySelector('[data-role="spark"]')).not.toBeNull(); // dimmed nodes stay dimmed
   });
 
   it('packet-burst: six packets leave the actor', () => {

@@ -662,7 +662,7 @@ nested subgraph ids): warning + skipped, never silent.
 * Tags → mermaid `classDef` (one class per tag), applied via `class` statements.
 * Fill colors of `style` overrides → `style id fill:#…`.
 
-**Dropped (declared, per SPEC FR-M4):** flows, positions/layout, imports
+**Dropped (declared by the spec's import rules):** flows, positions/layout, imports
 (exported file is flattened: imported objects inlined and marked via comment `%%
 imported from …`), properties, notes detach, icons (built-in and document-declared), endpoint perimeter anchors,
 waypoints, overlap overrides, object stacking order, custom shapes, decomposition

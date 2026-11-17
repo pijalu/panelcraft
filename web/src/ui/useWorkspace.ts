@@ -117,7 +117,7 @@ function useGridHandoff(
 }
 
 /**
- * F-14: persist drag/resize geometry into the top-level layout (debounced 250
+ * Persist drag/resize geometry into the top-level layout (debounced 250
  * ms). Only the ids that moved are written; other layout lines, flows, styles
  * and imports are untouched (writePositions replaces just those ids). Never
  * called for open/switch — only for interaction end.

@@ -77,7 +77,7 @@ function linkFades(objFade: Map<string, boolean>, ev: EffectiveLayout, from: str
 }
 
 /**
- * Fade sets (FR-V1): an element fades when it matches a hidden tag or an
+ * Fade sets: an element fades when it matches a hidden tag or an
  * element hide. With no active hides nothing fades. A link fades when BOTH
  * endpoints fade (a relation stays crisp while either side matches).
  */

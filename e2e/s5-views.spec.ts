@@ -59,7 +59,7 @@ async function objectTransforms(page: Page): Promise<Record<string, string>> {
   return out;
 }
 
-test('S5: top-level hide tag fades exactly the untagged objects (FR-V1)', async ({ page }) => {
+test('S5: top-level hide tag fades exactly the untagged objects', async ({ page }) => {
   await page.goto('/');
   const canvas = page.getByTestId('canvas');
   await seedDoc(page, `${DOC}hide tag core\n`);
@@ -73,7 +73,7 @@ test('S5: top-level hide tag fades exactly the untagged objects (FR-V1)', async 
   await expect(page.locator('.cm-content')).toContainText('hide tag core');
 });
 
-test('S5: Reset diagram layout is deterministic across two runs (FR-V3/V4)', async ({ page }) => {
+test('S5: Reset diagram layout is deterministic across two runs', async ({ page }) => {
   await page.goto('/');
   const canvas = page.getByTestId('canvas');
   await seedDoc(page, DOC);

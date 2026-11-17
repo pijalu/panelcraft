@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// writePositions tests (M6-WP3, ADR 0007): explicit commit into the single
+// writePositions tests (ADR 0007): explicit commit into the single
 // top-level layout block. Never automatic; one call = one document change.
 import { describe, expect, it } from 'vitest';
 import type { Doc, Obj } from '../model/types';
