@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 11
+const IRVersion = 12
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -77,10 +77,13 @@ type ObjSize struct {
 	H float64 `json:"h"`
 }
 
-// Drilldown is a C4 decomposition relation (IR v11, FILE-FORMAT §3.2):
-// `drilldown "<path>"` on the parent object only. Named views were removed (ADR 0007).
+// Drilldown is a discriminated C4 decomposition relation (IR v12,
+// FILE-FORMAT §3.2). Kind is `linked` for a workspace path or `embedded` for
+// a logical path plus its recursive Doc; Doc is present only in the latter.
 type Drilldown struct {
+	Kind string `json:"kind"`
 	Path string `json:"path"`
+	Doc  *Doc   `json:"doc,omitempty"`
 }
 
 // SourceBlock is embedded source text (IR v10, FILE-FORMAT §3.3): `language`
@@ -93,24 +96,24 @@ type SourceBlock struct {
 
 // Obj is an object statement (§3).
 type Obj struct {
-	Kind        string      `json:"kind"`
-	ID          string      `json:"id"`
-	Name        *string     `json:"name,omitempty"`
-	Description *string     `json:"description,omitempty"`
-	Technology  *string     `json:"technology,omitempty"`
-	Tags        []string    `json:"tags,omitempty"`
-	Properties  []Property  `json:"properties,omitempty"`
-	Contains    []string    `json:"contains,omitempty"`
-	Attach      string      `json:"attach,omitempty"`
-	Icon        string      `json:"icon,omitempty"`
-	Size        *ObjSize    `json:"size,omitempty"`
-	Z           *float64    `json:"z,omitempty"`
-	Drilldown   *Drilldown  `json:"drilldown,omitempty"`
+	Kind        string       `json:"kind"`
+	ID          string       `json:"id"`
+	Name        *string      `json:"name,omitempty"`
+	Description *string      `json:"description,omitempty"`
+	Technology  *string      `json:"technology,omitempty"`
+	Tags        []string     `json:"tags,omitempty"`
+	Properties  []Property   `json:"properties,omitempty"`
+	Contains    []string     `json:"contains,omitempty"`
+	Attach      string       `json:"attach,omitempty"`
+	Icon        string       `json:"icon,omitempty"`
+	Size        *ObjSize     `json:"size,omitempty"`
+	Z           *float64     `json:"z,omitempty"`
+	Drilldown   *Drilldown   `json:"drilldown,omitempty"`
 	Source      *SourceBlock `json:"source,omitempty"`
-	Style       *StyleBlock `json:"style,omitempty"`
-	Attributes  []RawAttr   `json:"attributes,omitempty"`
-	Comments    []string    `json:"comments,omitempty"`
-	Pos         Pos         `json:"pos"`
+	Style       *StyleBlock  `json:"style,omitempty"`
+	Attributes  []RawAttr    `json:"attributes,omitempty"`
+	Comments    []string     `json:"comments,omitempty"`
+	Pos         Pos          `json:"pos"`
 }
 
 // Link is a link statement (§4); endpoints normalized to from -> to.

@@ -4,6 +4,7 @@
 // it calls a trampoline; this hook owns that trampoline and the focus hand-off.
 import { useCallback, useRef } from 'preact/hooks';
 import type { PropertiesRequest } from './CanvasController';
+import type { DocumentSource } from './useDocumentSource';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useUiLayout } from './useUiLayout';
 import type { useCanvasGrid } from './useCanvasGrid';
@@ -19,6 +20,7 @@ export interface AppCanvasOptions {
   onRename: (id: string) => void;
   onGhostOpen: (path: string) => void;
   onHover: (info: HoverInfo | null) => void;
+  source?: DocumentSource;
 }
 
 /** The canvas plus the inspector wiring that has to exist before it is built. */
@@ -40,6 +42,7 @@ export function useAppCanvas(
     p.grid.grid,
     p.grid.toggle, // UX08-WP05: grid preference + the `g` hand-off
     onPropertiesRequest, // UX08-WP08: double-click/Enter/context menu → Properties
+    p.source,
   );
   const selection = canvas.snap?.selection;
   const inspect = usePropertiesRequest({

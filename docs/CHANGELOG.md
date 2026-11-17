@@ -4,6 +4,24 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## 2026-11-19 — complete decomposition picker and embedded export
+
+- Decomposition targets are a discriminated IR v12 value: a linked workspace
+  path or an embedded child with its own recursive document and stable logical
+  path. TypeScript and Go parser, printer, IR, validation, CLI and corpus parity
+  changed together; `source` stays separate embedded program text.
+- The properties panel picks from known workspace `.pcd` files and embedded
+  children, keeps unresolved legacy values visible, explains disabled cyclic
+  choices, and asks before an embedded child is converted to a linked file.
+- `.pcd` export asks only when a linked child is reachable. “Embed all” uses one
+  pure graph planner to embed every transitive descendant; any missing,
+  unparsable, invalid, cyclic, shared or unreadable child fails the whole export
+  with diagnostics. “Keep linked” preserves the root's authored links.
+- Embedded children appear as derived explorer rows under their owning root.
+  Their canvas, code, properties and flow editors use a root-plus-path document
+  reference and one root-document write; no fake VFS file is created. Details:
+  [docs/archive/bugs-embedded-decomposition.md](archive/bugs-embedded-decomposition.md).
+
 ## 2026-11-18 — named views removed, layout state promoted
 
 - Named `view` blocks and the view bar are gone. One diagram now keeps its layout

@@ -29,6 +29,9 @@ var (
 
 const maxDepth = 32
 
+// Embedded decomposition documents may nest at most eight levels deep.
+const maxEmbedDepth = 8
+
 // UX08-WP11 camera bounds (IR v8): the canvas zoom limits, ms ≤ 300.
 const (
 	cameraZoomMin = 0.1
@@ -43,12 +46,13 @@ var presentationKeys = map[string]bool{"description": true, "camera": true, "dur
 type abort struct{ d Diagnostic }
 
 type parser struct {
-	src      string
-	toks     []Token
-	i        int
-	pending  []string // comments awaiting the next statement
-	diags    []Diagnostic
-	titleSet bool // TS `??=` semantics: `title ""` counts as set
+	src        string
+	toks       []Token
+	i          int
+	pending    []string // comments awaiting the next statement
+	diags      []Diagnostic
+	titleSet   *bool // TS `??=` semantics, scoped to one document
+	embedDepth int
 }
 
 // tokPos converts a token position to an IR Pos.
@@ -148,6 +152,16 @@ func (p *parser) expectClose(t0 Token, what string) {
 // ---- file ------------------------------------------------------------------
 
 func (p *parser) parseFile() *ir.Doc {
+	return p.parseDoc(false, Token{})
+}
+
+// parseDoc parses one document from the current token position. Nested
+// embedded documents share the token stream so positions stay file-relative.
+func (p *parser) parseDoc(nested bool, open Token) *ir.Doc {
+	previous := p.titleSet
+	set := false
+	p.titleSet = &set
+	defer func() { p.titleSet = previous }()
 	p.skipComments()
 	first := p.peek()
 	if first.Type != TokIdent || first.Text != "pcd" {
@@ -164,15 +178,22 @@ func (p *parser) parseFile() *ir.Doc {
 	if lead := p.takeComments(); len(lead) > 0 {
 		doc.Comments = lead
 	}
-	p.statementLoop(doc)
+	p.statementLoop(doc, nested, open)
 	return doc
 }
 
-func (p *parser) statementLoop(doc *ir.Doc) {
+func (p *parser) statementLoop(doc *ir.Doc, nested bool, open Token) {
 	for {
 		p.skipComments()
 		t := p.peek()
+		if nested && t.Type == TokPunct && t.Text == "}" {
+			p.expectClose(open, "embedded document")
+			return
+		}
 		if t.Type == TokEOF {
+			if nested {
+				p.fail(open, ErrUnclosedBlock, "unclosed embedded document")
+			}
 			return
 		}
 		if t.Type != TokIdent {
@@ -193,10 +214,10 @@ func (p *parser) statement(doc *ir.Doc) {
 	case "title":
 		p.next()
 		p.takeDocComments(doc)
-		if !p.titleSet {
+		if !*p.titleSet {
 			v := p.str()
 			doc.Title = &v
-			p.titleSet = true
+			*p.titleSet = true
 		} else {
 			_ = p.str() // first title wins (D-M1: `??=` keeps the first)
 		}
@@ -453,12 +474,28 @@ func (p *parser) once(seen map[string]bool, t Token, key string) {
 // parseDrilldown reads `"<path>"` (IR v11, FILE-FORMAT §3.2). The path is a
 // quoted workspace path. A legacy `view <id>` suffix is rejected (ADR 0007).
 func (p *parser) parseDrilldown() *ir.Drilldown {
-	d := &ir.Drilldown{Path: p.str()}
-	peeked := p.peek()
-	if peeked.Type == TokIdent && peeked.Text == "view" {
-		p.fail(p.next(), ErrLegacyDrilldownView, "a named view on a drilldown is no longer supported; remove the \"view <id>\" suffix")
+	first := p.peek()
+	if first.Type == TokString {
+		d := &ir.Drilldown{Kind: "linked", Path: p.str()}
+		peeked := p.peek()
+		if peeked.Type == TokIdent && peeked.Text == "view" {
+			p.fail(p.next(), ErrLegacyDrilldownView, "a named view on a drilldown is no longer supported; remove the \"view <id>\" suffix")
+		}
+		return d
 	}
-	return d
+	if first.Type != TokIdent || first.Text != "embedded" {
+		p.fail(first, ErrUnexpected, `drilldown expects "path.pcd" or embedded "path.pcd" { pcd 1.0 … }`)
+	}
+	if p.embedDepth >= maxEmbedDepth {
+		p.fail(first, ErrNestingTooDeep, fmt.Sprintf("embedded decomposition nesting exceeds %d levels", maxEmbedDepth))
+	}
+	p.next()
+	path := p.str()
+	open := p.expect(TokPunct, "{")
+	p.embedDepth++
+	doc := p.parseDoc(true, open)
+	p.embedDepth--
+	return &ir.Drilldown{Kind: "embedded", Path: path, Doc: doc}
 }
 
 // parseSource reads `{ language "…" text "…" … }` (IR v10, §3.3): one `text`

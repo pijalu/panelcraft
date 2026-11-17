@@ -1,5 +1,5 @@
 {
-  "irVersion": 11,
+  "irVersion": 12,
   "formatVersion": "1.0",
   "title": "Shop — system context",
   "level": "context",
@@ -20,6 +20,7 @@
       "description": "Storefront",
       "technology": "React",
       "drilldown": {
+        "kind": "linked",
         "path": "containers/shop.pcd"
       },
       "pos": {

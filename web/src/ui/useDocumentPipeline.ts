@@ -17,6 +17,7 @@ import { useCodeSync } from './useCodeSync';
 import { useProjectIcons, type ProjectIconsHandle } from './useProjectIcons';
 import { useEffect, useMemo, useRef } from 'preact/hooks';
 import type { Doc } from '../engine/model/types';
+import type { DocumentSource } from './useDocumentSource';
 import { iconAssetsOf } from '../engine/render/iconAssets';
 
 export interface DocumentPipeline {
@@ -31,6 +32,7 @@ export function useDocumentPipeline(p: {
   ui: ReturnType<typeof useUiLayout>;
   grid: ReturnType<typeof useCanvasGrid>;
   activePath: string | null;
+  source: DocumentSource;
   onRename: (id: string) => void;
   onGhostOpen: (path: string) => void;
   onHover: (info: HoverInfo | null) => void;
@@ -42,6 +44,7 @@ export function useDocumentPipeline(p: {
     ui: p.ui,
     commitDocRef,
     grid: p.grid,
+    source: p.source,
     onRename: p.onRename,
     onGhostOpen: p.onGhostOpen,
     onHover: p.onHover,
@@ -53,6 +56,7 @@ export function useDocumentPipeline(p: {
     version: ws.version,
     ctrlRef: canvas.ctrlRef,
     snap: canvas.snap,
+    source: p.source,
   });
   commitDocRef.current = code.commitDoc;
   const icons = useProjectIcons({

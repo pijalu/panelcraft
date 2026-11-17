@@ -19,6 +19,18 @@ const indent = "  "
 
 func pad(depth int) string { return strings.Repeat(indent, depth) }
 
+// indentText indents a recursively printed child document without flattening
+// its blank lines.
+func indentText(text string, depth int) string {
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		if line != "" {
+			lines[i] = pad(depth) + line
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // Quote renders a PDL string literal (escapes `\` and `"` only, §1).
 func Quote(s string) string {
 	s = strings.ReplaceAll(s, "\\", "\\\\")
@@ -277,7 +289,16 @@ func objectAttrLines(o ir.Obj, p *printer) {
 // `drilldown` first, then the nested `source` block. No named view (ADR 0007).
 func hierarchyLines(o ir.Obj, p *printer) {
 	if o.Drilldown != nil {
-		p.add(indent + "drilldown " + Quote(o.Drilldown.Path))
+		if o.Drilldown.Kind == "linked" {
+			p.add(indent + "drilldown " + Quote(o.Drilldown.Path))
+		} else {
+			p.add(indent + "drilldown embedded " + Quote(o.Drilldown.Path) + " {")
+			child := strings.TrimSuffix(PrintDoc(o.Drilldown.Doc), "\n")
+			for _, line := range strings.Split(indentText(child, 2), "\n") {
+				p.add(line)
+			}
+			p.add(indent + "}")
+		}
 	}
 	if o.Source == nil {
 		return

@@ -3,7 +3,7 @@
 // Normative shape: docs/FILE-FORMAT.md §7 + docs/milestones/M1.md decisions.
 // Versioning rule: `irVersion` (int) bumps on any schema change; forward-only.
 
-export const IR_VERSION = 11;
+export const IR_VERSION = 12;
 export const FORMAT_VERSION = '1.0';
 
 /** 1-based source position attached to every statement (FILE-FORMAT §10). */
@@ -104,14 +104,30 @@ export interface Size {
 }
 
 /**
- * C4 decomposition relation (IR v11, `drilldown "<path>"`): the object
- * owns a subordinate diagram in the same workspace. Authored on the parent only —
- * the child never declares a backlink — so an edge can never have two sources of
- * truth (docs/FILE-FORMAT.md §3.2).
+ * C4 decomposition relation (IR v12, docs/FILE-FORMAT.md §3.2). Authored on
+ * the parent only — the child never declares a backlink — so an edge has one
+ * source of truth. The discriminant makes a linked relation and an embedded
+ * child mutually exclusive values; an embedded child always carries its own
+ * recursive document, never an optional `doc` that might be missing.
  */
-export interface Drilldown {
+export type Drilldown = LinkedDrilldown | EmbeddedDrilldown;
+
+/** `drilldown "path.pcd"`: the child stays a separate workspace file. */
+export interface LinkedDrilldown {
+  kind: 'linked';
   /** Workspace-relative POSIX path exactly as authored. */
   path: string;
+}
+
+/**
+ * `drilldown embedded "logical/path.pcd" { pcd 1.0 … }`: the child's full
+ * document travels inside the parent. `path` is the stable logical workspace
+ * path used for identity, nested resolution and export diagnostics.
+ */
+export interface EmbeddedDrilldown {
+  kind: 'embedded';
+  path: string;
+  doc: Doc;
 }
 
 /**

@@ -161,44 +161,56 @@ and the CLI's `--theme` option.
 - **Dependencies panel**: select an object to see incoming/outgoing links and
   focus it (everything else fades).
 
-### C4 drill-down and embedded source
+### C4 drill-down, embedded children and embedded source
 
 A C4 element can own the diagram that explains it — a system opens its containers,
-a container opens its components. Author the relation in the code view (or in the
-properties panel's **Decomposition** section):
+a container opens its components. In the **Decomposition** section of Properties,
+choose a known workspace `.pcd` file from the picker, or select an already embedded
+child. An unresolved legacy value stays visible and explained; **Clear
+decomposition** remains a separate action.
 
 ```
 system shop "Webshop" {
-  drilldown "../containers/shop.pcd" view containers
-  source {
-    language "go"
-    text "func Charge(total Money) error {"
-    text "  return h.psp.Authorize(total)"
-    text "}"
+  drilldown embedded "containers/shop.pcd" {
+    pcd 1.0
+    title "Containers"
+    level container
+    container api "API" {
+      drilldown "components/api.pcd"
+    }
   }
 }
 ```
 
-- The path is workspace-relative (resolved from the file that declares it). A
-  decomposition names the file only; named views were removed, so there is no
-  `view` suffix. Layout state lives in top-level `layout`/`position`/`pin`/`hide`
-  statements in the child file.
-- **Opening it**: select the element and press **Open … diagram** in Properties.
-  The child opens with breadcrumbs (`Back to shop.pcd › Webshop`), a dashed parent
-  boundary naming the element and file, and a way back that keeps the trail. A
-  broken, missing, cyclic or duplicated relation never navigates: the bar says why.
-- Permitted transitions are the C4 zoom levels (`system`/`system_ext` → `level
-  container`, `container` → `level component` or `level deployment`). A child with no
-  `level` line is fine; `person`, `datastore`, `queue`, `note` and `group` cannot
-  decompose.
+- A **linked** target (`drilldown "../containers/shop.pcd"`) is a workspace-relative
+  POSIX path resolved from the declaring file. An **embedded** target carries the
+  child's whole document and keeps that logical path as its identity. The IR v12
+  value is discriminated, so these are never ambiguous optional fields.
+- **Opening a child**: select the element and press **Open … diagram**. A linked
+  child opens as its own tab with breadcrumbs and a dashed parent boundary. An
+  embedded child opens in place — its editor is the same canvas/code/properties/flow
+  editor, but the identity is the root file plus the nested path, not a fake file.
+  Embedded children also appear as expandable, italic rows under their owning root
+  in the workspace tree. Their edits save once into the root and undo in one step.
+- Changing an embedded child to a linked file or deleting it asks for confirmation;
+  one undo restores it. Permitted transitions are the C4 zoom levels
+  (`system`/`system_ext` → `level container`, `container` → `level component` or
+  `level deployment`). A child with no `level` line is fine; `person`, `datastore`,
+  `queue`, `note` and `group` cannot decompose.
+- **Exporting**: **File → Export current .pcd** asks **Keep linked decomposition**
+  versus **Embed all decomposition** only when a linked child is reachable.
+  Keeping linked paths requires the child files. Embedding all includes every
+  transitively reachable child; a missing, unparsable, invalid, cyclic or unreadable
+  descendant fails the whole export with diagnostics instead of silently producing
+  a partial "complete" file. Nothing is downloaded until you choose.
 - **Embedded source** stays local text: **View source** / **Add source** opens a
   viewer that shows it (never executes or fetches it) and lets you edit it as one
-  undoable change. Limits: 64 KiB or 4096 lines per element, 256 KiB per file.
+  undoable change. It is separate from an embedded child diagram. Limits: 64 KiB
+  or 4096 lines per element, 256 KiB per file.
 - Imports (read-only ghosts *inside* a diagram), flow `goto` (jump between flows)
   and drill-down (open a subordinate diagram) are three different things; only the
-  drill-down draws no edge.
-- Renaming or moving a child diagram rewrites the referring `drilldown` path for you.
-  Deleting it keeps the line and reports it, so you can re-point it in Properties.
+  drill-down draws no edge. Renaming or moving a linked child rewrites referring
+  paths; deleting it keeps the line and reports it so you can re-point it.
 
 ### Search
 - `Ctrl/Cmd+P` — fuzzy search over files and objects; Enter jumps (opens the

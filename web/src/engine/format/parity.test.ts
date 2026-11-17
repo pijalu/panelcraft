@@ -535,6 +535,26 @@ component svc "Svc" {
 `,
   },
   {
+    // IR v12: linked and embedded decomposition targets are distinct values.
+    name: 'decomposition-embedded',
+    src: `pcd 1.0
+system shop "Webshop" {
+  drilldown embedded "containers/shop.pcd" {
+    pcd 1.0
+    title "Containers"
+    level container
+    container api "API" {
+      drilldown "components/api.pcd"
+      source {
+        language "go"
+        text "func Run() {}"
+      }
+    }
+  }
+}
+`,
+  },
+  {
     // A source block without a text line is E116 (nothing to show or print).
     name: 'source-empty',
     src: `pcd 1.0

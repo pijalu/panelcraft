@@ -12,7 +12,7 @@ import { s } from './strings';
 /** What the menu needs to know about the row it was opened from. */
 export interface RowMenuTarget {
   path: string;
-  kind: 'file' | 'folder';
+  kind: 'file' | 'folder' | 'document';
 }
 
 /** A row menu request: the target plus the viewport point to open at. */

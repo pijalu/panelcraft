@@ -28,6 +28,10 @@ const (
 	SourceMaxDocBytes    = 262144
 	// maxChain bounds how far a decomposition chain is followed.
 	maxChain = 32
+	// Embedded decomposition limits (P218): depth, child count and root bytes.
+	EmbedMaxDepth = 8
+	EmbedMaxNodes = 64
+	EmbedMaxBytes = 262144
 )
 
 // ReadSource is an ImportSource that can also return file text, which the
@@ -132,31 +136,119 @@ func contains(xs []string, want string) bool {
 }
 
 // hierarchyCtx carries what the decomposition rules need.
+type embedState struct {
+	owners map[string]string
+	nodes  int
+	bytes  int
+}
+
 type hierarchyCtx struct {
-	doc  *ir.Doc
-	file string
-	src  ReadSource
-	out  []Diagnostic
+	doc   *ir.Doc
+	file  string
+	src   ReadSource
+	out   []Diagnostic
+	state *embedState
 }
 
 // checkHierarchy registers every hierarchy finding for doc (§3.2/§3.3).
 func checkHierarchy(doc *ir.Doc, file string, src ReadSource, out []Diagnostic) []Diagnostic {
-	ctx := &hierarchyCtx{doc: doc, file: file, src: src, out: out}
-	ctx.checkDuplicates()
-	ctx.checkSourceLimits()
-	for _, obj := range decomposers(doc) {
+	ctx := &hierarchyCtx{
+		doc: doc, file: file, src: src, out: out,
+		state: &embedState{owners: map[string]string{}},
+	}
+	ancestors := []string{}
+	if file != "" {
+		ancestors = []string{file}
+	}
+	ctx.checkTree(1, ancestors)
+	return ctx.out
+}
+
+// checkTree validates one document and recurses into embedded children with
+// their logical workspace path. Embedded documents never become VFS files.
+func (c *hierarchyCtx) checkTree(depth int, ancestors []string) {
+	c.checkDuplicates()
+	c.checkSourceLimits()
+	for _, obj := range decomposers(c.doc) {
 		// The kind rule comes first: an object that cannot decompose at all has
 		// nothing to resolve, so it must not also report a missing target.
-		if !ctx.checkKind(obj) {
+		if !c.checkKind(obj) {
 			continue
 		}
-		target, ok := ctx.checkReachable(obj)
+		if obj.Drilldown.Kind == "embedded" {
+			c.checkEmbedded(obj, depth, ancestors)
+			continue
+		}
+		target, ok := c.checkReachable(obj)
 		if !ok {
 			continue
 		}
-		ctx.checkChild(obj, target)
+		if contains(ancestors, target) {
+			c.out = append(c.out, diag("P220", fmt.Sprintf(
+				"decomposition cycle: %s", strings.Join(append(append([]string{}, ancestors...), target), " → ")),
+				obj.Pos.Line, obj.Pos.Col))
+			continue
+		}
+		c.checkChild(obj, target)
 	}
-	return ctx.out
+}
+
+func (c *hierarchyCtx) checkEmbedded(obj *ir.Obj, depth int, ancestors []string) {
+	child := obj.Drilldown.Doc
+	if child == nil {
+		c.out = append(c.out, diag("P218",
+			"embedded decomposition has no document payload", obj.Pos.Line, obj.Pos.Col))
+		return
+	}
+	target, problem := ResolveDrilldown(c.file, obj.Drilldown.Path)
+	if problem != "" {
+		msg := fmt.Sprintf("embedded child path \"%s\" is not a .pcd path", obj.Drilldown.Path)
+		if problem == "escape" {
+			msg = fmt.Sprintf("embedded child path \"%s\" escapes the workspace or is not a relative POSIX path", obj.Drilldown.Path)
+		}
+		c.out = append(c.out, diag("P213", msg, obj.Pos.Line, obj.Pos.Col))
+		return
+	}
+	c.checkEmbeddedChild(obj, child, target)
+	if contains(ancestors, target) {
+		c.out = append(c.out, diag("P220", fmt.Sprintf(
+			"embedded decomposition cycle: %s", strings.Join(append(append([]string{}, ancestors...), target), " → ")),
+			obj.Pos.Line, obj.Pos.Col))
+		return
+	}
+	if previous, seen := c.state.owners[target]; seen && previous != c.file {
+		c.out = append(c.out, diag("P219", fmt.Sprintf(
+			"child \"%s\" is embedded by both \"%s\" and \"%s\"", target, previous, c.file),
+			obj.Pos.Line, obj.Pos.Col))
+		return
+	}
+	c.state.owners[target] = c.file
+	c.state.nodes++
+	c.state.bytes += len(PrintDoc(child))
+	if depth > EmbedMaxDepth || c.state.nodes > EmbedMaxNodes || c.state.bytes > EmbedMaxBytes {
+		c.out = append(c.out, diag("P218", fmt.Sprintf(
+			"embedded decomposition exceeds limits (depth %d/%d, children %d/%d, bytes %d/%d)",
+			depth, EmbedMaxDepth, c.state.nodes, EmbedMaxNodes, c.state.bytes, EmbedMaxBytes),
+			obj.Pos.Line, obj.Pos.Col))
+	}
+	if depth > EmbedMaxDepth {
+		return
+	}
+	childCtx := &hierarchyCtx{
+		doc: child, file: target, src: c.src, out: c.out, state: c.state,
+	}
+	childCtx.checkTree(depth+1, append(append([]string{}, ancestors...), target))
+	c.out = childCtx.out
+}
+
+func (c *hierarchyCtx) checkEmbeddedChild(obj *ir.Obj, child *ir.Doc, target string) {
+	allowed := AllowedChildLevels[obj.Kind]
+	if child.Level != "" && !contains(allowed, child.Level) {
+		c.out = append(c.out, diag("P214", fmt.Sprintf(
+			"\"%s\" declares level %s, but a %s decomposes into %s",
+			target, child.Level, obj.Kind, strings.Join(allowed, " or ")),
+			obj.Pos.Line, obj.Pos.Col))
+	}
 }
 
 // checkDuplicates reports two objects claiming the same child (P211).

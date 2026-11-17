@@ -274,15 +274,16 @@ flat. Grammar and diagnostics: [FILE-FORMAT.md](FILE-FORMAT.md) §3.2, §3.3, §
 
 * **Ownership** — `drilldown "<workspace path>"` on a `system`, `system_ext`
   or `container` declares that this element decomposes into the given `.pcd` file.
-  Named views were removed (IR v11); a `view` suffix is a parse error. The relation
-  is authored on the parent only; the
-  child never declares a backlink, so there is one source of truth per edge.
+  Named views were removed (ADR 0007); a `view` suffix is a parse error. The IR v12
+  relation is discriminated into a linked path or an embedded recursive document.
+  It is authored on the parent only; the child never declares a backlink, so there
+  is one source of truth per edge.
 * **Allowed transitions** follow the C4 zoom levels: system/system_ext →
   `level container`, container → `level component` or `level deployment`. A child
   that declares no `level` is accepted; a mismatching one, a kind that cannot
   decompose (person, datastore, queue, note, group), a duplicated target, a cyclic
   chain, a missing file and an escaping or non-`.pcd` path are reported as
-  diagnostics (P211–P217) instead of being silently repaired.
+  diagnostics (P211–P220, P222) instead of being silently repaired.
 * **Navigation** — a drill-down is opened from a visible, keyboard-reachable affordance on
   the entity (properties panel plus canvas context action). The child opens in its
   own tab with breadcrumbs back through the trail, and a parent-context boundary
@@ -349,7 +350,9 @@ Workspace { schemaVersion, files[], settings }
 File      { path, meta, imports[], objects[], links[], groups[], flows[], layout? }
 Object    { id, kind(person|system|system_ext|container|component|datastore|queue|group|note),
             name, description, technology, tags[], properties{}, style{}, importedFrom?,
-            drilldown?{ path }, source?{ language?, lines[] } }        ← IR v11
+            drilldown?: { kind: 'linked', path }
+                     | { kind: 'embedded', path, doc: Doc },
+            source?{ language?, lines[] } }                            ← IR v12
 Link      { id, from, to, type, label, direction(uni|bi), style{}, waypoints[] }
 Flow      { id, title, description?, steps[] }
 Step      { type(intro|msg|process|alt|par|goto|info|conclusion), description?,

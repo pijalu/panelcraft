@@ -78,7 +78,8 @@ attach id                   ← note only: anchored object id
 icon name                   ← built-in icon id (M5)
 size <w> <h>                ← explicit canvas geometry in document units (IR v2, F-13)
 z <int>                     ← explicit stacking order; absent = auto (IR v6, CX-03)
-drilldown "path.pcd"            ← C4 decomposition, IR v11 (§3.2)
+drilldown "path.pcd"            ← linked C4 decomposition (§3.2)
+drilldown embedded "path.pcd" { … } ← embedded recursive document (§3.2)
 source { … }                ← embedded source text, IR v10 (§3.3)
 ```
 
@@ -178,30 +179,45 @@ icon brand {
   it as-is. Mermaid has no equivalent and declares `icons` dropped (§9).
 * Provenance and licensing of the built-in set: [ICONS.md](ICONS.md).
 
-### 3.2 Decomposition links — C4 drill-down (IR v10)
+### 3.2 Decomposition targets — C4 drill-down (IR v12)
 
-A C4 element may *decompose* into a subordinate diagram that lives in the same
-workspace: a system opens its container diagram, a container opens its component
-diagram. The relation is authorised on the **parent object only** — a child file
-never points back at its parent — so every edge has exactly one author and the two
-ends can never disagree.
+A C4 element may *decompose* into a subordinate diagram that lives either as a
+workspace file or inside the parent document. A system opens its container
+diagram, a container opens its component diagram. The relation is authorised on
+the **parent object only** — a child never points back at its parent — so every
+edge has exactly one author and the two ends can never disagree.
 
 ```
 ObjectAttr += "drilldown" QuotedPath
+            | "drilldown" "embedded" QuotedPath "{" DocStmt* "}"
 ```
+
+The first form is a **linked** target; the second carries the child's complete
+recursive document. The IR value is discriminated (`kind: "linked"` or
+`kind: "embedded"`): an embedded target always has a `doc`, never an optional
+payload that might be missing.
 
 ```
 system shop "Webshop" {
-  description "Storefront SPA"
-  drilldown "containers/shop.pcd"
+  drilldown embedded "containers/shop.pcd" {
+    pcd 1.0
+    title "Containers"
+    level container
+    container api "API" {
+      drilldown "components/api.pcd"
+    }
+  }
 }
 ```
 
-* **Target** — workspace-relative POSIX path to a `.pcd` file, resolved from the
-  declaring file's directory. Absolute paths, backslashes, paths that escape the
-  workspace root and non-`.pcd` suffixes are errors (`P213`).
-* **One diagram per file** — a decomposition names a workspace path only. Named
-  views were removed (ADR 0007); the child opens with its own top-level layout state.
+* **Logical path** — the quoted path is a workspace-relative POSIX `.pcd` path,
+  resolved from the declaring document's logical path. Absolute paths,
+  backslashes, traversal above the workspace root and non-`.pcd` suffixes are
+  errors (`P213`). An embedded child keeps this path as its stable identity even
+  when the parent is exported alone.
+* **Nesting limits** — at most 8 embedded levels, 64 embedded children and
+  256 KiB of nested document text per root (`P218`, shared by parser, validator
+  and exporter). A block without the nested `pcd 1.0` magic line aborts the file.
 * **Allowed transitions** — decomposition follows C4's zoom levels:
 
   | parent kind | child `level` (§2) |
@@ -209,35 +225,38 @@ system shop "Webshop" {
   | `system`, `system_ext` | `container` |
   | `container` | `component`, `deployment` |
 
-  A child that declares **no** `level` line is accepted (the file makes no claim). A
-  child that declares a different one is `P214`. `person`, `datastore`, `queue`,
-  `note` and `group` cannot decompose at all (`P215`) — a group is a boundary and a
-  note is an annotation, neither is a C4 element.
-* **One parent per child** — a target file is claimed by at most one object per
-  document (`P211`); the workspace-wide pass behind the UI additionally reports a
-  child claimed by two *different* files.
-* **Acyclic** — following decomposition links must not return to a file already in
-  the trail (`P216`).
-* **Identity** — the parent object keeps its own id; the child diagram's content is
-  *not* merged into the parent, is never duplicated as ghost objects, and the parent
-  is never silently renamed. The child renders a parent-context boundary that names
-  the parent element and its file; imported ghosts (§5) stay visually distinct.
-* **Navigation** — a drill-down is opened from a visible, keyboard-reachable
-  affordance on the entity (properties panel action and canvas context action); the
-  trail shows breadcrumbs back to the root, and returning keeps the camera. A
-  broken, cyclic or duplicate relation keeps the current context and
-  reports the reason instead of opening anything.
-* **Editing** — `drilldown` is a document line like any other: setting, changing or
-  clearing it is one undoable command, so undo/redo never desynchronises the trail
-  (the trail re-resolves from the file after every edit).
-* **Rename / move / delete** — renaming or moving a target in the workspace rewrites
-  the referring `drilldown` path in every affected file in the same step; deleting a
-  target keeps the authored relation and reports `P212`, which the properties panel
-  offers to re-point. No hidden backlink is stored, so there is nothing else to
-  maintain.
-* **Exports** — the relation is not an edge: it draws no link, so SVG/PNG and the
-  CLI renderer are unaffected and an unsaved child never appears in a parent export.
-  Mermaid has no decomposition concept; `drilldown` is declared dropped (§9).
+  A child that declares **no** `level` line is accepted (the file makes no
+  claim). A child that declares a different one is `P214`. `person`, `datastore`,
+  `queue`, `note` and `group` cannot decompose at all (`P215`).
+* **One owner per child** — a logical path is claimed by at most one object per
+  document (`P211`), and by at most one owner across the embedded tree (`P219`).
+* **Acyclic** — following linked or embedded decomposition links must not return
+  to a logical path already in the trail (`P216`, `P220`).
+* **Editing** — an embedded child is not a virtual file. Its identity is the root
+  path plus the nested owner/path chain; the canvas, code, properties and flow
+  editors use the ordinary document pipeline, and one edit commits one canonical
+  root-document write. Changing an embedded child to a linked file (or deleting
+  it) is an explicit action with one-step undo. Setting, changing or clearing a
+  linked target is one undoable command, and the trail re-resolves from the file
+  after every edit.
+* **Embedded text** — `source { … }` (§3.3) is program text owned by one object.
+  It is deliberately separate from an embedded child document; the two never
+  share grammar or identity.
+* **Export** — an all-or-nothing planner embeds every transitively reachable
+  child. Missing (`P212`), unparsable, invalid, cyclic (`P220`), shared (`P219`)
+  or unreadable (`P222`) descendants fail the whole export: there is no partial
+  "complete" file and no silent fallback to linked export. The linked option
+  keeps the root's authored representation and requires the child files.
+
+* **Rename / move / delete** — renaming or moving a target in the workspace
+  rewrites every referring linked `drilldown` path in the same step; deleting a
+  target keeps the authored relation and reports `P212`, which the properties
+  panel offers to re-point. No hidden backlink is stored, so there is nothing
+  else to maintain. An embedded child's logical path travels with the root file.
+* **Other exports** — a decomposition relation is not an edge: it draws no link,
+  so SVG/PNG and the CLI renderer are unaffected and an unsaved child never
+  appears in a parent render. Mermaid has no decomposition concept and declares
+  `drilldown` dropped (§9).
 
 ### 3.3 Embedded source (IR v10)
 
@@ -659,8 +678,12 @@ fallback flowchart.
 | P213 | error | decomposition target path escapes the workspace or is not a `.pcd` path |
 | P214 | error | decomposition target declares a C4 level the parent kind cannot open (§3.2) |
 | P215 | error | this object kind cannot own a subordinate diagram (§3.2) |
-| P216 | error | decomposition cycle (the chain returns to a file already in the trail) |
+| P216 | error | linked decomposition cycle (the chain returns to a file already in the trail) |
 | P217 | error | embedded source over the §3.3 limits (64 KiB / 4096 lines / 256 KiB per doc) |
+| P218 | error | embedded decomposition over the §3.2 limits (depth 8 / 64 children / 256 KiB) |
+| P219 | error | one logical child embedded by two owners |
+| P220 | error | embedded decomposition cycle or link back into an embedded ancestor |
+| P222 | error | a decomposition child could not be read (complete export refuses to continue) |
 
 Exit codes per SPEC FR-X. All findings carry `line:col` of the offending token.
 
@@ -869,5 +892,5 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   lines separately (`source.lines`) so a reader never re-splits on `\n`.
 - E-24 `drilldown`/`source` are object attributes, so they inherit §12: unknown
   attributes still become raw data, and the two new ones are never silently
-  downgraded to it. Diagnostics P211–P217 are semantic (§10) and therefore never
+  downgraded to it. Diagnostics P211–P220 and P222 are semantic (§10) and therefore never
   abort a parse.

@@ -1,0 +1,26 @@
+pcd 1.0
+# SPDX-License-Identifier: GPL-3.0-only
+title "Embedded decomposition"
+level context
+
+system shop "Webshop" {
+  drilldown embedded "containers/shop.pcd" {
+    pcd 1.0
+    title "Containers"
+    level container
+
+    container api "API" {
+      drilldown embedded "components/api.pcd" {
+        pcd 1.0
+        title "Components"
+        level component
+
+        component handler "Handler"
+      }
+      source {
+        language "go"
+        text "func Run() {}"
+      }
+    }
+  }
+}

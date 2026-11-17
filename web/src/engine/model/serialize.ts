@@ -87,7 +87,9 @@ const objectStmt = (o: Obj): JSONRecord =>
     ['drilldown',
       o.drilldown === undefined
         ? undefined
-        : obj(['path', o.drilldown.path])],
+        : o.drilldown.kind === 'linked'
+          ? obj(['kind', 'linked'], ['path', o.drilldown.path])
+          : obj(['kind', 'embedded'], ['path', o.drilldown.path], ['doc', docJson(o.drilldown.doc)])],
     ['source',
       o.source === undefined
         ? undefined
@@ -237,9 +239,9 @@ const styleStmt = (st: StyleStmt): JSONRecord => {
 /** Non-empty array or undefined (empty collections are omitted in IR JSON). */
 const arr = (xs: unknown[]): unknown[] | undefined => (xs.length > 0 ? xs : undefined);
 
-/** Serialize a Doc to canonical IR JSON (deterministic key order, 2-space indent). */
-export function serializeDoc(doc: Doc): string {
-  const json = obj(
+/** Canonical field order for one document, reused by embedded children. */
+function docJson(doc: Doc): JSONRecord {
+  return obj(
     ['irVersion', doc.irVersion ?? IR_VERSION],
     ['formatVersion', doc.formatVersion],
     ['title', doc.title],
@@ -255,5 +257,9 @@ export function serializeDoc(doc: Doc): string {
     layoutState(doc.layout),
     ['styles', arr(doc.styles.map(styleStmt))],
   );
-  return JSON.stringify(json, null, 2);
+}
+
+/** Serialize a Doc to canonical IR JSON (deterministic key order, 2-space indent). */
+export function serializeDoc(doc: Doc): string {
+  return JSON.stringify(docJson(doc), null, 2);
 }

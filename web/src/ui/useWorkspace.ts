@@ -11,6 +11,7 @@ import { parsePDL } from '../engine/format/parser';
 import { printDoc } from '../engine/format/printer';
 import { writePositions } from '../engine/layout/apply';
 import { createDefaultStorage } from '../workspace/store/idb';
+import type { DocumentSource } from './useDocumentSource';
 
 /** Structurally-equal empty DiagramState (controller + manager share shape). */
 const EMPTY_STATE = { objects: [], links: [] };
@@ -124,6 +125,7 @@ function useGridHandoff(
 function useGeometryCommit(
   manager: WorkspaceManager,
   commitDocRef: { current: ((doc: import('../engine/model/types').Doc) => void) | null },
+  source?: DocumentSource,
 ): (positions: Record<string, { x: number; y: number }>) => void {
   const geometryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingGeometry = useRef<Record<string, { x: number; y: number }>>({});
@@ -134,9 +136,9 @@ function useGeometryCommit(
       geometryTimer.current = null;
       const moved = pendingGeometry.current;
       pendingGeometry.current = {};
-      const path = manager.activePath;
+      const path = source?.root ?? manager.activePath;
       if (path === null) return;
-      const { doc } = parsePDL(manager.text(path));
+      const { doc } = parsePDL(source?.text ?? manager.text(path));
       if (doc === null) return;
       const { doc: updated, written } = writePositions(doc, moved);
       if (written.length === 0) return;
@@ -147,6 +149,54 @@ function useGeometryCommit(
       else manager.saveText(path, printDoc(updated));
     }, 250);
   };
+}
+
+interface CanvasLoadArgs {
+  ctrl: CanvasController;
+  path: string | null;
+  manager: WorkspaceManager;
+  source?: DocumentSource;
+  documentKey: string | null;
+  loadingRef: { current: string | null };
+  lastCanvasTextRef: { current: string | null };
+  firstRunRef: { current: boolean };
+}
+
+/** Keep canvas work placed before init from being wiped by the first load. */
+function adoptInitialCanvas(a: CanvasLoadArgs): boolean {
+  if (a.source !== undefined || !a.firstRunRef.current || a.path === null) return false;
+  if (a.lastCanvasTextRef.current !== null) return false;
+  if (a.ctrl.snapshot.objects.length === 0) return false;
+  if (a.manager.canvasState(a.path).objects.length !== 0) return false;
+  a.firstRunRef.current = false;
+  a.manager.saveCanvas(a.path, {
+    objects: a.ctrl.snapshot.objects,
+    links: a.ctrl.snapshot.links,
+  });
+  a.manager.markClean(a.path);
+  return true;
+}
+
+/** Load the active document into the canvas with echo suppression. */
+function loadCanvasDocument(a: CanvasLoadArgs): void {
+  a.firstRunRef.current = false;
+  a.lastCanvasTextRef.current = null; // new document: re-baseline projection dedupe
+  if (a.path === null || a.source?.doc === null) {
+    a.loadingRef.current = '\u0000';
+    a.ctrl.loadState(EMPTY_STATE);
+    a.loadingRef.current = null;
+    return;
+  }
+  const path = a.path!;
+  const curText = stateToPcd({
+    objects: a.ctrl.snapshot.objects,
+    links: a.ctrl.snapshot.links,
+  });
+  if ((a.source?.text ?? a.manager.text(path)) === curText) return;
+  a.loadingRef.current = a.documentKey;
+  a.ctrl.loadState(a.source?.canvasState() ?? a.manager.canvasState(path));
+  a.loadingRef.current = null;
+  if (a.source === undefined) a.manager.markClean(path);
 }
 
 export function useCanvasController(
@@ -164,7 +214,9 @@ export function useCanvasController(
   onGridShortcut: () => void = () => {},
   /** UX08-WP08: a canvas gesture asked the shell to show an inspector. */
   onPropertiesRequest: (request: import('./CanvasController').PropertiesRequest) => void = () => {},
+  source?: DocumentSource,
 ): CanvasHandle {
+  const docSource = source?.ref.segments.length ? source : undefined;
   const svgRef = useRef<SVGSVGElement | null>(null);
   const ctrlRef = useRef<CanvasController | null>(null);
   const nameFieldRef = useRef<HTMLInputElement | null>(null);
@@ -177,58 +229,40 @@ export function useCanvasController(
   const resync = (): void => {
     lastLoadedRef.current = null;
   };
+  const documentKey = docSource?.key ?? manager.activePath;
+  const onCtrlStateRef = useRef<((s: Snapshot) => void) | null>(null);
+  const commitGeometryRef = useRef<((positions: Record<string, { x: number; y: number }>) => void) | null>(null);
 
   /* active file → canvas */
   useEffect(() => {
     if (!ready) return;
     const ctrl = ctrlRef.current;
-    if (!ctrl) return;
-    const path = manager.activePath;
-    if (path === lastLoadedRef.current) return;
-    /* adoption: work placed on the canvas before init finished (welcome file
-       just bootstrapped, still empty) must not be wiped by the empty load.
-       Only on the initial load — after clearAll() the empty file is the truth. */
-    if (
-      firstRunRef.current &&
-      path !== null &&
-      lastLoadedRef.current === null &&
-      ctrl.snapshot.objects.length > 0 &&
-      manager.canvasState(path).objects.length === 0
-    ) {
-      firstRunRef.current = false;
-      manager.saveCanvas(path, { objects: ctrl.snapshot.objects, links: ctrl.snapshot.links });
-      manager.markClean(path);
-      lastLoadedRef.current = path;
-      return;
-    }
-    firstRunRef.current = false;
-    lastLoadedRef.current = path;
-    lastCanvasTextRef.current = null; // new file: re-baseline the projection dedupe
-    if (path === null) {
-      loadingRef.current = '\u0000';
-      ctrl.loadState(EMPTY_STATE);
-      loadingRef.current = null;
-      return;
-    }
-    /* File already mirrors the canvas (autosave raced init)? Keep selection,
-       geometry and the dirty flag — a loadState here would only deselect. */
-    const curText = stateToPcd({ objects: ctrl.snapshot.objects, links: ctrl.snapshot.links });
-    if (manager.text(path) === curText) return;
-    loadingRef.current = path;
-    ctrl.loadState(manager.canvasState(path));
-    loadingRef.current = null;
-    manager.markClean(path);
-  }, [ready, version, manager]);
+    if (!ctrl || documentKey === lastLoadedRef.current) return;
+    const args: CanvasLoadArgs = {
+      ctrl,
+      path: manager.activePath,
+      manager,
+      source: docSource,
+      documentKey,
+      loadingRef,
+      lastCanvasTextRef,
+      firstRunRef,
+    };
+    if (adoptInitialCanvas(args)) return;
+    lastLoadedRef.current = documentKey;
+    loadCanvasDocument(args);
+  }, [ready, version, manager, documentKey, docSource]);
 
-  const commitGeometry = useGeometryCommit(manager, commitDocRef);
+  const commitGeometry = useGeometryCommit(manager, commitDocRef, docSource);
+  commitGeometryRef.current = commitGeometry;
 
   const onCtrlState = (s: Snapshot): void => {
     setSnap(s);
     const path = manager.activePath;
-    if (path === null || loadingRef.current === path) return;
+    if (path === null || loadingRef.current === documentKey) return;
     // F-28: never persist a snapshot the canvas emitted before it loaded the
     // active file — a pre-load (empty) state would overwrite the file.
-    if (lastLoadedRef.current !== path) return;
+    if (lastLoadedRef.current !== documentKey) return;
     if (!ctrlRef.current?.isHydrated()) return;
     /* Persist only real canvas-content changes: render/selection/camera
        churn re-emits the same objects/links, and writing the projection
@@ -237,18 +271,20 @@ export function useCanvasController(
     const text = stateToPcd({ objects: s.objects, links: s.links });
     if (text === lastCanvasTextRef.current) return;
     lastCanvasTextRef.current = text;
-    manager.saveCanvas(path, { objects: s.objects, links: s.links });
+    if (docSource === undefined) manager.saveCanvas(path, { objects: s.objects, links: s.links });
+    else docSource.saveCanvas({ objects: s.objects, links: s.links });
   };
+  onCtrlStateRef.current = onCtrlState;
 
   /* controller creation (once) */
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg || ctrlRef.current) return;
     const ctrl = new CanvasController(svg, {
-      onState: onCtrlState,
+      onState: (s) => onCtrlStateRef.current?.(s),
       onRenameRequest: (id) => onInlineRename(id),
       onGhostOpen,
-      onGeometry: commitGeometry,
+      onGeometry: (positions) => commitGeometryRef.current?.(positions),
       onHover,
       // `g` is a preference change: the shell re-applies the stored settings.
       onGridShortcut: () => gridShortcutRef.current(),

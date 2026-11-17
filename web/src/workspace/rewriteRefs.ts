@@ -36,7 +36,7 @@ interface Rewrite {
   changed: boolean;
 }
 
-const DRILL_LINE = /^(\s*drilldown\s+")((?:[^"\\]|\\.)*)(".*)$/;
+const DRILL_LINE = /^(\s*drilldown(?:\s+embedded)?\s+")((?:[^"\\]|\\.)*)(".*)$/;
 const unescape = (raw: string): string => raw.replace(/\\(["\\])/g, '$1');
 
 /** One file's text with its drill-down targets re-pointed at `to`. */

@@ -1,28 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Hierarchy fields of the properties panel (IR v10, drill-down and source rules): the
-// decomposition relation of the selected element and its embedded source.
-//
-// This is the authoring affordance the bug asked for — a visible, keyboard-
-// reachable control that opens the subordinate diagram — plus the two text
-// fields that set or clear the relation. Everything is presentational: the
-// callbacks commit one undoable document command each.
+// Hierarchy fields of the properties panel (IR v12, §3.2/§3.3). The
+// decomposition target is a native known-value picker: keyboard operation,
+// visible unresolved legacy values and disabled choices come for free; an
+// embedded child may only be converted to a linked path with explicit consent.
 import type { ComponentChildren } from 'preact';
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import type { TrailProblem } from './drillTrail';
-import type { DrillTarget } from './useDrilldown';
+import type { DrillTarget, PathCandidate } from './useDrilldown';
 import { s } from './strings';
 
 export interface HierarchyFieldsProps {
-  /** Resolved relation of the selected element, or the reason it cannot open. */
   target: DrillTarget | null;
-  /** Author a relation (one undoable step); `null` clears it. */
-  onSet: (path: string | null) => void;
-  onOpen: () => void;
-  /** True when the element already carries a source block. */
+  candidates: PathCandidate[];
+  onSet(path: string | null): void;
+  onOpen(): void;
   hasSource: boolean;
-  /** Language label of the source block, when it has one. */
   language?: string;
-  onOpenSource: () => void;
+  onOpenSource(): void;
 }
 
 const isProblem = (target: DrillTarget): target is TrailProblem => 'code' in target;
@@ -41,40 +35,101 @@ function RelationStatus(props: { target: DrillTarget | null; onOpen: () => void 
   );
 }
 
-/** Path input; the relation is set from here, one commit per click. */
-function RelationEditor(props: { target: DrillTarget | null; onSet: HierarchyFieldsProps['onSet'] }) {
+function ConvertWarning(props: { onConfirm(): void; onCancel(): void }) {
+  return (
+    <div class="prop-row" role="alert" data-testid="prop-drill-convert">
+      <span class="muted">{s('Replace the embedded child with a linked file? One undo restores it.')}</span>
+      <button type="button" class="prop-action" data-testid="prop-drill-convert-confirm" onClick={props.onConfirm}>
+        {s('Convert to linked')}
+      </button>
+      <button type="button" class="prop-action" data-testid="prop-drill-convert-cancel" onClick={props.onCancel}>
+        {s('Cancel')}
+      </button>
+    </div>
+  );
+}
+
+interface RelationEditorProps {
+  target: DrillTarget | null;
+  candidates: PathCandidate[];
+  onSet: HierarchyFieldsProps['onSet'];
+}
+
+/** One known-value control plus a separate clear action. */
+function RelationEditor(props: RelationEditorProps) {
   const current = props.target !== null && !isProblem(props.target) ? props.target : null;
-  const [path, setPath] = useState(current?.path ?? '');
+  const [draft, setDraft] = useState(current?.raw ?? '');
+  const [confirm, setConfirm] = useState(false);
+  const selectRef = useRef<HTMLSelectElement | null>(null);
+  const selected = props.candidates.find((c) => c.path === draft);
+  const destructive = confirm && current?.kind === 'embedded';
+  const cancel = (): void => {
+    setConfirm(false);
+    selectRef.current?.focus();
+  };
   const apply = (): void => {
-    const trimmedPath = path.trim();
-    props.onSet(trimmedPath === '' ? null : trimmedPath);
+    const path = draft.trim();
+    if (current?.kind === 'embedded' && path !== '' && path !== current.raw) {
+      setConfirm(true);
+      return;
+    }
+    props.onSet(path === '' ? null : path);
+    setConfirm(false);
   };
   return (
     <>
       <label class="field">
-        <span class="field-label">{s('Child diagram path')}</span>
-        <input
+        <span class="field-label">{s('Child diagram')}</span>
+        <select
+          ref={selectRef}
           data-testid="prop-drill-path"
-          value={path}
-          placeholder={s('containers/shop.pcd')}
-          onInput={(e) => setPath((e.target as HTMLInputElement).value)}
-        />
+          value={draft}
+          onChange={(e) => {
+            setDraft((e.target as HTMLSelectElement).value);
+            setConfirm(false);
+          }}
+        >
+          <option value="">{s('— none —')}</option>
+          {props.candidates.map((c) => (
+            <option key={c.path} value={c.path} disabled={c.disabled} title={c.reason}>
+              {c.label}
+            </option>
+          ))}
+        </select>
       </label>
-      <div class="prop-row">
-        <button type="button" class="prop-action" data-testid="prop-drill-set" onClick={apply}>
-          {s('Set decomposition')}
-        </button>
-        {current !== null && (
-          <button
-            type="button"
-            class="prop-action"
-            data-testid="prop-drill-clear"
-            onClick={() => props.onSet(null)}
-          >
-            {s('Clear decomposition')}
+      {!!selected?.reason && (
+        <p class="muted prop-problem" role="status">{selected.reason}</p>
+      )}
+      {destructive && (
+        <ConvertWarning
+          onConfirm={() => {
+            props.onSet(draft);
+            setConfirm(false);
+          }}
+          onCancel={cancel}
+        />
+      )}
+      {!destructive && (
+        <div class="prop-row">
+          <button type="button" class="prop-action" data-testid="prop-drill-set" onClick={apply}>
+            {s('Set decomposition')}
           </button>
-        )}
-      </div>
+          {current !== null && (
+            <button
+              type="button"
+              class="prop-action"
+              data-testid="prop-drill-clear"
+              onClick={() => {
+                props.onSet(null);
+                setDraft('');
+                setConfirm(false);
+              }}
+            >
+              {s('Clear decomposition')}
+            </button>
+          )}
+        </div>
+      )}
     </>
   );
 }
@@ -83,7 +138,7 @@ export function HierarchyFields(props: HierarchyFieldsProps) {
   return (
     <>
       <RelationStatus target={props.target} onOpen={props.onOpen} />
-      <RelationEditor target={props.target} onSet={props.onSet} />
+      <RelationEditor target={props.target} candidates={props.candidates} onSet={props.onSet} />
       <Field label={s('Embedded source')} language={props.language}>
         <button type="button" class="prop-action" data-testid="prop-open-source" onClick={props.onOpenSource}>
           {props.hasSource ? s('View source') : s('Add source')}

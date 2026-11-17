@@ -11,6 +11,10 @@ import type {
 const INDENT = '  ';
 const pad = (depth: number): string => INDENT.repeat(depth);
 
+/** Indent a recursively printed child document without flattening blank lines. */
+const indentText = (text: string, depth: number): string =>
+  text.replace(/^(?!$)/gm, pad(depth));
+
 /** Quote a string literal with PDL escapes (`\` and `"` only, §1). */
 export function quote(s: string): string {
   return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -199,7 +203,14 @@ const objectAttrLines = (o: Obj, p: Printer): void => {
  */
 const hierarchyLines = (o: Obj, p: Printer): void => {
   if (o.drilldown !== undefined) {
-    p.add(`${INDENT}drilldown ${quote(o.drilldown.path)}`);
+    if (o.drilldown.kind === 'linked') {
+      p.add(`${INDENT}drilldown ${quote(o.drilldown.path)}`);
+    } else {
+      p.add(`${INDENT}drilldown embedded ${quote(o.drilldown.path)} {`);
+      const child = printDoc(o.drilldown.doc).replace(/\n$/, '');
+      for (const line of indentText(child, 2).split('\n')) p.add(line);
+      p.add(`${INDENT}}`);
+    }
   }
   if (o.source === undefined) return;
   p.add(`${INDENT}source {`);

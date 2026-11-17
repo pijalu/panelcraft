@@ -37,6 +37,9 @@ import { DrillBar } from './DrillBar';
 import { SourceViewer } from './SourceViewer';
 import { useDrillLayer, type DrillLayer, type DrilldownHandle } from './useDrilldown';
 import { useDocumentPipeline } from './useDocumentPipeline';
+import { useActiveDocument, useEmbeddedTree } from './useDocumentSource';
+import type { DocumentRef } from '../workspace/documents';
+import type { DocumentSource } from './useDocumentSource';
 import { ShellBanners } from './ShellBanners';
 import { DropZone, HostedPanel } from './WorkspacePanels';
 import { useCanvasRevealPort } from './useCanvasReveal';
@@ -115,6 +118,9 @@ function findLink(snap: Snapshot | null) {
 function FilesPane(props: {
   manager: WorkspaceManager;
   version: number;
+  embedded: ReturnType<typeof useEmbeddedTree>;
+  activeRef: DocumentRef | null;
+  onOpenRef: (ref: DocumentRef) => void;
   onCollapse: () => void;
 }) {
   return (
@@ -126,6 +132,10 @@ function FilesPane(props: {
       <FileTree
         manager={props.manager}
         version={props.version}
+        embedded={props.embedded}
+        embeddedRoot={props.activeRef?.root ?? props.manager.activePath}
+        activeRef={props.activeRef}
+        onOpenRef={props.onOpenRef}
         onOpen={(path) => props.manager.openFile(path)}
       />
     </aside>
@@ -137,6 +147,7 @@ function FlowStepsPane(props: {
   manager: WorkspaceManager;
   version: number;
   activePath: string | null;
+  source?: DocumentSource;
   onText(text: string): void;
   onPlay(flowKey: string): void;
   onCollapse: () => void;
@@ -157,8 +168,8 @@ function FlowStepsPane(props: {
         <CollapseButton id="flows" label={s('flow steps')} onCollapse={props.onCollapse} />
       </div>
       <FlowPane
-        textOf={(path) => props.manager.text(path)}
-        activePath={props.activePath}
+        textOf={(path) => path === props.source?.label ? props.source.text : props.manager.text(path)}
+        activePath={props.source?.label ?? props.activePath}
         version={props.version}
         onChangeText={props.onText}
         onPlay={props.onPlay}
@@ -232,6 +243,9 @@ function SidebarSlot(props: {
   ui: ReturnType<typeof useUiLayout>;
   manager: WorkspaceManager;
   version: number;
+  embedded: ReturnType<typeof useEmbeddedTree>;
+  activeRef: DocumentRef | null;
+  onOpenRef: (ref: DocumentRef) => void;
 }) {
   return slot(
     props.ui.layout.panels.sidebar === 'collapsed',
@@ -241,6 +255,9 @@ function SidebarSlot(props: {
     <FilesPane
       manager={props.manager}
       version={props.version}
+      embedded={props.embedded}
+      activeRef={props.activeRef}
+      onOpenRef={props.onOpenRef}
       onCollapse={() => props.ui.togglePanel('sidebar')}
     />,
   );
@@ -252,6 +269,7 @@ function FlowSlot(props: {
   manager: WorkspaceManager;
   version: number;
   activePath: string | null;
+  source?: DocumentSource;
   onText: (text: string) => void;
   onPlay: (flowKey: string) => void;
   illustration: IllustrationId | 'auto';
@@ -386,6 +404,7 @@ function flowsSlot(
     canvas: ReturnType<typeof useCanvasController>;
     code: CodeSyncHandle;
     activePath: string | null;
+    source?: DocumentSource;
     sel: ReturnType<typeof selections>;
     illustration: IllustrationId | 'auto';
     onIllustration: (id: IllustrationId | 'auto') => void;
@@ -402,7 +421,8 @@ function flowsSlot(
       ui={p.ui}
       manager={p.manager}
       version={p.version}
-      activePath={p.activePath}
+      activePath={p.source?.label ?? p.activePath}
+      source={p.source}
       onText={(text) => p.code.machine.textChanged(text)}
       onPlay={(flowKey) => {
         if (p.activePath !== null) p.player.start(p.activePath, flowKey);
@@ -420,6 +440,20 @@ function flowsSlot(
   );
 }
 
+function hierarchyFor(p: Parameters<typeof propsSlot>[0], selected: ReturnType<typeof findObj>) {
+  if (selected === null || p.drill === undefined) return undefined;
+  const stored = p.doc?.objects.find((o) => o.id === selected.id);
+  return {
+    target: p.drill.targetOf(selected.id),
+    candidates: p.drill.candidates(selected.id),
+    onSet: (path: string | null) => p.drill?.setDrilldown(selected.id, path),
+    onOpen: () => p.drill?.drill(selected.id),
+    hasSource: stored?.source !== undefined,
+    language: stored?.source?.language,
+    onOpenSource: () => p.onSourceOpen?.(selected.id),
+  };
+}
+
 /** UX08-WP08: Properties + dependencies slot, wired to canvas edits and focus. */
 function propsSlot(p: {
   canvas: ReturnType<typeof useCanvasController>;
@@ -427,6 +461,7 @@ function propsSlot(p: {
   manager: WorkspaceManager;
   sel: ReturnType<typeof selections>;
   activePath: string | null;
+  source?: DocumentSource;
   linkLabelRef: { current: HTMLInputElement | null };
   projectIcons?: IconDecl[];
   onManageIcons?: () => void;
@@ -435,16 +470,7 @@ function propsSlot(p: {
   onSourceOpen?: (objectId: string) => void;
 }): ComponentChildren {
   const ctrl = p.canvas.ctrlRef.current;
-  const selected = p.sel.obj;
-  const stored = selected == null ? undefined : p.doc?.objects.find((o) => o.id === selected.id);
-  const hierarchy = selected == null || p.drill === undefined ? undefined : {
-    target: p.drill.targetOf(selected.id),
-    onSet: (path: string | null) => p.drill?.setDrilldown(selected.id, path),
-    onOpen: () => p.drill?.drill(selected.id),
-    hasSource: stored?.source !== undefined,
-    language: stored?.source?.language,
-    onOpenSource: () => p.onSourceOpen?.(selected.id),
-  };
+  const hierarchy = hierarchyFor(p, p.sel.obj);
   return (
     <PropsSlot
       ui={p.ui}
@@ -458,8 +484,8 @@ function propsSlot(p: {
       onResetRoute={(id) => ctrl?.resetLinkRoute(id)}
       onResetBends={(id) => ctrl?.resetLinkBends(id)}
       onFit={() => ctrl?.fitSelection()}
-      depsText={p.activePath !== null ? p.manager.text(p.activePath) : null}
-      activePath={p.activePath}
+      depsText={p.source?.text ?? (p.activePath !== null ? p.manager.text(p.activePath) : null)}
+      activePath={p.source?.label ?? p.activePath}
       activeId={p.sel.obj?.id ?? null}
       ctrl={ctrl}
       sections={p.ui.layout.sections}
@@ -525,14 +551,24 @@ function bodyPanels(
   p: Parameters<typeof AppBody>[0],
   ctrl: CanvasController | null,
 ): Record<PanelId, ComponentChildren> {
-  const { ws, canvas, code, ui, player, activePath } = p;
+  const { ws, canvas, code, ui, player, activePath, source, embedded } = p;
   return {
-    sidebar: <SidebarSlot ui={ui} manager={ws.manager} version={ws.version} />,
+    sidebar: (
+      <SidebarSlot
+        ui={ui}
+        manager={ws.manager}
+        version={ws.version}
+        embedded={embedded}
+        activeRef={source.ref}
+        onOpenRef={p.onOpenRef}
+      />
+    ),
     flows: flowsSlot({
       ui,
       canvas,
       code,
       activePath,
+      source,
       sel: p.sel,
       illustration: p.illustration,
       onIllustration: p.onIllustration,
@@ -560,6 +596,7 @@ function bodyPanels(
       manager: ws.manager,
       sel: p.sel,
       activePath,
+      source,
       linkLabelRef: p.linkLabelRef,
       projectIcons: p.projectIcons,
       onManageIcons: p.onManageIcons,
@@ -578,6 +615,9 @@ function AppBody(p: {
   ui: ReturnType<typeof useUiLayout>;
   player: FlowPlayerApi;
   activePath: string | null;
+  source: DocumentSource;
+  embedded: ReturnType<typeof useEmbeddedTree>;
+  onOpenRef: (ref: DocumentRef) => void;
   onPresent: () => void;
   sel: ReturnType<typeof selections>;
   diverged: ReturnType<typeof useDivergedClose>;
@@ -696,36 +736,71 @@ function CenterColumn(props: {
   );
 }
 
+function useDialogsAndTheme(manager: WorkspaceManager, ready: boolean, version: number) {
+  const dialogs = useShellDialogs();
+  const theme = useAppTheme(manager, ready, version);
+  return { dialogs, theme };
+}
+
+function useShellLayout(
+  manager: WorkspaceManager,
+  ready: boolean,
+  version: number,
+) {
+  return { grid: useCanvasGrid(manager, ready, version), ui: useUiLayout(manager, ready, version) };
+}
+
+function useFlowPresentation(
+  manager: WorkspaceManager,
+  canvas: ReturnType<typeof useCanvasController>,
+  activePath: string | null,
+  illustration: IllustrationId | 'auto',
+  ready: boolean,
+) {
+  const player = useFlowStage({ manager, canvas, activePath, illustration });
+  const pres = useStagePresentation({
+    player, activePath, ready, textOf: (path) => manager.text(path),
+  });
+  return { player, pres };
+}
+
+function useHistoryAndReveal(
+  canvas: ReturnType<typeof useCanvasController>,
+  snapshot: CodeSyncHandle['snapshot'],
+  setFlash: (message: string | null) => void,
+) {
+  return {
+    history: useHistory(canvas.ctrlRef, snapshot, canvas.ctrlRef.current !== null, setFlash),
+    revealRef: useCanvasRevealPort(canvas.snap),
+  };
+}
+
 export function App() {
   const ws = useWorkspace();
   const activePath = ws.ready ? ws.manager.activePath : null;
   const shell = useShellUi();
-  const { renaming, setRenaming, hover, setHover, illustration, setIllustration } = shell;
-  const { flowSelection, setFlowSelection, historyOpen, setHistoryOpen } = shell;
-  const grid = useCanvasGrid(ws.manager, ws.ready, ws.version);
-  const ui = useUiLayout(ws.manager, ws.ready, ws.version);
-  // controller → code-sync → project icons: one pipeline, one file writer
+  const { renaming, setRenaming, hover, setHover, illustration, setIllustration,
+    flowSelection, setFlowSelection, historyOpen, setHistoryOpen } = shell;
+  const { grid, ui } = useShellLayout(ws.manager, ws.ready, ws.version);
+  const { manager } = ws;
+  const { source, embedded, setRef: setDocRef } = useActiveDocument(manager, activePath, ws.version);
   const { canvas, inspect, code, icons } = useDocumentPipeline({
-    ws, ui, grid, activePath,
+    ws, ui, grid, activePath, source,
     onRename: setRenaming, // inline rename request from the canvas
     onGhostOpen: (path) => ws.manager.openFile(path), // F-20
     onHover: setHover, // hover card content
   });
-  const { manager } = ws;
   const layer = useDrillLayer({
     activePath, manager, version: ws.version, revision: code.snapshot,
     ctrlRef: canvas.ctrlRef, commitDoc: code.commitDoc,
     openFile: (path) => manager.openFile(path),
+    source, setRef: setDocRef,
   });
-  const sourceObj = layer.doc?.objects.find((o) => o.id === layer.sourceId) ?? null;
-  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = useShellDialogs();
-  const player = useFlowStage({ manager, canvas, activePath, illustration });
-  const appTheme = useAppTheme(manager, ws.ready, ws.version);
-  const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null, setFlash);
-  const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
+  const { dialogs, theme: appTheme } = useDialogsAndTheme(manager, ws.ready, ws.version);
+  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = dialogs;
+  const { history, revealRef } = useHistoryAndReveal(canvas, code.snapshot, setFlash);
   const { selection: commandSelection, resetRoutes: onResetRoutes, resetDiagramLayout: onResetDiagramLayout } = useDiagramCommands(canvas, manager);
-  const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
-  const pres = useStagePresentation({ player, activePath, ready: ws.ready, textOf: (path) => manager.text(path) });
+  const { player, pres } = useFlowPresentation(manager, canvas, activePath, illustration, ws.ready);
   const { diverged, pwa } = useShellLifecycle({
     manager: ws.manager,
     activePath,
@@ -766,7 +841,9 @@ export function App() {
         ui={ui}
         player={player}
         activePath={activePath}
-        onPresent={pres.start}
+        source={source}
+        embedded={embedded}
+        onOpenRef={setDocRef} onPresent={pres.start}
         sel={selections(canvas.snap)}
         diverged={diverged}
         illustration={illustration}
@@ -784,15 +861,16 @@ export function App() {
         onResetDiagramLayout={onResetDiagramLayout}
         selection={commandSelection}
       />
-      <SourceLayer layer={layer} obj={sourceObj} />
+      <SourceLayer layer={layer} obj={layer.doc?.objects.find((o) => o.id === layer.sourceId) ?? null} />
       <AppOverlays
         hover={hover}
         presenting={pres.presenting}
         player={player}
         launcher={pres.launcher}
-        renameTarget={renameTarget}
+        renameTarget={renameBox(canvas.snap, canvas.svgRef.current, renaming)}
         onRenameCommit={(name) => {
-          if (renameTarget !== null) canvas.ctrlRef.current?.updateObject(renameTarget.id, { name });
+          const target = renameBox(canvas.snap, canvas.svgRef.current, renaming);
+          if (target !== null) canvas.ctrlRef.current?.updateObject(target.id, { name });
           setRenaming(null);
         }}
         onRenameCancel={() => setRenaming(null)}

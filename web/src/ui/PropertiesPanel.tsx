@@ -16,7 +16,7 @@ import { VisualPicker } from './VisualPicker';
 import { CloseIcon, DisclosureClosedIcon, DisclosureOpenIcon } from './icons';
 import { IconField } from './IconPicker';
 import { HierarchyFields } from './HierarchyFields';
-import type { DrillTarget } from './useDrilldown';
+import type { DrillTarget, PathCandidate } from './useDrilldown';
 import type { IconDecl } from '../engine/model/types';
 import { anchorToChoice, choiceToAnchor, ANCHOR_SIDES, type AnchorSide } from '../engine/render/anchorControls';
 import { s } from './strings';
@@ -31,6 +31,7 @@ type AnchorChange = CanvasController['setLinkAnchor'];
  */
 export interface HierarchyProps {
   target: DrillTarget | null;
+  candidates: PathCandidate[];
   onSet: (path: string | null, view?: string) => void;
   onOpen: () => void;
   hasSource: boolean;
@@ -303,6 +304,7 @@ function ObjectFields(props: {
         <Section id="hierarchy" title={s("Decomposition")} open={open('hierarchy')} onToggle={onToggleSection}>
           <HierarchyFields
             target={hierarchy.target}
+            candidates={hierarchy.candidates}
             onSet={hierarchy.onSet}
             onOpen={hierarchy.onOpen}
             hasSource={hierarchy.hasSource}

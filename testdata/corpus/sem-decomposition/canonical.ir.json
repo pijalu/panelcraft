@@ -1,5 +1,5 @@
 {
-  "irVersion": 11,
+  "irVersion": 12,
   "formatVersion": "1.0",
   "title": "Decomposition diagnostics",
   "level": "context",
@@ -9,6 +9,7 @@
       "id": "shop",
       "name": "Webshop",
       "drilldown": {
+        "kind": "linked",
         "path": "containers/shop.pcd"
       },
       "pos": {
@@ -21,6 +22,7 @@
       "id": "billing",
       "name": "Billing",
       "drilldown": {
+        "kind": "linked",
         "path": "containers/shop.pcd"
       },
       "pos": {
@@ -33,6 +35,7 @@
       "id": "shopper",
       "name": "Shopper",
       "drilldown": {
+        "kind": "linked",
         "path": "people/shopper.pcd"
       },
       "pos": {
@@ -45,6 +48,7 @@
       "id": "api",
       "name": "API",
       "drilldown": {
+        "kind": "linked",
         "path": "notes/readme.md"
       },
       "pos": {

@@ -15,7 +15,9 @@ import {
   buildAppMenu, type AppMenuGrid, type AppMenuInstall, type AppMenuUpdate,
 } from './appMenuEntries';
 import { downloadBlob, downloadText, readFileAsBytes, readFileAsText } from './download';
-import { baseName, stem } from './paths';
+import { stem } from './paths';
+import { usePcdExport } from './usePcdExport';
+import { ExportPcdDialog } from './ExportPcdDialog';
 import { s } from './strings';
 import type { CommandSelection, RouteResetTarget } from './commandPolicy';
 
@@ -49,11 +51,7 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
   const { manager, activePath, svgRef, ready } = props;
   const filesRef = useRef<HTMLInputElement | null>(null);
   const zipRef = useRef<HTMLInputElement | null>(null);
-
-  const exportPcd = (): void => {
-    if (activePath === null) return;
-    downloadText(manager.exportText(activePath, '.pcd'), baseName(activePath));
-  };
+  const pcdExport = usePcdExport(manager, activePath);
   const exportMmd = (): void => {
     if (activePath === null) return;
     downloadText(manager.exportText(activePath, '.mmd'), `${stem(activePath)}.mmd`);
@@ -75,7 +73,7 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
       .catch(props.onFlash);
   };
   const exportCurrent = (kind: 'pcd' | 'mmd' | 'svg' | 'png'): void => {
-    if (kind === 'pcd') exportPcd();
+    if (kind === 'pcd') pcdExport.open();
     else if (kind === 'mmd') exportMmd();
     else if (kind === 'svg') exportSvgHandler();
     else exportPngHandler();
@@ -144,6 +142,15 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
           (e.target as HTMLInputElement).value = '';
         }}
       />
+      {pcdExport.choice !== null && (
+        <ExportPcdDialog
+          diagnostics={pcdExport.diagnostics}
+          changed={pcdExport.changed}
+          onKeep={pcdExport.keepLinked}
+          onEmbed={pcdExport.embedAll}
+          onCancel={pcdExport.cancel}
+        />
+      )}
       <input
         ref={zipRef}
         aria-label={s('Import workspace zip')}

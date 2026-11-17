@@ -27,6 +27,8 @@ const THEMES = new Set<string>(['light', 'dark']);
 const STEP_KWS = new Set<string>(['intro', 'process', 'alt', 'par', 'goto', 'info', 'conclusion']);
 const LAYOUT_STMTS = new Set<string>(['layout', 'position', 'pin', 'hide']);
 const MAX_DEPTH = 32;
+/** Embedded decomposition documents may nest at most eight levels deep. */
+const MAX_EMBED_DEPTH = 8;
 /** UX08-WP11 camera bounds (IR v8): the existing canvas zoom limits, ms ≤ 300. */
 const CAMERA_ZOOM_MIN = 0.1;
 const CAMERA_ZOOM_MAX = 4;
@@ -54,6 +56,7 @@ class Parser {
   readonly diags: Diagnostic[] = [];
   private i = 0;
   private pending: Comments = [];
+  private embedDepth = 0;
 
   constructor(
     private readonly src: string,
@@ -102,6 +105,15 @@ class Parser {
 
   // ---- file -----------------------------------------------------------------
   parseFile(): Doc {
+    return this.parseDoc(false);
+  }
+
+  /**
+   * Parse one document from the current token position. Nested embedded
+   * documents share the outer token stream, so every `pos` stays relative to
+   * the real file and diagnostics point at the line the user can see.
+   */
+  private parseDoc(nested: boolean, open?: Token): Doc {
     this.skipToContent();
     const first = this.peek();
     if (first.type !== 'ident' || first.text !== 'pcd') {
@@ -119,7 +131,7 @@ class Parser {
     // Pre-magic comments are doc-level (D-M1-2): the magic line is canonical first.
     const lead = this.takeComments();
     if (lead.length > 0) doc.comments = lead;
-    this.statementLoop(doc);
+    this.statementLoop(doc, nested, open);
     return doc;
   }
 
@@ -138,12 +150,23 @@ class Parser {
     if (c.length > 0 && doc.comments === undefined) doc.comments = c;
   }
 
-  private statementLoop(doc: Doc): void {
-    for (;;) {
-      this.skipToContent();
-      const t = this.peek();
-      if (t.type === 'eof') return;
-      if (t.type !== 'ident') {
+  /** True when a nested document reached its closing brace (or the file end). */
+  private atDocEnd(t: Token, nested: boolean, open: Token | undefined): boolean {
+    if (!nested) return t.type === 'eof';
+    if (t.type === 'punct' && t.text === '}') {
+      this.expectClose(open ?? t, 'embedded document');
+      return true;
+    }
+    if (t.type === 'eof') this.fail(open ?? t, E.unclosedBlock, 'unclosed embedded document');
+    return false;
+  }
+
+  private statementLoop(doc: Doc, nested = false, open?: Token): void {
+      for (;;) {
+        this.skipToContent();
+        const t = this.peek();
+        if (this.atDocEnd(t, nested, open)) return;
+        if (t.type !== 'ident') {
         this.fail(t, E.unknownTopLevel, `unknown top-level statement '${t.text || t.type}'`);
       }
       if (t.text === 'pcd') this.fail(t, E.unexpected, 'duplicate magic line');
@@ -385,18 +408,36 @@ class Parser {
   }
 
   /**
-   * C4 decomposition (IR v11, FILE-FORMAT §3.2): `drilldown "<path>"`.
-   * The path is a quoted string, not an identifier — it is a workspace path.
-   * A legacy `view <id>` suffix is rejected rather than silently dropped (ADR 0007).
+   * C4 decomposition (IR v12, FILE-FORMAT §3.2): a linked `drilldown "<path>"`
+   * or an embedded `drilldown embedded "<path>" { pcd 1.0 … }`. The legacy
+   * `view <id>` suffix is rejected rather than silently dropped (ADR 0007).
    */
   private parseDrilldown(): Drilldown {
-    const path = this.str();
-    const peeked = this.peek();
-    if (peeked.type === 'ident' && peeked.text === 'view') {
-      this.fail(this.next(), E.legacyDrilldownView,
-        'a named view on a drilldown is no longer supported; remove the "view <id>" suffix');
+    const first = this.peek();
+    if (first.type === 'string') {
+      const path = this.str();
+      const peeked = this.peek();
+      if (peeked.type === 'ident' && peeked.text === 'view') {
+        this.fail(this.next(), E.legacyDrilldownView,
+          'a named view on a drilldown is no longer supported; remove the "view <id>" suffix');
+      }
+      return { kind: 'linked', path };
     }
-    return { path };
+    if (first.type !== 'ident' || first.text !== 'embedded') {
+      this.fail(first, E.unexpected,
+        'drilldown expects "path.pcd" or embedded "path.pcd" { pcd 1.0 … }');
+    }
+    if (this.embedDepth >= MAX_EMBED_DEPTH) {
+      this.fail(first, E.nestingTooDeep,
+        `embedded decomposition nesting exceeds ${MAX_EMBED_DEPTH} levels`);
+    }
+    this.next();
+    const path = this.str();
+    const open = this.expect('punct', '{');
+    this.embedDepth += 1;
+    const doc = this.parseDoc(true, open);
+    this.embedDepth -= 1;
+    return { kind: 'embedded', path, doc };
   }
 
   /**

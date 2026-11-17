@@ -24,6 +24,8 @@ import { FORMAT_VERSION, IR_VERSION, type Doc } from '../engine/model/types';
 import { printDoc } from '../engine/format/printer';
 import { parsePDL } from '../engine/format/parser';
 import { createSyncMachine, type SyncMachine, type SyncSnapshot } from './codeview/sync';
+import type { DocumentSource } from './useDocumentSource';
+import { resolveDocument } from '../workspace/documents';
 
 /** Canonical print of `text`; the text itself if it does not parse. */
 function canon(text: string): string {
@@ -78,11 +80,19 @@ export function useCodeSync(deps: {
   version: number;
   ctrlRef: { current: CanvasController | null };
   snap: Snapshot | null;
+  /** Embedded children read and write through this instead of the root VFS path. */
+  source?: DocumentSource;
 }): CodeSyncHandle {
   const { manager, ready, activePath, version, ctrlRef, snap } = deps;
+  // Root files keep the established path-based sync behaviour; only embedded
+  // refs use the document source adapter.
+  const docSource = deps.source?.ref.segments.length ? deps.source : undefined;
   const lastLoadedRef = useRef<string | null>(null);
   const appliedTextRef = useRef<string | null>(null);
   const lastBridgeTextRef = useRef<string | null>(null);
+  const sourceRef = useRef(docSource);
+  sourceRef.current = docSource;
+  const documentKey = docSource?.key ?? activePath;
 
   const machine = useMemo(
     () =>
@@ -105,8 +115,12 @@ export function useCodeSync(deps: {
           // AFTER loadState, which synchronously drives the M3
           // onCtrlState→saveCanvas bridge writing the canvas projection (it
           // drops flows/views/styles; the buffer text must win, D-M4-6).
-          const path = manager.activePath;
-          if (path !== null) manager.saveText(path, text);
+          const current = sourceRef.current;
+          if (current !== undefined) current.writeText(text);
+          else {
+            const path = manager.activePath;
+            if (path !== null) manager.saveText(path, text);
+          }
         },
       }),
     // ctrlRef is a stable ref; the machine lives for the App lifetime
@@ -116,16 +130,16 @@ export function useCodeSync(deps: {
   const [snapshot, setSnapshot] = useState<SyncSnapshot>(machine.snapshot());
   useEffect(() => machine.subscribe(setSnapshot), [machine]);
 
-  /* active file → machine (reset buffer on open/switch) */
-  useEffect(() => {
-    if (!ready) return;
-    if (activePath === lastLoadedRef.current) return;
-    lastLoadedRef.current = activePath;
-    const text = activePath === null ? '' : manager.text(activePath);
-    appliedTextRef.current = null;
-    lastBridgeTextRef.current = null;
-    machine.loadFile(text);
-  }, [ready, activePath, version, manager, machine]);
+/* active document → machine (reset buffer on file or nested ref switch) */
+useEffect(() => {
+  if (!ready) return;
+  if (documentKey === lastLoadedRef.current) return;
+  lastLoadedRef.current = documentKey;
+  const text = docSource?.text ?? (activePath === null ? '' : manager.text(activePath));
+  appliedTextRef.current = null;
+  lastBridgeTextRef.current = null;
+  machine.loadFile(text);
+}, [ready, documentKey, version, manager, machine, docSource]);
 
   /* canvas → machine bridge (echo-suppressed; deduped by serialized text) */
   useEffect(() => {
@@ -142,7 +156,14 @@ export function useCodeSync(deps: {
     const live = ctrl.snapshot;
     const state = { objects: live.objects, links: live.links };
     const text = stateToPcd(state);
-    const path = manager.activePath;
+    const current = sourceRef.current;
+    const saved = (): string => {
+      const path = current === undefined ? manager.activePath : current.root;
+      if (path === null || !manager.hasFile(path)) return canon('');
+      const text = manager.text(path);
+      if (current === undefined || current.ref.segments.length === 0) return canon(text);
+      return canon(resolveDocument(path, text, current.ref)?.text ?? current.text);
+    };
     // Echo check FIRST: a position-only apply (auto-layout, FR-V3) changes
     // neither the serialized projection nor the buffer — the dedupe below
     // would swallow the emission and the machine would stay pending-apply.
@@ -150,7 +171,7 @@ export function useCodeSync(deps: {
       appliedTextRef.current = null;
       lastBridgeTextRef.current = text;
       machine.applied(); // no-op unless pending-apply (formatNow applies from clean)
-      if (path !== null) machine.markSaved(canon(manager.text(path)));
+      machine.markSaved(saved());
       return;
     }
     if (text === lastBridgeTextRef.current) return; // drags/selection/viewport spam
@@ -160,20 +181,24 @@ export function useCodeSync(deps: {
     // the buffer the user sees (falling back to the file, then an empty doc).
     const base =
       docOf(machine.snapshot().codeText) ??
-      docOf(path === null ? '' : manager.text(path)) ??
+      docOf(current?.text ?? (manager.activePath === null ? '' : manager.text(manager.activePath))) ??
       emptyDoc();
     machine.canvasChanged(applyCanvasState(base, state));
     // the emission's saveCanvas (onCtrlState) already wrote the projection
     // to the file synchronously — record it, or the chip would show a
     // diverged false alarm whenever canvas edits re-canonicalize ids/types.
-    if (path !== null) machine.markSaved(canon(manager.text(path)));
+    machine.markSaved(saved());
   }, [ready, snap, manager, machine]);
 
   const commitDoc = (doc: Doc): void => {
-    const path = manager.activePath;
-    if (path !== null) manager.saveText(path, printDoc(doc));
+    const current = sourceRef.current;
+    if (current !== undefined) current.writeDoc(doc);
+    else {
+      const path = manager.activePath;
+      if (path !== null) manager.saveText(path, printDoc(doc));
+    }
     machine.canvasChanged(doc);
-    if (path !== null) machine.markSaved(printDoc(doc));
+    machine.markSaved(printDoc(doc));
   };
 
   return { machine, snapshot, formatNow: () => machine.formatNow(), commitDoc };

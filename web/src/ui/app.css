@@ -1642,6 +1642,32 @@ marker .pc-arrow[fill='none'] {
   background: var(--pc-list-hover-bg);
 }
 
+.tree-row.active {
+  background: var(--pc-list-selected-bg);
+  color: var(--pc-list-selected-fg);
+}
+
+/* Embedded children are documents inside the root, not files. The dotted
+   rail + italic label keeps that visible without relying on colour alone. */
+.tree-document > .tree-label {
+  border-left: 1px dotted var(--pc-menu-border);
+  padding-left: 4px;
+}
+
+.tree-document > .tree-label > .tree-name {
+  font-style: italic;
+}
+
+.tree-disclosure {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 2px;
+  cursor: pointer;
+}
+
 .tree-name {
   display: flex;
   align-items: flex-start;
