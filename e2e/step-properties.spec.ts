@@ -76,10 +76,10 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/');
     await seedDoc(page);
 
-    // Endpoint context is read-only; the shared style is visibly scoped to the
-    // connector, and its bounds match the format.
-    expect(await page.getByTestId('insp-from').evaluate((el) => el.tagName)).toBe('OUTPUT');
-    expect(await page.getByTestId('insp-to').evaluate((el) => el.tagName)).toBe('OUTPUT');
+    // Endpoints are chosen from the diagram's own shapes (never typed ids), and
+    // the shared style is visibly scoped to the connector with the format bounds.
+    expect(await page.getByTestId('insp-from').evaluate((el) => el.tagName)).toBe('SELECT');
+    expect(await page.getByTestId('insp-to').evaluate((el) => el.tagName)).toBe('SELECT');
     await expect(page.getByTestId('insp-shared-style')).toContainText('every step');
     await expect(page.getByTestId('insp-sparks')).toHaveValue('2');
     await expect(page.getByTestId('insp-speed')).toHaveValue('2');

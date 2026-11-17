@@ -53,7 +53,9 @@ test('F-17: choosing an illustration changes what the beat draws', async ({ page
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('app-shell')).toHaveAttribute('data-presenting', 'false');
 
-  // explicit choice: trail-fade draws the dash and no token
+  // explicit choice: trail-fade draws the dash and no token. The style belongs to
+  // the flow, so it is a property of the chosen flow in the Properties panel.
+  await page.getByTestId('flow-row-main').click();
   await page.getByTestId('flow-illustration').selectOption('trail-fade');
   await page.getByTestId('flow-play-main').click();
   await page.getByTestId('pb-present').click();

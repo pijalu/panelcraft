@@ -61,18 +61,23 @@ test('UX08-WP14: export actions are visible in both themes', async ({ page }) =>
   for (const theme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: theme });
     await loadGolden(page);
+    // Export belongs to the flow, so the flow's properties hold the actions.
     await page.getByTestId('flow-row-order').click();
-    await expect(page.getByTestId('flow-export-doc')).toBeVisible();
-    // The head row must not clip its actions in a narrow panel.
-    const head = page.locator('.flow-detail-head');
-    const overflow = await head.evaluate((el) => el.scrollWidth - el.clientWidth);
-    expect(overflow, 'flow detail head overflows').toBeLessThanOrEqual(0);
-    const doc = await page.getByTestId('flow-export-doc').boundingBox();
-    const panel = await page.getByTestId('flow-pane').boundingBox();
-    expect(doc!.x + doc!.width).toBeLessThanOrEqual(panel!.x + panel!.width);
-    // BUG-06: the label and its three actions share one row at the default width.
-    const headHeight = await head.evaluate((el) => el.getBoundingClientRect().height);
-    expect(headHeight, `steps header wraps (${headHeight}px tall)`).toBeLessThanOrEqual(30);
+    const doc = page.getByTestId('flow-export-doc');
+    const seq = page.getByTestId('flow-export-seq');
+    await expect(doc).toBeVisible();
+    await expect(seq).toBeVisible();
+    // Both actions must stay inside the Properties column, not clipped by it.
+    const panel = await page.getByTestId('flow-properties').boundingBox();
+    for (const action of [doc, seq]) {
+      const box = await action.boundingBox();
+      expect(box!.x).toBeGreaterThanOrEqual(panel!.x);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(panel!.x + panel!.width);
+    }
+    // Their section must not overflow horizontally at the default width.
+    const section = page.getByTestId('section-flow-share');
+    const overflow = await section.evaluate((el) => el.scrollWidth - el.clientWidth);
+    expect(overflow, 'export section overflows').toBeLessThanOrEqual(0);
     await capture(page, `ux08-documentation-actions-${theme}`);
   }
 });

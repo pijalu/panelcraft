@@ -234,32 +234,35 @@ system shop "Webshop" {
    code, bullet/numbered lists and links. The notes are saved as source text in the file.
    Tick **Show during presentation** to show them alongside the running flow; both the
    text and the tick survive reload.
-3. **Add steps from what you selected** — no ids to type. **Add message** needs a selected
-   connector and takes both endpoints from it; **Add process** needs exactly one selected shape;
-   **Add note**, **Add introduction** and **Add conclusion** are always available. An impossible
-   action is disabled and says what to select, and the panel never invents a link.
-4. **Read the cards**: each step is numbered and carries its kind, a readable title, the actor
-   names (never raw ids) and any step description. A step that points at a shape the diagram does
-   not define shows the problem on the card; repair it from the inspector (or by selecting the
-   connector again) and the warning disappears.
-5. **Describe, reorder and hide**: the inspector edits every kind (message label, process target,
-   note text, branch/lane labels, `goto` target) plus a **Description** for the step; reorder by
-   drag, with the ↑/↓ buttons, or with `Alt+↑`/`Alt+↓` on a focused card; duplicate or delete per
-   card. A message's × hides that connection from this flow without changing the canvas. **Hidden
-   connections** lists those links and **Show** appends a card for the original connection again.
-   Every edit is a normal file edit, so undo/redo and the code view stay in step.
-6. **Advanced step** keeps `alt`, `par` and `goto` one disclosure away, with the same nested
-   editing. Selecting a card highlights its participants on the canvas and fades the rest.
-7. **Play** with a card's ▶ (from that step), the flow's ▶, or **Present** beside the edited
+3. **Pick a step to edit it.** Flow Steps lists the flow: each row is numbered and shows the
+   step type, a readable title and the shapes it moves between (never raw ids). Selecting a row
+   moves that step's properties into the **Properties** panel — kind and description, then
+   **Camera**, then **Playback** (delay, advance), then the connector animation the step's link
+   shares with the rest of the flow, then the advanced fields (flip, connector reference, hide
+   connection). The list itself stays a list: play from a row, duplicate it, drag it (or
+   `Alt+↑`/`Alt+↓`) to reorder. Selecting a step clears the canvas selection, and pressing the
+   diagram clears the step — one panel, one subject.
+4. **Add steps**: **Add message**, **Add process**, **Add note** and the advanced entry for
+   `alt`, `par` and `goto`. A message's endpoints are chosen from the diagram's own shapes in the
+   step's Properties (never typed ids), and a message's × hides that connection from this flow
+   without changing the canvas. **Hidden connections** lists those links and **Show** appends a
+   step for the original connection again. A step that points at a shape the file does not
+   define shows the problem on its row *and* in its Properties; repair it and the warning
+   disappears. Every edit is a normal file edit, so undo/redo and the code view stay in step.
+5. **Introduction and Conclusion** are offered for every flow and are only written once you type
+   into them — leave them empty and the flow has neither. Selecting the flow row itself (not a
+   step) shows the flow's own properties: title, purpose, Markdown notes, the presentation
+   toggle and illustration style, and the exports.
+6. **Play** with a row's ▶ (from that step), the flow's ▶, or **Present** beside the edited
    flow: the transport steps through the plan — the active step's elements highlight, the
    previous step's participants fade lightly, and the rest
    dim; the narration line is an ARIA live region
    (screen readers announce every step). `prefers-reduced-motion` plays without
    transition animation. Each step may carry `delay <ms>`; the flow's
    illustration style (token, pulse, glow, burst, split, trail) is chosen per
-   flow in the Flow Steps panel. When a flow ends, a closing card offers replay,
+   flow in the flow's own Properties. When a flow ends, a closing card offers replay,
    `Export SVG` and close.
-8. **Present**: **Present** in the header (or the application menu) opens the
+7. **Present**: **Present** in the header (or the application menu) opens the
    launcher — every flow in the active file with its purpose, step count and
    estimated length. Picking one starts playback and enters the chrome-free
    shell: click or press Space/→ to advance, ← to go back, `P` pauses, `R`
@@ -277,13 +280,13 @@ system shop "Webshop" {
    (the default framing), **Hold** (keep the previous view) or **Use current
    view**, which records the canvas point in the middle of the screen and the
    current zoom (then **Zoom** and **Transition (ms)**, 0–300, refine it).
-9. **Export a sequence**: select a flow, then choose `.seq` beside *Steps*.
+8. **Export a sequence**: select a flow, then choose `.seq` beside *Steps*.
   The download (`.seq.mmd`) is a Mermaid `sequenceDiagram` with participants,
   messages, alternatives, parallel lanes and notes. `goto` navigation, per-step
   delays and notes in a flow with no participants cannot be represented and are
   reported by the converter's `dropped[]` result; sequence import still warns on
   block syntax.
-10. **Export documentation**: `.md` beside *Steps* downloads the selected flow as
+9. **Export documentation**: `.md` beside *Steps* downloads the selected flow as
   a Markdown outline; **All flows (.md)** under the flow list downloads every flow
   in one document. The outline is generated from the parsed file, not from
   playback, so it lists each step in order with its nesting, the readable names

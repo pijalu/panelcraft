@@ -134,6 +134,58 @@ export function newStep(kind: FlowStep['type']): FlowStep {
 
 // --- mutators (in place on caller-owned Flow) --------------------------------
 
+/** The two steps that frame a walkthrough. */
+export type FramingKind = 'intro' | 'conclusion';
+
+/**
+ * Index of the flow's framing step of `kind`, or null.
+ *
+ * The properties panel always offers an introduction and a conclusion, and an
+ * empty one is not part of the document at all — so "absent" is the normal
+ * state of a fresh flow rather than an error. A framing step is only recognised
+ * at the top level: the same kind nested in an alternative is that branch's own
+ * prose, not the flow's frame.
+ */
+export function framingPath(flow: Flow, kind: FramingKind): number[] | null {
+  for (let i = 0; i < flow.steps.length; i += 1) {
+    if (flow.steps[i]?.type === kind) return [i];
+  }
+  return null;
+}
+
+/** Authored framing text, or '' when the flow has none. */
+export function framingText(flow: Flow, kind: FramingKind): string {
+  const path = framingPath(flow, kind);
+  const step = path === null ? null : getAt(flow, path);
+  if (step === null || !('text' in step) || step.text === undefined) return '';
+  return step.text;
+}
+
+/**
+ * Set (or clear) the flow's introduction or conclusion.
+ *
+ * Non-empty text creates the step the first time — an introduction at the front,
+ * a conclusion at the end — and patches it afterwards. Empty text removes the
+ * step, because an empty frame must not print a line or take a row in the step
+ * list.
+ */
+export function setFraming(flow: Flow, kind: FramingKind, text: string): void {
+  const value = text.trim() === '' ? '' : text;
+  const path = framingPath(flow, kind);
+  if (path === null) {
+    if (value === '') return;
+    const step = { type: kind, text: value, pos: { line: 0, col: 0 } } as FlowStep;
+    if (kind === 'intro') flow.steps.unshift(step);
+    else flow.steps.push(step);
+    return;
+  }
+  if (value === '') {
+    removeAt(flow, path);
+    return;
+  }
+  patchStep(flow, path, { text: value } as Partial<FlowStep>);
+}
+
 export function appendStep(flow: Flow, step: FlowStep): void {
   flow.steps.push(step);
 }

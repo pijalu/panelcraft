@@ -20,6 +20,8 @@ export interface AppCanvasOptions {
   onRename: (id: string) => void;
   onGhostOpen: (path: string) => void;
   onHover: (info: HoverInfo | null) => void;
+  /** A press landed on the diagram (the shell ends panel-started edits). */
+  onUserPointer?: () => void;
   source?: DocumentSource;
 }
 
@@ -42,6 +44,7 @@ export function useAppCanvas(
     p.grid.grid,
     p.grid.toggle, // UX08-WP05: grid preference + the `g` hand-off
     onPropertiesRequest, // UX08-WP08: double-click/Enter/context menu → Properties
+    p.onUserPointer,
     p.source,
   );
   const selection = canvas.snap?.selection;

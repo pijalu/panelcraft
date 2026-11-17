@@ -73,11 +73,14 @@ export async function openWorkspacePanels(
   }
 }
 
-/** Flow scenarios need the editor, not the now-independent file browser. */
+/**
+ * Flow scenarios need the step list *and* the panel that holds a step's
+ * properties, and not the now-independent file browser.
+ */
 export async function openFlowSteps(page: Page): Promise<void> {
   if (await page.locator('[data-panel="sidebar"]').count()) {
     await choosePanelMenu(page, 'sidebar', 'close-sidebar');
   }
-  await openWorkspacePanels(page, ['flows']);
+  await openWorkspacePanels(page, ['flows', 'props']);
   await expect(page.getByTestId('flow-pane')).toBeVisible();
 }

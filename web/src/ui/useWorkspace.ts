@@ -117,6 +117,18 @@ function useGridHandoff(
 }
 
 /**
+ * A handler a once-built controller calls: it reads the latest render's closure
+ * at event time, so the controller's creation effect never has to re-run.
+ */
+function useEventCallback<T extends (...args: never[]) => void>(
+  fn: T | undefined,
+): { current: T | undefined } {
+  const ref = useRef<T | undefined>(fn);
+  ref.current = fn;
+  return ref;
+}
+
+/**
  * Persist drag/resize geometry into the top-level layout (debounced 250
  * ms). Only the ids that moved are written; other layout lines, flows, styles
  * and imports are untouched (writePositions replaces just those ids). Never
@@ -214,6 +226,8 @@ export function useCanvasController(
   onGridShortcut: () => void = () => {},
   /** UX08-WP08: a canvas gesture asked the shell to show an inspector. */
   onPropertiesRequest: (request: import('./CanvasController').PropertiesRequest) => void = () => {},
+  /** A press landed on the diagram (the shell ends panel-started edits). */
+  onUserPointer?: () => void,
   source?: DocumentSource,
 ): CanvasHandle {
   const docSource = source?.ref.segments.length ? source : undefined;
@@ -226,6 +240,8 @@ export function useCanvasController(
   const firstRunRef = useRef(true); // adoption only guards the initial load
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const { gridRef, gridShortcutRef } = useGridHandoff(gridSettings, onGridShortcut, ctrlRef);
+  // Event-time read: the controller is built once, the handler is not.
+  const userPointerRef = useEventCallback(onUserPointer);
   const resync = (): void => {
     lastLoadedRef.current = null;
   };
@@ -289,6 +305,7 @@ export function useCanvasController(
       // `g` is a preference change: the shell re-applies the stored settings.
       onGridShortcut: () => gridShortcutRef.current(),
       onPropertiesRequest,
+      onUserPointer: () => userPointerRef.current?.(),
     });
     ctrlRef.current = ctrl;
     if (gridRef.current !== null) ctrl.applyGrid(gridRef.current);

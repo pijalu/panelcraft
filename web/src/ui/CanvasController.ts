@@ -257,6 +257,12 @@ export interface ControllerOptions {
    * drift out of sync.
    */
   onGridShortcut?: () => void;
+  /**
+   * A press landed on the diagram. The shell listens so that touching the
+   * picture ends whatever editing session was started from a panel — a gesture
+   * signal, because the controller cannot know what a press means elsewhere.
+   */
+  onUserPointer?: () => void;
 }
 
 const KIND_LABELS = {
@@ -495,6 +501,7 @@ export class CanvasController {
   private readonly onHover?: (info: import('./hoverInfo').HoverInfo | null) => void;
   private readonly onGhostOpen?: (path: string) => void;
   private readonly onGridShortcut?: () => void;
+  private readonly onUserPointer?: () => void;
   /** F-20: read-only imported objects (never part of `state`). */
   private ghosts: Array<DiagramObject & { path: string }> = [];
   /** F-22: roving focus (keyboard navigation across scene objects). */
@@ -518,6 +525,7 @@ export class CanvasController {
     this.undo.setObserver((cmd) => this.onHistory?.(cmd.label, cmd.coalesceKey));
     this.onGhostOpen = opts.onGhostOpen;
     this.onGridShortcut = opts.onGridShortcut;
+    this.onUserPointer = opts.onUserPointer;
     // UX08-WP10: labels wrap on measured text, so the renderer gets the port.
     this.renderer = new SceneRenderer(svg, { measure: this.measure });
     this.attach();
@@ -1720,6 +1728,7 @@ export class CanvasController {
   // ---- pointer modes ------------------------------------------------------
 
   private onPointerDown(e: PointerEvent): void {
+    this.onUserPointer?.();
     if (this.beginPanOrHalo(e)) return;
     if (e.button !== 0) return;
     const p = this.toCanvas(e);

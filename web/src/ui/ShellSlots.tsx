@@ -7,6 +7,8 @@ import { PanelRail } from './PanelChrome';
 import { Palette } from './Palette';
 import { PropertiesPanel, type HierarchyProps } from './PropertiesPanel';
 import { DepsPanel } from './deps/DepsPanel';
+import { FlowPanel, type FlowPanelProps } from './flows/FlowPanel';
+import { propTarget } from './flows/flowTargets';
 import { PALETTE_ORDER, type CanvasController, type DiagramLink, type DiagramObject } from './CanvasController';
 import type { IconDecl, Kind } from '../engine/model/types';
 import type { UiLayoutHandle } from './useUiLayout';
@@ -87,6 +89,11 @@ export interface PropsSlotProps {
   onManageIcons?: () => void;
   /** IR v10: decomposition + embedded source of the selected element. */
   hierarchy?: HierarchyProps;
+  /**
+   * Step or flow properties. They replace the object/link fields while a flow is
+   * being edited; a canvas selection still wins, so the panel has one owner.
+   */
+  flow?: FlowPanelProps | null;
 }
 
 /** Properties + dependencies column (or its rail). */
@@ -97,24 +104,7 @@ export function PropsSlot(props: PropsSlotProps) {
     'properties',
     () => props.ui.togglePanel('props'),
     <>
-      <PropertiesPanel
-        obj={props.obj}
-        link={props.link}
-        nameFieldRef={props.nameFieldRef}
-        linkLabelRef={props.linkLabelRef}
-        onChangeObject={props.onChangeObject}
-        onChangeLink={props.onChangeLink}
-        onChangeAnchor={props.onChangeAnchor}
-        onResetRoute={props.onResetRoute}
-        onResetBends={props.onResetBends}
-        onFit={props.onFit}
-        onCollapse={() => props.ui.togglePanel('props')}
-        sections={props.sections}
-        onToggleSection={props.onToggleSection}
-        projectIcons={props.projectIcons}
-        onManageIcons={props.onManageIcons}
-        hierarchy={props.hierarchy}
-      />
+      <PropertiesTarget {...props} />
       <DepsPanel
         text={props.depsText}
         filePath={props.activePath}
@@ -123,5 +113,41 @@ export function PropsSlot(props: PropsSlotProps) {
         onPick={(id) => props.ctrl?.reveal(id)}
       />
     </>,
+  );
+}
+
+/**
+ * One owner for the column: the canvas selection wins while it is non-empty,
+ * then a selected flow or step, then the empty state.
+ */
+function PropertiesTarget(props: PropsSlotProps) {
+  const target = propTarget({
+    object: props.obj,
+    link: props.link,
+    doc: props.flow?.doc ?? null,
+    selection: props.flow?.selection ?? null,
+  });
+  if (target.kind === 'flow' && props.flow !== null && props.flow !== undefined) {
+    return <FlowPanel {...props.flow} />;
+  }
+  return (
+    <PropertiesPanel
+      obj={target.kind === 'object' ? target.object : null}
+      link={target.kind === 'link' ? target.link : null}
+      nameFieldRef={props.nameFieldRef}
+      linkLabelRef={props.linkLabelRef}
+      onChangeObject={props.onChangeObject}
+      onChangeLink={props.onChangeLink}
+      onChangeAnchor={props.onChangeAnchor}
+      onResetRoute={props.onResetRoute}
+      onResetBends={props.onResetBends}
+      onFit={props.onFit}
+      onCollapse={() => props.ui.togglePanel('props')}
+      sections={props.sections}
+      onToggleSection={props.onToggleSection}
+      projectIcons={props.projectIcons}
+      onManageIcons={props.onManageIcons}
+      hierarchy={props.hierarchy}
+    />
   );
 }

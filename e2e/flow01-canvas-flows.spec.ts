@@ -45,7 +45,8 @@ async function axe(page: Page): Promise<void> {
 }
 
 async function openFlows(page: Page): Promise<void> {
-  await openWorkspacePanels(page, ['flows']);
+  // The list and the properties panel together: a step's fields live in Properties.
+  await openWorkspacePanels(page, ['flows', 'props']);
   await expect(page.getByTestId('flow-pane')).toBeVisible();
 }
 
@@ -74,9 +75,12 @@ for (const theme of ['light', 'dark'] as const) {
     // New flows snapshot existing links. Hide both cards to exercise the explicit
     // canvas-selection authoring path from an empty message projection.
     await expect(page.getByTestId('step-0')).toBeVisible({ timeout: 15_000 });
+    // Hiding a connection is a property of the chosen step: select it, then hide.
+    await page.getByTestId('step-0').click();
     await page.getByTestId('hide-connection-0').click();
     await expect(page.getByTestId('step-row-0')).toHaveCount(1, { timeout: 15_000 });
     await settle(page);
+    await page.getByTestId('step-0').click();
     await page.getByTestId('hide-connection-0').click();
     await expect(page.getByTestId('step-row-0')).toHaveCount(0, { timeout: 15_000 });
     // A flow edit reloads the canvas, which clears the connector selection.
@@ -89,14 +93,16 @@ for (const theme of ['light', 'dark'] as const) {
     // Cards name the shapes: no id memorisation on the common path.
     await expect(page.getByTestId('step-summary-0')).toContainText('Webshop → ERP');
 
-    // Re-target from the canvas: pick the "to" object, then the connector.
+    // Re-target from the panel: both endpoints and the connector are chosen from
+    // closed lists of what the diagram actually contains.
     await page.getByTestId('step-0').click();
     await settle(page);
-    await page.getByTestId('canvas').locator('g.pc-obj[data-id="erp"]').click();
-    await page.getByTestId('insp-pick-to').click();
+    await page.getByTestId('insp-to').selectOption('erp');
     await expect(page.getByTestId('step-summary-0')).toContainText('Webshop → ERP');
-    await page.getByTestId('canvas').locator('g.pc-link[data-id="L1"] path.pc-route').click({ force: true });
-    await page.getByTestId('insp-pick-link').click();
+    await page.getByTestId('insp-from').selectOption('user');
+    await page.getByTestId('insp-to').selectOption('shop');
+    await page.getByTestId('insp-link').selectOption('L1');
+    // The row names the shapes; the selects carry the ids behind those names.
     await expect(page.getByTestId('step-summary-0')).toContainText('Shopper → Webshop');
 
     // Cards summarise actors; selecting one highlights its participants.
@@ -110,12 +116,12 @@ for (const theme of ['light', 'dark'] as const) {
     await capture(page, `flow01-card-highlight-${theme}`);
     await axe(page);
 
-    // A block step clears the highlight and still edits inline.
+    // A block step clears the highlight and edits in the properties panel.
     await page.getByTestId('advanced-steps').locator('summary').click();
     await page.getByTestId('add-alt').click();
     await expect(page.getByTestId('step-1')).toContainText('alt');
     await page.getByTestId('step-1').click();
-    await expect(page.getByTestId('flow-inspector')).toBeVisible();
+    await expect(page.getByTestId('step-inspector')).toBeVisible();
     await page.getByTestId('insp-alt-label').fill('payment');
     await expect(page.getByTestId('step-1')).toContainText('payment');
     await page.getByTestId('insp-branch-add').click();
@@ -125,7 +131,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.getByTestId('canvas').locator('.pc-faded')).toHaveCount(0);
     await capture(page, `flow01-nested-${theme}`);
 
-    // Reorder with the inspector arrows and confirm the file order changed.
+    // Reorder with the panel's arrows and confirm the file order changed.
     await page.getByTestId('step-1').click();
     await page.getByTestId('step-up').click();
     await expect(page.getByTestId('step-0')).toContainText('alt');
@@ -137,7 +143,8 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.getByTestId('pb-progress')).toBeVisible();
     await page.getByTestId('pb-exit').click();
 
-    // Sequence export still ships the flow.
+    // Sequence export is a property of the flow, so choose the flow first.
+    await page.getByTestId('flow-row-flow1').click();
     const pending = page.waitForEvent('download');
     await page.getByTestId('flow-export-seq').click();
     const seqPath = await (await pending).path();
@@ -149,7 +156,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByTestId('dock-flows-float').click();
     await expect(page.locator('[data-panel="flows"]')).toHaveAttribute('data-dock', 'float');
     await page.getByTestId('step-1').click();
-    await expect(page.getByTestId('flow-inspector')).toBeVisible();
+    await expect(page.getByTestId('step-inspector')).toBeVisible();
     await capture(page, `flow01-floating-${theme}`);
     await axe(page);
     await page.getByTestId('panel-menu-flows').click();

@@ -1038,3 +1038,54 @@ describe('properties request (UX08-WP08)', () => {
     c2.destroy();
   });
 });
+
+/**
+ * The shell needs to know that the user touched the diagram: that gesture ends
+ * whatever panel-started editing session was open (a flow step, for example).
+ * The controller reports the press instead of the shell listening on the SVG,
+ * because the shell cannot tell a canvas press from a press on the shell around
+ * it, and its own listener goes stale when the SVG node is replaced.
+ */
+describe('user press signal', () => {
+  const seed = (): void => {
+    ctrl.loadState({
+      objects: [
+        { id: 'o1', kind: 'system', x: 0, y: 0, w: 160, h: 60, name: 'A' },
+        { id: 'o2', kind: 'system', x: 300, y: 0, w: 160, h: 60, name: 'B' },
+      ],
+      links: [{ id: 'L1', from: 'o1', to: 'o2' }],
+    });
+  };
+
+  it('reports a press on empty canvas, an object and a connector', () => {
+    seed();
+    const presses: number[] = [];
+    const c2 = new CanvasController(svg, { onUserPointer: () => presses.push(1) });
+    c2.loadState(ctrl.snapshot);
+    svg.dispatchEvent(ptr('pointerdown', 400, 400)); // empty area
+    // o1's centre: a press that starts a drag still ends the panel edit
+    svg.dispatchEvent(ptr('pointerdown', 80, 30));
+    // L1's route runs along y = 30 between the two shapes
+    svg.dispatchEvent(ptr('pointerdown', 230, 30));
+    expect(presses.length).toBe(3);
+    c2.destroy();
+  });
+
+  it('reports a secondary-button press too (pan), but not a wheel', () => {
+    seed();
+    const presses: string[] = [];
+    const c2 = new CanvasController(svg, {
+      onUserPointer: () => presses.push('press'),
+    });
+    c2.loadState(ctrl.snapshot);
+    svg.dispatchEvent(ptr('pointerdown', 400, 400, { button: 2 }));
+    svg.dispatchEvent(new WheelEvent('wheel', { clientX: 400, clientY: 400, bubbles: true, cancelable: true }));
+    expect(presses).toEqual(['press']);
+    c2.destroy();
+  });
+
+  it('is optional: a controller without the handler still works', () => {
+    seed();
+    expect(() => svg.dispatchEvent(ptr('pointerdown', 400, 400))).not.toThrow();
+  });
+});

@@ -128,9 +128,13 @@ test('a settled delay edit is one undoable write, and a keystroke burst is not',
   // Leaving the field must not write the same settled value again; one undo
   // reverts the whole delay edit back to the authored step line.
   await page.keyboard.press('Tab');
-  await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
+  // Move to another step rather than pressing empty canvas: a canvas press ends
+  // the flow edit by design (the diagram becomes the subject of the panel), and
+  // this assertion is about the undo entry, not about leaving the flow.
+  await page.getByTestId('step-2').click();
   await page.keyboard.press('Control+z');
   await expect(source).not.toContainText('delay 1500');
+  await page.getByTestId('step-1').click();
   await expect(page.getByTestId('step-delay-1')).toHaveValue('');
   await axe(page);
 });

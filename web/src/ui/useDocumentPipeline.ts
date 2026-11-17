@@ -36,6 +36,8 @@ export function useDocumentPipeline(p: {
   onRename: (id: string) => void;
   onGhostOpen: (path: string) => void;
   onHover: (info: HoverInfo | null) => void;
+  /** A press landed on the diagram (the shell ends panel-started edits). */
+  onUserPointer?: () => void;
 }): DocumentPipeline {
   const { ws, activePath } = p;
   const commitDocRef = useRef<((doc: Doc) => void) | null>(null);
@@ -48,6 +50,7 @@ export function useDocumentPipeline(p: {
     onRename: p.onRename,
     onGhostOpen: p.onGhostOpen,
     onHover: p.onHover,
+    onUserPointer: p.onUserPointer,
   });
   const code = useCodeSync({
     manager: ws.manager,

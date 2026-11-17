@@ -5,9 +5,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { render, fireEvent, screen, cleanup } from '@testing-library/preact';
-import { useState } from 'preact/hooks';
 import { parsePDL } from '../../engine/format/parser';
-import { FlowPane, type FlowCanvasContext, type FlowPaneProps } from './FlowPane';
+import type { FlowCanvasContext } from './FlowPane';
+import { FlowHarness } from './flowHarness';
 import { downloadText } from '../download';
 
 vi.mock('../download', () => ({ downloadText: vi.fn() }));
@@ -50,37 +50,22 @@ flow "Refund two" as refund2 {
 }
 `;
 
-/** Harness: keeps the document text in state, like App does via the machine. */
 interface MountOpts {
   files?: string[];
   otherDoc?: string;
   doc?: string;
 }
 
-function Harness({ canvas, files, otherDoc, doc: initial }: MountOpts & { canvas?: FlowCanvasContext } = {}) {
-  const [text, setText] = useState(initial ?? DOC);
-  const played: string[] = [];
-  const props: FlowPaneProps = {
-    textOf: (path) => (path === 'other.pcd' ? (otherDoc ?? null) : text),
-    activePath: 'main.pcd',
-    version: 1,
-    onChangeText: (t) => setText(t),
-    onPlay: (k) => {
-      played.push(k);
-    },
-    ...(canvas === undefined ? {} : { canvas }),
-    ...(files === undefined ? {} : { files }),
-  };
-  return (
-    <div>
-      <FlowPane {...props} />
-      <pre data-testid="text-out">{text}</pre>
-    </div>
-  );
-}
-
+/** Mount both flow surfaces over one document, like the shell does. */
 function mount(canvas?: FlowCanvasContext, opts: MountOpts = {}) {
-  render(<Harness canvas={canvas} {...opts} />);
+  render(
+    <FlowHarness
+      doc={opts.doc ?? DOC}
+      otherDoc={opts.otherDoc ?? OTHER_DOC}
+      {...(canvas === undefined ? {} : { canvas })}
+      {...(opts.files === undefined ? {} : { files: opts.files })}
+    />,
+  );
   const out = (): string => screen.getByTestId('text-out').textContent ?? '';
   return { out };
 }
@@ -137,17 +122,7 @@ describe('FlowPane Markdown documentation (UX08-WP14)', () => {
 describe('FlowPane flow list (M5-WP4)', () => {
   it('lists flows and starts playback on ▶', () => {
     const played: string[] = [];
-    render(
-      <FlowPane
-        textOf={() => DOC}
-        activePath="main.pcd"
-        version={1}
-        onChangeText={() => {}}
-        onPlay={(k) => {
-          played.push(k);
-        }}
-      />,
-    );
+    render(<FlowHarness doc={DOC} onPlay={(k) => { played.push(k); }} />);
     expect(screen.getByTestId('flow-row-main').textContent).toContain('Main');
     // BUG-07: a truncated title must still be readable on hover/focus.
     expect(screen.getByTestId('flow-row-main').getAttribute('title')).toBe('Main');
@@ -156,28 +131,12 @@ describe('FlowPane flow list (M5-WP4)', () => {
   });
 
   it('shows a muted hint when no file is active', () => {
-    render(
-      <FlowPane
-        textOf={() => DOC}
-        activePath={null}
-        version={1}
-        onChangeText={() => {}}
-        onPlay={() => {}}
-      />,
-    );
+    render(<FlowHarness doc={DOC} activePath={null} />);
     expect(screen.getByTestId('flow-error').textContent).toContain('Open a file');
   });
 
   it('shows a muted hint when the active file has parse errors', () => {
-    render(
-      <FlowPane
-        textOf={() => 'pcd 1.0\n nonsense !!!'}
-        activePath="main.pcd"
-        version={1}
-        onChangeText={() => {}}
-        onPlay={() => {}}
-      />,
-    );
+    render(<FlowHarness doc={'pcd 1.0\n nonsense !!!'} />);
     expect(screen.getByTestId('flow-error').textContent).toContain('parse errors');
   });
 
@@ -193,6 +152,9 @@ describe('FlowPane flow list (M5-WP4)', () => {
   it('hides and restores a connection without removing it from the diagram', () => {
     const { out } = mount();
     fireEvent.click(screen.getByTestId('flow-add'));
+    // Hiding a connection is a property of the chosen step, so it lives in the
+    // panel: select the step, then hide it.
+    fireEvent.click(screen.getByTestId('step-0'));
     fireEvent.click(screen.getByTestId('hide-connection-0'));
     expect(screen.getByTestId('flow-hidden-links').textContent).toContain('Ada');
     expect(screen.queryByTestId('step-0')).toBeNull();
@@ -308,18 +270,21 @@ describe('FlowPane canvas-assisted editing (FLOW-01)', () => {
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-1')); // msg, initially b -> a
     expect(out()).toContain('b -> a : "order"');
-    // endpoints are read-only; the canvas controls are the way to set them
-    fireEvent.click(screen.getByTestId('insp-pick-link'));
-    expect(out()).toContain('a -> b : "order"');
-    fireEvent.click(screen.getByTestId('insp-pick-to'));
+    // Endpoints come from the diagram's own shapes, never from typed ids: the
+    // panel offers the closed set, and a pick clears a stale connector reference.
+    const to = screen.getByTestId('insp-to') as HTMLSelectElement;
+    expect(Array.from(to.options).map((o) => o.value)).toEqual(['', 'a', 'b']);
+    fireEvent.change(screen.getByTestId('insp-from'), { target: { value: 'a' } });
+    expect(out()).toContain('a -> a : "order"');
+    fireEvent.change(to, { target: { value: 'b' } });
     expect(out()).toContain('a -> b : "order"');
   });
 
-  it('targets a process step from the canvas selection', () => {
-    const { out } = mount(canvas);
+  it('targets a process step from the diagram shapes', () => {
+    const { out } = mount();
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-7')); // process a inside alt branch
-    fireEvent.click(screen.getByTestId('insp-pick-target'));
+    fireEvent.change(screen.getByTestId('insp-target'), { target: { value: 'b' } });
     expect(out()).toContain('process b');
   });
 
@@ -336,17 +301,7 @@ describe('FlowPane canvas-assisted editing (FLOW-01)', () => {
     // the editor explains the requirement instead of inventing the link.
     const noLinks = 'pcd 1.0\nsystem a "A"\nsystem b "B"\nflow "F" as f {\n  intro "x"\n}\n';
     let text = noLinks;
-    render(
-      <FlowPane
-        textOf={() => text}
-        activePath="main.pcd"
-        version={1}
-        onChangeText={(t) => {
-          text = t;
-        }}
-        onPlay={() => {}}
-      />,
-    );
+    render(<FlowHarness doc={noLinks} onWrite={(t) => { text = t; }} />);
     fireEvent.click(screen.getByTestId('flow-row-f'));
     expect((screen.getByTestId('add-msg') as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId('flow-needs-link').textContent).toContain('connector');
@@ -355,16 +310,7 @@ describe('FlowPane canvas-assisted editing (FLOW-01)', () => {
 
   it('reports card summaries and highlights canvas participants', () => {
     const highlights: (string[] | null)[] = [];
-    const props: FlowPaneProps = {
-      textOf: () => DOC,
-      activePath: 'main.pcd',
-      version: 1,
-      onChangeText: () => {},
-      onPlay: () => {},
-      canvas,
-      onHighlight: (ids) => highlights.push(ids),
-    };
-    render(<FlowPane {...props} />);
+    render(<FlowHarness doc={DOC} canvas={canvas} onHighlight={(ids) => highlights.push(ids)} />);
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-1'));
     expect(screen.getByTestId('step-summary-1').textContent).toContain('Ada → Web');
@@ -387,29 +333,15 @@ a -> b as ab
 /** Harness with a caller-supplied document (the WP12 authoring path). */
 function mountDoc(initial: string, canvas?: FlowCanvasContext, played: string[] = []) {
   let text = initial;
-  let version = 0;
-  function Host() {
-    const [, bump] = useState(0);
-    return (
-      <div>
-        <FlowPane
-          textOf={() => text}
-          activePath="main.pcd"
-          version={version}
-          onChangeText={(t) => {
-            text = t;
-            version += 1;
-            bump(version);
-          }}
-          onPlay={(k) => played.push(k)}
-          {...(canvas === undefined ? {} : { canvas })}
-        />
-        <pre data-testid="text-out">{text}</pre>
-      </div>
-    );
-  }
-  render(<Host />);
-  return { out: () => screen.getByTestId('text-out').textContent ?? '' };
+  render(
+    <FlowHarness
+      doc={initial}
+      onWrite={(t) => { text = t; }}
+      onPlay={(k) => played.push(k)}
+      {...(canvas === undefined ? {} : { canvas })}
+    />,
+  );
+  return { out: () => text };
 }
 
 describe('FlowPane guided authoring (UX08-WP12)', () => {
@@ -484,15 +416,22 @@ describe('FlowPane guided authoring (UX08-WP12)', () => {
     expect(screen.getByTestId('flow-needs-shape').textContent).toContain('one shape');
   });
 
-  it('adds notes, an introduction and a conclusion in one click', () => {
+  it('frames a flow with prose and adds a note from the list', () => {
     const { out } = mountDoc(FRESH);
     fireEvent.click(screen.getByTestId('flow-add'));
-    fireEvent.click(screen.getByTestId('add-intro'));
+    fireEvent.input(screen.getByTestId('flow-intro'), { target: { value: 'Welcome' } });
     fireEvent.click(screen.getByTestId('add-note'));
-    fireEvent.click(screen.getByTestId('add-conclusion'));
-    expect(out()).toContain('intro "New intro"');
+    fireEvent.input(screen.getByTestId('flow-conclusion'), { target: { value: 'That is all' } });
+    // The introduction is created at the front, the conclusion at the end: the
+    // order a reader follows, without the author placing either one.
+    const steps = parsePDL(out()).doc?.flows[0]?.steps ?? [];
+    // Front and back, whatever else the flow holds in between.
+    expect(steps[0]?.type).toBe('intro');
+    expect(steps.at(-1)?.type).toBe('conclusion');
+    expect(steps.some((step) => step.type === 'info')).toBe(true);
+    expect(out()).toContain('intro "Welcome"');
     expect(out()).toContain('info "Note"');
-    expect(out()).toContain('conclusion "Summary"');
+    expect(out()).toContain('conclusion "That is all"');
   });
 
   it('keeps block steps behind Advanced step', () => {
@@ -517,13 +456,15 @@ describe('FlowPane step cards (UX08-WP12)', () => {
     expect(screen.getByTestId('step-summary-1').textContent).toContain('Ada → Web');
   });
 
-  it('describes a step and shows the description on its card', () => {
+  it('describes a step without lengthening its row', () => {
     const { out } = mount();
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-1'));
     fireEvent.input(screen.getByTestId('insp-description'), { target: { value: 'pay by card' } });
     expect(out()).toContain('description "pay by card"');
-    expect(screen.getByTestId('step-desc-1').textContent).toContain('pay by card');
+    // The list stays a list: prose lives in the panel, so the row keeps its
+    // number, kind and participants only.
+    expect(screen.getByTestId('step-1').textContent).not.toContain('pay by card');
   });
 
   it('explains a step that points at a shape the diagram does not have', () => {
@@ -587,25 +528,8 @@ flow "Main" as main {
 // zoom and duration. Everything is asserted through the printed document.
 const VIEW = { x: 420, y: 180, k: 1.5 };
 
-function ViewHarness() {
-  const [text, setText] = useState(DOC);
-  return (
-    <div>
-      <FlowPane
-        textOf={() => text}
-        activePath="main.pcd"
-        version={1}
-        onChangeText={(t) => setText(t)}
-        onPlay={() => {}}
-        currentView={() => VIEW}
-      />
-      <pre data-testid="text-out">{text}</pre>
-    </div>
-  );
-}
-
 function mountWithView(): { out: () => string } {
-  render(<ViewHarness />);
+  render(<FlowHarness doc={DOC} view={() => VIEW} />);
   fireEvent.click(screen.getByTestId('flow-row-main'));
   fireEvent.click(screen.getByTestId('step-0'));
   return { out: () => screen.getByTestId('text-out').textContent ?? '' };
@@ -695,17 +619,18 @@ describe('known-value step targets (property hierarchy)', () => {
     expect(screen.getByTestId('insp-target-unresolved').textContent).toContain('ghost');
   });
 
-  it('message endpoints are read-only and set through the selection controls', () => {
-    const { out } = mount();
+  it('message endpoints are chosen from the diagram, never typed', () => {
+    mount();
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-1')); // msg a -> b
-    const from = screen.getByTestId('insp-from');
-    const to = screen.getByTestId('insp-to');
-    expect(from.tagName).toBe('OUTPUT');
-    expect(to.tagName).toBe('OUTPUT');
-    expect(from.textContent).toContain('a');
-    fireEvent.input(from, { target: { value: 'b' } }); // no editor, no write
-    expect(out()).toContain('a -> b : "order"');
+    const from = screen.getByTestId('insp-from') as HTMLSelectElement;
+    const to = screen.getByTestId('insp-to') as HTMLSelectElement;
+    expect(from.tagName).toBe('SELECT');
+    expect(to.tagName).toBe('SELECT');
+    expect(from.value).toBe('a');
+    expect(to.value).toBe('b');
+    // An unknown id cannot be entered: the domain is the diagram's shapes.
+    expect(Array.from(from.options).map((o) => o.value)).toEqual(['', 'a', 'b']);
   });
 });
 
@@ -815,17 +740,18 @@ describe('StepInspector selected message properties', () => {
 });
 
 describe('StepInspector message link resolution and kind fields', () => {
-  it('keeps link resolution when endpoints are set from the connector', () => {
-    const canvas = { objects: ['b'], link: { id: 'L2', from: 'a', to: 'b' } };
+  it('keeps a connector reference while the endpoints still match it', () => {
     const refs = STYLE_DOC.replace(
       'a -> b as ab {\n  style {\n    sparks 2\n    speed 2\n  }\n}',
       'a -> b as L1 {\n  style {\n    sparks 2\n  }\n}\nb -> a as L2 {\n  style {\n    sparks 3\n  }\n}',
     ).replace('a -> b : "order"', 'a -> b : "order" as L1');
-    mount(canvas, { doc: refs });
+    mount(undefined, { doc: refs });
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-1'));
     expect((screen.getByTestId('insp-sparks') as HTMLInputElement).value).toBe('2');
-    fireEvent.click(screen.getByTestId('insp-pick-link'));
+    // Two connectors join these shapes; the reference picks which one the step
+    // animates, and switching it reaches the other connector's shared style.
+    fireEvent.change(screen.getByTestId('insp-link'), { target: { value: 'L2' } });
     const after = screen.getByTestId('text-out').textContent ?? '';
     expect(after).toContain('a -> b : "order" as L2');
     expect((screen.getByTestId('insp-sparks') as HTMLInputElement).value).toBe('3');
@@ -901,7 +827,7 @@ describe('Flow Steps browser feedback and input responsiveness', () => {
     mount();
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-1'));
-    expect(screen.getByTestId('step-inspector').className).toContain('flow-step-inspector');
+    expect(screen.getByTestId('step-inspector').className).toContain('flow-inspector');
     expect(screen.getByTestId('insp-label')).not.toBeNull();
   });
 
@@ -918,15 +844,7 @@ describe('Flow Steps browser feedback and input responsiveness', () => {
 
   it('writes the settled delay once, not again when the field is left', async () => {
     const writes: string[] = [];
-    render(
-      <FlowPane
-        textOf={() => DOC}
-        activePath="main.pcd"
-        version={1}
-        onChangeText={(t) => writes.push(t)}
-        onPlay={() => undefined}
-      />,
-    );
+    render(<FlowHarness doc={DOC} onWrite={(t) => writes.push(t)} />);
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-1'));
     const input = screen.getByTestId('step-delay-1') as HTMLInputElement;
@@ -940,15 +858,7 @@ describe('Flow Steps browser feedback and input responsiveness', () => {
 
   it('leaving the delay field untouched writes nothing', () => {
     const writes: string[] = [];
-    render(
-      <FlowPane
-        textOf={() => DOC}
-        activePath="main.pcd"
-        version={1}
-        onChangeText={(t) => writes.push(t)}
-        onPlay={() => undefined}
-      />,
-    );
+    render(<FlowHarness doc={DOC} onWrite={(t) => writes.push(t)} />);
     fireEvent.click(screen.getByTestId('flow-row-main'));
     fireEvent.click(screen.getByTestId('step-1'));
     const input = screen.getByTestId('step-delay-1') as HTMLInputElement;
