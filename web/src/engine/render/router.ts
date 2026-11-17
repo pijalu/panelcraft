@@ -255,6 +255,13 @@ export type WaypointSkip = (WaypointSkipBase & { reason: 'inside-entity'; rect: 
 export interface RoutePlan {
   points: Polyline;
   skips: WaypointSkip[];
+  /**
+   * Unit direction of travel at each end, along that edge's normal. Curved
+   * routes draw their end handles from these, so the arrowhead always points
+   * into the entity instead of along its edge — the polyline itself keeps the
+   * plain anchors, so an almost-aligned pair still renders as a gentle curve.
+   */
+  ends?: { start: Point; end: Point };
 }
 
 interface AuthoredBend {
@@ -503,10 +510,18 @@ export function planLink(input: RouteInput, mode: RouteMode = 'orthogonal'): Rou
       ? planExplicitRoute(input)
       : { points: routeAuto(input), skips: [] };
   }
-  const { a, b } = routeEndpoints(input);
+  const { a, b, sideA, sideB } = routeEndpoints(input);
+  const inner = (input.waypoints ?? []).map(([x, y]) => ({ x, y }));
+  const points: Polyline = [a, ...inner, b];
+  if (mode !== 'curved') return { points, skips: [] };
+  const normalA = outward(sideA);
+  const normalB = outward(sideB);
   return {
-    points: [a, ...(input.waypoints ?? []).map(([x, y]) => ({ x, y })), b],
+    points,
     skips: [],
+    // `+ 0` folds -0 into 0: the tangents are compared in tests and read as
+    // direction data, and a signed zero there is only noise.
+    ends: { start: { x: normalA.x + 0, y: normalA.y + 0 }, end: { x: -normalB.x + 0, y: -normalB.y + 0 } },
   };
 }
 

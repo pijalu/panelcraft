@@ -478,6 +478,8 @@ export class CanvasController {
   private spaceDown = false;
   private suppressContextMenu = false;
   private routes = new Map<string, Polyline>();
+  /** Curved routes: direction of travel at each end (drives the end handles). */
+  private routeEnds = new Map<string, { start: Point; end: Point }>();
   /** Route problems per link id (invalid bends, unresolved crossings). */
   private warnings = new Map<string, string[]>();
   private seq = 0;
@@ -1186,6 +1188,8 @@ export class CanvasController {
       };
       const plan = planLink(input, link.route);
       this.routes.set(link.id, plan.points);
+      if (plan.ends === undefined) this.routeEnds.delete(link.id);
+      else this.routeEnds.set(link.id, plan.ends);
       const warnings = link.allowOverlap === true ? [] : this.warningsFor(link, input, plan);
       if (warnings.length > 0) this.warnings.set(link.id, warnings);
     }
@@ -1240,6 +1244,7 @@ export class CanvasController {
           line: (l.line ?? (l.dashed ? 'dashed' : 'solid')) as 'solid' | 'dashed' | 'dotted',
           route: l.route,
           width: l.width,
+          ...(this.routeEnds.has(l.id) ? { ends: this.routeEnds.get(l.id)! } : {}),
           ...(this.warnings.has(l.id) ? { warnings: this.warnings.get(l.id)! } : {}),
         },
       ];

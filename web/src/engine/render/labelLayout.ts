@@ -293,7 +293,7 @@ function placeLabel(
   options: Required<LabelLayoutOptions>,
 ): LabelPlacement {
   const text = link.label ?? '';
-  const points = sampleRoute(link.points, link.route);
+  const points = sampleRoute(link.points, link.route, link.ends);
   const base = routeLabelPoint(link.points, link.route);
   const box = wrapBox(text, options.measure, options.maxWidth, options.maxLines);
   const make = (candidate: Candidate): LabelPlacement => {
@@ -353,7 +353,7 @@ export function layoutLinkLabels(
     boxes.push(object);
   }
   for (const link of scene.links) {
-    const points = sampleRoute(link.points, link.route);
+    const points = sampleRoute(link.points, link.route, link.ends);
     const bounds = boundsOf(points);
     context.routes.add({ id: link.id, points, bounds }, bounds);
     boxes.push(bounds);

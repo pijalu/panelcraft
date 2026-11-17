@@ -33,17 +33,60 @@ function catmullCurve(points: Polyline, index: number): Cubic {
   const d = points[index + 1]!;
   const previous = points[index - 1] ?? a;
   const next = points[index + 2] ?? d;
+  // Keep each handle inside its own segment. An unclamped neighbour-based
+  // handle can sit past the endpoint (the reported curve overshot the target
+  // edge), while the direction — which is what the arrowhead follows — is
+  // unchanged by shortening it.
+  const limit = Math.hypot(d.x - a.x, d.y - a.y) / 3;
   return {
     a,
-    b: { x: a.x + (d.x - previous.x) / 6, y: a.y + (d.y - previous.y) / 6 },
-    c: { x: d.x - (next.x - a.x) / 6, y: d.y - (next.y - a.y) / 6 },
+    b: clampHandle(a, { x: a.x + (d.x - previous.x) / 6, y: a.y + (d.y - previous.y) / 6 }, limit),
+    c: clampHandle(d, { x: d.x - (next.x - a.x) / 6, y: d.y - (next.y - a.y) / 6 }, limit),
     d,
   };
 }
 
-function curves(points: Polyline): Cubic[] {
-  if (points.length === 2) return [endpointCurve(points[0]!, points[1]!)];
-  return points.slice(0, -1).map((_, index) => catmullCurve(points, index));
+/** Pull a handle back towards `anchor` until it sits within `limit`. */
+function clampHandle(anchor: Point, handle: Point, limit: number): Point {
+  const dx = handle.x - anchor.x;
+  const dy = handle.y - anchor.y;
+  const length = Math.hypot(dx, dy);
+  if (length <= limit || length === 0) return handle;
+  const k = limit / length;
+  return { x: anchor.x + dx * k, y: anchor.y + dy * k };
+}
+
+/** Unit direction of travel at each end, for the curve's end handles. */
+export interface Ends {
+  start: Point;
+  end: Point;
+}
+
+/** Handle length used along a supplied end tangent (never longer than a third
+ *  of the segment it belongs to). */
+function endHandle(from: Point, to: Point, direction: Point): Point {
+  const span = Math.hypot(to.x - from.x, to.y - from.y);
+  const length = Math.min(span / 3, Math.max(18, span * 0.25));
+  return { x: from.x + direction.x * length, y: from.y + direction.y * length };
+}
+
+/** Replace the first/last handle with one along the supplied end tangents.
+ *  A two-point route is a single cubic, so one pass must set both handles. */
+function withEnds(cubics: Cubic[], ends: Ends): Cubic[] {
+  const last = cubics.length - 1;
+  return cubics.map((cubic, index) => {
+    let out = cubic;
+    if (index === 0) out = { ...out, b: endHandle(cubic.a, cubic.d, ends.start) };
+    if (index === last) out = { ...out, c: endHandle(cubic.d, cubic.a, { x: -ends.end.x, y: -ends.end.y }) };
+    return out;
+  });
+}
+
+function curves(points: Polyline, ends?: Ends): Cubic[] {
+  const built = points.length === 2
+    ? [endpointCurve(points[0]!, points[1]!)]
+    : points.slice(0, -1).map((_, index) => catmullCurve(points, index));
+  return ends === undefined ? built : withEnds(built, ends);
 }
 
 function cubicPoint(curve: Cubic, t: number): Point {
@@ -56,7 +99,7 @@ function cubicPoint(curve: Cubic, t: number): Point {
 }
 
 /** Polyline or cubic SVG path for one routed link. */
-export function routeToPath(points: Polyline, mode: RouteMode = 'orthogonal'): string {
+export function routeToPath(points: Polyline, mode: RouteMode = 'orthogonal', ends?: Ends): string {
   if (points.length === 0) return '';
   const first = command('M', points[0]!);
   if (mode !== 'curved' || points.length < 2) {
@@ -64,15 +107,15 @@ export function routeToPath(points: Polyline, mode: RouteMode = 'orthogonal'): s
   }
   return [
     first,
-    ...curves(points).map((c) => `C ${num(c.b.x)} ${num(c.b.y)} ${num(c.c.x)} ${num(c.c.y)} ${num(c.d.x)} ${num(c.d.y)}`),
+    ...curves(points, ends).map((c) => `C ${num(c.b.x)} ${num(c.b.y)} ${num(c.c.x)} ${num(c.c.y)} ${num(c.d.x)} ${num(c.d.y)}`),
   ].join(' ');
 }
 
 /** Sample rendered geometry; non-curved routes keep their exact polylines. */
-export function sampleRoute(points: Polyline, mode: RouteMode = 'orthogonal'): Polyline {
+export function sampleRoute(points: Polyline, mode: RouteMode = 'orthogonal', ends?: Ends): Polyline {
   if (mode !== 'curved' || points.length < 2) return points;
   const out: Polyline = [points[0]!];
-  for (const curve of curves(points)) {
+  for (const curve of curves(points, ends)) {
     for (let step = 1; step <= 16; step++) out.push(cubicPoint(curve, step / 16));
   }
   return out;
