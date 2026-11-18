@@ -470,6 +470,8 @@ const EN = {
   "Edit the introduction": "Edit the introduction",
   "Edit the conclusion": "Edit the conclusion",
   "Explanation": "Explanation",
+  "Shown beside the drawing while presenting. Markdown.": "Shown beside the drawing while presenting. Markdown.",
+  "Step explanation": "Step explanation",
   "Close explanation": "Close explanation",
   "Empty: not part of this flow.": "Empty: not part of this flow.",
   "Presentation": "Presentation",

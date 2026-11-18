@@ -102,6 +102,11 @@ export function flowNotesVisible(state: FlowPlayerState): boolean {
   return state.showFlowNotes && state.flowDescription.trim() !== '';
 }
 
+/** The current step's own explanation, shown beside the drawing while presenting. */
+export function stepExplanationVisible(state: FlowPlayerState): boolean {
+  return state.status !== 'idle' && state.description.trim() !== '';
+}
+
 interface Frame {
   plan: PlaybackPlan;
   doc: Doc;

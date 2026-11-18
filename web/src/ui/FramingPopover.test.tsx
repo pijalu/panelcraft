@@ -100,9 +100,11 @@ describe('framing explanation popover', () => {
       description: 'step description',
     }))} />);
     expect(screen.getByTestId('framing-popover').textContent).toContain('framing prose');
-    expect(screen.getByRole('complementary').textContent).toContain('flow-level notes');
-    expect(screen.getByRole('complementary').textContent).not.toContain('framing prose');
-    expect(screen.getByTestId('present-description').textContent).toBe('step description');
+    const notes = screen.getByTestId('flow-notes-panel').textContent ?? '';
+    expect(notes).toContain('flow-level notes');
+    expect(notes).not.toContain('framing prose');
+    expect(screen.getByTestId('step-explanation').textContent).toContain('step description');
+    expect(screen.getByTestId('step-explanation').textContent).not.toContain('flow-level notes');
   });
 
   it('labels a conclusion as such', () => {

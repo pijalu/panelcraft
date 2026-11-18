@@ -47,8 +47,12 @@ describe('presentation notes aside', () => {
       flowDescription: 'flow-level notes',
       showFlowNotes: true,
     }))} />);
-    expect(screen.getByTestId('present-description').textContent).toBe('current step narration');
-    expect(screen.getByRole('complementary').textContent).toContain('flow-level notes');
+    // The step's own prose lives in its own beside-the-drawing region now, not
+    // in the dock and not in the flow notes aside.
+    expect(screen.getByTestId('step-explanation').textContent).toContain('current step narration');
+    const notes = screen.getByTestId('flow-notes-panel').textContent ?? '';
+    expect(notes).toContain('flow-level notes');
+    expect(notes).not.toContain('current step narration');
   });
 
   it('does not steal focus and refits when panel presence changes', async () => {

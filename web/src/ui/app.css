@@ -551,6 +551,71 @@ body {
   margin-right: min(320px, 28vw);
 }
 
+/* Step explanation: Markdown in a column BESIDE the drawing. It reserves canvas
+   space (the runner refits when it appears), so the step component it explains
+   is never covered. With flow notes also visible the two columns sit side by
+   side instead of fighting for the same place. */
+.app-shell.presenting.has-step-explanation .canvas-wrap {
+  margin-right: min(360px, 32vw);
+}
+
+.app-shell.presenting.has-flow-notes.has-step-explanation .canvas-wrap {
+  margin-right: calc(min(320px, 28vw) + min(360px, 32vw));
+}
+
+.present-explanation {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  bottom: auto;
+  z-index: 25;
+  width: min(360px, 32vw);
+  max-height: calc(100vh - 132px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-panel-bg);
+  color: var(--pc-fg);
+  font-size: var(--pc-text-sm);
+  line-height: 1.5;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+}
+
+/* Both columns at once: the explanation sits inboard of the flow notes. */
+.app-shell.presenting.has-flow-notes .present-explanation {
+  right: calc(min(320px, 28vw) + 16px);
+}
+
+.present-explanation-title {
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--pc-panel-border);
+  font-size: var(--pc-text-md);
+  font-weight: 600;
+}
+
+@media (max-width: 719px) {
+  .app-shell.presenting.has-step-explanation .canvas-wrap {
+    margin-right: 0;
+    margin-top: 148px;
+  }
+
+  .present-explanation {
+    left: 8px;
+    right: 8px;
+    top: 8px;
+    width: auto;
+    max-height: 132px;
+  }
+
+  .app-shell.presenting.has-flow-notes .present-explanation {
+    right: 8px;
+    top: 148px;
+    max-height: 132px;
+  }
+}
+
 .present-notes-aside {
   position: fixed;
   top: 8px;

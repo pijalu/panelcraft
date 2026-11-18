@@ -4,7 +4,7 @@
 // Docked at the bottom so the diagram keeps the whole viewport.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
-import { flowNotesVisible } from './flows/flowController';
+import { flowNotesVisible, stepExplanationVisible } from './flows/flowController';
 import { parseSafeMarkdown } from '../engine/format/safeMarkdown';
 import { NOTES_LABEL, SafeMarkdown } from './flows/SafeMarkdown';
 import { progressDots } from './present';
@@ -121,24 +121,48 @@ function FramingPopover(props: {
   );
 }
 
+/**
+ * The current step's explanation: rendered Markdown in a region BESIDE the
+ * drawing. It reserves canvas space instead of covering the diagram, so the step
+ * component it explains stays visible, and it never shares the transport dock
+ * with the framing narration.
+ */
+function StepExplanationAside({ text }: { text: string }) {
+  const blocks = useMemo(() => parseSafeMarkdown(text), [text]);
+  return (
+    <aside
+      class="present-explanation"
+      data-testid="step-explanation"
+      aria-label={s('Step explanation')}
+    >
+      <h2 class="present-explanation-title">{s('Step explanation')}</h2>
+      <SafeMarkdown blocks={blocks} />
+    </aside>
+  );
+}
+
 /** Advance surface + dock: the whole canvas is the "next" target (F-16). */
 export function PresentLayer({ player }: PresentDockProps) {
   const visible = flowNotesVisible(player.state);
-  const shown = useRef<boolean | null>(null);
+  const explanation = stepExplanationVisible(player.state);
+  const shown = useRef<string | null>(null);
   const refit = useRef(player.refit);
   refit.current = player.refit;
+  // Both asides take canvas space, so both change the beat's framing.
+  const signature = `${visible ? 'notes' : ''}/${explanation ? 'explanation' : ''}`;
   useEffect(() => {
     const first = shown.current === null;
-    if (!first && shown.current === visible) return;
-    shown.current = visible;
-    if (first && !visible) return;
+    if (!first && shown.current === signature) return;
+    const opened = signature !== '' && signature !== '/';
+    shown.current = signature;
+    if (first && !opened) return;
     if (typeof requestAnimationFrame === 'function') {
       const id = requestAnimationFrame(() => refit.current());
       return () => cancelAnimationFrame(id);
     }
     refit.current();
     return undefined;
-  }, [visible]);
+  }, [signature]);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let frame = 0;
@@ -155,6 +179,7 @@ export function PresentLayer({ player }: PresentDockProps) {
   return (
     <>
       {visible && <FlowNotesAside text={player.state.flowDescription} />}
+      {explanation && <StepExplanationAside text={player.state.description} />}
       <button
         type="button"
         class="present-advance"
@@ -264,11 +289,6 @@ export function PresentDock({ player: p }: PresentDockProps) {
         >
           {s('Explanation')}
         </button>
-      )}
-      {st.description !== '' && (
-        <p class="present-desc" data-testid="present-description">
-          {st.description}
-        </p>
       )}
     </div>
     </>

@@ -18,7 +18,7 @@ import type { FlowCanvasContext, InspectActions, Patch, ViewPoint } from './flow
 import type { InspectorTargets } from './flowEdit';
 import { patchLabel } from './flowEdit';
 import { newStep } from './flowDoc';
-import { CheckField, Field, KnownValueField, clampNumber } from './fields';
+import { CheckField, Field, KnownValueField, TextArea, clampNumber } from './fields';
 import { s } from '../strings';
 import { ArrowDownIcon, ArrowUpIcon, CloseIcon } from '../icons';
 
@@ -457,9 +457,10 @@ export function StepProperties(props: StepPropertiesProps) {
         s('Step'),
         <>
           <KindFields step={step} a={a} targets={props.targets} />
-          <Field
+          <TextArea
             variant="stacked"
             label={s('Description')}
+            hint={s('Shown beside the drawing while presenting. Markdown.')}
             value={step.description ?? ''}
             onInput={(v) => a.patch({ description: v === '' ? undefined : v })}
             testid="insp-description"
