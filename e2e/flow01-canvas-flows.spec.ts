@@ -25,13 +25,32 @@ position shop (300, 80)
 position erp (540, 80)
 `;
 
+/** Content-only view, for the round-trip check below. */
+function normalise(text: string): string {
+  return text
+    .replace(/\u200b/g, '')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line !== '')
+    .join('\n');
+}
+
 async function seedDoc(page: Page): Promise<void> {
   await openWorkspacePanels(page, ['code']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
+  const editor = page.locator('.cm-content');
+  await editor.click();
+  // A select-all that misses the editor selects the page instead and the
+  // previous document survives, which then fails as a product defect much later;
+  // require the focus before trusting the chord.
+  await expect(editor).toBeFocused();
+  await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  // …and prove the editor holds what was typed: a half-replaced document parses
+  // into a different diagram, so the scenario would assert against the wrong one.
+  const lines = await editor.locator('.cm-line').allInnerTexts();
+  expect(normalise(lines.join('\n')), 'seeded document').toBe(normalise(DOC));
   // The code panel takes canvas width; keep the three objects clickable.
   await page.getByTestId('collapse-code').click();
 }
