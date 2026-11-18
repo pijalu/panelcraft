@@ -17,12 +17,21 @@ interface PaletteProps {
   onCollapse?: () => void;
 }
 
+const DRAG_SLOP_PX = 4;
+
 export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps) {
   const dragging = useRef<{ kind: Kind; ghost: HTMLDivElement } | null>(null);
+  // A press that became a drag reports its drop on pointer-up; the click event
+  // that follows the same press must not place a second element.
+  const suppressClick = useRef(false);
 
   const startDrag = (kind: Kind, e: PointerEvent): void => {
     if (e.button !== 0) return;
     e.preventDefault();
+    suppressClick.current = false;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let moved = false;
     const ghost = document.createElement('div');
     ghost.className = 'pc-palette-ghost';
     ghost.textContent = labelFor(kind);
@@ -31,6 +40,9 @@ export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps
     document.body.appendChild(ghost);
     dragging.current = { kind, ghost };
     const move = (ev: PointerEvent): void => {
+      if (Math.abs(ev.clientX - startX) > DRAG_SLOP_PX || Math.abs(ev.clientY - startY) > DRAG_SLOP_PX) {
+        moved = true;
+      }
       ghost.style.left = `${ev.clientX}px`;
       ghost.style.top = `${ev.clientY}px`;
     };
@@ -39,6 +51,9 @@ export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps
       window.removeEventListener('pointerup', up);
       ghost.remove();
       dragging.current = null;
+      // No movement means the press is a click: the click handler places once.
+      if (!moved) return;
+      suppressClick.current = true;
       onDragDrop(kind, ev);
     };
     window.addEventListener('pointermove', move);
@@ -65,7 +80,13 @@ export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps
                   data-kind={kind}
                   data-testid={`palette-${kind}`}
                   title={s('{kind} (key {key})', { kind: labelFor(kind), key: quickAddKey(kinds, kind) })}
-                  onClick={() => onPlace(kind)}
+                  onClick={() => {
+                    if (suppressClick.current) {
+                      suppressClick.current = false;
+                      return;
+                    }
+                    onPlace(kind);
+                  }}
                   onPointerDown={(e) => startDrag(kind, e as unknown as PointerEvent)}
                 >
                   <span class="palette-glyph" data-glyph={kind} aria-hidden="true" />

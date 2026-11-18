@@ -320,7 +320,6 @@ const EN = {
   "✎": "✎",
   "✕": "✕",
   "⧉": "⧉",
-  "{kind} {n}": "{kind} {n}",
   "Person": "Person",
   "System": "System",
   "System Ext": "System Ext",

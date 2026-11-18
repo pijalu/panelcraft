@@ -298,6 +298,22 @@ export function uniqueId(taken: ReadonlySet<string>, prefix: 'o' | 'l', from: nu
   return `${prefix}${n}`;
 }
 
+/**
+ * Default label of a new element: the first free `"<Kind> <n>"` for that kind,
+ * counted from 1. An id only has to be unique in the file; the label is what the
+ * reader sees, so it must not inherit the numbering of unrelated kinds.
+ */
+export function firstFreeName(
+  objects: readonly DiagramObject[],
+  kind: Kind,
+  label: string,
+): string {
+  const taken = new Set(objects.filter((o) => o.kind === kind).map((o) => o.name ?? ''));
+  let n = 1;
+  while (taken.has(`${label} ${n}`)) n++;
+  return `${label} ${n}`;
+}
+
 function rectOf(o: Rect): Rect {
   return { x: o.x, y: o.y, w: o.w, h: o.h };
 }
@@ -575,7 +591,7 @@ export class CanvasController {
     // F-02: probe for a free id — never reuse an id loaded from the file
     const id = uniqueId(this.takenObjectIds(), 'o', ++this.seq);
     this.seq = Math.max(this.seq, seqOf(id, 'o'));
-    const name = s('{kind} {n}', { kind: labelFor(kind), n: seqOf(id, 'o') });
+    const name = firstFreeName(this.state.objects, kind, labelFor(kind));
     // F-13 fit-to-name on create: the default box is a fallback, the label wins
     const fit = autoSize({ text: name, kind }, this.measure);
     const obj: DiagramObject = {

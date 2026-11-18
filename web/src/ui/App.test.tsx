@@ -69,6 +69,7 @@ describe('App shell + palette (WP9)', () => {
     const item = screen.getByTestId('palette-person');
     // pointerdown on palette item, move, drop over canvas
     fireEvent.pointerDown(item, { clientX: 60, clientY: 60, button: 0 });
+    fireEvent.pointerMove(window, { clientX: 300, clientY: 200, button: 0 });
     fireEvent.pointerUp(window, { clientX: 300, clientY: 200, button: 0 });
     expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(1);
     const g = svg.querySelector('g.pc-obj');
