@@ -77,9 +77,12 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(pop).not.toContainText('# Before we start');
     await capture(page, `framing-explanation-intro-${theme}`, { golden: false });
 
-    // Dismissal by keyboard, then reopen from the dock.
-    await page.keyboard.press('Escape');
+    // Dismissal by keyboard: focus the close button and press Enter/Space.
+    // Escape is the presentation's exit shortcut, not the popover's.
+    await page.getByTestId('framing-popover-close').focus();
+    await page.keyboard.press('Enter');
     await expect(page.getByTestId('framing-popover')).toHaveCount(0);
+    await expect(page.getByTestId('present-dock')).toBeVisible();
     await page.getByTestId('framing-popover-open').click();
     await expect(page.getByTestId('framing-popover')).toBeVisible();
     // Pointer dismissal outside the popover.

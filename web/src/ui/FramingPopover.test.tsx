@@ -55,16 +55,16 @@ describe('framing explanation popover', () => {
     expect(screen.queryByTestId('framing-popover')).toBeNull();
   });
 
-  it('closes on Escape without letting the presentation exit shortcut fire', () => {
+  it('leaves Escape to the presentation exit shortcut', () => {
     render(<PresentLayer player={player(intro())} />);
-    // Escape belongs to the popover while it is open, so the presentation's own
-    // "exit" shortcut does not also fire.
+    // Escape exits the presentation, so the popover must not swallow it. The
+    // keyboard dismissal is the close button instead.
     const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
     act(() => {
       document.dispatchEvent(escape);
     });
-    expect(screen.queryByTestId('framing-popover')).toBeNull();
-    expect(escape.defaultPrevented).toBe(true);
+    expect(escape.defaultPrevented).toBe(false);
+    expect(screen.getByTestId('framing-popover')).not.toBeNull();
   });
 
   it('closes on a pointer press elsewhere in the page', () => {

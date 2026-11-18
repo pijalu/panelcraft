@@ -73,26 +73,16 @@ function FramingPopover(props: {
     return () => observer.disconnect();
   }, [props.framing, props.anchor]);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key !== 'Escape') return;
-      // Escape closes the topmost surface first: the popover claims it here, at
-      // document level, before the presentation's own window-level keymap can
-      // read it as "exit". With the popover closed, Escape still exits.
-      e.preventDefault();
-      e.stopPropagation();
-      props.onClose();
-    };
+    // Keyboard dismissal is the close button (Enter/Space), never Escape:
+    // Escape is the presentation's documented exit shortcut, and swallowing it
+    // here would trap the presenter inside a flow.
     const onPointer = (e: Event): void => {
       const el = ref.current;
       if (el !== null && e.target instanceof Node && el.contains(e.target)) return;
       props.onClose();
     };
-    document.addEventListener('keydown', onKey);
     document.addEventListener('pointerdown', onPointer);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('pointerdown', onPointer);
-    };
+    return () => document.removeEventListener('pointerdown', onPointer);
   }, [props.onClose]);
   return (
     <div

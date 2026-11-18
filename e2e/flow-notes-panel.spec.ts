@@ -90,7 +90,7 @@ test('notes persist, render safely, keep step prose separate and do not steal fo
   await page.getByTestId('present-toggle').focus();
   await page.keyboard.press('ArrowRight');
   await expect(page.getByTestId('present-toggle')).toBeFocused();
-  await expect(page.getByTestId('present-description')).toHaveText('Current step prose.');
+  await expect(page.getByTestId('step-explanation')).toContainText('Current step prose.');
   expect(await aside.locator('strong').innerText()).toBe('Pay');
 
   const violations = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
