@@ -20,6 +20,12 @@ milestone-aligned minors. Dates are UTC.
   the two endpoints, so a curved or bent connector no longer shows the spark
   cutting across the diagram.
 
+Details and evidence: [blank diagram](archive/bugs-blank-diagram.md),
+[shared field layout](archive/bugs-shared-field-layout.md),
+[framing fields and explanation](archive/bugs-flow-framing-fields.md),
+[step description explanation](archive/bugs-step-description-explanation.md),
+[spark route](archive/bugs-spark-route.md).
+
 ## 2026-11-17 — browser assessment round 3
 
 - Selecting a flow step now shows its inspector directly in the Flow Steps
