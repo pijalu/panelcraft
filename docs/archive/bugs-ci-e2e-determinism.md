@@ -110,3 +110,14 @@ Verified: `npm run check` clean; the full browser suite passed twice in a row
 scenarios (`flow-panel-focus`, `round3-browser-fixes`, `present-hash-anchor`)
 that pass in isolation and did not reproduce; that is machine load under parallel
 workers, not the seeding race, and it is recorded here rather than papered over.
+
+## Follow-up: a wall-clock claim in a unit test
+
+The same pull request then failed on the unit gate instead: the routing test
+"bounds a many-bend plan deterministically" allowed 500 ms for a 32-waypoint plan
+and the runner took 556 ms. The bound was a claim about the machine, not about
+the planner, so it was replaced by the property the scenario actually protects —
+the plan must not grow with the obstacles it could inspect — asserted as
+`points.length <= waypoints.length + 8` (22 points for 32 waypoints today). A
+generous 10 s ceiling remains only as a guard against pathological blow-up, which
+is what a time bound can honestly say on shared hardware.
