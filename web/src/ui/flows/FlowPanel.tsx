@@ -33,6 +33,8 @@ export interface FlowPanelProps {
   onSelect(selection: FlowSelection): void;
   sections?: Record<string, boolean>;
   onToggleSection?(id: string): void;
+  /** A framing field to focus, with a counter so a repeat request refocuses. */
+  focusField?: { kind: 'intro' | 'conclusion'; nonce: number };
 }
 
 export function FlowPanel(props: FlowPanelProps) {
@@ -71,6 +73,7 @@ function flowPropsOf(props: FlowPanelProps, flow: Flow): FlowPropertiesProps {
     }),
     onPlay: props.onPlay,
     onSelect: props.onSelect,
+    ...(props.focusField === undefined ? {} : { focusField: props.focusField }),
   };
 }
 

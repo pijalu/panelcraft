@@ -27,6 +27,10 @@ export interface HarnessOptions {
   onHighlight?(ids: string[] | null): void;
   onPlay?(flowKey: string): void;
   onPlayFrom?(flowKey: string, index: number): void;
+  /** Framing-row edit request: opens the flow and focuses that field. */
+  onEditFraming?(flowKey: string, kind: 'intro' | 'conclusion'): void;
+  /** Shell-owned request that the Properties panel focus a framing field. */
+  focusField?: { kind: 'intro' | 'conclusion'; nonce: number };
   selection?: FlowSelection | null;
   /** Path of the open file; null means no file is active. */
   activePath?: string | null;
@@ -93,6 +97,7 @@ export function FlowHarness(opts: HarnessOptions = {}) {
         doc={doc}
         onPlay={(key) => opts.onPlay?.(key)}
         onPlayFrom={(key, index) => opts.onPlayFrom?.(key, index)}
+        {...(opts.onEditFraming === undefined ? {} : { onEditFraming: opts.onEditFraming })}
         selection={selection}
         onSelection={setSelection}
         {...pick({ canvas: opts.canvas, files: opts.files, onHighlight: opts.onHighlight })}
@@ -102,6 +107,7 @@ export function FlowHarness(opts: HarnessOptions = {}) {
           {...shared}
           doc={doc}
           selection={selection}
+          {...(opts.focusField === undefined ? {} : { focusField: opts.focusField })}
           {...pick({
             files: opts.files,
             canvas: opts.canvas,

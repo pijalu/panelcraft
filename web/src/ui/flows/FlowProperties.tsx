@@ -6,6 +6,7 @@
 // an empty one simply does not exist in the document, so a fresh flow has no
 // empty row to clean up.
 import type { ComponentChildren } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 import { ILLUSTRATION_IDS, type IllustrationId } from '../../engine/anim/illustrations';
 import { flowToMermaid } from '../../engine/format/mermaidSequenceExport';
 import { flowMarkdown, markdownFileName } from '../../engine/format/flowMarkdown';
@@ -72,6 +73,8 @@ export interface FlowPropertiesProps {
   onIllustration?(id: IllustrationId | 'auto'): void;
   onPlay(flowKey: string): void;
   onSelect(selection: FlowSelection): void;
+  /** A framing field to focus, with a counter so a repeat request refocuses. */
+  focusField?: { kind: 'intro' | 'conclusion'; nonce: number };
   sections?: Record<string, boolean>;
   onToggleSection?: (id: string) => void;
 }
@@ -85,8 +88,19 @@ function FramingField(props: {
   flow: Flow;
   kind: 'intro' | 'conclusion';
   onSet(text: string): void;
+  /** Set when this field is the target of a framing-row edit request. */
+  focus?: { nonce: number } | undefined;
 }) {
   const present = framingPath(props.flow, props.kind) !== null;
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (props.focus === undefined) return;
+    const el = ref.current;
+    if (el === null) return;
+    el.focus();
+    // Put the caret at the end so typing continues the authored prose.
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [props.focus?.nonce]);
   return (
     <>
       <TextArea
@@ -96,8 +110,32 @@ function FramingField(props: {
         value={framingText(props.flow, props.kind)}
         onInput={(v) => props.onSet(v)}
         testid={`flow-${props.kind}`}
+        inputRef={ref}
       />
       {!present && <p class="flow-hint" data-testid={`flow-${props.kind}-hint`}>{s('Empty: not part of this flow.')}</p>}
+    </>
+  );
+}
+
+/** Both framing fields, each able to receive a focus request from a row button. */
+function FramingFields(props: {
+  flow: Flow;
+  focusField?: { kind: 'intro' | 'conclusion'; nonce: number } | undefined;
+  onSet(kind: 'intro' | 'conclusion', text: string): void;
+}) {
+  const focusOf = (kind: 'intro' | 'conclusion'): { nonce: number } | undefined =>
+    props.focusField?.kind === kind ? { nonce: props.focusField.nonce } : undefined;
+  return (
+    <>
+      {(['intro', 'conclusion'] as const).map((kind) => (
+        <FramingField
+          key={kind}
+          flow={props.flow}
+          kind={kind}
+          onSet={(text) => props.onSet(kind, text)}
+          focus={focusOf(kind)}
+        />
+      ))}
     </>
   );
 }
@@ -149,8 +187,7 @@ export function FlowProperties(props: FlowPropertiesProps) {
           onInput={(v) => patch({ notes: v })}
           testid="flow-notes"
         />
-        <FramingField flow={flow} kind="intro" onSet={(text) => framing('intro', text)} />
-        <FramingField flow={flow} kind="conclusion" onSet={(text) => framing('conclusion', text)} />
+        <FramingFields flow={flow} focusField={props.focusField} onSet={framing} />
       </Group>
       <Group id="flow-presentation" title={s('Presentation')} open={open('flow-presentation')} onToggle={props.onToggleSection}>
         <CheckField

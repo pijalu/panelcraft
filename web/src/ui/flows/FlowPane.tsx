@@ -11,7 +11,7 @@ import { downloadText } from '../download';
 import { stem } from '../paths';
 import type { Doc, Flow, FlowStep } from '../../engine/model/types';
 import { s } from '../strings';
-import { CopyIcon, PlayIcon } from '../icons';
+import { CopyIcon, PencilIcon, PlayIcon } from '../icons';
 import {
   addFlow,
   appendStep,
@@ -53,6 +53,8 @@ export interface FlowPaneProps {
   files?: string[];
   /** FLOW-01: fade everything except these participants (null clears). */
   onHighlight?(ids: string[] | null): void;
+  /** Open the flow's introduction or conclusion field in Properties. */
+  onEditFraming?(flowKey: string, kind: 'intro' | 'conclusion'): void;
 }
 
 /** What the canvas must provide before a message/process step can be added. */
@@ -92,6 +94,8 @@ interface RowOps {
   move(path: number[], to: number): void;
   duplicate(path: number[]): void;
   playFrom(index: number): void;
+  /** Open the framing step's own prose field in Properties. */
+  editFraming?(kind: 'intro' | 'conclusion'): void;
 }
 
 function StepRow(props: {
@@ -160,6 +164,18 @@ function StepRow(props: {
       >
         <PlayIcon />
       </button>
+      {(row.step.type === 'intro' || row.step.type === 'conclusion') && ops.editFraming !== undefined && (
+        <button
+          type="button"
+          class="flow-step-btn"
+          data-testid={`step-frame-${index}`}
+          title={s(row.step.type === 'intro' ? 'Edit the introduction' : 'Edit the conclusion')}
+          aria-label={s(row.step.type === 'intro' ? 'Edit the introduction' : 'Edit the conclusion')}
+          onClick={() => ops.editFraming?.(row.step.type === 'intro' ? 'intro' : 'conclusion')}
+        >
+          <PencilIcon />
+        </button>
+      )}
       <button
         type="button"
         class="flow-step-btn"
@@ -338,6 +354,16 @@ function FlowEditor(props: {
     move: (path, to) => withFlow((f) => moveStep(f, path, to)),
     duplicate: (path) => withFlow((f) => duplicateStep(f, path)),
     playFrom: (i) => pane.onPlayFrom?.(selKey, i + 1),
+    ...(pane.onEditFraming === undefined
+      ? {}
+      : {
+        editFraming: (kind) => {
+          // The framing prose lives on the flow, so the Properties panel shows
+          // the flow itself and moves focus to that one field.
+          pick(selKey);
+          pane.onEditFraming?.(selKey, kind);
+        },
+      }),
   };
   const addFlowRow = (): void => {
     const seq = doc.flows.length + 1;

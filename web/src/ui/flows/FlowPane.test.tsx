@@ -920,3 +920,62 @@ describe('shared stacked field layout', () => {
     expect(out()).toContain('text "five"');
   });
 });
+
+describe('framing-row editor buttons', () => {
+  it('opens the flow and asks for the matching field from both framing rows', () => {
+    const asked: [string, string][] = [];
+    render(
+      <FlowHarness
+        onEditFraming={(key, kind) => asked.push([key, kind])}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    // Row 1 is the introduction, the last row the conclusion.
+    fireEvent.click(screen.getByTestId('step-frame-0'));
+    const rows = screen.getAllByTestId(/^step-frame-/);
+    fireEvent.click(rows[rows.length - 1]!);
+    expect(asked).toEqual([['main', 'intro'], ['main', 'conclusion']]);
+  });
+
+  it('leaves ordinary row selection on Step properties', () => {
+    render(<FlowHarness onEditFraming={() => {}} />);
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-0'));
+    // Selecting the framing step still shows the step inspector, not the flow.
+    expect(screen.getByTestId('step-panel')).not.toBeNull();
+    expect(screen.queryByTestId('flow-properties')).toBeNull();
+  });
+
+  it('offers the row button only when a handler is wired', () => {
+    render(<FlowHarness />);
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    expect(screen.queryAllByTestId(/^step-frame-/)).toHaveLength(0);
+  });
+});
+
+describe('framing field focus hand-off', () => {
+  const focused = (): string | null => {
+    const el = document.activeElement;
+    return el instanceof HTMLElement ? (el.dataset['testid'] ?? null) : null;
+  };
+
+  for (const kind of ['intro', 'conclusion'] as const) {
+    it(`moves focus to the ${kind} field on request`, () => {
+      const { rerender } = render(<FlowHarness selection={{ flow: 'main', step: [] }} />);
+      // No request yet: the panel is open and nothing stole focus.
+      expect(focused()).toBeNull();
+      rerender(<FlowHarness selection={{ flow: 'main', step: [] }} focusField={{ kind, nonce: 1 }} />);
+      expect(focused()).toBe(`flow-${kind}`);
+      expect((screen.getByTestId(`flow-${kind}`) as HTMLTextAreaElement).selectionStart)
+        .toBe((screen.getByTestId(`flow-${kind}`) as HTMLTextAreaElement).value.length);
+    });
+  }
+
+  it('refocuses after the request counter changes', () => {
+    const { rerender } = render(<FlowHarness selection={{ flow: 'main', step: [] }} focusField={{ kind: 'intro', nonce: 1 }} />);
+    (screen.getByTestId('flow-conclusion') as HTMLTextAreaElement).focus();
+    expect(focused()).toBe('flow-conclusion');
+    rerender(<FlowHarness selection={{ flow: 'main', step: [] }} focusField={{ kind: 'intro', nonce: 2 }} />);
+    expect(focused()).toBe('flow-intro');
+  });
+});

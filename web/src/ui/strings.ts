@@ -467,6 +467,8 @@ const EN = {
   "Share": "Share",
   "Shown before the first step": "Shown before the first step",
   "Shown in the flow list": "Shown in the flow list",
+  "Edit the introduction": "Edit the introduction",
+  "Edit the conclusion": "Edit the conclusion",
   "Empty: not part of this flow.": "Empty: not part of this flow.",
   "Presentation": "Presentation",
   "Exports are generated from this flow alone.": "Exports are generated from this flow alone.",

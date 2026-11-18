@@ -164,6 +164,7 @@ function FlowStepsPane(props: {
   canvasContext: FlowCanvasContext;
   onHighlight(ids: string[] | null): void;
   currentView?: () => ViewPoint | null;
+  onEditFraming?(flowKey: string, kind: 'intro' | 'conclusion'): void;
 }) {
   return (
     <aside class="sidebar" aria-label={s('Flow step editor')}>
@@ -186,6 +187,7 @@ function FlowStepsPane(props: {
         canvas={props.canvasContext}
         files={props.manager.files().map((file) => file.path)}
         onHighlight={props.onHighlight}
+        {...(props.onEditFraming === undefined ? {} : { onEditFraming: props.onEditFraming })}
       />
     </aside>
   );
@@ -283,6 +285,7 @@ function FlowSlot(props: {
   canvasContext: FlowCanvasContext;
   onHighlight: (ids: string[] | null) => void;
   currentView?: () => ViewPoint | null;
+  onEditFraming?(flowKey: string, kind: 'intro' | 'conclusion'): void;
 }) {
   return slot(
     props.ui.layout.panels.flows === 'collapsed',
@@ -303,6 +306,7 @@ function FlowSlot(props: {
       canvasContext={props.canvasContext}
       onHighlight={props.onHighlight}
       {...(props.currentView === undefined ? {} : { currentView: props.currentView })}
+      {...(props.onEditFraming === undefined ? {} : { onEditFraming: props.onEditFraming })}
     />,
   );
 }
@@ -413,6 +417,7 @@ function flowsSlot(
     session: FlowSession;
     doc: Doc | null;
     player: FlowPlayerApi;
+    onEditFraming?(flowKey: string, kind: 'intro' | 'conclusion'): void;
   },
 ): ComponentChildren {
   return (
@@ -432,6 +437,7 @@ function flowsSlot(
       onSelection={p.onFlowSelection}
       canvasContext={canvasContext(p.canvas.snap, p.sel.link)}
       onHighlight={(ids) => highlightParticipants(p.canvas, ids)}
+      {...(p.onEditFraming === undefined ? {} : { onEditFraming: p.onEditFraming })}
     />
   );
 }
@@ -464,6 +470,8 @@ interface FlowPanelWiring {
   onIllustration(id: IllustrationId | 'auto'): void;
   onPlay(flowKey: string): void;
   onSelect(selection: FlowSelection | null): void;
+  /** A framing field the step list asked Properties to focus. */
+  focusField?: { kind: 'intro' | 'conclusion'; nonce: number };
 }
 
 /** Wrap the wiring into the panel's props; null while nothing flow-side is open. */
@@ -488,6 +496,7 @@ function flowPanelProps(
     sections: p.ui.layout.sections,
     onToggleSection: p.ui.toggleSection,
     ...(flow.view === undefined ? {} : { view: flow.view }),
+    ...(flow.focusField === undefined ? {} : { focusField: flow.focusField }),
   };
 }
 
@@ -619,6 +628,7 @@ function bodyPanels(
       session: p.flowEdit.session,
       doc: p.doc,
       player,
+      onEditFraming: p.flowEdit.focusFraming,
     }),
     palette: <PaletteSlot ui={ui} onPlace={(kind) => ctrl?.addObject(kind)} onDragDrop={canvas.onPaletteDrop} />,
     code: (
@@ -661,6 +671,7 @@ function bodyPanels(
           if (activePath !== null) player.start(activePath, flowKey);
         },
         onSelect: p.flowEdit.selectFlow,
+        ...(p.flowEdit.framingFocus === undefined ? {} : { focusField: p.flowEdit.framingFocus }),
         ...(currentViewOf(canvas) === undefined ? {} : { view: currentViewOf(canvas)! }),
       },
     }),

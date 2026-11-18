@@ -145,10 +145,16 @@ export function TextArea(props: {
   onInput: (v: string) => void;
   testid: string;
   variant?: FieldVariant;
+  /** Lets a caller focus this field (framing-row edits, validation jumps). */
+  inputRef?: { current: HTMLTextAreaElement | null };
 }) {
   const draft = useDraft(props.value);
   const variant = props.variant ?? 'inline';
-  const setRef = useAutoGrow(draft.value);
+  const grow = useAutoGrow(draft.value);
+  const setRef = (el: HTMLTextAreaElement | null): void => {
+    grow(el);
+    if (props.inputRef !== undefined) props.inputRef.current = el;
+  };
   return (
     <label class={fieldClass(variant)}>
       <span class="flow-field-label">{props.label}</span>
