@@ -55,6 +55,9 @@ export interface FlowPlayerState {
   description: string;
   /** Authored flow-level Markdown source (never rendered HTML). */
   flowDescription: string;
+  /** The current beat's framing prose, when it is an introduction or conclusion.
+   *  Distinct from flow notes and from a step description: one owner per surface. */
+  framing: { kind: 'intro' | 'conclusion'; text: string } | null;
   /** True only when flow notes exist and their presentation flag is set. */
   showFlowNotes: boolean;
   breadcrumb: string[]; // titles of the frames above the current one
@@ -69,6 +72,7 @@ export const FRESH: FlowPlayerState = {
   narration: '',
   description: '',
   flowDescription: '',
+  framing: null,
   showFlowNotes: false,
   breadcrumb: [],
   awaitingChoice: null,
@@ -85,6 +89,12 @@ function notesOf(flow?: Flow): Pick<FlowPlayerState, 'flowDescription' | 'showFl
     flowDescription: source,
     showFlowNotes: flow?.presentation === true && source.trim() !== '',
   };
+}
+
+/** A framing beat's prose, for the presentation popover. */
+function framingOf(beat: Beat): FlowPlayerState['framing'] {
+  if (beat.kind !== 'intro' && beat.kind !== 'conclusion') return null;
+  return beat.title.trim() === '' ? null : { kind: beat.kind, text: beat.title };
 }
 
 /** Panel visibility: one predicate shared by the shell class and the layer. */
@@ -170,6 +180,7 @@ export class FlowRunner {
     this.io.publish({
       narration: beat.title,
       description: beat.description ?? '',
+      framing: framingOf(beat),
       ...notesOf(f.flow),
       progress: { index: f.index + 1, total: f.plan.beats.length },
       awaitingChoice: null,
@@ -270,6 +281,7 @@ export class FlowRunner {
         status: 'ended',
         narration: done === undefined ? '' : done.plan.flowTitle,
         description: '',
+        framing: null,
         ...notesOf(done?.flow),
         breadcrumb: [],
         progress: done === undefined ? null : { index: total, total },

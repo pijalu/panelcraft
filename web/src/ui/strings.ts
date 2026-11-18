@@ -469,6 +469,8 @@ const EN = {
   "Shown in the flow list": "Shown in the flow list",
   "Edit the introduction": "Edit the introduction",
   "Edit the conclusion": "Edit the conclusion",
+  "Explanation": "Explanation",
+  "Close explanation": "Close explanation",
   "Empty: not part of this flow.": "Empty: not part of this flow.",
   "Presentation": "Presentation",
   "Exports are generated from this flow alone.": "Exports are generated from this flow alone.",
