@@ -7,6 +7,7 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openFlowSteps, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -57,10 +58,7 @@ test('S3: 6-step flow playback — transport, alt chooser, par concurrency, dim,
   // ---- seed the document (objects + links + flow) via the code view --------
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC);
+  await seedCode(page, DOC);
   await expect(canvas.locator('g.pc-obj')).toHaveCount(3, { timeout: 5000 });
   await expect(canvas.locator('g.pc-link')).toHaveCount(2);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {

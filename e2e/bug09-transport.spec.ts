@@ -6,6 +6,7 @@
 import { expect, test, type ConsoleMessage, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openFlowSteps, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -35,13 +36,7 @@ async function seed(page: Page, doc: string = DOC): Promise<void> {
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(doc);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
+  await seedCode(page, doc);
   await openFlowSteps(page);
   await expect(page.getByTestId('flow-row-main')).toBeVisible({ timeout: 5000 });
 }
@@ -373,9 +368,12 @@ test.describe('presentation replay (item 9)', () => {
       .toBe('paused');
     const frozen = await travelTime();
     await page.waitForTimeout(250);
-    // WAAPI currentTime drifts by a fraction of a millisecond after pausing;
-    // anything beyond a few ms would mean the beat kept travelling.
-    expect(Math.abs((await travelTime()) - frozen)).toBeLessThan(5);
+    // A pause request takes effect on a frame boundary, so one more frame (16.7 ms
+    // at 60 Hz) can commit after `playState` already reads 'paused'. A tolerance
+    // below that quantum cannot tell "frozen" from "advanced one frame" and fails
+    // on a loaded machine for no product reason; a beat that kept travelling moves
+    // a large fraction of its travel time in 250 ms, far beyond a single frame.
+    expect(Math.abs((await travelTime()) - frozen)).toBeLessThan(20);
     // Replay: a fresh spark on the current beat, starting from time zero.
     const oldToken = await token.elementHandle();
     await page.getByTestId('present-toggle').click();

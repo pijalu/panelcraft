@@ -5,6 +5,7 @@
 // by every kind, so a person added after a component was called "Person 2".
 import { expect, test, type Page } from '@playwright/test';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 title "palette"
@@ -16,12 +17,7 @@ async function seed(page: Page): Promise<void> {
   await page.goto('/');
   await openWorkspacePanels(page, ['code']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  const editor = page.locator('.cm-content');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', { timeout: 10_000 });
+  await seedCode(page, DOC);
 }
 
 async function documentText(page: Page): Promise<string> {

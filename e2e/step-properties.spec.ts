@@ -6,6 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -60,10 +61,7 @@ async function axe(page: Page): Promise<void> {
 async function seedDoc(page: Page): Promise<void> {
   await openWorkspacePanels(page, ['code', 'flows']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, DOC);
   await page.getByTestId('collapse-code').click();
   await page.getByTestId('flow-row-checkout').click();
   await page.getByTestId('step-1').click();
@@ -139,10 +137,7 @@ test('derived flow connector style does not materialise a flow', async ({ page }
   await page.goto('/');
   await openWorkspacePanels(page, ['code', 'flows']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC.split('flow "Checkout"')[0] ?? '');
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, DOC.split('flow "Checkout"')[0] ?? '');
   await page.getByTestId('collapse-code').click();
 
   await expect(page.getByTestId('flow-derived-hint')).toBeVisible();

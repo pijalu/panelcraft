@@ -3,6 +3,7 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { openFlowSteps, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 person user "Customer"
@@ -30,11 +31,7 @@ test('M6-WP7: selected flow exports to .seq.mmd', async ({ page }) => {
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, DOC);
   await openFlowSteps(page);
   await page.getByTestId('flow-row-main').click();
   const pending = page.waitForEvent('download');

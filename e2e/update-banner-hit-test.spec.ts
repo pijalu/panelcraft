@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { chooseAppMenu, openWorkspacePanels, setAppTheme } from './lib/panels';
 import { capture } from './lib/screenshots';
+import { seedCode } from './lib/seed';
 
 const FLOW_DOC = `pcd 1.0
 
@@ -106,13 +107,7 @@ async function seedDoc(page: Page): Promise<void> {
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(FLOW_DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
+  await seedCode(page, FLOW_DOC);
 }
 
 async function ready(page: Page): Promise<void> {
@@ -356,19 +351,10 @@ test('update banner hit test across shell states', async ({ page, context }) => 
 
     // Unapplied code changes the offer's copy and makes Restart a confirmed
     // consent; its hit surface must stay the same.
-    const editor = page.locator('.cm-content');
-    await editor.click();
-    await expect(editor).toBeFocused();
-    await editor.press('ControlOrMeta+a');
-    await page.keyboard.insertText('pcd 1.0\nsystem');
-    await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'error');
+    await seedCode(page, 'pcd 1.0\nsystem', { sync: 'error' });
     await expect(banner).toContainText('Unapplied code');
     await record(page, 'unapplied-confirmation', 'update-hit-unapplied', true);
-    await editor.click();
-    await expect(editor).toBeFocused();
-    await editor.press('ControlOrMeta+a');
-    await page.keyboard.insertText(FLOW_DOC);
-    await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+    await seedCode(page, FLOW_DOC);
 
     await page.setViewportSize({ width: 375, height: 667 });
     await record(page, 'narrow', 'update-hit-narrow', true);

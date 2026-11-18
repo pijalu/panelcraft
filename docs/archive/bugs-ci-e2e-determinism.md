@@ -121,3 +121,100 @@ the plan must not grow with the obstacles it could inspect — asserted as
 `points.length <= waypoints.length + 8` (22 points for 32 waypoints today). A
 generous 10 s ceiling remains only as a guard against pathological blow-up, which
 is what a time bound can honestly say on shared hardware.
+
+## Follow-up: the focus gate was not enough, so the primitive is now shared
+
+The inline focus gate above fixed the specs it touched but not the class. It came
+back three times: once on the main branch after the palette work merged
+(`flow01-canvas-flows`), and twice more while validating this change. The last
+occurrence finally produced the evidence needed to name the real cause.
+
+### Observed
+
+`e2e/bugs-palette-add.spec.ts` failed under parallel workers with the code view
+in the error state. The stored failure screenshot showed the buffer as
+
+```
+pcd 1.0
+title "palette"
+
+layout saved
+pcd 1.0          ← the seeded document's first line, appended
+```
+
+with `E100 duplicate magic line` in the problems panel. The original document was
+still there and a fragment of the seed had been appended, so the select-all had
+not taken and the insert had been partly applied. The same shape as the grid
+trace in this document's first section — same failure, different spec.
+
+### Cause
+
+Two facts combine:
+
+1. `CodeEditor`'s mount effect depends on `[machine]`
+   (`web/src/ui/codeview/CodeEditor.tsx`), so a new machine identity destroys and
+   rebuilds the CodeMirror view.
+2. The sync machine for a file is rebuilt when the stored document arrives from
+   browser storage.
+
+So on a slow load, a seed that clicks, selects and types lands across the rebuild
+window. The view that received the input is destroyed mid-flight, and what
+survives is a partial application against the old document. Requiring focus
+before the chord (the earlier fix) does not help: focus was established, then the
+editor was replaced underneath it.
+
+### What changed
+
+- `e2e/lib/seed.ts` now holds the one primitive. It requires the focus, waits for
+the sync state, and then *proves the buffer holds the text it was given*. If the
+buffer does not hold it, it types once more into the now-settled editor and
+requires the second attempt to hold; if that fails it throws with both texts
+(expected and found) rather than letting the scenario continue against a diagram
+it never authored.
+- The 79 hand-written `click → select all → type` blocks across 48 spec files
+  now call it, so the panel set and the seed text stay per-scenario while the
+  part that races does not. The earlier decision to keep the primitive inline
+  ("the two-line primitive does not differ") is reversed: it was three lines, it
+did differ, and it was being patched one flake at a time.
+- `e2e-hosted/lib/hosted.ts` delegates to the same functions, so the local and
+  hosted suites cannot drift apart on the seeding rule. `documentText` and
+  `normalise` now have one definition instead of three.
+
+Nothing was weakened: every seeded document is now verified where most
+scenarios previously only waited for a sync state. Two deliberate seeds say so
+explicitly — the Mermaid paste converts on insertion (`{ sync: 'any', verify:
+false }`), and the invalid-document scenarios wait for the error state instead of
+clean.
+
+### Two further defects found by making seeds deterministic
+
+- `e2e/bug09-transport.spec.ts` asserted that a paused beat's animation clock
+did not advance by more than 5 ms, which is below one frame at 60 Hz (16.7 ms).
+A pause lands on a frame boundary, so the assertion failed with `16.7` under
+contention while the beat was correctly frozen — the bound could not distinguish
+"paused" from "advanced one frame". It now allows one frame and states why; a
+beat that kept travelling moves far more than that in the 250 ms window. Before
+the change: 4 of 5 runs failed under two concurrent repeats. After: 8 of 8 passed
+under four-way contention.
+- `e2e/s2-code.spec.ts` clicked the diverged dialog's Apply button and then
+asserted it was disabled. Apply is disabled from the moment the dialog opens
+when the buffer does not parse, so the click only worked because the parse had
+not landed yet — the test was asserting a race, not the rule ("an unparseable
+buffer cannot be applied"). It now asserts the refusal directly.
+
+### Evidence
+
+- `npm run check` clean (tsc, service-worker tsc, eslint).
+- Full browser suite: 254 passed, twice in a row.
+- `bugs-palette-add.spec.ts` at 20 repeats × 6 workers: 60 of 60 passed. Before
+the primitive, the same command failed at repeat 12 with the buffer above.
+- `bug09-transport.spec.ts:347` at 8 repeats × 4 workers: 8 of 8 passed.
+
+### Residual risk, recorded not fixed
+
+The re-type inside the primitive repairs the *harness* against the mid-typing
+remount. The underlying app behaviour is unchanged: if a document arrives from
+storage while a person is typing in the code view, their input is mangled the
+same way. Reaching that window requires the code panel to be open before the
+stored document resolves, which is what tests do and people normally do not, so
+it is recorded here instead of being changed in the same pull request.

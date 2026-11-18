@@ -7,6 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
 import { chooseAppMenu, chooseExport, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 // Five equal-size objects stacked on the same spot: one Auto, one explicit zero,
 // one negative, one positive and one tie with the positive value. Document order
@@ -47,12 +48,7 @@ position tie (170, 160)
 const OVERLAP = { x: 200, y: 170 };
 
 async function setDoc(page: Page, source: string): Promise<void> {
-  const editor = page.locator('.cm-content');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(source);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, source);
 }
 
 async function seedDoc(page: Page): Promise<void> {

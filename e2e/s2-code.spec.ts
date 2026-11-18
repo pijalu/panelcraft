@@ -6,6 +6,7 @@
 import { expect, test } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const MERMAID = 'flowchart TD\n  api[API Server] --> db[(Database)]\n';
 
@@ -21,10 +22,9 @@ test('S2: mermaid paste → canvas → canvas edit → code view updates', async
   // ---- paste mermaid into the code view ------------------------------------
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(MERMAID);
+  // Mermaid is converted to canonical PDL as it is pasted, so the buffer will
+  // not hold the input: skip the "holds what was typed" proof.
+  await seedCode(page, MERMAID, { sync: 'any', verify: false });
   // D-M4-4: the buffer converts to canonical PDL at paste time
   const content = page.locator('.cm-content');
   await expect(content).toContainText('pcd 1.0');
@@ -67,18 +67,18 @@ test('S2/WP4: garbage buffer blocks apply; diverged close offers discard', async
   const editor = page.locator('.cm-content');
   await openWorkspacePanels(page, ['code']);
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText('pcd 1.0\nsystem');
+  // The point of this scenario is an unparseable buffer, so "settled" means the
+  // error state; waiting for clean here would assert the opposite of the test.
+  await seedCode(page, 'pcd 1.0\nsystem', { sync: 'error' });
 
   // closing the tab with a diverged buffer must prompt (FR-K5)
   await page.getByTestId('tab-close-untitled.pcd').click();
   const dialog = page.getByTestId('diverged-dialog');
   await expect(dialog).toBeVisible();
 
-  // FR-K4: the unparseable buffer cannot be applied
-  await page.getByTestId('diverged-apply').click();
+  // An unparseable buffer cannot be applied: the dialog says so as soon as it
+  // opens and refuses Apply, so assert the refusal rather than clicking a button
+  // that is only enabled while the parse is still in flight.
   await expect(page.getByTestId('diverged-error')).toBeVisible();
   await expect(page.getByTestId('diverged-apply')).toBeDisabled();
 

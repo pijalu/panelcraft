@@ -6,6 +6,7 @@
 // not be stuck on a flow step just because the press landed on geometry.
 import { expect, test, type Page } from '@playwright/test';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -38,9 +39,7 @@ async function settle(page: Page): Promise<void> {
 async function seed(page: Page): Promise<void> {
   await openWorkspacePanels(page, ['code', 'flows']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC);
+  await seedCode(page, DOC);
   await settle(page);
   await page.getByTestId('collapse-code').click();
   await page.getByTestId('flow-row-checkout').click();

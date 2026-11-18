@@ -7,6 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 async function axe(page: Page): Promise<void> {
   const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
@@ -51,11 +52,7 @@ async function seed(page: Page): Promise<void> {
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, DOC);
   await expect(page.getByTestId('canvas').locator('g.pc-obj')).toHaveCount(3);
   // Collapse the code panel so all three saved positions sit inside the canvas.
   await page.getByTestId('collapse-code').click();

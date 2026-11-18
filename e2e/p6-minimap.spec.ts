@@ -3,6 +3,7 @@
 import { expect, test } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 system a "Client"
@@ -23,10 +24,7 @@ test('FR-C1: mini-map pans by pointer and keyboard and tracks the viewport', asy
   await page.goto('/');
   await openWorkspacePanels(page);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, DOC);
   const miniMap = page.getByTestId('mini-map');
   const indicator = page.getByTestId('mini-map-viewport');
   const world = page.locator('.pc-world');

@@ -5,6 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
 import { chooseAppMenu, chooseExport, choosePanelMenu, openAppGroup, openWorkspacePanels, setAppTheme } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const root = (page: Page) => page.locator('html');
 
@@ -43,12 +44,7 @@ async function storedTheme(page: Page): Promise<unknown> {
 }
 
 async function replaceCode(page: Page, text: string): Promise<void> {
-  const editor = page.locator('.cm-content');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, text);
 }
 
 test('UX-05: System follows OS, explicit choices persist before first paint, and PDL stays independent', async ({ page }) => {

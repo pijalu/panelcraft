@@ -5,6 +5,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openFlowSteps, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const BASE = `pcd 1.0
 
@@ -39,11 +40,7 @@ async function seed(page: Page, doc: string): Promise<void> {
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(doc);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', { timeout: 5000 });
+  await seedCode(page, doc);
   await openFlowSteps(page);
   await expect(page.getByTestId('flow-row-main')).toBeVisible({ timeout: 5000 });
 }

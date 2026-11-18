@@ -7,11 +7,16 @@
 #
 #   ci (push to main) ──success──▶ pages: gate → build → deploy → verify
 #
-# `gate` refuses to publish when the checks for the SHA did not pass, when the
-# commit touched nothing that ships, or when the checked-out HEAD is not the SHA
-# it meant to publish. `verify` runs the deployment evidence script and the
-# hosted Playwright smoke suite against the live site, so a release claim cites a
-# served SHA and byte-identical assets instead of a successful upload.
+# `gate` refuses to publish when the checks for the SHA did not pass, when nothing
+# that ships differs from what the site already serves, or when the checked-out
+# HEAD is not the SHA it meant to publish. That last-but-one clause is
+# `scripts/deploy-gate.sh`: it asks what the difference is between the served
+# revision and the candidate, not what the candidate's last commit touched — the
+# parent-only comparison it replaced skipped deploys whenever a shipped change was
+# followed by a documentation-only merge, and a skipped deploy reports success.
+# `verify` runs the deployment evidence script and the hosted Playwright smoke
+# suite against the live site, so a release claim cites a served SHA and
+# byte-identical assets instead of a successful upload.
 name: pages
 
 on:
@@ -50,12 +55,14 @@ jobs:
       sha: ${{ steps.revision.outputs.sha }}
       publish: ${{ steps.revision.outputs.publish }}
     steps:
-      # Two commits of history: the path filter compares the deployed commit with
-      # its parent to keep documentation-only pushes off the site.
+      # Full history: the publication decision diffs the revision under test
+      # against the revision the site currently serves, which can be many commits
+      # back. Comparing with the parent instead used to hide a shipped change that
+      # a later documentation-only merge had landed on top of.
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: resolve the revision under test
         id: revision
@@ -64,6 +71,7 @@ jobs:
           TARGET: ${{ github.event.workflow_run.head_sha || github.sha }}
           EVENT: ${{ github.event_name }}
           REPO: ${{ github.repository }}
+          SITE: ${{ env.SITE_URL }}
         run: |
           set -euo pipefail
           head="$(git rev-parse HEAD)"
@@ -83,22 +91,31 @@ jobs:
               exit 1
             fi
             echo "revision: $head"
-          fi
-
-          if [ "$EVENT" = "workflow_dispatch" ]; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
             echo "manual dispatch: publishing $head"
             exit 0
           fi
-          # Documentation-only pushes are still filtered out of the site.
-          changed="$(git diff --name-only HEAD^1 HEAD || true)"
-          echo "changed files:"; echo "$changed"
-          if echo "$changed" | grep -qE '^(web/|vite.config.ts|package-lock.json|\.github/workflows/pages\.yml)'; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "no shipped paths changed — nothing to deploy (checks still passed)"
+
+          # What the site serves right now, straight from the bundle it serves.
+          # Empty means nothing is published yet (or the site is unreachable), and
+          # the gate treats that as "publish": a redundant deploy is cheap, a
+          # wrongly skipped one is invisible.
+          served="$(curl -fsS "${SITE}build-info.json" | jq -r '.sha // ""' || true)"
+          echo "site serves: '${served:-nothing}'"
+
+          # A missing or failing decision must fail the job, never read as "do not
+          # publish": a silent skip is how a shipped change stops reaching the site.
+          if [ ! -f scripts/deploy-gate.sh ]; then
+            echo "::error::scripts/deploy-gate.sh is missing from $head — cannot decide publication"
+            exit 1
           fi
+          verdict="$(bash scripts/deploy-gate.sh --head "$head" --served "$served")"
+          echo "$verdict"
+          case "$verdict" in
+            *publish=true) echo "publish=true" >> "$GITHUB_OUTPUT" ;;
+            *publish=false) echo "publish=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::deploy gate produced no verdict"; exit 1 ;;
+          esac
 
   build:
     needs: gate

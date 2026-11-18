@@ -7,6 +7,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openWorkspacePanels } from './lib/panels';
 import { capture } from './lib/screenshots';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 title "Dense labels"
@@ -91,13 +92,7 @@ async function seed(page: Page): Promise<void> {
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
+  await seedCode(page, DOC);
   await expect(page.getByTestId('canvas').locator('g.pc-obj')).toHaveCount(7);
   // The mini-map's Home fits the diagram. It runs after the panels are open, so
   // the fit matches the canvas size the assertions actually measure (the load

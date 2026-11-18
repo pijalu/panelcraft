@@ -13,6 +13,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -48,10 +49,7 @@ async function seedDoc(page: Page, text: string): Promise<void> {
   await openWorkspacePanels(page, ['code']);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, text);
   await page.getByTestId('canvas').locator('text=Payment provider').first().waitFor();
 }
 

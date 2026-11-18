@@ -160,6 +160,10 @@ docs_links() { run bash scripts/check-docs.sh; }
 
 # jargon: a change must not add a bare identifier ("N7") where words belong.
 jargon() { run bash scripts/check-jargon.sh; }
+# deploy_gate: the publication decision — which differences between the served
+# revision and the candidate require a new deploy — checked against real commit
+# graphs. A wrong answer here is silent: the site simply never updates.
+deploy_gate() { run bash scripts/deploy-gate.test.sh; }
 # release_dry: dry-run release — binary matrix linux/darwin/windows × amd64/arm64
 # (CGO off, web/dist embedded), sha256 checksums, pages artifact, boot-smoke
 # (M7-WP6, N4/N11).
@@ -192,10 +196,10 @@ case "$MILESTONE" in
     STAGES=(web_check web_test perf_smoke workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs selfcontained e2e_m6)
     ;;
   m7)
-    STAGES=(web_check web_test perf_smoke perf_nfr workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots svg_fuzz cli_traversal web_build render_cli go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links jargon selfcontained a11y_e2e offline_e2e e2e_m7 repo_clean release_dry)
+    STAGES=(web_check web_test perf_smoke perf_nfr workspace_unit sync_machine exporter_goldens flows_anim layout_engine views_search snapshots svg_fuzz cli_traversal web_build render_cli go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links jargon deploy_gate selfcontained a11y_e2e offline_e2e e2e_m7 repo_clean release_dry)
     ;;
   ux08)
-    STAGES=(web_check web_test ux08_unit perf_smoke perf_nfr web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links jargon selfcontained a11y_e2e offline_e2e perf_baseline e2e_ux08 e2e_full repo_clean)
+    STAGES=(web_check web_test ux08_unit perf_smoke perf_nfr web_build go_vet go_static go_cyclo go_test corpus_ir corpus_ts corpus_go validate_docs docs_links jargon deploy_gate selfcontained a11y_e2e offline_e2e perf_baseline e2e_ux08 e2e_full repo_clean)
     ;;
   *)
     echo "verify.sh: unknown milestone '$MILESTONE' (known: m0, m1, m2, m3, m4, m5, m6, m7, ux08)" >&2
