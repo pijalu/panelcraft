@@ -91,6 +91,14 @@ jobs:
           git fetch --no-tags origin main:refs/remotes/origin/main || true
           bash scripts/check-jargon.sh origin/main
 
+      # ---- publication decision ----
+      # The rule that decides whether a merge reaches the live site is checked
+      # against real commit graphs here, because getting it wrong is silent: a
+      # wrongly skipped deploy leaves the site on an older revision and every
+      # downstream gate still reports success.
+      - name: deploy-gate self-test
+        run: bash scripts/deploy-gate.test.sh
+
       # ---- asset-origin scan ----
       # Nothing may load from an external origin: no CDN, no webfonts.
       - name: asset-origin scan

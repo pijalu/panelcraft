@@ -4,6 +4,21 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — release: the site publishes what it is missing
+
+- Whether a merge reaches the live site is now decided by comparing the revision
+  the site serves with the revision being published, not by looking at what the
+  candidate's last commit touched. The old rule skipped a deploy whenever a
+  shipped change was followed by a documentation-only merge, which left a round of
+  bug fixes unpublished for two merges while every job reported success.
+- That decision lives in `scripts/deploy-gate.sh` and is checked against real
+  commit graphs (`scripts/deploy-gate.test.sh`, 8 cases) in `ci` and in
+  `scripts/verify.sh`. An unknown served revision publishes rather than skips, and
+  a missing or failing decision fails the job instead of reading as "nothing to
+  deploy".
+
+Details and evidence: [hosted release verification](archive/bugs-hosted-release-verification.md).
+
 ## Unreleased — test infrastructure: one seeding primitive
 
 - The browser suites author documents through one helper instead of 79

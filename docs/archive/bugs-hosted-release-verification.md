@@ -290,3 +290,81 @@ published path, so fixing tests did not redeploy the site).
 - **Manual dispatch depends on the Actions API.** The dispatch path asks the API
   for the latest `ci` run of the dispatched commit; if the API is unavailable the
   job fails closed (no publication) rather than open.
+
+## Follow-up: the gate asked the wrong question and stranded a release
+
+### Observed
+
+The five bug fixes from the bug round merged to main (`bb6f929`). Its `ci` run
+went red on an unrelated browser-seeding race, so nothing deployed. The seeding
+fix followed (`01cff26`); its `ci` passed, but the `pages` gate answered
+"no shipped paths changed — nothing to deploy" and skipped the deploy, because
+the fix touched only `e2e/` and documentation.
+
+That answer was locally consistent and completely wrong for the site: the
+revision it served was still `d3ac083` from over two days earlier, so the bug
+fixes were never published. The hosted `verify` job had not run against a real
+deployment since then either — it was green only by being skipped. When a manual
+dispatch finally forced a build, `verify` failed 5 of 13 specs against the new
+bundle (stale fixtures using the removed `view` syntax, a test id that had moved
+into a menu group, an assertion that the app menu must scroll after the menu was
+grouped into something shorter).
+
+### Cause
+
+The gate compared the candidate commit with *its parent*:
+
+```
+changed="$(git diff --name-only HEAD^1 HEAD)"
+```
+
+That answers "did the last commit touch a shipped path", which is not the
+question. Whether another build is needed is a question about the difference
+between **what the site serves** and **what we mean to publish**. Comparing with
+the parent silently drops work whose own publication never happened, so any
+shipped change stranded behind a documentation-only merge stays stranded for as
+long as merges keep touching only documentation — and each skip looks correct in
+isolation.
+
+### What changed
+
+- `scripts/deploy-gate.sh` owns the decision: publish iff the files that ship
+differ between the served revision and the candidate. It publishes when nothing
+is served yet, skips when the site already serves the candidate, and publishes
+when the served revision is unknown to the clone or is not an ancestor of the
+candidate — a redundant deploy costs one run, while a wrongly skipped one is
+invisible and is exactly how this went unnoticed.
+- The revision under test is read from the bundle the site actually serves
+  (`build-info.json`), which is the same file the evidence job already trusts.
+- The gate checks out full history (`fetch-depth: 0`), because the served
+  revision can be many commits back.
+- A missing or failing gate fails the job instead of reading as "do not publish".
+  The previous shape (`bash missing-script.sh` inside an `if`) would have
+  answered "skip" for a broken decision.
+- `scripts/deploy-gate.test.sh` checks the rule against real commit graphs: first
+  publication, already-served, docs-only, shipped change, a shipped change
+  stranded behind a docs-only merge, an unknown served revision, a rewritten
+  history, and a bad argument. The stranded case also asserts that the parent diff
+  is documentation-only, so the test cannot pass by agreeing with the old rule. It
+  runs in `ci` and as the `deploy_gate` stage of `scripts/verify.sh`.
+
+### Evidence
+
+```
+$ bash scripts/deploy-gate.test.sh
+ok   — first publication publishes
+ok   — already-served commit is skipped
+ok   — docs-only change is skipped
+ok   — shipped change publishes
+ok   — stranded case discriminates: the parent diff is documentation only
+ok   — shipped change stranded behind a docs-only merge still publishes
+ok   — unknown served revision publishes
+ok   — non-ancestor served revision publishes
+ok   — unknown head exits non-zero
+deploy-gate self-test: OK (8 cases + discrimination check)
+```
+
+The shipped-path list is the one place this can still be wrong: a file that ends
+up in the bundle but is not listed is treated as documentation. It is kept beside
+the comment that names the bundle inputs, and a miss shows up as a deploy that
+was skipped — which the next merge touching a listed path will reveal.
