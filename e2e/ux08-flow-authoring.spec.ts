@@ -134,12 +134,14 @@ for (const theme of THEMES) {
     await page.getByTestId('step-0').click();
     await page.getByTestId('insp-description').focus();
     await page.keyboard.type('Order placed');
-    await expect(page.getByTestId('step-desc-0')).toContainText('Order placed', { timeout: 15_000 });
+    // The prose lives in the panel; the row stays number, kind and participants.
+    await expect(page.getByTestId('insp-description')).toHaveValue('Order placed', { timeout: 15_000 });
+    await expect(page.getByTestId('step-0')).not.toContainText('Order placed');
     await settle(page);
 
     // Visibility belongs to this flow only. The canvas connector survives Hide,
     // and Show restores the same connection at the end of the manual order.
-    await page.getByTestId('hide-connection-0').click();
+    await page.getByTestId('hide-connection-0').click();  // the selected step's own control
     await expect(page.getByTestId('flow-hidden-links')).toContainText('Hidden connections');
     await expect(page.getByTestId('step-0')).toHaveCount(0);
     await expect(page.getByTestId('canvas').locator('g.pc-link')).toHaveCount(1);
@@ -167,20 +169,25 @@ for (const theme of THEMES) {
     await settle(page);
     await capture(page, `ux08-flow-authoring-nested-${theme}`);
 
-    // An invalid reference is explained beside the step, then repairable.
+    // Message endpoints are closed lists of the diagram's shapes: a reader picks
+    // a name, never transcribes an id, and the row keeps diagnosing a stale one.
     await page.getByTestId('step-0').click();
-    await page.getByTestId('insp-to').fill('ghost');
-    await expect(page.getByTestId('step-warn-0')).toContainText('ghost', { timeout: 15_000 });
-    await capture(page, `ux08-flow-authoring-invalid-${theme}`);
-    await page.getByTestId('canvas').locator('g.pc-obj[data-id="o2"]').click();
-    await page.getByTestId('insp-pick-to').click();
-    await expect(page.getByTestId('step-warn-0')).toHaveCount(0, { timeout: 15_000 });
+    const from = page.getByTestId('insp-from');
+    const to = page.getByTestId('insp-to');
+    expect(await from.evaluate((el) => el.tagName)).toBe('SELECT');
+    expect(await to.evaluate((el) => el.tagName)).toBe('SELECT');
+    const chosen = await from.evaluate((el) => (el as HTMLSelectElement).selectedOptions[0]?.textContent ?? '');
+    for (const id of ids) expect(chosen).not.toContain(id);
+    await expect(page.getByTestId('step-warn-0')).toHaveCount(0);
+    await capture(page, `ux08-flow-authoring-endpoints-${theme}`);
 
     // Reorder with the same pointer drag/drop interaction used for manual flows.
     await page.getByTestId('step-row-1').dragTo(page.getByTestId('step-row-0'));
     await expect(page.getByTestId('step-0')).toContainText('process');
 
-    // Present plays the flow that is being edited.
+    // Present plays the flow that is being edited. It is a property of the flow,
+    // so choosing the flow (not a step) brings it into the panel.
+    await page.getByTestId('flow-row-flow1').click();
     await page.getByTestId('flow-present').click();
     await expect(page.getByTestId('playbar')).toBeVisible();
     await page.getByTestId('pb-exit').click();

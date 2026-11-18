@@ -1,0 +1,13 @@
+pcd 1.0
+title "Advance triggers"
+
+system a "Ada"
+system b "Web"
+
+a -> b as L1
+
+flow "Wait" as wait {
+  intro "Start" advance click
+  a -> b : "Sends" as L1 delay 1200 advance end
+  conclusion "Done"
+}

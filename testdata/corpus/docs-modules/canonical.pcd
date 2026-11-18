@@ -91,7 +91,5 @@ eng_format -> eng_model
 eng_flows -> eng_model
 eng_flows -> eng_anim : "AnimPlayer port"
 
-view "Dependencies" {
-  layout auto LR
-  hide tag external
-}
+layout auto LR
+hide tag external

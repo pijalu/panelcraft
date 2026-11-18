@@ -9,7 +9,7 @@ import {
   type Drilldown, FORMAT_VERSION, IR_VERSION,
   type Branch, type CameraSpec, type Comments, type Doc, type Flow, type FlowStep,
   type IconDecl, type ImportStmt, type Kind, type Link, type Obj, type Pos,
-  type SourceBlock, type StyleBlock, type StyleStmt, type View, type ViewLine,
+  type SourceBlock, type StyleBlock, type StyleStmt, type Dir, type LayoutState,
 } from '../model/types';
 
 export interface ParseResult {
@@ -25,7 +25,10 @@ const DIRS = new Set<string>(['LR', 'TB', 'RL', 'BT']);
 const META_LEVELS = new Set<string>(['context', 'container', 'component', 'deployment']);
 const THEMES = new Set<string>(['light', 'dark']);
 const STEP_KWS = new Set<string>(['intro', 'process', 'alt', 'par', 'goto', 'info', 'conclusion']);
+const LAYOUT_STMTS = new Set<string>(['layout', 'position', 'pin', 'hide']);
 const MAX_DEPTH = 32;
+/** Embedded decomposition documents may nest at most eight levels deep. */
+const MAX_EMBED_DEPTH = 8;
 /** UX08-WP11 camera bounds (IR v8): the existing canvas zoom limits, ms ≤ 300. */
 const CAMERA_ZOOM_MIN = 0.1;
 const CAMERA_ZOOM_MAX = 4;
@@ -53,6 +56,7 @@ class Parser {
   readonly diags: Diagnostic[] = [];
   private i = 0;
   private pending: Comments = [];
+  private embedDepth = 0;
 
   constructor(
     private readonly src: string,
@@ -88,6 +92,12 @@ class Parser {
     if (t.type !== 'number') this.fail(t, E.unexpected, `expected number, got '${t.text || t.type}'`);
     return Number(t.text);
   }
+  /** Line of the last consumed token. A step body may end in a block, so a
+   * trailing `delay`/`advance` follows its closing brace rather than the line
+   * the step started on. */
+  private lastLine(): number {
+    return this.toks[Math.max(0, this.i - 1)]!.line;
+  }
   /** Consume tokens through end of line; return the raw source slice. */
   private captureRaw(first: Token): { raw: string; last: Token } {
     let last = first;
@@ -101,6 +111,15 @@ class Parser {
 
   // ---- file -----------------------------------------------------------------
   parseFile(): Doc {
+    return this.parseDoc(false);
+  }
+
+  /**
+   * Parse one document from the current token position. Nested embedded
+   * documents share the outer token stream, so every `pos` stays relative to
+   * the real file and diagnostics point at the line the user can see.
+   */
+  private parseDoc(nested: boolean, open?: Token): Doc {
     this.skipToContent();
     const first = this.peek();
     if (first.type !== 'ident' || first.text !== 'pcd') {
@@ -113,12 +132,12 @@ class Parser {
     const doc: Doc = {
       irVersion: IR_VERSION,
       formatVersion: ver.text || FORMAT_VERSION,
-      imports: [], icons: [], objects: [], links: [], flows: [], views: [], styles: [],
+      imports: [], icons: [], objects: [], links: [], flows: [], styles: [],
     };
     // Pre-magic comments are doc-level (D-M1-2): the magic line is canonical first.
     const lead = this.takeComments();
     if (lead.length > 0) doc.comments = lead;
-    this.statementLoop(doc);
+    this.statementLoop(doc, nested, open);
     return doc;
   }
 
@@ -137,12 +156,23 @@ class Parser {
     if (c.length > 0 && doc.comments === undefined) doc.comments = c;
   }
 
-  private statementLoop(doc: Doc): void {
-    for (;;) {
-      this.skipToContent();
-      const t = this.peek();
-      if (t.type === 'eof') return;
-      if (t.type !== 'ident') {
+  /** True when a nested document reached its closing brace (or the file end). */
+  private atDocEnd(t: Token, nested: boolean, open: Token | undefined): boolean {
+    if (!nested) return t.type === 'eof';
+    if (t.type === 'punct' && t.text === '}') {
+      this.expectClose(open ?? t, 'embedded document');
+      return true;
+    }
+    if (t.type === 'eof') this.fail(open ?? t, E.unclosedBlock, 'unclosed embedded document');
+    return false;
+  }
+
+  private statementLoop(doc: Doc, nested = false, open?: Token): void {
+      for (;;) {
+        this.skipToContent();
+        const t = this.peek();
+        if (this.atDocEnd(t, nested, open)) return;
+        if (t.type !== 'ident') {
         this.fail(t, E.unknownTopLevel, `unknown top-level statement '${t.text || t.type}'`);
       }
       if (t.text === 'pcd') this.fail(t, E.unexpected, 'duplicate magic line');
@@ -179,9 +209,11 @@ class Parser {
       case 'import': return (d) => d.imports.push(this.parseImport());
       case 'icon': return (d) => d.icons.push(this.parseIcon());
       case 'flow': return (d) => d.flows.push(this.parseFlow());
-      case 'view': return (d) => d.views.push(this.parseView());
+      case 'view': return () => this.fail(this.next(), E.legacyView,
+        'named view blocks are no longer supported; move layout/position/pin/hide lines to the top level');
       case 'style': return (d) => d.styles.push(this.parseStyleStmt());
-      default: return undefined;
+      default:
+        return LAYOUT_STMTS.has(kw) ? (d) => this.parseLayoutStmt(kw, d) : undefined;
     }
   }
 
@@ -382,18 +414,36 @@ class Parser {
   }
 
   /**
-   * C4 decomposition (IR v10, FILE-FORMAT §3.2): `drilldown "<path>" [view <id>]`.
-   * The path is a quoted string, not an identifier — it is a workspace path — and the
-   * optional view is the child's view *id* (the `as <id>` of a `view` statement).
+   * C4 decomposition (IR v12, FILE-FORMAT §3.2): a linked `drilldown "<path>"`
+   * or an embedded `drilldown embedded "<path>" { pcd 1.0 … }`. The legacy
+   * `view <id>` suffix is rejected rather than silently dropped (ADR 0007).
    */
   private parseDrilldown(): Drilldown {
-    const path = this.str();
-    const peeked = this.peek();
-    if (peeked.type === 'ident' && peeked.text === 'view') {
-      this.next();
-      return { path, view: this.ident() };
+    const first = this.peek();
+    if (first.type === 'string') {
+      const path = this.str();
+      const peeked = this.peek();
+      if (peeked.type === 'ident' && peeked.text === 'view') {
+        this.fail(this.next(), E.legacyDrilldownView,
+          'a named view on a drilldown is no longer supported; remove the "view <id>" suffix');
+      }
+      return { kind: 'linked', path };
     }
-    return { path };
+    if (first.type !== 'ident' || first.text !== 'embedded') {
+      this.fail(first, E.unexpected,
+        'drilldown expects "path.pcd" or embedded "path.pcd" { pcd 1.0 … }');
+    }
+    if (this.embedDepth >= MAX_EMBED_DEPTH) {
+      this.fail(first, E.nestingTooDeep,
+        `embedded decomposition nesting exceeds ${MAX_EMBED_DEPTH} levels`);
+    }
+    this.next();
+    const path = this.str();
+    const open = this.expect('punct', '{');
+    this.embedDepth += 1;
+    const doc = this.parseDoc(true, open);
+    this.embedDepth -= 1;
+    return { kind: 'embedded', path, doc };
   }
 
   /**
@@ -681,22 +731,72 @@ class Parser {
       f.id = this.ident();
     }
     this.expect('punct', '{');
-    const description = this.flowDescription();
-    if (description !== undefined) f.description = description;
+    this.flowHeader(f);
     f.steps = this.parseSteps(1);
     this.expectClose(t0, 'flow');
     return comments.length ? { ...f, comments } : f;
   }
 
   /**
-   * UX08-WP11: an optional `description "…"` line at the top of a flow body.
-   * It is a flow attribute, not a step, so it is consumed before step parsing.
+   * Flow-level attributes before any step: either one quoted line or one
+   * multiline description block, plus the presentation flag. Each is atomic
+   * and may appear at most once, in any source order; printing has one order.
    */
-  private flowDescription(): string | undefined {
-    const t = this.peek();
-    if (t.type !== 'ident' || t.text !== 'description') return undefined;
-    this.next();
-    return this.quoted(this.next(), 'description');
+  private flowHeader(f: Flow): void {
+    const seen = new Set<string>();
+    for (;;) {
+      this.skipComments();
+      const t = this.peek();
+      if (t.type !== 'ident') return;
+      if (t.text === 'description') {
+        this.once(seen, t, 'description');
+        this.next();
+        if (this.peek().type === 'punct' && this.peek().text === '{') {
+          f.descriptionLines = this.descriptionBlock(t);
+        } else {
+          f.description = this.quoted(this.next(), 'description');
+        }
+        continue;
+      }
+      if (t.text === 'presentation') {
+        this.once(seen, t, 'presentation');
+        this.next();
+        f.presentation = true;
+        continue;
+      }
+      return;
+    }
+  }
+
+  /** One `text "…"` line per source line, including intentional blank lines. */
+  private descriptionBlock(t0: Token): string[] {
+    return this.textLines(t0, E.emptyFlowDescription, 'description block needs at least one text line');
+  }
+
+  /** A `{ text "…" … }` block: the one place multiline prose is authored. Used
+   * by the flow notes block and by every step-level prose string, so a newline
+   * never has to be an escape sequence. */
+  private textLines(t0: Token, emptyCode: string, emptyMessage: string): string[] {
+    this.expect('punct', '{');
+    const lines: string[] = [];
+    for (;;) {
+      this.skipComments();
+      if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed text block');
+      if (this.peek().type === 'punct' && this.peek().text === '}') { this.next(); break; }
+      const t = this.expect('ident');
+      if (t.text !== 'text') this.fail(t, E.unexpected, `unknown text block line '${t.text}'`);
+      lines.push(this.str());
+    }
+    if (lines.length === 0) this.fail(t0, emptyCode, emptyMessage);
+    return lines;
+  }
+
+  /** Step prose: a quoted string, or a block of `text` lines for Markdown. */
+  private stepText(t0: Token, what: string): string {
+    if (this.peek().type === 'punct' && this.peek().text === '{') {
+      return this.textLines(t0, E.emptyStepText, `${what} block needs at least one text line`).join('\n');
+    }
+    return this.quoted(this.next(), what);
   }
 
   private parseSteps(depth: number): FlowStep[] {
@@ -728,6 +828,21 @@ class Parser {
     return { delayMs: ms };
   }
 
+  /** Optional trailing step modifiers, authored on the step's own line. */
+  private stepModifiers(line: number): { delayMs?: number; advance?: 'click' | 'end' } {
+    const out: { delayMs?: number; advance?: 'click' | 'end' } = this.stepDelay(line);
+    const t = this.peek();
+    if (t.type === 'ident' && t.text === 'advance' && t.line === line) {
+      this.next();
+      const value = this.expect('ident');
+      if (value.text !== 'click' && value.text !== 'end') {
+        this.fail(value, E.unexpected, 'advance must be click or end');
+      }
+      out.advance = value.text as 'click' | 'end';
+    }
+    return out;
+  }
+
   private parseKeywordStep(kw: string, depth: number): FlowStep {
     const t0 = this.next();
     const comments = this.takeComments();
@@ -737,17 +852,18 @@ class Parser {
         ...(comments.length ? { ...base, comments } : base),
         type: kw,
         pos,
-        ...(kw === 'alt' || kw === 'par' ? {} : this.stepDelay(t0.line)),
+        ...(kw === 'alt' || kw === 'par' ? {} : this.stepModifiers(this.lastLine())),
       }) as unknown as FlowStep);
     switch (kw) {
       case 'intro':
       case 'info':
       case 'conclusion':
-        return wrap({ text: this.quoted(this.next(), kw) });
+        return wrap({ text: this.stepText(t0, kw) });
       case 'process': {
         const target = this.refId();
-        const text = this.peek().type === 'string' ? this.next().value : undefined;
-        return wrap(text === undefined ? { target } : { target, text });
+        const t = this.peek();
+        const hasText = t.type === 'string' || (t.type === 'punct' && t.text === '{');
+        return wrap(hasText ? { target, text: this.stepText(t0, kw) } : { target });
       }
       case 'alt':
         return wrap(this.parseAltBody(t0, depth));
@@ -830,9 +946,9 @@ class Parser {
       pos: tokPos(t0),
       ...(comments.length ? { comments } : {}),
     } as { type: 'msg'; from: string; to: string; pos: Pos; label?: string; linkRef?: string; flip?: boolean; comments?: Comments };
-    this.msgModifiers(t0, step);
-    const delay = this.stepDelay(t0.line);
-    return this.presentation(t0, delay.delayMs === undefined ? step : { ...step, ...delay });
+    this.msgModifiers(step);
+    const mods = this.stepModifiers(this.lastLine());
+    return this.presentation(t0, mods.delayMs === undefined ? { ...step, ...mods } : { ...step, ...mods });
   }
 
   // ---- presentation metadata (UX08-WP11 / IR v8) ---------------------------
@@ -875,7 +991,7 @@ class Parser {
       if (key.type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed presentation block');
       const name = this.presentationKey(key, seen);
       out.empty = false;
-      if (name === 'description') out.description = this.quoted(this.next(), 'description');
+      if (name === 'description') out.description = this.stepText(key, 'description');
       else if (name === 'camera') out.camera = this.parseCamera(key);
       else durationMs = this.cameraDuration(key);
     }
@@ -939,7 +1055,6 @@ class Parser {
 
   /** Order-free msg modifiers (errata D-M1-9): : "label", as Ref, flip. */
   private msgModifiers(
-    t0: Token,
     step: { label?: string; linkRef?: string; flip?: boolean },
   ): void {
     for (;;) {
@@ -963,61 +1078,68 @@ class Parser {
     }
   }
 
-  // ---- views ----------------------------------------------------------------
-  private parseView(): View {
-    const t0 = this.next();
-    const comments = this.takeComments();
-    const name = this.quoted(this.next(), 'view');
-    const v: View = { name, pos: tokPos(t0), lines: [] };
-    if (this.peek().type === 'ident' && this.peek().text === 'as') {
-      this.next();
-      v.id = this.ident();
-    }
-    this.expect('punct', '{');
-    while (!(this.peek().type === 'punct' && this.peek().text === '}')) {
-      this.skipComments();
-      if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed view block');
-      v.lines.push(this.parseViewLine());
-    }
-    this.next();
-    return comments.length ? { ...v, comments } : v;
+  // ---- top-level layout state (ADR 0007) -----------------------------------
+  private parseLayoutStmt(kw: string, doc: Doc): void {
+    if (kw === 'layout') this.parseLayout(doc);
+    else if (kw === 'position') this.parsePosition(doc);
+    else if (kw === 'pin') this.parsePin(doc);
+    else this.parseHide(doc);
   }
 
-  private parseViewLine(): ViewLine {
+  /** Lazily create the single top-level layout block at its first statement. */
+  private layoutState(doc: Doc, t: Token, comments: Comments): LayoutState {
+    if (doc.layout === undefined) {
+      doc.layout = { positions: [], pins: [], hidden: [], hiddenTags: [], pos: tokPos(t) };
+    }
+    if (comments.length > 0) (doc.layout.comments ??= []).push(...comments);
+    return doc.layout;
+  }
+
+  private parseLayout(doc: Doc): void {
     const t0 = this.next();
     const comments = this.takeComments();
-    const pos = tokPos(t0);
-    const mk = (line: Record<string, unknown>): ViewLine =>
-      ({ ...(comments.length ? { ...line, comments } : line), pos }) as ViewLine;
-    switch (t0.text) {
-      case 'layout': {
-        const mode = this.expect('ident').text;
-        if (mode === 'saved') return mk({ type: 'layout', mode });
-        if (mode !== 'auto') this.fail(t0, E.unexpected, `invalid layout mode '${mode}'`);
-        const dir = this.expect('ident').text;
-        if (!DIRS.has(dir)) this.fail(t0, E.unexpected, `invalid layout dir '${dir}'`);
-        return mk({ type: 'layout', mode: 'auto', dir });
-      }
-      case 'hide': {
-        const t = this.next();
-        if (t.type === 'ident' && t.text === 'tag') return mk({ type: 'hideTag', id: this.ident() });
-        if (t.type !== 'ident') this.fail(t, E.unexpected, 'hide needs an id');
-        return mk({ type: 'hide', id: this.ident(t) });
-      }
-      case 'position': {
-        const id = this.ident();
-        this.expect('punct', '(');
-        const x = this.num(this.next());
-        this.expect('punct', ',');
-        const y = this.num(this.next());
-        this.expect('punct', ')');
-        return mk({ type: 'position', id, x, y });
-      }
-      case 'pin':
-        return mk({ type: 'pin', id: this.ident() });
-      default:
-        this.fail(t0, E.unexpected, `unknown view line '${t0.text}'`);
+    const layout = this.layoutState(doc, t0, comments);
+    const mode = this.expect('ident').text;
+    if (mode === 'saved') {
+      layout.directive = { mode: 'saved' };
+      return;
     }
+    if (mode !== 'auto') this.fail(t0, E.unexpected, `invalid layout mode '${mode}'`);
+    const dir = this.expect('ident').text;
+    if (!DIRS.has(dir)) this.fail(t0, E.unexpected, `invalid layout dir '${dir}'`);
+    layout.directive = { mode: 'auto', dir: dir as Dir };
+  }
+
+  private parsePosition(doc: Doc): void {
+    const t0 = this.next();
+    const comments = this.takeComments();
+    const layout = this.layoutState(doc, t0, comments);
+    const id = this.ident();
+    this.expect('punct', '(');
+    const x = this.num(this.next());
+    this.expect('punct', ',');
+    const y = this.num(this.next());
+    this.expect('punct', ')');
+    layout.positions.push({ id, x, y });
+  }
+
+  private parsePin(doc: Doc): void {
+    const t0 = this.next();
+    const comments = this.takeComments();
+    this.layoutState(doc, t0, comments).pins.push(this.ident());
+  }
+
+  private parseHide(doc: Doc): void {
+    const t0 = this.next();
+    const comments = this.takeComments();
+    const layout = this.layoutState(doc, t0, comments);
+    const t = this.next();
+    if (t.type === 'ident' && t.text === 'tag') {
+      layout.hiddenTags.push(this.ident());
+      return;
+    }
+    if (t.type !== 'ident') this.fail(t, E.unexpected, 'hide needs an id');
+    layout.hidden.push(this.ident(t));
   }
 }
 

@@ -5,6 +5,86 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Changed — Flow Steps lists the flow, Properties edits the step
+
+- Flow Steps is a list again: one row per step with its number, type, title, the
+  participants it moves between and a warning marker when the step does not
+  resolve, plus play-from-here and duplicate. Adding a flow, adding a step
+  (message, process, note, alternative, parallel, goto) and the all-flows export
+  stay in the column; hidden connections are still reachable there.
+- Selecting a step moves its properties to the Properties panel, grouped from
+  what changes most to what changes least: kind and description, camera, playback
+  (delay, advance), the connector animation shared by the step's link, then the
+  advanced fields (flip, connector reference, hide connection). Selecting the
+  flow shows the flow's own properties there — title, purpose, notes, the
+  presentation toggle and illustration, and the exports. Introduction and
+  Conclusion are always offered and dropped again when left empty.
+- The two selections exclude each other: picking a flow or a step clears the
+  canvas selection, and a press on the diagram clears the flow selection. The
+  canvas reports that press itself, so a document reload cannot silently swap the
+  panel while a step is being edited. Message endpoints are chosen from the
+  document's own entities in closed-domain selects, which replaces the canvas
+  pick buttons.
+
+### Fixed — assessment of the second bug round
+
+- The identifier-clarity gate is green again: thirteen lines this branch added
+  (comments, test titles, one doc line) leaned on short plan tags such as a
+  milestone or requirement number, so the CI step that rejects them failed.
+  Each now says what it means in words.
+
+- The presentation filmstrip browser scenario no longer depends on machine load:
+  a pulse that had already finished dropped out of the element's animation list,
+  so rewinding the layer silently skipped it and the sample read the rings'
+  invisible base opacity. The scenario freezes the animation layer as soon as the
+  spark exists and drops the finished camera glide after its own timer applied
+  the framing.
+- The flow step delay field no longer writes the same settled value twice. The
+  quiet period and the blur both committed, and leaving an untouched field wrote
+  once; the field now remembers the document's value and writes only a change.
+  A browser scenario also proves a typed delay reaches the file once and is
+  reverted by a single undo.
+
+### Changed — known-value inputs and property hierarchy
+
+- The icon control is now one searchable combobox with a single accessible name
+  and value: the old free-text handle plus separate picker button is gone. It
+  keeps project icons, built-ins, search, Manage project icons, no icon and a
+  disabled unresolved choice for legacy handles, with keyboard navigation,
+  Escape-to-focus-return and viewport-safe placement. All icon writes go through
+  one command that also clears a stale style override in the same undo step.
+- Object properties are ordered by task priority — Identity (name, kind, icon),
+  Style, Metadata, Decomposition, Advanced — with section ids and persisted
+  expansion unchanged. Flow `goto` file/flow and `process` targets are now closed
+  domain selects with dependent flow options and visible diagnostics for values
+  a file no longer contains; message endpoints are read-only and set from the
+  canvas selection.
+
+### Added — dedicated presentation links
+
+- Presenting an authored flow now publishes `#present=<encoded-flow-id>` in the
+  address bar. A direct load or reload opens that flow from the restored active
+  file once browser storage is ready; Back leaves the presentation and Forward
+  opens it again. Exit, natural end and external file switches clear the anchor
+  without pushing extra history entries, while a cross-file `goto` keeps the
+  link of the presentation that is still running. Malformed, unknown and
+  non-authored ids fall back safely and never change the document. The hash
+  carries only an encoded authored id, is never document input, and cannot give
+  another browser profile access to this browser's local workspace.
+
+### Fixed — spark and border effects share one beat timeline
+
+- Connector sparks and actor border pulses no longer race on independent
+  timers. A pure numeric timeline schedules, for every spark and every
+  bidirectional leg, the source expansion, spark creation at peak expansion,
+  travel, disappearance, arrival expansion and final rest inside the beat's
+  dwell. The animator owns exactly the animations it creates and cancels them
+  on replay, step change, exit and file change; camera glides are untouched.
+  Reverse steps and bidirectional links pulse their resolved travel endpoints,
+  parallel lanes keep independent timelines, and reduced motion shows the same
+  settled frame without moving anything. A settled token now uses a unitless
+  SVG transform so Chromium actually paints it at the destination.
+
 ### Added — UX-08 application experience
 
 - **UX-08 WP13** Presenting is now a first-class action: a visible **Present** button (and the

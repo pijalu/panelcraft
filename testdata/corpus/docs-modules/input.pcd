@@ -85,10 +85,8 @@ eng_format -> eng_model
 eng_flows -> eng_model
 eng_flows -> eng_anim : "AnimPlayer port"
 
-view "Dependencies" {
-  layout auto LR
-  hide tag external
-}
+layout auto LR
+hide tag external
 
 note n1 "Engine packages depend on ports only: LayoutEngine, Storage, Clock, AnimPlayer" { attach eng_render }
 note n2 "Deps arrow points from consumer to provider; no cycles inside engine/" { attach eng_model }

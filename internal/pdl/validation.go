@@ -118,11 +118,6 @@ func checkDupIds(doc *ir.Doc, out []Diagnostic) []Diagnostic {
 		flows = append(flows, idEntry{doc.Flows[i].ID, doc.Flows[i].Pos})
 	}
 	dup("flow", flows)
-	views := make([]idEntry, 0, len(doc.Views))
-	for i := range doc.Views {
-		views = append(views, idEntry{doc.Views[i].ID, doc.Views[i].Pos})
-	}
-	dup("view", views)
 	return out
 }
 
@@ -442,21 +437,17 @@ func checkStyles(doc *ir.Doc, s ids, out []Diagnostic) []Diagnostic {
 }
 
 func checkOverlaps(doc *ir.Doc, out []Diagnostic) []Diagnostic {
-	for vi := range doc.Views {
-		seen := map[string]string{}
-		v := &doc.Views[vi]
-		for li := range v.Lines {
-			l := &v.Lines[li]
-			if l.Type != "position" {
-				continue
-			}
-			key := jsNum(*l.X) + "," + jsNum(*l.Y)
-			first, ok := seen[key]
-			if ok {
-				out = append(out, diagSev("P204", fmt.Sprintf("position overlap at (%s, %s): \"%s\" and \"%s\"", jsNum(*l.X), jsNum(*l.Y), first, l.ID), l.Pos.Line, l.Pos.Col, SevInfo))
-			} else {
-				seen[key] = l.ID
-			}
+	if doc.Layout == nil {
+		return out
+	}
+	seen := map[string]string{}
+	for _, pos := range doc.Layout.Positions {
+		key := jsNum(pos.X) + "," + jsNum(pos.Y)
+		first, ok := seen[key]
+		if ok {
+			out = append(out, diagSev("P204", fmt.Sprintf("position overlap at (%s, %s): \"%s\" and \"%s\"", jsNum(pos.X), jsNum(pos.Y), first, pos.ID), doc.Layout.Pos.Line, doc.Layout.Pos.Col, SevInfo))
+		} else {
+			seen[key] = pos.ID
 		}
 	}
 	return out

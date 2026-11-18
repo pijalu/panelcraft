@@ -6,7 +6,8 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { FlowAnimator, type BeatCtx } from './engine';
 import type { AnimHandle, AnimPlayer } from './ports';
-import { MOTION, travelTiming } from './timings';
+import { MOTION } from './timings';
+import { beatTimeline } from './timeline';
 import type { Beat } from '../flows/plan';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -14,6 +15,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 interface PlayerCall {
   el: Element;
   kf: Record<string, string | number>[];
+  opts: { durationMs: number; delayMs?: number; fill?: string };
   durationMs: number;
   easing: string;
   fill: string;
@@ -28,6 +30,7 @@ const mkPlayer = (): { player: AnimPlayer; calls: PlayerCall[] } => {
         calls.push({
           el,
           kf: [...kf],
+          opts,
           durationMs: opts.durationMs,
           easing: opts.easing ?? 'linear',
           fill: opts.fill ?? 'none',
@@ -179,6 +182,42 @@ describe('FlowAnimator dims (FR-F4)', () => {
     expect(resumed).toBe(1);
   });
 
+  it('replay cancels only the old beat animations, never camera work', () => {
+    let seq = 0;
+    const cancelled: number[] = [];
+    let globalCancels = 0;
+    const player: AnimPlayer = {
+      animate: (): AnimHandle => {
+        seq += 1;
+        const id = seq;
+        return { cancel: () => cancelled.push(id) };
+      },
+      cancelAll: () => {
+        globalCancels += 1;
+      },
+    };
+    const anim = new FlowAnimator(svg, { player, geometry: mkGeometry() });
+    // The camera uses the same AnimPlayer port but is not owned by a beat.
+    const cameraWork = player.animate(svg, [], { durationMs: 100 });
+    anim.play(beatOf({
+      index: 1,
+      kind: 'msg',
+      actors: ['a'],
+      links: [{ linkId: 'ab', from: 'a', to: 'b', flipped: false }],
+      dim: [],
+    }), ctx);
+    expect(cancelled).toEqual([]);
+
+    anim.play(beatOf({ index: 2, kind: 'process', actors: ['b'], dim: [] }), ctx);
+    expect(cancelled.length).toBeGreaterThan(0);
+    expect(cancelled).not.toContain(1); // camera glide untouched
+    anim.stop();
+    expect(cancelled).not.toContain(1);
+    expect(globalCancels).toBe(0);
+    cameraWork.cancel();
+    expect(cancelled).toContain(1);
+  });
+
   it('beats without participants touch nothing (intro overview)', () => {
     const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry() });
     anim.play(beatOf({ index: 1, kind: 'intro', title: 'hello' }), ctx);
@@ -202,20 +241,23 @@ describe('FlowAnimator tokens, rings, badges (FR-F4)', () => {
     const layer = svg.querySelector('.pc-anim-layer');
     expect(layer?.querySelector('.pc-token')).not.toBeNull();
     expect(layer?.querySelector('.pc-trail')).not.toBeNull();
-    const tokenCall = fx.calls.find((c) => c.el.classList.contains('pc-token'));
+    const tokenCall = fx.calls.find((c) => c.el.getAttribute('data-role') === 'spark');
+    const settled = fx.calls.find((c) => c.el.getAttribute('data-role') === 'arrival-token');
     expect(tokenCall).toBeDefined();
-    // The beat owns the timing (item 9): the token arrives before the step
-    // changes and holds there instead of vanishing after its own 900 ms.
-    expect(tokenCall?.durationMs).toBe(travelTiming(MOTION.stepDelayMs, 1, 1).durationMs);
-    expect(tokenCall?.fill).toBe('forwards');
-    expect(tokenCall?.kf.length).toBeGreaterThan(1); // sampled travel keyframes
+    // One numeric timeline owns border pulses, travel and the settled token;
+    // the moving spark disappears at arrival, the settled one holds the beat.
+    const t = beatTimeline({ dwellMs: MOTION.stepDelayMs, count: 1, speed: 1 });
+    expect(tokenCall?.durationMs).toBe(t.sparks[0]!.passes[0]!.target.end);
+    expect(tokenCall?.kf.at(-1)?.opacity).toBe(0);
+    expect(settled?.opts.fill).toBe('forwards');
+    expect(tokenCall?.kf.length).toBeGreaterThan(1);
     expect(tokenCall?.kf[0]?.transform).toContain('translate(0');
   });
 
   it('flip reverses the token travel', () => {
     const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry() });
     anim.play(beatOf({ index: 2, kind: 'msg', actors: ['a', 'b'], links: [{ linkId: 'ab', from: 'b', to: 'a', flipped: true }] }), ctx);
-    const tokenCall = fx.calls.find((c) => c.el.classList.contains('pc-token'));
+    const tokenCall = fx.calls.find((c) => c.el.getAttribute('data-role') === 'spark');
     const first = tokenCall?.kf[0]?.transform ?? '';
     const last = tokenCall?.kf.at(-1)?.transform ?? '';
     expect(first).toContain('translate(100'); // starts at the step-to end
@@ -237,6 +279,25 @@ describe('FlowAnimator tokens, rings, badges (FR-F4)', () => {
     expect(svg.querySelector('.pc-badge text')?.textContent).toBe('4');
   });
 
+  it('centres the step number on the badge circle for 1, 10 and 100', () => {
+    // .pc-badge-num is styled with text-anchor: middle and
+    // dominant-baseline: central, so its x/y attributes are the rendered
+    // glyph box's horizontal and vertical centre. They must coincide with
+    // the dot's centre for every digit count — an extra offset pushes the
+    // number low inside the circle.
+    for (const index of [1, 10, 100]) {
+      const s = mkSvg();
+      const anim = new FlowAnimator(s, { player: mkPlayer().player, geometry: mkGeometry() });
+      anim.play(beatOf({ index, kind: 'process', actors: ['c'] }), ctx);
+      const circle = s.querySelector('.pc-badge-dot')!;
+      const text = s.querySelector('.pc-badge-num')!;
+      const cx = Number(circle.getAttribute('cx'));
+      const cy = Number(circle.getAttribute('cy'));
+      expect(Number(text.getAttribute('x'))).toBe(cx);
+      expect(Number(text.getAttribute('y'))).toBe(cy);
+    }
+  });
+
   it('par beats animate all lane links concurrently under one dim pass', () => {
     const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry() });
     anim.play(
@@ -250,7 +311,7 @@ describe('FlowAnimator tokens, rings, badges (FR-F4)', () => {
           [{ index: 5, kind: 'process', title: '', actors: ['b'], links: [], dim: [], delayMs: 0, camera: { mode: 'hold' }, cameraIds: [] }],
         ],
       }), ctx);
-    const tokenCalls = fx.calls.filter((c) => c.el.classList.contains('pc-token'));
+    const tokenCalls = fx.calls.filter((c) => c.el.getAttribute('data-role') === 'spark');
     expect(tokenCalls.length).toBe(1);
     expect(svg.querySelectorAll('.pc-dim').length).toBe(2);
   });
@@ -279,5 +340,23 @@ describe('FlowAnimator reduced motion (FR-F5)', () => {
     expect(svg.querySelector('.pc-obj[data-id="c"]')?.classList.contains('pc-dim')).toBe(true);
     expect(svg.querySelector('.pc-obj[data-id="a"]')?.classList.contains('pc-emph')).toBe(true);
     expect(svg.querySelector('.pc-obj[data-id="b"]')?.classList.contains('pc-emph')).toBe(true);
+  });
+
+  it('replaying a beat under reduced motion keeps only the settled state', () => {
+    const anim = new FlowAnimator(svg, { player: fx.player, geometry: mkGeometry(), reducedMotion: true });
+    const beat = beatOf({
+      index: 2,
+      kind: 'msg',
+      actors: ['a', 'b'],
+      links: [{ linkId: 'ab', from: 'a', to: 'b', flipped: false }],
+      dim: [],
+    });
+    anim.play(beat, ctx);
+    anim.play(beat, ctx); // the runner's replay path calls play again on the same beat
+    expect(fx.calls.length).toBe(0);
+    const layer = svg.querySelector('.pc-anim-layer');
+    expect(layer?.querySelectorAll('.pc-token-static')).toHaveLength(1);
+    expect(layer?.querySelector('.pc-ring')).toBeNull();
+    expect(layer?.querySelectorAll('.pc-badge')).toHaveLength(1);
   });
 });

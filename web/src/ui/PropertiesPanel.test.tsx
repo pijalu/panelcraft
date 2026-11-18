@@ -7,10 +7,20 @@
 
 import { describe, expect, it, afterEach } from 'vitest';
 import { render, fireEvent, cleanup, screen } from '@testing-library/preact';
-import { PropertiesPanel } from './PropertiesPanel';
+import { PropertiesPanel, type HierarchyProps } from './PropertiesPanel';
 import type { CanvasController, DiagramObject } from './CanvasController';
 
 afterEach(cleanup);
+
+const section = (id: string): HTMLElement | null => document.querySelector(`[data-testid="section-${id}"]`);
+const hierarchy = (): HierarchyProps => ({
+  target: null,
+  candidates: [],
+  onSet: () => {},
+  onOpen: () => {},
+  hasSource: false,
+  onOpenSource: () => {},
+});
 
 const obj = (over: Partial<DiagramObject> = {}): DiagramObject => ({
   id: 'api',
@@ -28,7 +38,7 @@ interface Patch {
   patch: Record<string, unknown>;
 }
 
-function mountObject(over: Partial<DiagramObject> = {}, sections: Record<string, boolean> = {}) {
+function mountObject(over: Partial<DiagramObject> = {}, sections: Record<string, boolean> = {}, h?: HierarchyProps) {
   const patches: Patch[] = [];
   const toggles: string[] = [];
   const onChange = ((id: string, patch: Record<string, unknown>) => {
@@ -42,20 +52,30 @@ function mountObject(over: Partial<DiagramObject> = {}, sections: Record<string,
       onChangeLink={() => {}}
       sections={sections}
       onToggleSection={(s) => toggles.push(s)}
+      {...(h === undefined ? {} : { hierarchy: h })}
     />,
   );
   return { patches, toggles };
 }
 
 describe('sections (F-11)', () => {
-  it('renders the four sections with their persisted expanded state', () => {
-    mountObject({}, { advanced: true, metadata: false });
-    for (const id of ['identity', 'metadata', 'style', 'advanced']) {
-      expect(screen.getByTestId(`section-${id}`)).not.toBeNull();
+  it('renders every section with its persisted expanded state', () => {
+    mountObject({}, { advanced: true, metadata: false }, hierarchy());
+    for (const id of ['identity', 'style', 'metadata', 'hierarchy', 'advanced']) {
+      expect(section(id)).not.toBeNull();
     }
     expect(screen.getByTestId('section-toggle-identity').getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByTestId('section-toggle-metadata').getAttribute('aria-expanded')).toBe('false');
     expect(screen.getByTestId('section-toggle-advanced').getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('orders Identity → Style → Metadata → Decomposition → Advanced and puts Icon in Identity', () => {
+    mountObject({}, {}, hierarchy());
+    const ids = Array.from(document.querySelectorAll('section.prop-section'))
+      .map((el) => (el as HTMLElement).dataset.testid?.replace('section-', ''));
+    expect(ids).toEqual(['identity', 'style', 'metadata', 'hierarchy', 'advanced']);
+    expect(section('identity')?.querySelector('[data-testid="prop-style-icon"]')).not.toBeNull();
+    expect(section('style')?.querySelector('[data-testid="prop-style-icon"]')).toBeNull();
   });
 
   it('keeps a collapsed section body out of the DOM (and reports the toggle)', () => {
@@ -99,24 +119,25 @@ describe('object controls (F-11)', () => {
     expect(patches[0]?.patch).toEqual({ style: { fill: '#111111', stroke: '#ff0000' } });
   });
 
-  it('writes the icon to the object and drops a stale style override', () => {
+  it('writes the icon from the single picker to the object', () => {
     const { patches } = mountObject({ style: { fill: '#111111' } });
-    fireEvent.input(screen.getByTestId('prop-style-icon'), { target: { value: 'cloud' } });
+    fireEvent.click(screen.getByTestId('prop-style-icon'));
+    fireEvent.click(screen.getByTestId('icon-option-cloud'));
     expect(patches[0]?.patch).toEqual({ icon: 'cloud' });
   });
 
-  it('keeps editing an existing style override but clears it in one patch', () => {
+  it('clears a stale style override in one patch when picking no icon', () => {
     const { patches } = mountObject({ icon: 'db', style: { icon: 'cloud' } });
-    expect((screen.getByTestId('prop-style-icon') as HTMLInputElement).value).toBe('cloud');
-    fireEvent.input(screen.getByTestId('prop-style-icon'), { target: { value: '' } });
+    // the trigger shows the icon that is actually drawn (the override)
+    expect(screen.getByTestId('prop-style-icon').textContent).toContain('cloud');
+    fireEvent.click(screen.getByTestId('prop-style-icon'));
+    fireEvent.click(screen.getByTestId('icon-option-none'));
     expect(patches[0]?.patch).toEqual({ style: { icon: undefined }, icon: undefined });
   });
 
-  it('shows the object icon in the field even without a style override', () => {
-    const { patches } = mountObject({ icon: 'db' });
-    expect((screen.getByTestId('prop-style-icon') as HTMLInputElement).value).toBe('db');
-    fireEvent.input(screen.getByTestId('prop-style-icon'), { target: { value: '' } });
-    expect(patches[0]?.patch).toEqual({ icon: undefined });
+  it('shows the object icon in the trigger even without a style override', () => {
+    mountObject({ icon: 'db' });
+    expect(screen.getByTestId('prop-style-icon').textContent).toContain('db');
   });
 
   it('patches integer stacking and restores Auto without inventing a value', () => {

@@ -23,7 +23,6 @@ type Options struct {
 	Assets fs.FS
 	Width  int
 	Theme  string
-	View   string
 	Chrome string
 	Format string
 }
@@ -32,7 +31,6 @@ type browserOptions struct {
 	Width  int    `json:"width"`
 	Height int    `json:"height"`
 	Theme  string `json:"theme"`
-	View   string `json:"view,omitempty"`
 }
 
 type browserResult struct {
@@ -80,7 +78,7 @@ func Render(ctx context.Context, source string, opts Options) ([]byte, error) {
 		chromedp.Poll("typeof window.panelcraftRender === 'function'", nil,
 			chromedp.WithPollingInterval(20*time.Millisecond), chromedp.WithPollingTimeout(10*time.Second)),
 		chromedp.Evaluate(renderExpression(source, browserOptions{
-			Width: opts.Width, Height: height, Theme: opts.Theme, View: opts.View,
+			Width: opts.Width, Height: height, Theme: opts.Theme,
 		}), &response),
 	}
 	if opts.Format == "png" {

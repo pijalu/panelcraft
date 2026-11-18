@@ -31,7 +31,6 @@ const doc = (over: Partial<Doc> = {}): Doc => ({
   objects: [],
   links: [],
   flows: [],
-  views: [],
   styles: [],
   ...over,
 });
@@ -94,23 +93,84 @@ describe('IconPicker', () => {
   });
 });
 
-describe('IconField', () => {
-  it('keeps the handle editable and opens the picker from the button', () => {
+describe('IconField — one accessible combobox', () => {
+  const mountField = (over: Partial<Parameters<typeof IconField>[0]> = {}) => {
     const changes: (string | undefined)[] = [];
     render(
-      <IconField value={undefined} project={[]} onChange={(n) => changes.push(n)} onManage={() => undefined} />,
+      <IconField value={undefined} project={[]} onChange={(n) => changes.push(n)} onManage={() => undefined} {...over} />,
     );
-    fireEvent.input(screen.getByTestId('prop-style-icon'), { target: { value: 'cloud' } });
-    expect(changes).toEqual(['cloud']);
-    fireEvent.input(screen.getByTestId('prop-style-icon'), { target: { value: '' } });
-    expect(changes).toEqual(['cloud', undefined]);
-    fireEvent.click(screen.getByTestId('icon-picker-open'));
+    return { changes, trigger: screen.getByTestId('prop-style-icon') as HTMLButtonElement };
+  };
+
+  it('is one select-like trigger (one name, one value) with no free-text editor', () => {
+    const { trigger } = mountField({ value: 'cloud' });
+    expect(trigger.tagName).toBe('BUTTON');
+    expect(trigger.getAttribute('role')).toBe('combobox');
+    expect(trigger.getAttribute('aria-label')).toBe('Icon');
+    expect(trigger.getAttribute('aria-haspopup')).toBe('listbox');
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(trigger.textContent).toContain('cloud');
+    // no adjacent handle input and no second picker button
+    expect(screen.queryByTestId('icon-picker-open')).toBeNull();
+    expect(screen.queryByTestId('icon-handle-input')).toBeNull();
+  });
+
+  it('shows an unknown stored handle in the trigger, not erased', () => {
+    const { trigger } = mountField({ value: 'legacy' });
+    expect(trigger.textContent).toContain('unknown');
+    expect(trigger.textContent).toContain('legacy');
+  });
+
+  it('opens the picker from the trigger and returns focus on Escape', () => {
+    const { trigger } = mountField();
+    trigger.focus();
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByTestId('icon-picker')).toBeTruthy();
+    expect(screen.getByTestId('icon-search')).toBeTruthy();
+    fireEvent.keyDown(screen.getByTestId('icon-search'), { key: 'Escape' });
+    expect(screen.queryByTestId('icon-picker')).toBeNull();
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('opens with ArrowDown/Enter on the closed trigger', () => {
+    const { trigger } = mountField();
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' });
     expect(screen.getByTestId('icon-picker')).toBeTruthy();
   });
 
-  it('shows an unknown handle honestly in the trigger title', () => {
-    render(<IconField value="nope" project={[]} onChange={() => undefined} onManage={() => undefined} />);
-    expect(screen.getByTestId('icon-picker-open').getAttribute('title')).toContain('unknown');
+  it('dismisses on an outside pointer press', () => {
+    const { trigger } = mountField();
+    fireEvent.click(trigger);
+    expect(screen.getByTestId('icon-picker')).toBeTruthy();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByTestId('icon-picker')).toBeNull();
+  });
+
+  it('keeps an unknown stored handle visible as an unresolved, disabled choice', () => {
+    const { trigger } = mountField({ value: 'legacy' });
+    fireEvent.click(trigger);
+    const unresolved = screen.getByTestId('icon-option-unresolved-legacy');
+    expect(unresolved.textContent).toContain('unknown');
+    expect((unresolved as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('moving through the picker by keyboard focuses options; activation picks and closes', () => {
+    const { changes } = mountField();
+    const trigger = screen.getByTestId('prop-style-icon') as HTMLButtonElement;
+    fireEvent.click(trigger);
+    const search = screen.getByTestId('icon-search');
+    fireEvent.keyDown(search, { key: 'ArrowDown' }); // first option: no icon
+    const first = document.activeElement as HTMLButtonElement;
+    expect(first.getAttribute('data-testid')).toBe('icon-option-none');
+    fireEvent.keyDown(first, { key: 'ArrowDown' }); // next option
+    const second = document.activeElement as HTMLButtonElement;
+    expect(second.getAttribute('data-testid')).toMatch(/^icon-option-/);
+    expect(second.getAttribute('data-testid')).not.toBe('icon-option-none');
+    fireEvent.click(second);
+    expect(changes).toHaveLength(1);
+    expect(screen.queryByTestId('icon-picker')).toBeNull();
   });
 });
 

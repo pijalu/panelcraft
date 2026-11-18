@@ -69,8 +69,15 @@ and the CLI's `--theme` option.
   corner: pointers inside or beyond the object clamp to the nearest perimeter point,
   so the connector cannot detach. Endpoint positions are stored as normalized
   `anchor from` / `anchor to` values and retain their side-relative position after
-  resizing and reloads. Intermediate waypoints remain freely draggable and always
-  override automatic avoidance, including when **Allow overlap** is off. Labels
+  resizing and reloads. Intermediate waypoints remain freely draggable. On an
+  orthogonal route the whole path is planned at once: a bend inside a shape or one
+  that makes the connector run out and back is skipped, with the reason shown on
+  the connector and in its accessible description; an intentional detour that goes
+  around without reversing or crossing anything is still honoured. A single
+  authored bend is always that intentional detour unless it lies inside a shape;
+  reversal simplification starts when two or more bends are authored. The
+  `waypoint` lines in the code view never change because of this. Straight and
+  curved routes keep every waypoint verbatim. Labels
   automatically try nearby positions to avoid objects, other routes, other labels and
   the edge of the drawing; they wrap to a readable box on their own backing, paint above
   the shapes, and show a leader when they had to move away from their route. The whole
@@ -87,7 +94,7 @@ and the CLI's `--theme` option.
   **Auto**, **Top**, **Right**, **Bottom** or **Left** plus a side-relative percentage (stored
   as `anchor from` / `anchor to`); **Reset bends** drops the waypoints and **Reset route**
   returns the link to fully automatic routing.
-- **Sparks**: a link can carry **Spark count** (1–8) and **Spark speed** (0.25–4×) for
+- **Sparks**: a link can carry **Max sparks** (1–8) and **Spark speed** (0.25–4×) for
   flow playback, saved as `sparks n` / `speed n` inside its style block. Several sparks
   stagger along the path; a bidirectional (`<->`) link ping-pongs until the step ends,
   while a one-way link completes once. Speed changes only the spark motion, never the
@@ -154,42 +161,56 @@ and the CLI's `--theme` option.
 - **Dependencies panel**: select an object to see incoming/outgoing links and
   focus it (everything else fades).
 
-### C4 drill-down and embedded source
+### C4 drill-down, embedded children and embedded source
 
 A C4 element can own the diagram that explains it — a system opens its containers,
-a container opens its components. Author the relation in the code view (or in the
-properties panel's **Decomposition** section):
+a container opens its components. In the **Decomposition** section of Properties,
+choose a known workspace `.pcd` file from the picker, or select an already embedded
+child. An unresolved legacy value stays visible and explained; **Clear
+decomposition** remains a separate action.
 
 ```
 system shop "Webshop" {
-  drilldown "../containers/shop.pcd" view containers
-  source {
-    language "go"
-    text "func Charge(total Money) error {"
-    text "  return h.psp.Authorize(total)"
-    text "}"
+  drilldown embedded "containers/shop.pcd" {
+    pcd 1.0
+    title "Containers"
+    level container
+    container api "API" {
+      drilldown "components/api.pcd"
+    }
   }
 }
 ```
 
-- The path is workspace-relative (resolved from the file that declares it), and the
-  optional `view` is a view *id* (`view "Containers" as containers { … }`).
-- **Opening it**: select the element and press **Open … diagram** in Properties.
-  The child opens with breadcrumbs (`Back to shop.pcd › Webshop`), a dashed parent
-  boundary naming the element and file, and a way back that keeps the trail. A
-  broken, missing, cyclic or duplicated relation never navigates: the bar says why.
-- Permitted transitions are the C4 zoom levels (`system`/`system_ext` → `level
-  container`, `container` → `level component` or `level deployment`). A child with no
-  `level` line is fine; `person`, `datastore`, `queue`, `note` and `group` cannot
-  decompose.
+- A **linked** target (`drilldown "../containers/shop.pcd"`) is a workspace-relative
+  POSIX path resolved from the declaring file. An **embedded** target carries the
+  child's whole document and keeps that logical path as its identity. The IR v12
+  value is discriminated, so these are never ambiguous optional fields.
+- **Opening a child**: select the element and press **Open … diagram**. A linked
+  child opens as its own tab with breadcrumbs and a dashed parent boundary. An
+  embedded child opens in place — its editor is the same canvas/code/properties/flow
+  editor, but the identity is the root file plus the nested path, not a fake file.
+  Embedded children also appear as expandable, italic rows under their owning root
+  in the workspace tree. Their edits save once into the root and undo in one step.
+- Changing an embedded child to a linked file or deleting it asks for confirmation;
+  one undo restores it. Permitted transitions are the C4 zoom levels
+  (`system`/`system_ext` → `level container`, `container` → `level component` or
+  `level deployment`). A child with no `level` line is fine; `person`, `datastore`,
+  `queue`, `note` and `group` cannot decompose.
+- **Exporting**: **File → Export current .pcd** asks **Keep linked decomposition**
+  versus **Embed all decomposition** only when a linked child is reachable.
+  Keeping linked paths requires the child files. Embedding all includes every
+  transitively reachable child; a missing, unparsable, invalid, cyclic or unreadable
+  descendant fails the whole export with diagnostics instead of silently producing
+  a partial "complete" file. Nothing is downloaded until you choose.
 - **Embedded source** stays local text: **View source** / **Add source** opens a
   viewer that shows it (never executes or fetches it) and lets you edit it as one
-  undoable change. Limits: 64 KiB or 4096 lines per element, 256 KiB per file.
+  undoable change. It is separate from an embedded child diagram. Limits: 64 KiB
+  or 4096 lines per element, 256 KiB per file.
 - Imports (read-only ghosts *inside* a diagram), flow `goto` (jump between flows)
   and drill-down (open a subordinate diagram) are three different things; only the
-  drill-down draws no edge.
-- Renaming or moving a child diagram rewrites the referring `drilldown` path for you.
-  Deleting it keeps the line and reports it, so you can re-point it in Properties.
+  drill-down draws no edge. Renaming or moving a linked child rewrites referring
+  paths; deleting it keeps the line and reports it so you can re-point it.
 
 ### Search
 - `Ctrl/Cmd+P` — fuzzy search over files and objects; Enter jumps (opens the
@@ -209,38 +230,48 @@ system shop "Webshop" {
    and **New flow**, whose new flow also starts with the diagram's existing connections;
    creation order breaks ties. Fill in **Flow name** and **Flow purpose** — the purpose is printed
    as the flow's `description`, so it travels with the file instead of living in the UI.
-3. **Add steps from what you selected** — no ids to type. **Add message** needs a selected
-   connector and takes both endpoints from it; **Add process** needs exactly one selected shape;
-   **Add note**, **Add introduction** and **Add conclusion** are always available. An impossible
-   action is disabled and says what to select, and the panel never invents a link.
-4. **Read the cards**: each step is numbered and carries its kind, a readable title, the actor
-   names (never raw ids) and any step description. A step that points at a shape the diagram does
-   not define shows the problem on the card; repair it from the inspector (or by selecting the
-   connector again) and the warning disappears.
-5. **Describe, reorder and hide**: the inspector edits every kind (message label, process target,
-   note text, branch/lane labels, `goto` target) plus a **Description** for the step; reorder by
-   drag, with the ↑/↓ buttons, or with `Alt+↑`/`Alt+↓` on a focused card; duplicate or delete per
-   card. A message's × hides that connection from this flow without changing the canvas. **Hidden
-   connections** lists those links and **Show** appends a card for the original connection again.
-   Every edit is a normal file edit, so undo/redo and the code view stay in step.
-6. **Advanced step** keeps `alt`, `par` and `goto` one disclosure away, with the same nested
-   editing. Selecting a card highlights its participants on the canvas and fades the rest.
-7. **Play** with a card's ▶ (from that step), the flow's ▶, or **Present** beside the edited
+   For longer walkthrough text use **Flow notes (Markdown)**: headings, bold, italic, inline
+   code, bullet/numbered lists and links. The notes are saved as source text in the file.
+   Tick **Show during presentation** to show them alongside the running flow; both the
+   text and the tick survive reload.
+3. **Pick a step to edit it.** Flow Steps lists the flow: each row is numbered and shows the
+   step type, a readable title and the shapes it moves between (never raw ids). Selecting a row
+   moves that step's properties into the **Properties** panel — kind and description, then
+   **Camera**, then **Playback** (delay, advance), then the connector animation the step's link
+   shares with the rest of the flow, then the advanced fields (flip, connector reference, hide
+   connection). The list itself stays a list: play from a row, duplicate it, drag it (or
+   `Alt+↑`/`Alt+↓`) to reorder. Selecting a step clears the canvas selection, and pressing the
+   diagram clears the step — one panel, one subject.
+4. **Add steps**: **Add message**, **Add process**, **Add note** and the advanced entry for
+   `alt`, `par` and `goto`. A message's endpoints are chosen from the diagram's own shapes in the
+   step's Properties (never typed ids), and a message's × hides that connection from this flow
+   without changing the canvas. **Hidden connections** lists those links and **Show** appends a
+   step for the original connection again. A step that points at a shape the file does not
+   define shows the problem on its row *and* in its Properties; repair it and the warning
+   disappears. Every edit is a normal file edit, so undo/redo and the code view stay in step.
+5. **Introduction and Conclusion** are offered for every flow and are only written once you type
+   into them — leave them empty and the flow has neither. Selecting the flow row itself (not a
+   step) shows the flow's own properties: title, purpose, Markdown notes, the presentation
+   toggle and illustration style, and the exports.
+6. **Play** with a row's ▶ (from that step), the flow's ▶, or **Present** beside the edited
    flow: the transport steps through the plan — the active step's elements highlight, the
    previous step's participants fade lightly, and the rest
    dim; the narration line is an ARIA live region
    (screen readers announce every step). `prefers-reduced-motion` plays without
    transition animation. Each step may carry `delay <ms>`; the flow's
    illustration style (token, pulse, glow, burst, split, trail) is chosen per
-   flow in the Flow Steps panel. When a flow ends, a closing card offers replay,
+   flow in the flow's own Properties. When a flow ends, a closing card offers replay,
    `Export SVG` and close.
-8. **Present**: **Present** in the header (or the application menu) opens the
+7. **Present**: **Present** in the header (or the application menu) opens the
    launcher — every flow in the active file with its purpose, step count and
    estimated length. Picking one starts playback and enters the chrome-free
    shell: click or press Space/→ to advance, ← to go back, `P` pauses, `R`
    restarts, `Esc` exits and restores the previous chrome and viewport. The step's
    **Description** appears under the narration line (an ARIA live region), so a
-   walkthrough can be read without the editor.
+   walkthrough can be read without the editor. Flow notes, when enabled, appear in a
+   labelled side panel: a non-modal aside that does not take focus, refits the camera to
+   the space it leaves, and stacks above the canvas on narrow screens. Raw HTML is shown as
+   text; images and unsafe links are never rendered as active content.
    The camera frames each step by itself: an introduction or conclusion shows the
    whole diagram, a message shows both participants together with the connector
    and its label, a process step shows its shape, and a parallel step shows all
@@ -249,18 +280,20 @@ system shop "Webshop" {
    (the default framing), **Hold** (keep the previous view) or **Use current
    view**, which records the canvas point in the middle of the screen and the
    current zoom (then **Zoom** and **Transition (ms)**, 0–300, refine it).
-9. **Export a sequence**: select a flow, then choose `.seq` beside *Steps*.
+8. **Export a sequence**: select a flow, then choose `.seq` beside *Steps*.
   The download (`.seq.mmd`) is a Mermaid `sequenceDiagram` with participants,
   messages, alternatives, parallel lanes and notes. `goto` navigation, per-step
   delays and notes in a flow with no participants cannot be represented and are
   reported by the converter's `dropped[]` result; sequence import still warns on
   block syntax.
-10. **Export documentation**: `.md` beside *Steps* downloads the selected flow as
+9. **Export documentation**: `.md` beside *Steps* downloads the selected flow as
   a Markdown outline; **All flows (.md)** under the flow list downloads every flow
   in one document. The outline is generated from the parsed file, not from
   playback, so it lists each step in order with its nesting, the readable names
   *and* the stable ids, every description, the dwell, the camera behaviour
-  (automatic/hold/focus with its zoom and transition) and any `goto` target. A
+  (automatic/hold/focus with its zoom and transition) and any `goto` target.
+   Flow notes keep their supported Markdown structure; their headings nest under
+   each flow heading. Raw HTML stays escaped text and unsafe URLs are dropped. A
   shape the diagram does not define stays in the outline marked *(not in this
   diagram)* instead of disappearing. Both downloads are offline, name themselves
   after the file plus the flow, and never touch the document, the selection or
@@ -309,9 +342,9 @@ is formatted in place. Unsupported constructs produce named diagnostics rather
 than silent drops. Fatal input errors write no output.
 
 ### `panelcraft render INPUT.pcd --out OUTPUT.png|svg [flags]`
-Renders the selected view through headless Chrome. Flags: `--width 1920`,
-`--theme dark|light`, `--view NAME`, and `--chrome /path/to/chrome`. Output
-uses a deterministic 16:9 canvas; position-free/auto views use compound dagre
+Renders the document through headless Chrome. Flags: `--width 1920`,
+`--theme dark|light`, and `--chrome /path/to/chrome`. Output
+uses a deterministic 16:9 canvas; position-free/auto layout uses compound dagre
 layout so C4 boundaries contain their members. The renderer is isolated from
 IndexedDB, service workers, workspace storage, and external network access.
 Chrome startup, parse, view, and output errors are actionable; `--chrome` (or

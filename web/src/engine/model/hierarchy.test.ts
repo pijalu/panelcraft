@@ -55,24 +55,24 @@ describe('resolveDrilldown', () => {
 });
 
 describe('drilldown round-trip', () => {
-  it('rejects a quoted view id — the view is an identifier, not a name', () => {
-    const res = parsePDL('pcd 1.0\nsystem shop "Shop" {\n  drilldown "containers.pcd" view "containers"\n}\n');
+  it('rejects a legacy view id on a drilldown with E118', () => {
+    const res = parsePDL('pcd 1.0\nsystem shop "Shop" {\n  drilldown "containers.pcd" view containers\n}\n');
     expect(res.doc).toBeNull();
-    expect(res.diagnostics[0]?.severity).toBe('error');
+    expect(res.diagnostics[0]?.code).toBe('E118');
   });
 
-  it('prints drilldown then source, path quoted and view bare', () => {
+  it('prints drilldown then source, path quoted', () => {
     const doc = parse(`system shop "Shop" {
   source {
     text "x"
     language "go"
   }
-  drilldown "containers/shop.pcd" view containers
+  drilldown "containers/shop.pcd"
 }`);
     expect(printDoc(doc)).toBe(`pcd 1.0
 
 system shop "Shop" {
-  drilldown "containers/shop.pcd" view containers
+  drilldown "containers/shop.pcd"
   source {
     language "go"
     text "x"
@@ -99,17 +99,14 @@ system shop "Shop" {
 
 describe('hierarchy validation', () => {
   const root = `system shop "Shop" {
-  drilldown "containers/shop.pcd" view containers
+  drilldown "containers/shop.pcd"
 }`;
   const child = `pcd 1.0
 level container
-view "Containers" as containers {
-  layout auto LR
-}
 container api "API"
 `;
 
-  it('accepts a matching level and view', () => {
+  it('accepts a matching level', () => {
     const doc = parse(root);
     const diags = validateDoc(doc, { file: 'shop.pcd', imports: workspace({ 'containers/shop.pcd': child }) });
     expect(codes(diags).filter((c) => c.startsWith('P21'))).toEqual([]);
@@ -135,14 +132,11 @@ container api "API"
     expect(codes(diags).filter((c) => c.startsWith('P21'))).toEqual([]);
   });
 
-  it('reports an unknown view id (P218)', () => {
-    const doc = parse(root);
-    const diags = validateDoc(doc, { file: 'shop.pcd', imports: workspace({ 'containers/shop.pcd': child }) })
-      .filter((d) => d.code === 'P218');
-    expect(diags).toHaveLength(0);
-    const renamed = child.replace('as containers', 'as other');
-    const bad = validateDoc(parse(root), { file: 'shop.pcd', imports: workspace({ 'containers/shop.pcd': renamed }) });
-    expect(codes(bad)).toContain('P218');
+  it('rejects a child with a legacy view block instead of matching by id', () => {
+    const legacy = child.replace('container api "API"', 'view "Containers" as containers {\n  layout auto LR\n}');
+    const res = parsePDL(legacy);
+    expect(res.doc).toBeNull();
+    expect(res.diagnostics[0]?.code).toBe('E117');
   });
 
   it('reports a kind that cannot decompose (P215)', () => {

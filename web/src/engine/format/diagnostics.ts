@@ -34,6 +34,14 @@ export const E = {
   invalidIconMedia: 'E115',
   /** `source` block with no `text` line — nothing to show or print (§3.3). */
   emptySource: 'E116',
+  /** Legacy named `view` block — views were removed (ADR 0007). */
+  legacyView: 'E117',
+  /** Legacy `drilldown … view <id>` — named view on a child (ADR 0007). */
+  legacyDrilldownView: 'E118',
+  /** Flow description block with no `text` line (§6). */
+  emptyFlowDescription: 'E119',
+  /** Step prose block with no `text` line — nothing to show or print (§6). */
+  emptyStepText: 'E120',
 } as const;
 
 export const diag = (

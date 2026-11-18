@@ -150,6 +150,9 @@ panelcraft serve --addr :8080 --open
    enforces it locally and in CI). Curated, reviewable captures live in
    `e2e/goldens/` and are refreshed **only** with
    `UPDATE_GOLDENS=1 npm run e2e` — that diff is part of the commit under review.
+   Nothing compares a curated capture automatically, so a stale one stays stale
+   silently: a change that moves the shell (top bar, panel rails, tab strip,
+   canvas chrome) re-shoots them in the same change.
    Generated `dist/**` is never committed (the root `dist/release` dry-run
    binaries were untracked in F-09; purge older history with
    `git filter-repo --path dist --invert-paths` if the repository size matters,

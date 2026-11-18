@@ -29,6 +29,9 @@ var (
 
 const maxDepth = 32
 
+// Embedded decomposition documents may nest at most eight levels deep.
+const maxEmbedDepth = 8
+
 // UX08-WP11 camera bounds (IR v8): the canvas zoom limits, ms ≤ 300.
 const (
 	cameraZoomMin = 0.1
@@ -43,12 +46,13 @@ var presentationKeys = map[string]bool{"description": true, "camera": true, "dur
 type abort struct{ d Diagnostic }
 
 type parser struct {
-	src      string
-	toks     []Token
-	i        int
-	pending  []string // comments awaiting the next statement
-	diags    []Diagnostic
-	titleSet bool // TS `??=` semantics: `title ""` counts as set
+	src        string
+	toks       []Token
+	i          int
+	pending    []string // comments awaiting the next statement
+	diags      []Diagnostic
+	titleSet   *bool // TS `??=` semantics, scoped to one document
+	embedDepth int
 }
 
 // tokPos converts a token position to an IR Pos.
@@ -72,6 +76,17 @@ func (p *parser) next() Token {
 		p.i++
 	}
 	return t
+}
+
+// lastLine is the line of the last consumed token. A step body may end in a
+// text block, so a trailing `delay`/`advance` follows its closing brace rather
+// than the line the step started on.
+func (p *parser) lastLine() int {
+	idx := p.i - 1
+	if idx < 0 {
+		idx = 0
+	}
+	return p.toks[idx].Line
 }
 
 func (p *parser) expect(typ TokenType, text string) Token {
@@ -148,6 +163,16 @@ func (p *parser) expectClose(t0 Token, what string) {
 // ---- file ------------------------------------------------------------------
 
 func (p *parser) parseFile() *ir.Doc {
+	return p.parseDoc(false, Token{})
+}
+
+// parseDoc parses one document from the current token position. Nested
+// embedded documents share the token stream so positions stay file-relative.
+func (p *parser) parseDoc(nested bool, open Token) *ir.Doc {
+	previous := p.titleSet
+	set := false
+	p.titleSet = &set
+	defer func() { p.titleSet = previous }()
 	p.skipComments()
 	first := p.peek()
 	if first.Type != TokIdent || first.Text != "pcd" {
@@ -164,15 +189,22 @@ func (p *parser) parseFile() *ir.Doc {
 	if lead := p.takeComments(); len(lead) > 0 {
 		doc.Comments = lead
 	}
-	p.statementLoop(doc)
+	p.statementLoop(doc, nested, open)
 	return doc
 }
 
-func (p *parser) statementLoop(doc *ir.Doc) {
+func (p *parser) statementLoop(doc *ir.Doc, nested bool, open Token) {
 	for {
 		p.skipComments()
 		t := p.peek()
+		if nested && t.Type == TokPunct && t.Text == "}" {
+			p.expectClose(open, "embedded document")
+			return
+		}
 		if t.Type == TokEOF {
+			if nested {
+				p.fail(open, ErrUnclosedBlock, "unclosed embedded document")
+			}
 			return
 		}
 		if t.Type != TokIdent {
@@ -193,10 +225,10 @@ func (p *parser) statement(doc *ir.Doc) {
 	case "title":
 		p.next()
 		p.takeDocComments(doc)
-		if !p.titleSet {
+		if !*p.titleSet {
 			v := p.str()
 			doc.Title = &v
-			p.titleSet = true
+			*p.titleSet = true
 		} else {
 			_ = p.str() // first title wins (D-M1: `??=` keeps the first)
 		}
@@ -211,7 +243,9 @@ func (p *parser) statement(doc *ir.Doc) {
 	case "flow":
 		doc.Flows = append(doc.Flows, p.parseFlow())
 	case "view":
-		doc.Views = append(doc.Views, p.parseView())
+		p.fail(t, ErrLegacyView, "named view blocks are no longer supported; move layout/position/pin/hide lines to the top level")
+	case "layout", "position", "pin", "hide":
+		p.parseLayoutStmt(t.Text, doc)
 	case "style":
 		doc.Styles = append(doc.Styles, p.parseStyleStmt())
 	default:
@@ -448,17 +482,31 @@ func (p *parser) once(seen map[string]bool, t Token, key string) {
 	seen[key] = true
 }
 
-// parseDrilldown reads `"<path>" [view <id>]` (IR v10, FILE-FORMAT §3.2). The
-// path is a quoted workspace path, not an identifier; the optional view is the
-// child's view id.
+// parseDrilldown reads `"<path>"` (IR v11, FILE-FORMAT §3.2). The path is a
+// quoted workspace path. A legacy `view <id>` suffix is rejected (ADR 0007).
 func (p *parser) parseDrilldown() *ir.Drilldown {
-	d := &ir.Drilldown{Path: p.str()}
-	peeked := p.peek()
-	if peeked.Type == TokIdent && peeked.Text == "view" {
-		p.next()
-		d.View = p.ident()
+	first := p.peek()
+	if first.Type == TokString {
+		d := &ir.Drilldown{Kind: "linked", Path: p.str()}
+		peeked := p.peek()
+		if peeked.Type == TokIdent && peeked.Text == "view" {
+			p.fail(p.next(), ErrLegacyDrilldownView, "a named view on a drilldown is no longer supported; remove the \"view <id>\" suffix")
+		}
+		return d
 	}
-	return d
+	if first.Type != TokIdent || first.Text != "embedded" {
+		p.fail(first, ErrUnexpected, `drilldown expects "path.pcd" or embedded "path.pcd" { pcd 1.0 … }`)
+	}
+	if p.embedDepth >= maxEmbedDepth {
+		p.fail(first, ErrNestingTooDeep, fmt.Sprintf("embedded decomposition nesting exceeds %d levels", maxEmbedDepth))
+	}
+	p.next()
+	path := p.str()
+	open := p.expect(TokPunct, "{")
+	p.embedDepth++
+	doc := p.parseDoc(true, open)
+	p.embedDepth--
+	return &ir.Drilldown{Kind: "embedded", Path: path, Doc: doc}
 }
 
 // parseSource reads `{ language "…" text "…" … }` (IR v10, §3.3): one `text`
@@ -782,25 +830,84 @@ func (p *parser) parseFlow() ir.Flow {
 		f.ID = p.ident()
 	}
 	p.expect(TokPunct, "{")
-	if d := p.flowDescription(); d != nil {
-		f.Description = d
-	}
+	p.flowHeader(&f)
 	f.Steps = p.parseSteps(1)
 	p.expectClose(t0, "flow")
 	f.Comments = comments
 	return f
 }
 
-// flowDescription reads an optional `description "…"` at the top of a flow
-// body (UX08-WP11): a flow attribute, not a step.
-func (p *parser) flowDescription() *string {
-	t := p.peek()
-	if t.Type != TokIdent || t.Text != "description" {
-		return nil
+// flowHeader reads the atomic flow attributes before any step: one quoted
+// description or one multiline block, plus the presentation flag. Each may
+// appear once, in any source order.
+func (p *parser) flowHeader(f *ir.Flow) {
+	seen := map[string]bool{}
+	for {
+		p.skipComments()
+		t := p.peek()
+		if t.Type != TokIdent {
+			return
+		}
+		switch t.Text {
+		case "description":
+			p.once(seen, t, "description")
+			p.next()
+			if p.peek().Type == TokPunct && p.peek().Text == "{" {
+				f.DescriptionLines = p.descriptionBlock(t)
+			} else {
+				v := p.quoted(p.next(), "description")
+				f.Description = &v
+			}
+		case "presentation":
+			p.once(seen, t, "presentation")
+			p.next()
+			f.Presentation = true
+		default:
+			return
+		}
 	}
-	p.next()
-	v := p.quoted(p.next(), "description")
-	return &v
+}
+
+// descriptionBlock reads one text line per authored Markdown line, including
+// blank ones. An empty block is E119: it would not survive a print round-trip.
+func (p *parser) descriptionBlock(t0 Token) []string {
+	return p.textLines(t0, ErrEmptyFlowDescription, "description block needs at least one text line")
+}
+
+// textLines reads a `{ text "…" … }` block: the one place multiline prose is
+// authored, shared by the flow notes block and by every step-level prose string.
+func (p *parser) textLines(t0 Token, emptyCode, emptyMessage string) []string {
+	p.expect(TokPunct, "{")
+	var lines []string
+	for {
+		p.skipComments()
+		if p.peek().Type == TokEOF {
+			p.fail(t0, ErrUnclosedBlock, "unclosed text block")
+		}
+		if p.peek().Type == TokPunct && p.peek().Text == "}" {
+			p.next()
+			break
+		}
+		t := p.expect(TokIdent, "")
+		if t.Text != "text" {
+			p.fail(t, ErrUnexpected, fmt.Sprintf("unknown text block line '%s'", t.Text))
+		}
+		lines = append(lines, p.str())
+	}
+	if len(lines) == 0 {
+		p.fail(t0, emptyCode, emptyMessage)
+	}
+	return lines
+}
+
+// stepText reads step prose: a quoted string, or a block of text lines whose
+// lines are joined with a newline.
+func (p *parser) stepText(t0 Token, what string) string {
+	if p.peek().Type == TokPunct && p.peek().Text == "{" {
+		lines := p.textLines(t0, ErrEmptyStepText, what+" block needs at least one text line")
+		return strings.Join(lines, "\n")
+	}
+	return p.quoted(p.next(), what)
 }
 
 func (p *parser) parseSteps(depth int) []ir.Step {
@@ -854,7 +961,7 @@ func (p *parser) refID() string {
 	return first
 }
 
-// stepDelay consumes an optional trailing `delay <ms>` on the step's line (F-18).
+// stepDelay consumes an optional trailing `delay <ms>` on a step's line.
 func (p *parser) stepDelay(line int, s *ir.Step) {
 	t := p.peek()
 	if t.Type != TokIdent || t.Text != "delay" || t.Line != line {
@@ -868,18 +975,35 @@ func (p *parser) stepDelay(line int, s *ir.Step) {
 	s.DelayMs = &ms
 }
 
+// stepModifiers consumes the optional trailing `delay <ms>` and
+// `advance click|end` on a step's own line.
+func (p *parser) stepModifiers(line int, s *ir.Step) {
+	p.stepDelay(line, s)
+	t := p.peek()
+	if t.Type != TokIdent || t.Text != "advance" || t.Line != line {
+		return
+	}
+	p.next()
+	v := p.expect(TokIdent, "")
+	if v.Text != "click" && v.Text != "end" {
+		p.fail(v, ErrUnexpected, "advance must be click or end")
+	}
+	a := v.Text
+	s.Advance = &a
+}
+
 func (p *parser) parseKeywordStep(kw string, depth int) ir.Step {
 	t0 := p.next()
 	comments := p.takeComments()
 	s := ir.Step{Type: kw, Comments: comments, Pos: tokPos(t0)}
 	switch kw {
 	case "intro", "info", "conclusion":
-		v := p.quoted(p.next(), kw)
+		v := p.stepText(t0, kw)
 		s.Text = &v
 	case "process":
 		s.Target = p.refID()
-		if p.peek().Type == TokString {
-			v := p.next().Value
+		if n := p.peek(); n.Type == TokString || (n.Type == TokPunct && n.Text == "{") {
+			v := p.stepText(t0, kw)
 			s.Text = &v
 		}
 	case "alt":
@@ -890,7 +1014,7 @@ func (p *parser) parseKeywordStep(kw string, depth int) ir.Step {
 		p.parseGoto(&s)
 	}
 	if kw != "alt" && kw != "par" {
-		p.stepDelay(t0.Line, &s)
+		p.stepModifiers(p.lastLine(), &s)
 	}
 	p.presentation(t0, &s)
 	return s
@@ -940,7 +1064,7 @@ func (p *parser) presentationBody(t0 Token) (*string, *ir.Camera, *float64, bool
 		empty = false
 		switch name {
 		case "description":
-			v := p.quoted(p.next(), "description")
+			v := p.stepText(key, "description")
 			description = &v
 		case "camera":
 			camera = p.parseCamera(key)
@@ -1096,18 +1220,9 @@ func (p *parser) parseGoto(s *ir.Step) {
 	}
 }
 
-func (p *parser) parseMsgStep() ir.Step {
-	t0 := p.next()
-	comments := p.takeComments()
-	from := p.refIDFrom(t0)
-	arrow := p.expect(TokArrow, "")
-	to := p.refID()
-	info := arrow.Arrow
-	if info != nil && info.Tail && !info.Head {
-		from, to = to, from
-	}
-	s := ir.Step{Type: "msg", From: from, To: to, Comments: comments, Pos: tokPos(t0)}
-	// Modifiers are order-free (errata D-M1-9): : "label", as Ref, flip.
+// parseMsgModifiers consumes the order-free message modifiers and then
+// hands the step to the shared presentation parser.
+func (p *parser) parseMsgModifiers(t0 Token, s *ir.Step) {
 	for {
 		t := p.peek()
 		switch {
@@ -1121,99 +1236,82 @@ func (p *parser) parseMsgStep() ir.Step {
 		case t.Type == TokIdent && t.Text == "flip":
 			p.next()
 			s.Flip = true
-		case t.Type == TokIdent && t.Text == "delay" && t.Line == t0.Line:
-			p.stepDelay(t0.Line, &s)
-			p.presentation(t0, &s)
-			return s
+		case t.Type == TokIdent && (t.Text == "delay" || t.Text == "advance") && t.Line == t0.Line:
+			p.stepModifiers(p.lastLine(), s)
+			p.presentation(t0, s)
+			return
 		default:
-			p.presentation(t0, &s)
-			return s
+			p.presentation(t0, s)
+			return
 		}
 	}
 }
 
-// ---- views ------------------------------------------------------------------
-
-func (p *parser) parseView() ir.View {
+func (p *parser) parseMsgStep() ir.Step {
 	t0 := p.next()
 	comments := p.takeComments()
-	name := p.quoted(p.next(), "view")
-	v := ir.View{Name: name, Pos: tokPos(t0)}
-	if p.peek().Type == TokIdent && p.peek().Text == "as" {
-		p.next()
-		v.ID = p.ident()
+	from := p.refIDFrom(t0)
+	arrow := p.expect(TokArrow, "")
+	to := p.refID()
+	info := arrow.Arrow
+	if info != nil && info.Tail && !info.Head {
+		from, to = to, from
 	}
-	p.expect(TokPunct, "{")
-	for !(p.peek().Type == TokPunct && p.peek().Text == "}") {
-		p.skipComments()
-		if p.peek().Type == TokEOF {
-			p.fail(t0, ErrUnclosedBlock, "unclosed view block")
-		}
-		v.Lines = append(v.Lines, p.parseViewLine())
-	}
-	p.next()
-	v.Comments = comments
-	return v
+	s := ir.Step{Type: "msg", From: from, To: to, Comments: comments, Pos: tokPos(t0)}
+	p.parseMsgModifiers(t0, &s)
+	return s
 }
 
-func (p *parser) parseViewLine() ir.ViewLine {
+// ---- top-level layout state (ADR 0007) --------------------------------------
+
+func (p *parser) layoutState(doc *ir.Doc, t0 Token, comments []string) *ir.LayoutState {
+	if doc.Layout == nil {
+		doc.Layout = &ir.LayoutState{Pos: tokPos(t0)}
+	}
+	doc.Layout.Comments = append(doc.Layout.Comments, comments...)
+	return doc.Layout
+}
+
+func (p *parser) parseLayoutStmt(kw string, doc *ir.Doc) {
 	t0 := p.next()
-	l := ir.ViewLine{Type: t0.Text, Comments: p.takeComments(), Pos: tokPos(t0)}
-	switch t0.Text {
+	comments := p.takeComments()
+	l := p.layoutState(doc, t0, comments)
+	switch kw {
 	case "layout":
-		p.layoutLine(&l, t0)
-	case "hide":
-		p.hideLine(&l)
+		mode := p.expect(TokIdent, "").Text
+		if mode == "saved" {
+			l.Directive = &ir.LayoutDirective{Mode: "saved"}
+			return
+		}
+		if mode != "auto" {
+			p.fail(t0, ErrUnexpected, fmt.Sprintf("invalid layout mode '%s'", mode))
+		}
+		dir := p.expect(TokIdent, "").Text
+		if !dirs[dir] {
+			p.fail(t0, ErrUnexpected, fmt.Sprintf("invalid layout dir '%s'", dir))
+		}
+		l.Directive = &ir.LayoutDirective{Mode: "auto", Dir: dir}
 	case "position":
-		p.positionLine(&l)
+		id := p.ident()
+		p.expect(TokPunct, "(")
+		x := p.num(p.next())
+		p.expect(TokPunct, ",")
+		y := p.num(p.next())
+		p.expect(TokPunct, ")")
+		l.Positions = append(l.Positions, ir.LayoutPos{ID: id, X: x, Y: y})
 	case "pin":
-		l.ID = p.ident()
-	default:
-		p.fail(t0, ErrUnexpected, fmt.Sprintf("unknown view line '%s'", t0.Text))
+		l.Pins = append(l.Pins, p.ident())
+	case "hide":
+		t := p.next()
+		if t.Type == TokIdent && t.Text == "tag" {
+			l.HiddenTags = append(l.HiddenTags, p.ident())
+			return
+		}
+		if t.Type != TokIdent {
+			p.fail(t, ErrUnexpected, "hide needs an id")
+		}
+		l.Hidden = append(l.Hidden, p.identTok(t))
 	}
-	return l
-}
-
-func (p *parser) layoutLine(l *ir.ViewLine, t0 Token) {
-	mode := p.expect(TokIdent, "").Text
-	if mode == "saved" {
-		l.Mode = "saved"
-		return
-	}
-	if mode != "auto" {
-		p.fail(t0, ErrUnexpected, fmt.Sprintf("invalid layout mode '%s'", mode))
-	}
-	dir := p.expect(TokIdent, "").Text
-	if !dirs[dir] {
-		p.fail(t0, ErrUnexpected, fmt.Sprintf("invalid layout dir '%s'", dir))
-	}
-	l.Mode = "auto"
-	l.Dir = dir
-}
-
-func (p *parser) hideLine(l *ir.ViewLine) {
-	t := p.next()
-	if t.Type == TokIdent && t.Text == "tag" {
-		l.Type = "hideTag"
-		l.ID = p.ident()
-		return
-	}
-	if t.Type != TokIdent {
-		p.fail(t, ErrUnexpected, "hide needs an id")
-	}
-	l.ID = p.identTok(t)
-}
-
-func (p *parser) positionLine(l *ir.ViewLine) {
-	id := p.ident()
-	p.expect(TokPunct, "(")
-	x := p.num(p.next())
-	p.expect(TokPunct, ",")
-	y := p.num(p.next())
-	p.expect(TokPunct, ")")
-	l.ID = id
-	l.X = &x
-	l.Y = &y
 }
 
 // ---- entry ------------------------------------------------------------------

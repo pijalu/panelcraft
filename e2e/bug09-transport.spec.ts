@@ -219,12 +219,10 @@ system bank "Bank"
 ada -> shop : "browses"
 shop -requests-> bank : "charge" as L1
 
-view "Base" {
-  layout saved
-  position ada (120, 140)
-  position shop (360, 140)
-  position bank (700, 140)
-}
+layout saved
+position ada (120, 140)
+position shop (360, 140)
+position bank (700, 140)
 
 flow "Checkout" as main {
   intro "Kick off"
@@ -312,10 +310,10 @@ test.describe('presentation framing (item 9)', () => {
     await page.getByTestId('flow-play-main').click();
     await page.getByTestId('pb-present').click();
     await page.getByTestId('present-dot-2').click();
-    const token = canvas(page).locator('.pc-token').first();
+    const token = canvas(page).locator('[data-role="arrival-token"]').first();
     await expect(token).toHaveCount(1, { timeout: 5000 });
     // The beat-lifetime contract: travel ends inside the dwell, so the arrival
-    // is visible instead of the spark vanishing at its own 900 ms.
+    // is marked by a settled token instead of a spark vanishing at 900 ms.
     await expect
       .poll(
         async () =>
@@ -338,17 +336,23 @@ test.describe('presentation framing (item 9)', () => {
       return String(anim?.currentTime ?? -1);
     });
     expect(still).toBe(arrived);
-    await expect(canvas(page).locator('.pc-token')).toHaveCount(1);
+    await expect(canvas(page).locator('[data-role="arrival-token"]')).toHaveCount(1);
+    await expect(canvas(page).locator('[data-role="spark"]')).toHaveCount(1);
     await capture(page, 'item9-token-arrived-light');
     await page.emulateMedia({ colorScheme: 'dark' });
     await capture(page, 'item9-token-arrived-dark');
   });
 
+});
+
+// Replay is a transport contract, kept in its own suite so each describe stays
+// reviewable. Same seed and canvas helpers as the framing cases above.
+test.describe('presentation replay (item 9)', () => {
   test('pausing freezes the beat, stepping and exiting leave no orphans', async ({ page }) => {
     await seed(page, MSG_FIRST_DOC);
     await page.getByTestId('flow-play-main').click();
     await page.getByTestId('pb-present').click();
-    const token = canvas(page).locator('.pc-token').first();
+    const token = canvas(page).locator('[data-role="spark"]').first();
     await expect(token).toHaveCount(1, { timeout: 5000 });
     const travelTime = (): Promise<number> =>
       token.evaluate((el) => Number((el as Element).getAnimations()[0]?.currentTime ?? -1));
@@ -356,28 +360,68 @@ test.describe('presentation framing (item 9)', () => {
     await page.waitForTimeout(300);
     await page.getByTestId('present-toggle').click();
     await expect(page.getByTestId('present-dock')).toHaveAttribute('data-status', 'paused');
+    // The dock state is synchronous; WAAPI commits pause on the next frame.
+    // Sampling before that gives a false "still moving" reading.
+    await expect
+      .poll(async () =>
+        token.evaluate((el) => {
+          const anim = (el as Element).getAnimations()[0];
+          return anim === undefined ? 'none' : anim.playState;
+        }),
+      )
+      .toBe('paused');
     const frozen = await travelTime();
     await page.waitForTimeout(250);
-    expect(await travelTime()).toBe(frozen);
-    // Resume: the same token continues (it is paused, not replaced).
+    // WAAPI currentTime drifts by a fraction of a millisecond after pausing;
+    // anything beyond a few ms would mean the beat kept travelling.
+    expect(Math.abs((await travelTime()) - frozen)).toBeLessThan(5);
+    // Replay: a fresh spark on the current beat, starting from time zero.
+    const oldToken = await token.elementHandle();
     await page.getByTestId('present-toggle').click();
     await expect(page.getByTestId('present-dock')).toHaveAttribute('data-status', 'playing');
+    // The old WAAPI animation is cancelled with its detached element; the new
+    // one belongs to the same beat, not to a resumed mid-flight token.
+    expect(await oldToken?.evaluate((el) => el.isConnected)).toBe(false);
+    await expect
+      .poll(async () =>
+        token.evaluate((el) => {
+          const anim = (el as Element).getAnimations()[0];
+          return anim === undefined ? 'none' : anim.playState;
+        }),
+      )
+      .toBe('running');
+    const replayed = await token.evaluate((el) => {
+      const anim = (el as Element).getAnimations()[0];
+      return { currentTime: Number(anim?.currentTime ?? -1), state: anim?.playState };
+    });
+    console.log('REPLAY_WAAPI', JSON.stringify({ frozen, replayed }));
+    expect(replayed.state).toBe('running');
+    expect(replayed.currentTime).toBeGreaterThanOrEqual(0);
+    expect(replayed.currentTime).toBeLessThan(frozen);
+    // The visible spark moves again along the same connector, and the step is
+    // not advanced twice by the fresh full-duration dwell timer.
+    const atStart = await token.boundingBox();
     await page.waitForTimeout(200);
-    expect(await travelTime()).toBeGreaterThan(frozen);
+    const later = await token.boundingBox();
+    expect(Math.abs((later?.x ?? 0) - (atStart?.x ?? 0))).toBeGreaterThan(2);
+    await expect(page.getByTestId('present-counter')).toContainText('1 / 2');
 
     // A parked step really is parked: the dot jump settles the token at the
     // endpoint, so "paused" never coexists with a travelling spark.
     await page.getByTestId('present-restart').click();
     await page.getByTestId('present-dot-1').click();
     await expect(page.getByTestId('present-dock')).toHaveAttribute('data-status', 'paused');
+    const arrived = canvas(page).locator('[data-role="arrival-token"]').first();
     await expect
       .poll(async () =>
-        token.evaluate((el) => {
+        arrived.evaluate((el) => {
           const anim = (el as Element).getAnimations()[0];
           return anim === undefined ? 'gone' : anim.playState;
         }),
       )
       .toBe('finished');
+    const moving = canvas(page).locator('[data-role="spark"]').first();
+    await expect(moving).toHaveCSS('opacity', '0');
 
     // Exiting removes every animation layer, token and trail.
     await page.getByTestId('present-exit').click();

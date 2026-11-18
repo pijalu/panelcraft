@@ -48,7 +48,7 @@ import billing as "../billing/system.pcd"    ← 0..n, see §5
 <objects>                    ← 0..n, see §3
 <links>                      ← 0..n, see §4
 <flows>                      ← 0..n, see §6
-<views>                      ← 0..n, see §7
+<layout>                     ← 0..1, see §7 (top-level layout state)
 <style-overrides>            ← 0..n, see §7.3
 ```
 
@@ -78,7 +78,8 @@ attach id                   ← note only: anchored object id
 icon name                   ← built-in icon id (M5)
 size <w> <h>                ← explicit canvas geometry in document units (IR v2, F-13)
 z <int>                     ← explicit stacking order; absent = auto (IR v6, CX-03)
-drilldown "path.pcd" [view id]  ← C4 decomposition, IR v10 (§3.2)
+drilldown "path.pcd"            ← linked C4 decomposition (§3.2)
+drilldown embedded "path.pcd" { … } ← embedded recursive document (§3.2)
 source { … }                ← embedded source text, IR v10 (§3.3)
 ```
 
@@ -178,31 +179,45 @@ icon brand {
   it as-is. Mermaid has no equivalent and declares `icons` dropped (§9).
 * Provenance and licensing of the built-in set: [ICONS.md](ICONS.md).
 
-### 3.2 Decomposition links — C4 drill-down (IR v10)
+### 3.2 Decomposition targets — C4 drill-down (IR v12)
 
-A C4 element may *decompose* into a subordinate diagram that lives in the same
-workspace: a system opens its container diagram, a container opens its component
-diagram. The relation is authorised on the **parent object only** — a child file
-never points back at its parent — so every edge has exactly one author and the two
-ends can never disagree.
+A C4 element may *decompose* into a subordinate diagram that lives either as a
+workspace file or inside the parent document. A system opens its container
+diagram, a container opens its component diagram. The relation is authorised on
+the **parent object only** — a child never points back at its parent — so every
+edge has exactly one author and the two ends can never disagree.
 
 ```
-ObjectAttr += "drilldown" QuotedPath [ "view" Ident ]
+ObjectAttr += "drilldown" QuotedPath
+            | "drilldown" "embedded" QuotedPath "{" DocStmt* "}"
 ```
+
+The first form is a **linked** target; the second carries the child's complete
+recursive document. The IR value is discriminated (`kind: "linked"` or
+`kind: "embedded"`): an embedded target always has a `doc`, never an optional
+payload that might be missing.
 
 ```
 system shop "Webshop" {
-  description "Storefront SPA"
-  drilldown "containers/shop.pcd" view containers
+  drilldown embedded "containers/shop.pcd" {
+    pcd 1.0
+    title "Containers"
+    level container
+    container api "API" {
+      drilldown "components/api.pcd"
+    }
+  }
 }
 ```
 
-* **Target** — workspace-relative POSIX path to a `.pcd` file, resolved from the
-  declaring file's directory. Absolute paths, backslashes, paths that escape the
-  workspace root and non-`.pcd` suffixes are errors (`P213`).
-* **View** — optional view *id* inside the target file (the `as <id>` of a `view`
-  statement, §7.1). Absent, the child opens its default (implicit or first) view; a
-  view id the target does not declare is an error (`P218`).
+* **Logical path** — the quoted path is a workspace-relative POSIX `.pcd` path,
+  resolved from the declaring document's logical path. Absolute paths,
+  backslashes, traversal above the workspace root and non-`.pcd` suffixes are
+  errors (`P213`). An embedded child keeps this path as its stable identity even
+  when the parent is exported alone.
+* **Nesting limits** — at most 8 embedded levels, 64 embedded children and
+  256 KiB of nested document text per root (`P218`, shared by parser, validator
+  and exporter). A block without the nested `pcd 1.0` magic line aborts the file.
 * **Allowed transitions** — decomposition follows C4's zoom levels:
 
   | parent kind | child `level` (§2) |
@@ -210,35 +225,38 @@ system shop "Webshop" {
   | `system`, `system_ext` | `container` |
   | `container` | `component`, `deployment` |
 
-  A child that declares **no** `level` line is accepted (the file makes no claim). A
-  child that declares a different one is `P214`. `person`, `datastore`, `queue`,
-  `note` and `group` cannot decompose at all (`P215`) — a group is a boundary and a
-  note is an annotation, neither is a C4 element.
-* **One parent per child** — a target file is claimed by at most one object per
-  document (`P211`); the workspace-wide pass behind the UI additionally reports a
-  child claimed by two *different* files.
-* **Acyclic** — following decomposition links must not return to a file already in
-  the trail (`P216`).
-* **Identity** — the parent object keeps its own id; the child diagram's content is
-  *not* merged into the parent, is never duplicated as ghost objects, and the parent
-  is never silently renamed. The child renders a parent-context boundary that names
-  the parent element and its file; imported ghosts (§5) stay visually distinct.
-* **Navigation** — a drill-down is opened from a visible, keyboard-reachable
-  affordance on the entity (properties panel action and canvas context action); the
-  trail shows breadcrumbs back to the root, and returning keeps the previous view
-  and camera. A broken, cyclic or duplicate relation keeps the current context and
-  reports the reason instead of opening anything.
-* **Editing** — `drilldown` is a document line like any other: setting, changing or
-  clearing it is one undoable command, so undo/redo never desynchronises the trail
-  (the trail re-resolves from the file after every edit).
-* **Rename / move / delete** — renaming or moving a target in the workspace rewrites
-  the referring `drilldown` path in every affected file in the same step; deleting a
-  target keeps the authored relation and reports `P212`, which the properties panel
-  offers to re-point. No hidden backlink is stored, so there is nothing else to
-  maintain.
-* **Exports** — the relation is not an edge: it draws no link, so SVG/PNG and the
-  CLI renderer are unaffected and an unsaved child never appears in a parent export.
-  Mermaid has no decomposition concept; `drilldown` is declared dropped (§9).
+  A child that declares **no** `level` line is accepted (the file makes no
+  claim). A child that declares a different one is `P214`. `person`, `datastore`,
+  `queue`, `note` and `group` cannot decompose at all (`P215`).
+* **One owner per child** — a logical path is claimed by at most one object per
+  document (`P211`), and by at most one owner across the embedded tree (`P219`).
+* **Acyclic** — following linked or embedded decomposition links must not return
+  to a logical path already in the trail (`P216`, `P220`).
+* **Editing** — an embedded child is not a virtual file. Its identity is the root
+  path plus the nested owner/path chain; the canvas, code, properties and flow
+  editors use the ordinary document pipeline, and one edit commits one canonical
+  root-document write. Changing an embedded child to a linked file (or deleting
+  it) is an explicit action with one-step undo. Setting, changing or clearing a
+  linked target is one undoable command, and the trail re-resolves from the file
+  after every edit.
+* **Embedded text** — `source { … }` (§3.3) is program text owned by one object.
+  It is deliberately separate from an embedded child document; the two never
+  share grammar or identity.
+* **Export** — an all-or-nothing planner embeds every transitively reachable
+  child. Missing (`P212`), unparsable, invalid, cyclic (`P220`), shared (`P219`)
+  or unreadable (`P222`) descendants fail the whole export: there is no partial
+  "complete" file and no silent fallback to linked export. The linked option
+  keeps the root's authored representation and requires the child files.
+
+* **Rename / move / delete** — renaming or moving a target in the workspace
+  rewrites every referring linked `drilldown` path in the same step; deleting a
+  target keeps the authored relation and reports `P212`, which the properties
+  panel offers to re-point. No hidden backlink is stored, so there is nothing
+  else to maintain. An embedded child's logical path travels with the root file.
+* **Other exports** — a decomposition relation is not an edge: it draws no link,
+  so SVG/PNG and the CLI renderer are unaffected and an unsaved child never
+  appears in a parent render. Mermaid has no decomposition concept and declares
+  `drilldown` dropped (§9).
 
 ### 3.3 Embedded source (IR v10)
 
@@ -318,6 +336,11 @@ a <-> b                         bidirectional
   `a -> b : "hi" delay 1200`. It overrides the beat's default auto-advance time for
   that step only; the printer emits it only when present, and the IR carries it as
   `delayMs`. `alt`/`par` blocks do not take a delay (their beats follow the branches).
+* **Per-step advance trigger**: a leaf step may also carry `advance click` or
+  `advance end`, after any `delay`. `end` is the default and keeps the current
+  auto-advance after the step's dwell. `click` cycles the current beat until the
+  presenter clicks to move on; the choice is stored in the IR as `advance` and
+  printed only when authored. `alt`/`par` blocks do not take an advance trigger.
 
 * Block form for link attributes (rare; printer uses it only when needed):
 
@@ -361,27 +384,47 @@ api -publishes-> events as L7 {
   reports it. `allow overlap` opts one link out of object and connector avoidance. It
   is emitted only when true; absence and false have identical default behavior.
 
-  Explicit `waypoint` geometry remains authoritative and bypasses *automatic*
-  avoidance with or without this override: a bend outside every shape is honoured even
-  when a shorter automatic route exists, and each leg between bends is still routed
-  around entity rectangles so a detour never becomes a crossing. A bend that lies
-  **inside** an entity cannot be drawn without covering the shape and its label, so it
-  is skipped rather than silently relocated: the printed document keeps the authored
-  `waypoint` line untouched, and the connector carries the reason (`data-route-warning`
-  and its accessible description), e.g. `charges: bend 2 at (432, 70) is inside Payment
-  provider — the route skips it.` Canvas, minimap, SVG/PNG and CLI use the committed
-  route polylines. Mermaid export declares `overlap overrides` as dropped because the
-  target has no equivalent data.
+  Explicit `waypoint` geometry on an **orthogonal** route is planned as a whole
+  path. This supersedes the earlier rule that every bend outside an entity was
+  authoritative: a bend that makes the connector run out and back is now skipped,
+  while an intentional detour that goes around an obstacle without reversing or
+  crossing anything is still honoured, even when it is longer than the automatic
+  route. A lone authored bend is that intentional detour: it is skipped only when
+  inside an entity, so reversal simplification starts at two authored bends. The
+  planner scores whole candidates in this order: entity crossings are
+  a hard constraint, then fewer full-path direction reversals (a sign change along
+  either axis), then fewer skipped bends, shorter Manhattan length and finally
+  authored-index ties that keep earlier bends. Work is bounded at O(n²) scored
+  routes: at most one bend is removed per step and at most n candidates are tried
+  per step.
 
-* **Connector sparks (FLOW-02, IR v7)**: `sparks <1..8>` sets how many tokens travel
-  a link during a message step and `speed <0.25..4>` scales their motion, where `1`
-  is the historical single-token default speed. Absent values reproduce the old
-  behaviour exactly and are never printed. Counts are staggered deterministically
-  along the path; a one-way link completes once per step, while a `<->`
-  bidirectional link reverses at the far end and ping-pongs until the step ends.
-  `flip` only chooses the initial direction. Sparks never change flow timing, step
-  dwell or validation, and reduced motion keeps the static emphasis with no
-  moving tokens.
+  A skipped bend is never relocated or deleted from the file. Its reason travels
+  with the connector as `inside-entity` (the point lies in an entity) or
+  `causes-reversal` (dropping it wins the whole-path score); the printed document
+  keeps every authored `waypoint` line unchanged in PDL and IR. The connector
+  carries the reason (`data-route-warning` and its accessible description), for
+  example `charges: bend 1 at (432, 254) is skipped because it makes the route
+  reverse direction.` Canvas, minimap, SVG/PNG and CLI use the same planned
+  polyline. Straight and curved routes are outside this rule and keep every
+  authored point verbatim. Mermaid export declares `overlap overrides` as dropped
+  because the target has no equivalent data.
+
+* **Connector sparks (FLOW-02, IR v7)**: `sparks <1..8>` is the **maximum**
+  number of tokens visible on a link during a message step and `speed <0.25..4>`
+  scales their motion, where `1` is the historical single-token default speed.
+  Absent values reproduce the old behaviour exactly and are never printed. The
+  renderer measures the connector and derives the spacing and stagger so tokens
+  never all start together and a short line carries fewer tokens; a `<->`
+  bidirectional link reverses at the far end and ping-pongs between elements
+  until the step ends. `flip` only chooses the initial direction. Each spark follows one numeric beat
+  timeline shared with the border pulses: the source border expands, the spark
+  is created at peak expansion while the border unexpands, it disappears at the
+  arrival endpoint as that border expands and returns to rest, and a settled
+  token holds the last endpoint until the step changes. Bidirectional arrivals
+  pulse alternating endpoints. Every phase, including stagger and the final
+  rest, fits inside the step's dwell; reduced motion shows only the settled
+  token and static emphasis. Sparks never change flow timing, step dwell or
+  validation.
 
 * **Arrow visual model (F-12)** — links accept these `style` keys, all optional:
 
@@ -422,13 +465,17 @@ import Alias as "./relative/path.pcd"
   endpoints may reference them; flows may include them.
 * Import graph must be **acyclic**; missing files are warnings with problem markers,
   not parse errors (diagram still renders).
-* What is *not* imported: flows, views, styles, links of the imported file (links always
+* What is *not* imported: flows, layout state, styles, links of the imported file (links always
   live in the file that draws them).
 
 ## 6. Flows
 
 ```
-FlowStmt    := "flow" [QuotedName] ["as" Id] "{" ["description" QuotedText] Step* "}"
+FlowStmt    := "flow" [QuotedName] ["as" Id] "{" FlowHeader? Step* "}"
+FlowHeader  := (FlowDescription | FlowFlag)+
+FlowDescription := "description" (QuotedText | "{" FlowTextLine+ "}")
+FlowTextLine    := "text" QuotedText
+FlowFlag    := "presentation"
 ```
 
 Steps (ordered; each becomes one numbered beat in playback):
@@ -437,10 +484,10 @@ Steps (ordered; each becomes one numbered beat in playback):
 Step        := IntroStep | MsgStep | ProcessStep | AltStep | ParStep
              | GotoStep | InfoStep | ConclusionStep
 
-IntroStep       := "intro" QuotedText
+IntroStep       := "intro" StepProse
 MsgStep         := Id LinkTail [Type] LinkHead Id [":" QuotedLabel] ["as" RefId] ["flip"]
                    // resolves to an existing link between the pair (see below)
-ProcessStep     := "process" Id [QuotedText]
+ProcessStep     := "process" Id [StepProse]
 AltStep         := "alt" [QuotedText] "{" (Branch)* "}"
 Branch          := QuotedText "{" Step* "}"          // branch label + its steps
 ParStep         := "par" [QuotedText] "{" (Lane)* "}"
@@ -448,11 +495,15 @@ Lane            := "{" Step* "}"                      // unlabeled parallel lane
 GotoStep        := "goto" [Target] ["return" ("end" | "here")]
                    Target := FilePath "#" FlowId      // other file (workspace-relative)
                           | FlowId                    // same file
-InfoStep        := "info" QuotedText
-ConclusionStep  := "conclusion" QuotedText
+InfoStep        := "info" StepProse
+ConclusionStep  := "conclusion" StepProse
+
+StepProse       := QuotedText                        // one line
+                 | "{" TextLine+ "}"                  // one authored line each
+TextLine        := "text" QuotedText
 
 StepPresentation := ["presentation" "{" PresentationLine* "}"]   // after any step
-PresentationLine := "description" QuotedText
+PresentationLine := "description" StepProse
                   | "camera" ("auto" | "hold"
                               | "focus" "(" Number "," Number ")" ["zoom" Number])
                   | "duration" Number                              // camera, 0–300 ms
@@ -460,6 +511,24 @@ PresentationLine := "description" QuotedText
 
 Rules:
 
+* **Flow description**: the legacy `description "…"` line and the multiline
+  `description { text "…" … }` block are two forms of the same flow attribute.
+  Either may appear at most once and never together (duplicate → `E110`); a block
+  without a `text` line is `E119`. Blank lines are authored as `text ""` and kept
+  verbatim. The source text lives in the IR as `description` or `descriptionLines`;
+  no rendered HTML is stored.
+* **Step prose**: a quoted string escapes only `\` and `"`, so it cannot hold a
+  line break. Prose that needs one — the flow's own `intro`/`info`/`conclusion`, a
+  `process` note, or a step's `presentation { description … }` — uses the block
+  form: one `text "…"` line per authored line, with blank lines written as
+  `text ""`. It is the same syntax as the flow notes block, and the IR stores the
+  joined text in `text` or `description`, never a rendered form. A block without a
+  `text` line is `E120`. Printing keeps the compact quoted form for single-line
+  prose, so a document that needs no block keeps its canonical bytes, and a
+  trailing `delay`/`advance` may follow the block's closing brace.
+* **Presentation flag**: a bare `presentation` at the top of a flow body (at most
+  once) persists **Show during presentation**. It is distinct from a step's
+  `presentation { … }` block, which follows a step on its own line.
 * **MsgStep resolution**: the `(from,to)` pair (direction-insensitive) must match ≥1
   existing link in the file (or via imports). `as RefId` disambiguates; `flip` plays the
   step reversed (e.g. a response) without altering the underlying link.
@@ -475,8 +544,10 @@ Rules:
   step — including `alt`/`par` after their closing brace. It carries three order-free lines,
   each at most once:
 
-  * `description "…"` — one line of prose for the step (what the presenter narrates). The
-    flow itself may carry a matching `description` at the top of its body.
+  * `description "…"` — prose for the step (what the presenter narrates). It
+    accepts the block form above once it holds more than one line, which is how a
+    presenter writes Markdown. The flow itself may carry a matching `description`
+    at the top of its body.
   * `camera auto | hold | focus (x, y) [zoom n]` — `auto` is the default when a step has no
     camera at all, `hold` keeps the previous camera, `focus` frames a canvas point
     (`x`, `y` in document units) with an optional `zoom` inside the existing 0.1–4 limits.
@@ -487,7 +558,7 @@ Rules:
   Absent metadata prints nothing, so a pre-v8 document keeps its canonical form byte for
   byte. The canonical block order is description, camera, duration, regardless of source
   order, and metadata is only ever stored here — never in a UI-only side channel. Camera
-  and step descriptions are flow concepts and never appear on `view` lines. Mermaid export
+  and step descriptions are flow concepts and never appear on layout lines. Mermaid export
   declares them as drops (see MERMAID-MATRIX).
 
 Example (see SPEC §7 for semantics):
@@ -511,28 +582,41 @@ flow "Happy path" as happy {
 }
 ```
 
-## 7. Views, positions, styles
+## 7. Layout, positions, styles
 
-### 7.1 Views
+### 7.1 Top-level layout state
+
+Named `view` blocks were removed (IR v11, ADR 0007). One diagram has one layout
+state, expressed as top-level statements:
 
 ```
-ViewStmt := "view" QuotedName ["as" Id] "{" ViewLine* "}"
-ViewLine := "layout" ("auto" Dir | "saved")
-          | "hide" "tag" Ident                       // repeatable
-          | "hide" Id                                 // repeatable (element-level)
-          | "position" Id "(" Number "," Number ")"   // saved coords, canvas units
-          | "pin" Id                                  // excluded from auto-layout
+LayoutStmt := "layout" ("auto" Dir | "saved")
+            | "hide" "tag" Ident                       // repeatable
+            | "hide" Id                                 // repeatable (element-level)
+            | "position" Id "(" Number "," Number ")"   // saved coords, canvas units
+            | "pin" Id                                  // excluded from auto-layout
 ```
 
-* A file with no `view` gets the implicit default view (auto layout, everything visible).
-* `layout saved` uses the `position` lines; nodes without position are auto-placed.
+* A file with no layout statements uses implicit auto layout in the document
+  direction with everything visible. There is no view selector and no view session.
+* `layout saved` uses the `position` lines; nodes without a position are auto-placed.
+* `pin`/`hide`/`hide tag` remain document display state; their UI lives in the
+  properties panel and application menu, not a removed view bar.
 * Camera state (zoom/scroll) is **never persisted** in PDL (session concern).
+
+**Legacy files.** `view "…" { … }` and `drilldown "…" view <id>` are rejected with
+diagnostics E117/E118 — never silently ignored. To convert by hand, delete the
+`view` wrapper, move its `layout`/`position`/`pin`/`hide` lines to the top level, and
+drop the `view <id>` suffix from any decomposition.
 
 ### 7.2 Coordinates
 
 Canvas units: 1 = 1 px at 100% zoom; origin top-left; y grows downward. Auto-layout
 (dagre) outputs are written back only when the user explicitly commits layout ("apply
-layout to file") — never silently.
+layout to file") — never silently. **Reset diagram layout** clears saved positions
+and persists deterministic auto-layout in one undoable command; it is distinct from
+**Reset workspace layout**, which only restores panel geometry. Resetting routes never
+changes object positions.
 
 Group boundaries are compound layout parents, so a link whose endpoint is a `group`
 is drawn from the boundary's computed rectangle but does not steer auto-layout; the
@@ -593,7 +677,7 @@ nested subgraph ids): warning + skipped, never silent.
 * Tags → mermaid `classDef` (one class per tag), applied via `class` statements.
 * Fill colors of `style` overrides → `style id fill:#…`.
 
-**Dropped (declared, per SPEC FR-M4):** flows, positions/layout, views, imports
+**Dropped (declared by the spec's import rules):** flows, positions/layout, imports
 (exported file is flattened: imported objects inlined and marked via comment `%%
 imported from …`), properties, notes detach, icons (built-in and document-declared), endpoint perimeter anchors,
 waypoints, overlap overrides, object stacking order, custom shapes, decomposition
@@ -606,7 +690,7 @@ fallback flowchart.
 
 | Code | Severity | Rule |
 |---|---|---|
-| P100 | error | duplicate object/flow/view id |
+| P100 | error | duplicate object/flow id |
 | P101 | error | link/flow-step endpoint resolves to nothing |
 | P102 | error | import cycle |
 | P103 | error | import path escapes workspace |
@@ -617,7 +701,7 @@ fallback flowchart.
 | P201 | warning | orphan object (no links, no flow references) |
 | P202 | warning | empty flow / flow without visual steps |
 | P203 | warning | `style` targets non-existent id |
-| P204 | info | position overlaps (view-time concern; reported, not fixed) |
+| P204 | info | position overlaps (reported, not fixed) |
 | P206 | error | duplicate document icon handle |
 | P207 | error | document icon handle collides with a built-in icon |
 | P208 | error | icon payload/declaration count over the §3.1 limits |
@@ -628,9 +712,12 @@ fallback flowchart.
 | P213 | error | decomposition target path escapes the workspace or is not a `.pcd` path |
 | P214 | error | decomposition target declares a C4 level the parent kind cannot open (§3.2) |
 | P215 | error | this object kind cannot own a subordinate diagram (§3.2) |
-| P216 | error | decomposition cycle (the chain returns to a file already in the trail) |
+| P216 | error | linked decomposition cycle (the chain returns to a file already in the trail) |
 | P217 | error | embedded source over the §3.3 limits (64 KiB / 4096 lines / 256 KiB per doc) |
-| P218 | error | decomposition `view` id is not declared by the target file |
+| P218 | error | embedded decomposition over the §3.2 limits (depth 8 / 64 children / 256 KiB) |
+| P219 | error | one logical child embedded by two owners |
+| P220 | error | embedded decomposition cycle or link back into an embedded ancestor |
+| P222 | error | a decomposition child could not be read (complete export refuses to continue) |
 
 Exit codes per SPEC FR-X. All findings carry `line:col` of the offending token.
 
@@ -654,7 +741,7 @@ Exit codes per SPEC FR-X. All findings carry `line:col` of the offending token.
 ```ebnf
 file        = "pcd" version , { stmt } ;
 version     = number , [ "." number ] ;
-stmt        = meta | import | icon | object | link | flow | view | style ;
+stmt        = meta | import | icon | object | link | flow | layoutstmt | style ;
 meta        = ("title" string) | ("level" ident) | ("direction" ident) | ("theme" ident) ;
 import      = "import" ident "as" path ;
 icon        = "icon" ident "{" , [ "label" string ] , "media" string , "data" string , "}" ;
@@ -663,20 +750,27 @@ attr        = ("description" , string) | ("technology" , string) | ("tag" , iden
             | ("property" , ident , string) | ("contains" , ident { ident })
             | ("attach" , ident) | ("icon" , ident)
             | ("size" , number , number) | ("z" , number)
-            | ("drilldown" , string , [ "view" , ident ])
+            | ("drilldown" , string)
             | ("source" , "{" , [ "language" , string ] , { "text" , string } , "}" ) ;
 link        = ident , arrow , ident , [ ":" , string ] , [ "as" , ident ] , [ linkblock ] ;
 arrow       = [ "<" ] , "-" , [ ident , "-" ] , [ ">" ] ;   (* <-, ->, <->, -type-> *)
-flow        = "flow" , [ string ] , [ "as" , ident ] , "{" , { step } , "}" ;
-step        = ( intro | msg | process | alt | par | goto | info | conclusion ) , [ delay ] ;
+flow        = "flow" , [ string ] , [ "as" , ident ] , "{" ,
+              [ "description" , string
+              | "description" , "{" , { "text" , string } , "}"
+              | "presentation" ] ,
+              { step } , "}" ;
+step        = ( intro | msg | process | alt | par | goto | info | conclusion ) , [ delay ] , [ advance ] ;
 delay       = "delay" , number ;   (* per-step dwell in ms, F-18 *)
+advance     = "advance" , ( "click" | "end" ) ;  (* click cycles until the next click *)
 alt         = "alt" , [ string ] , "{" , { branch } , "}" ;
 branch      = string , "{" , { step } , "}" ;
 par         = "par" , [ string ] , "{" , { lane } , "}" ;
 lane        = "{" , { step } , "}" ;
 goto        = "goto" , [ path , "#" ] , ident , [ "return" , ("end"|"here") ] ;
 anchor      = "anchor" , ("from" | "to") , number ;   (* normalized 0 <= n < 1 *)
-view        = "view" , string , [ "as" , ident ] , "{" , { viewline } , "}" ;
+layoutstmt  = ("layout" , ("auto" , ident | "saved"))
+            | ("position" , ident , "(" , number , "," , number , ")")
+            | ("pin" , ident) | ("hide" , [ "tag" ] , ident) ;
 style       = "style" , ident , "{" , { styleline } , "}" ;
 (* IR v10: `drilldown` and `source` are object attributes — see `attr` above. *)
 ```
@@ -732,11 +826,9 @@ flow "Happy path" as happy {
   conclusion "Order stored"
 }
 
-view "Main" {
-  layout auto LR
-  position user (80, 120)
-  position api (420, 90)
-}
+layout auto LR
+position user (80, 120)
+position api (420, 90)
 
 style api { fill #2d6cdf }
 ```
@@ -776,7 +868,7 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
 - E-08 Duplicate meta directives: first wins, warning W100 (§2).
 - E-09 Tagged-id lists (`tag`, `contains`) are line-scoped: members must sit on
   the same line as the keyword (§3).
-- E-10 Link/flow/view ids are data: the canonical printer emits `as <id>`
+- E-10 Link/flow ids are data: the canonical printer emits `as <id>`
   whenever an id was recorded, including unreferenced link ids — lossless
   round-trip wins over §4's minimal-noise sketch (§1.2).
 - E-11 Empty collections (`tags`, `contains`, `waypoints`) vanish in canonical
@@ -793,7 +885,7 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   Base64; `E115` = the `media` string names a type this version cannot draw.
   Both abort the file: the declaration could never be rendered, and re-printing
   it would emit a file the app refuses to load.
-- E-15 Syntax errors (E100–E115) abort the whole file (doc = null + diagnostics);
+- E-15 Syntax errors (E100–E120) abort the whole file (doc = null + diagnostics);
   semantic findings never abort (§10, §14 sample).
 
 **Validation**
@@ -815,6 +907,24 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   arrays omitted; `true`-only booleans (`bidir`, `flip`, `dashed`); 2-space
   indent + trailing newline; no HTML escaping in `<`, `>`, `&` (§11).
 
+- E-26 Step prose blocks: `intro`, `info`, `conclusion`, a `process`
+  note and a step's `presentation { description … }` accept the flow-notes block
+  form, so multiline Markdown no longer needs an escape sequence. Single-line
+  prose keeps the quoted form and its canonical bytes; a block with no `text` line
+  is `E120`. The IR stores the joined text in the existing `text`/`description`
+  string, so no field was added and old documents round-trip unchanged.
+
+- E-25 Flow notes (IR v13): `description { text "…" … }` is one atomic block with
+  one `text` line per authored Markdown line; an empty block is E119. The optional
+  bare `presentation` flag stores the **Show during presentation** setting. Both
+  are flow attributes printed before steps, in the order description, block, flag.
+  The supported Markdown is a local typed subset — headings, bold, italic, inline
+  code, bullet and numbered lists and links — parsed once and reused by the
+  presentation aside and the `.md` export; raw HTML is text, images are unsupported,
+  and only http(s), mailto and relative URLs become links. Exported notes headings
+  are nested one level below a single-flow heading (`#`) and two below the
+  all-flows flow heading (`##`).
+
 **Import converters (§8)**
 - E-20 Converters are best-effort and never silent: presentation directives →
   M100 (info), unknown/unsupported lines → M200 (warning); full mapping table in
@@ -828,10 +938,10 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   `{files,errors,warnings,infos}`.
 
 **Decomposition and source (IR v10)**
-- E-22 `drilldown` is written `drilldown "<path>" [view <ident>]`, one per object;
-  the target path is a quoted string (a path, not an identifier) and the view is the
-  child's view *id*, not its display name. The canonical printer emits the two
-  lines after `size`/`z` and before the object's `style` block, `drilldown` first.
+- E-22 `drilldown` is written `drilldown "<path>"`, one per object; the target path
+  is a quoted string (a path, not an identifier). A legacy `view <ident>` suffix is
+  rejected with E118. The canonical printer emits the line after `size`/`z` and before
+  the object's `style` block.
 - E-23 A `source` block holds `language "…"` at most once and any number of `text
   "…"` lines in document order (one per source line). No `text` line is `E116`
   (nothing to show, and the printed file would lose the block); any other line
@@ -839,5 +949,5 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   lines separately (`source.lines`) so a reader never re-splits on `\n`.
 - E-24 `drilldown`/`source` are object attributes, so they inherit §12: unknown
   attributes still become raw data, and the two new ones are never silently
-  downgraded to it. Diagnostics P211–P218 are semantic (§10) and therefore never
+  downgraded to it. Diagnostics P211–P220 and P222 are semantic (§10) and therefore never
   abort a parse.

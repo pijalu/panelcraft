@@ -179,8 +179,17 @@ IcePanel-style visual storytelling over the static diagram.
 
 * **FR-F1** Multiple named flows per diagram; flow editor: ordered step list, drag to
   reorder, per-step title + description. A flow carries its own one-line `description`,
-  and each step may carry a `description` — both live in the file (IR v8), never in a
-  UI-only store. A document with connections and no authored flow has a virtual default
+  an optional atomic multiline Markdown `descriptionLines` block and a `presentation`
+  flag for showing those notes during playback; each step may carry its own `description`.
+  All of them live in the file (IR v8/v13), never in a UI-only store.
+  The step list shows the flow — order, type, title, participants, play and
+  duplicate — and the selected step's properties (type and description, camera,
+  playback, the connector animation its link shares, advanced fields) are edited
+  in the Properties panel, which also shows the flow's own properties when the
+  flow rather than a step is selected. A flow selection and a canvas selection
+  are mutually exclusive: picking a step clears the canvas selection and pressing
+  the diagram clears the step.
+  A document with connections and no authored flow has a virtual default
   flow derived from those connections (stable topological order, labels and parallel links
   preserved, creation order as the cycle fallback). It is never persisted: opening,
   presenting, saving and reloading leave the file unchanged, and the first explicit edit
@@ -253,7 +262,7 @@ Single static binary, no runtime deps, all assets embedded (`go:embed`).
   findings; exit 2 usage/IO error. CI-friendly.
 * `panelcraft convert <in.mmd> [-o out.pcd]` — mermaid → PanelCraft canonical form.
 * `panelcraft render <file.pcd> --out out.png|svg [--width 1920] [--theme dark|light]
-  [--view NAME] [--chrome /path/to/chrome]` — headless render via Chrome DevTools
+  [--chrome /path/to/chrome]` — headless render via Chrome DevTools
   Protocol (chromedp, pure Go). Serve embedded app, drive it, screenshot/serialize SVG.
   Fails with actionable error if no Chrome found.
 * `panelcraft version`.
@@ -272,16 +281,18 @@ Single static binary, no runtime deps, all assets embedded (`go:embed`).
 An element may own a subordinate diagram, so a C4 model is navigable instead of
 flat. Grammar and diagnostics: [FILE-FORMAT.md](FILE-FORMAT.md) §3.2, §3.3, §10.
 
-* **Ownership** — `drilldown "<workspace path>" [view <id>]` on a `system`, `system_ext`
-  or `container` declares that this element decomposes into the given `.pcd` file
-  (optionally one named view). The relation is authored on the parent only; the
-  child never declares a backlink, so there is one source of truth per edge.
+* **Ownership** — `drilldown "<workspace path>"` on a `system`, `system_ext`
+  or `container` declares that this element decomposes into the given `.pcd` file.
+  Named views were removed (ADR 0007); a `view` suffix is a parse error. The IR v12
+  relation is discriminated into a linked path or an embedded recursive document.
+  It is authored on the parent only; the child never declares a backlink, so there
+  is one source of truth per edge.
 * **Allowed transitions** follow the C4 zoom levels: system/system_ext →
   `level container`, container → `level component` or `level deployment`. A child
   that declares no `level` is accepted; a mismatching one, a kind that cannot
   decompose (person, datastore, queue, note, group), a duplicated target, a cyclic
   chain, a missing file and an escaping or non-`.pcd` path are reported as
-  diagnostics (P211–P218) instead of being silently repaired.
+  diagnostics (P211–P220, P222) instead of being silently repaired.
 * **Navigation** — a drill-down is opened from a visible, keyboard-reachable affordance on
   the entity (properties panel plus canvas context action). The child opens in its
   own tab with breadcrumbs back through the trail, and a parent-context boundary
@@ -327,7 +338,7 @@ flat. Grammar and diagnostics: [FILE-FORMAT.md](FILE-FORMAT.md) §3.2, §3.3, §
 * Native format **PDL (PanelCraft Diagram Language)**, extension `.pcd`, UTF-8,
   **own grammar inspired by mermaid** — deliberately *not* required to be valid mermaid
   (D7). One coherent syntax for structure *and* semantics: typed nodes, typed links,
-  plus first-class `flow`, `view`, `import`, `style`, `tag` directives — no comment-block
+  plus first-class `flow`, `layout`, `import`, `style`, `tag` directives — no comment-block
   workarounds.
 * Mermaid enters/leaves the tool exclusively through converters:
   * import: mermaid → PDL (lossless for supported subset, diagnostics otherwise);
@@ -345,24 +356,26 @@ flat. Grammar and diagnostics: [FILE-FORMAT.md](FILE-FORMAT.md) §3.2, §3.3, §
 
 ```
 Workspace { schemaVersion, files[], settings }
-File      { path, meta, imports[], objects[], links[], groups[], flows[], views[] }
+File      { path, meta, imports[], objects[], links[], groups[], flows[], layout? }
 Object    { id, kind(person|system|system_ext|container|component|datastore|queue|group|note),
             name, description, technology, tags[], properties{}, style{}, importedFrom?,
-            drilldown?{ path, view? }, source?{ language?, lines[] } }   ← IR v10
+            drilldown?: { kind: 'linked', path }
+                     | { kind: 'embedded', path, doc: Doc },
+            source?{ language?, lines[] } }                            ← IR v12
 Link      { id, from, to, type, label, direction(uni|bi), style{}, waypoints[] }
-Flow      { id, title, description?, steps[] }
+Flow      { id, title, description?, descriptionLines?[], presentation?, steps[] }  ← IR v13
 Step      { type(intro|msg|process|alt|par|goto|info|conclusion), description?,
             camera?{ mode(auto|hold|focus), x?, y?, zoom?, durationMs? }, delayMs?,
             payload (per type: from/to/linkRef | on | branches[](label,steps[]) | branches[](steps[]) |
                      target{file?,flow,return} | text) }
-View      { id, name, layout(auto:LR|auto:TB|saved), positions{}, hiddenTags?, elements? }
+Layout    { directive?(auto:Dir|saved), positions[{id,x,y}], pins[], hidden[], hiddenTags[] }
 ```
 
 Rules: ids are stable strings (`[a-z][a-z0-9_]*`, unique per file); link endpoints must
 resolve to objects or imported aliases; flows reference link ids for `msg` steps
 (mermaid-imported edges get auto ids `L1..Ln` recorded in `links:` so flows survive
 round-trips). `drilldown` is a parent-only relation to a workspace-relative `.pcd`
-file plus optional view id; `source` is line-oriented text the document owns.
+file; `source` is line-oriented text the document owns. Named views were removed;
 Neither is a link and neither is persisted outside the file.
 
 ---
@@ -501,9 +514,11 @@ implemented and covered by tests.
 * FR-C8 waypoints are draggable and persisted (`waypoint` lines); orthogonal, straight,
   and curved routing with deterministic object/route/label collision avoidance for
   labels. A route is validated as a whole polyline: automatic routes avoid both
-  endpoints and other entities, and a waypoint that lies inside an entity is never
-  drawn through it — the route skips that bend, keeps the authored line in the file,
-  and the connector states why (see FILE-FORMAT “Overlap avoidance”).
+  endpoints and other entities. Orthogonal waypoints are scored as whole candidates
+  (crossings, then full-path reversals, skipped bends, length, authored-index tie);
+  an inside-entity or reversal-causing bend is skipped with a reason on the connector
+  while the authored line stays in PDL/IR. Straight and curved routes keep every
+  waypoint verbatim (see FILE-FORMAT “Overlap avoidance”).
 * FR-C10 canvas and object context menus (duplicate, delete, copy/paste, align,
   distribute, equalise size).
 * FR-C12 copy/paste/duplicate within a file, with id re-allocation on paste.
@@ -513,7 +528,7 @@ implemented and covered by tests.
   diagram with breadcrumbs and a parent-context boundary; `source` keeps a short
   piece of source text in the file behind a local viewer (FILE-FORMAT §3.2, §3.3).
 * FR-X / S6 CLI: Mermaid/PDL → canonical PDL conversion and real-Chrome SVG/PNG
-  rendering, including light/dark themes, named views, output sizing and C4 auto-layout.
+  rendering, including light/dark themes, output sizing and C4 auto-layout.
 * N10 UI strings are centralized in a typed English catalog with named-placeholder
   interpolation and an AST audit for rendered copy, accessible names and copy fields.
 

@@ -195,40 +195,59 @@ describe('item 13: whole-polyline route validation', () => {
     expect(reversals(points)).toBe(0);
   });
 
-  it('fixture B: the authored detour survives while the invalid bend is skipped', () => {
+  it('fixture B: the authored out-and-back detour is simplified', () => {
     ctrl.loadState(state(AUTHORED));
     const points = route('L2');
 
-    // The valid bend is authoritative: the route reaches it, so the big
-    // down-and-around detour the user authored is preserved.
-    expect(points).toContainEqual({ x: 432, y: 254 });
-    // The bend inside Payment provider cannot be drawn — it is skipped, and the
-    // document keeps it (see the diagnostics assertion below).
-    expect(points).not.toContainEqual({ x: 432, y: 70 });
-
+    // Both authored bends are skipped: the first makes the whole path turn
+    // back on itself, the second sits inside the target. The result is the
+    // clean automatic route, not the authored down-and-back shape.
+    expect(points).toEqual([
+      { x: 305, y: 146 }, { x: 326.5, y: 146 }, { x: 326.5, y: 82 }, { x: 348, y: 82 },
+    ]);
     expect(crossings(points, [APP, PAY, USER])).toEqual([]);
     expect(crossings(points, [entityLabel(scene('pay')), entityLabel(scene('app'))])).toEqual([]);
     expect(points[0]).toEqual({ x: APP.x + APP.w, y: APP.y + APP.h / 2 });
     expect(points.at(-1)).toEqual({ x: PAY.x, y: PAY.y + PAY.h / 2 });
-
-    // The authored detour costs one reversal per bend it visits, plus the one
-    // that returns to the target's port; anything beyond that is a loop.
-    expect(reversals(points)).toBeLessThanOrEqual(3);
+    expect(reversals(points)).toBe(0);
+    // The source text is still the user's, in authored order.
+    expect(ctrl.snapshot.links.find((l) => l.id === 'L2')?.waypoints)
+      .toEqual([[432, 254], [432, 70]]);
   });
 
-  it('fixture B: the invalid bend is diagnosed in plain words and kept in the document', () => {
+  it('fixture C: an intentional detour survives without a warning', () => {
+    ctrl.loadState(state({
+      objects: [
+        { id: 'from', kind: 'system', x: 0, y: 0, w: 100, h: 60,
+          size: { w: 100, h: 60 }, name: 'From' },
+        { id: 'blocker', kind: 'system', x: 180, y: 0, w: 40, h: 200,
+          size: { w: 40, h: 200 }, name: 'Blocker' },
+        { id: 'to', kind: 'system', x: 400, y: 200, w: 100, h: 60,
+          size: { w: 100, h: 60 }, name: 'To' },
+      ],
+      links: [{ id: 'L3', from: 'from', to: 'to', label: 'around', waypoints: [[200, 220]] }],
+    }));
+    const points = route('L3');
+    expect(points).toContainEqual({ x: 200, y: 220 });
+    expect(reversals(points)).toBe(0);
+    expect(ctrl.snapshot.routeWarnings?.L3).toBeUndefined();
+    expect(ctrl.snapshot.links[0]?.waypoints).toEqual([[200, 220]]);
+  });
+
+  it('fixture B: both skipped bends are diagnosed in plain words', () => {
     ctrl.loadState(state(AUTHORED));
     const warnings = ctrl.snapshot.routeWarnings ?? {};
     expect(warnings.L2).toEqual([
+      'charges: bend 1 at (432, 254) is skipped because it makes the route reverse direction.',
       'charges: bend 2 at (432, 70) is inside Payment provider — the route skips it.',
     ]);
-    // The document is untouched: the authored point is still the user's.
+    // The document is untouched: the authored points are still the user's.
     expect(ctrl.snapshot.links.find((l) => l.id === 'L2')?.waypoints).toEqual([[432, 254], [432, 70]]);
 
     // And the canvas says so where the reader is looking.
     const group = svg.querySelector('g.pc-link[data-id="L2"]');
-    expect(group?.getAttribute('data-route-warning')).toBe(warnings.L2![0]);
-    expect(group?.getAttribute('aria-description')).toBe(warnings.L2![0]);
+    expect(group?.getAttribute('data-route-warning')).toBe(warnings.L2!.join(' '));
+    expect(group?.getAttribute('aria-description')).toBe(warnings.L2!.join(' '));
   });
 
   it('both fixtures place the "charges" label beside its own route', () => {

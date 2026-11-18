@@ -27,11 +27,10 @@ export interface RouteInput {
   allowOverlap?: boolean;
   clearance?: number;
   /**
-   * Explicit user waypoints (F-19). When present the route passes through them
-   * with orthogonal elbows and *optional* obstacle avoidance is skipped — the
-   * user stated the intended detour. A waypoint that sits inside an entity is
-   * not a detour but an impossible point: it is skipped here and reported by
-   * `invalidWaypoints`, because a route may never be drawn through a shape.
+   * Explicit user waypoints. Orthogonal routes plan the whole path and
+   * may skip an authored bend with a structured reason; straight and curved
+   * routes pass the authored points through unchanged. The authored array is
+   * never modified, printed or reordered by routing.
    */
   waypoints?: [number, number][];
   /** Optional normalized side-quarter perimeter anchors (CX-01, IR v4). */
@@ -240,31 +239,160 @@ function insideRect(p: Point, r: Rect): boolean {
   return p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h;
 }
 
-/** One authored waypoint that no valid route can honour. */
-export interface InvalidWaypoint {
-  /** Index in the authored `waypoints` array (stable across re-routes). */
+/** Why an authored bend was not drawn. */
+export type WaypointSkipReason = 'inside-entity' | 'causes-reversal';
+
+interface WaypointSkipBase {
   index: number;
-  /** The authored point, exactly as it stands in the document. */
   point: Point;
-  /** The entity rectangle the point sits inside. */
-  rect: Rect;
+}
+
+/** One authored bend the planner skipped, carrying its stable authored index. */
+export type WaypointSkip = (WaypointSkipBase & { reason: 'inside-entity'; rect: Rect }) |
+  (WaypointSkipBase & { reason: 'causes-reversal' });
+
+/** The drawn polyline and the bends it skipped, from one deterministic plan. */
+export interface RoutePlan {
+  points: Polyline;
+  skips: WaypointSkip[];
+  /**
+   * Unit direction of travel at each end, along that edge's normal. Curved
+   * routes draw their end handles from these, so the arrowhead always points
+   * into the entity instead of along its edge — the polyline itself keeps the
+   * plain anchors, so an almost-aligned pair still renders as a gentle curve.
+   */
+  ends?: { start: Point; end: Point };
+}
+
+interface AuthoredBend {
+  index: number;
+  point: Point;
+}
+
+interface RouteCandidate extends RoutePlan {
+  kept: AuthoredBend[];
+  dropped: number[];
+  crossings: number;
+  reversals: number;
+  length: number;
+}
+
+const authoredBends = (input: RouteInput): AuthoredBend[] =>
+  (input.waypoints ?? []).map(([x, y], index) => ({ index, point: { x, y } }));
+
+/** A bend inside an entity is impossible to draw, not merely unhelpful. */
+function insideSkip(bend: AuthoredBend, rects: Rect[]): WaypointSkip | undefined {
+  const rect = rects.find((candidate) => insideRect(bend.point, candidate));
+  return rect ? { reason: 'inside-entity', index: bend.index, point: bend.point, rect } : undefined;
+}
+
+/** Score one whole kept-bend set; crossings are a hard constraint later on. */
+function routeCandidate(input: RouteInput, kept: AuthoredBend[]): RouteCandidate {
+  const keptIndices = new Set(kept.map((bend) => bend.index));
+  const dropped = (input.waypoints ?? [])
+    .map((_, index) => index)
+    .filter((index) => !keptIndices.has(index));
+  const points = kept.length === 0
+    ? routeAuto(input)
+    : routeThroughWaypoints({
+        ...input,
+        waypoints: kept.map(({ point }) => [point.x, point.y] as [number, number]),
+      });
+  return {
+    points, skips: [], kept, dropped,
+    crossings: crossingEntities(points, input).length,
+    reversals: reversals(points),
+    length: pathLength(points),
+  };
+}
+
+/** Equal score keeps the earlier authored bends; index order is the last tie. */
+function preferredDrop(a: number[], b: number[]): boolean {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const left = a[i] ?? -1;
+    const right = b[i] ?? -1;
+    if (left !== right) return right > left;
+  }
+  return false;
+}
+
+/** Crossings, full-path reversals, drops, length, then authored indices. */
+function betterCandidate(a: RouteCandidate, b: RouteCandidate): boolean {
+  if (a.crossings !== b.crossings) return a.crossings < b.crossings;
+  if (a.reversals !== b.reversals) return a.reversals < b.reversals;
+  if (a.dropped.length !== b.dropped.length) return a.dropped.length < b.dropped.length;
+  if (a.length !== b.length) return a.length < b.length;
+  return preferredDrop(a.dropped, b.dropped);
+}
+
+/** Search relaxation: a shorter step is worth taking to reach fewer reversals. */
+function searchImproves(trial: RouteCandidate, current: RouteCandidate): boolean {
+  if (trial.crossings !== current.crossings) return trial.crossings < current.crossings;
+  if (trial.reversals !== current.reversals) return trial.reversals < current.reversals;
+  return trial.length < current.length;
+}
+
+/** Pick the next relaxed step deterministically when several bends qualify. */
+function betterStep(a: RouteCandidate, b: RouteCandidate): boolean {
+  if (a.crossings !== b.crossings) return a.crossings < b.crossings;
+  if (a.reversals !== b.reversals) return a.reversals < b.reversals;
+  if (a.length !== b.length) return a.length < b.length;
+  return preferredDrop(a.dropped, b.dropped);
 }
 
 /**
- * Explicit waypoints that lie inside an entity (the two endpoints or any
- * obstacle). Reported instead of silently drawing the route through the shape
- * and its label: the router renders a safe route without them, the document
- * keeps the authored point, and the canvas explains why it was skipped.
+ * Greedy single-bend removal with a relaxed search step: a bend may be dropped
+ * when it shortens a crossing-neutral route, because the next step can then
+ * remove a reversal that no single drop could reach. Each step drops exactly one
+ * bend, so at most `bends.length` steps run, with at most that many whole-route
+ * candidates per step: O(n²) scored routes. The returned candidate is the best
+ * one seen under the documented score, not merely the last one visited.
  */
-export function invalidWaypoints(input: RouteInput): InvalidWaypoint[] {
+function simplifyBends(input: RouteInput, bends: AuthoredBend[]): RouteCandidate {
+  let current = routeCandidate(input, bends);
+  let best = current;
+  for (;;) {
+    let next: RouteCandidate | undefined;
+    for (const bend of current.kept) {
+      const trial = routeCandidate(input, current.kept.filter((kept) => kept !== bend));
+      if (betterCandidate(trial, best)) best = trial;
+      if (searchImproves(trial, current) && (next === undefined || betterStep(trial, next))) next = trial;
+    }
+    if (next === undefined) return best;
+    current = next;
+  }
+}
+
+/**
+ * One pure orthogonal planner: keep the authored order, drop only bends that
+ * cannot be drawn or that make the whole path reverse, and report each drop.
+ * Nothing here edits the authored waypoint array or the document that owns it.
+ */
+export function planExplicitRoute(input: RouteInput): RoutePlan {
+  const bends = authoredBends(input);
+  if (bends.length === 0) return { points: routeAuto(input), skips: [] };
   const rects = entityRects(input);
-  const out: InvalidWaypoint[] = [];
-  (input.waypoints ?? []).forEach(([x, y], index) => {
-    const point = { x, y };
-    const rect = rects.find((r) => insideRect(point, r));
-    if (rect) out.push({ index, point, rect });
+  // A single authored bend is the user's chosen detour, even when it doubles
+  // back on the direct path; there is no second bend to simplify against.
+  if (bends.length === 1) {
+    const only = bends[0]!;
+    const skip = insideSkip(only, rects);
+    return skip
+      ? { points: routeAuto(input), skips: [skip] }
+      : { points: routeThroughWaypoints({ ...input, waypoints: [[only.point.x, only.point.y]] }), skips: [] };
+  }
+  const inside = bends.flatMap((bend) => insideSkip(bend, rects) ?? []);
+  const kept = bends.filter((bend) => !inside.some((skip) => skip.index === bend.index));
+  const best = simplifyBends(input, kept);
+  const insideByIndex = new Map(inside.map((skip) => [skip.index, skip]));
+  const skips = best.dropped.map((index): WaypointSkip => {
+    const known = insideByIndex.get(index);
+    if (known) return known;
+    const bend = bends[index];
+    if (!bend) throw new Error(`router: authored waypoint ${index} missing`);
+    return { reason: 'causes-reversal', index, point: bend.point };
   });
-  return out;
+  return { points: best.points, skips };
 }
 
 /**
@@ -357,40 +485,49 @@ function stubbedRoute(a: Point, b: Point, sideA: Side, sideB: Side, channel: num
 }
 
 /**
- * Orthogonal route: explicit waypoints when the user authored them, otherwise
- * the automatic Z/detour route.
+ * Orthogonal route: the whole explicit path is planned when waypoints exist,
+ * otherwise the automatic Z/detour route runs. Straight and curved modes keep
+ * every authored point verbatim.
  *
- * Waypoint contract: a waypoint outside every entity is authoritative and its
- * detour is preserved, even when a shorter automatic route exists. A waypoint
- * *inside* an entity cannot be honoured by any route that does not paint over
- * the shape and its label, so it is skipped (never silently relocated) and
- * `invalidWaypoints` reports it for the canvas to explain.
+ * An authored bend is honoured unless it lies inside an entity or dropping it
+ * removes a whole-path direction reversal without adding crossings. Every skip
+ * is returned with a reason and its authored index; the document text stays
+ * exactly as written. Canvas and CLI both use the returned polyline.
  */
 export function routeOrtho(input: RouteInput): Polyline {
-  if (input.waypoints !== undefined && input.waypoints.length > 0) {
-    return routeExplicit(input);
-  }
-  return routeAuto(input);
+  return input.waypoints !== undefined && input.waypoints.length > 0
+    ? planExplicitRoute(input).points
+    : routeAuto(input);
 }
 
-/** Route through the waypoints that can be honoured. */
-function routeExplicit(input: RouteInput): Polyline {
-  const dropped = new Set(invalidWaypoints(input).map((w) => w.index));
-  const kept = (input.waypoints ?? []).filter((_, index) => !dropped.has(index));
-  if (kept.length === 0) return routeAuto(input);
-  return routeThroughWaypoints({ ...input, waypoints: kept });
+/** One route plan using the visual mode; orthogonal remains the default. */
+export function planLink(input: RouteInput, mode: RouteMode = 'orthogonal'): RoutePlan {
+  if (input.allowOverlap) {
+    return planLink({ ...input, obstacles: [], routes: [], allowOverlap: false }, mode);
+  }
+  if (mode === 'orthogonal') {
+    return input.waypoints !== undefined && input.waypoints.length > 0
+      ? planExplicitRoute(input)
+      : { points: routeAuto(input), skips: [] };
+  }
+  const { a, b, sideA, sideB } = routeEndpoints(input);
+  const inner = (input.waypoints ?? []).map(([x, y]) => ({ x, y }));
+  const points: Polyline = [a, ...inner, b];
+  if (mode !== 'curved') return { points, skips: [] };
+  const normalA = outward(sideA);
+  const normalB = outward(sideB);
+  return {
+    points,
+    skips: [],
+    // `+ 0` folds -0 into 0: the tangents are compared in tests and read as
+    // direction data, and a signed zero there is only noise.
+    ends: { start: { x: normalA.x + 0, y: normalA.y + 0 }, end: { x: -normalB.x + 0, y: -normalB.y + 0 } },
+  };
 }
 
 /** Route one link using its visual mode; orthogonal remains the default. */
 export function routeLink(input: RouteInput, mode: RouteMode = 'orthogonal'): Polyline {
-  if (input.allowOverlap) return routeLink({ ...input, obstacles: [], routes: [], allowOverlap: false }, mode);
-  if (mode === 'orthogonal') return routeOrtho(input);
-  const { a, b } = routeEndpoints(input);
-  return [
-    a,
-    ...(input.waypoints ?? []).map(([x, y]) => ({ x, y })),
-    b,
-  ];
+  return planLink(input, mode).points;
 }
 
 interface RouteEndpoints {

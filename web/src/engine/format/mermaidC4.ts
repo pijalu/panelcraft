@@ -224,7 +224,6 @@ export function fromC4(src: string): MermaidResult {
     objects: ctx.objects,
     links: ctx.links,
     flows: [],
-    views: [],
     styles: [],
   };
   return { doc, diagnostics: ctx.diags };
@@ -235,7 +234,7 @@ export const C4_DROP_CATALOGUE = [
   'groups (no C4 boundary element)',
   'notes (no C4 annotation element)',
   'flows',
-  'views (positions/layout)',
+  'layout (positions/pins/hides)',
   'imports (flattened)',
   'link style beyond a label',
 ] as const;
@@ -272,7 +271,7 @@ export function docToC4(doc: Doc): C4ExportResult {
   for (const o of doc.objects) c4Object(o, lines, drop);
   for (const l of doc.links) c4Link(l, lines, drop);
   if (doc.flows.length > 0) drop('flows');
-  if (doc.views.length > 0) drop('views (positions/layout)');
+  if (doc.layout !== undefined) drop('layout (positions/pins/hides)');
   if (doc.imports.length > 0) drop('imports (flattened)');
   return { text: `${lines.join('\n')}\n`, dropped };
 }

@@ -13,6 +13,7 @@
 
 import { iconStructuralKey, shapeGlyphs, type ElSpec, type SceneObject } from './shapes';
 import type { Polyline, RouteMode } from './router';
+import type { Point } from './viewport';
 import { routeToPath } from './routePath';
 import {
   LABEL_LINE_HEIGHT, LABEL_PAD_Y, layoutLinkLabels, type LabelPlacement,
@@ -48,6 +49,9 @@ export const MARKER_SHAPES: readonly MarkerShape[] = ['arrow', 'open', 'diamond'
 export interface SceneLink {
   id: string;
   points: Polyline;
+  /** Direction of travel at each end (curved routes): drives the end handles so
+   *  the arrowhead points into the entity rather than along its edge. */
+  ends?: { start: Point; end: Point };
   label?: string;
   dashed?: boolean;
   /** Arrow type — drives the per-type colour hint (F-12). */
@@ -373,7 +377,7 @@ export class SceneRenderer {
     entry.path.setAttribute('marker-start', markerRef(link.tail ?? 'none'));
     if (link.width !== undefined) entry.path.setAttribute('stroke-width', String(link.width));
     else entry.path.removeAttribute('stroke-width');
-    entry.path.setAttribute('d', pointsToPath(link.points, link.route));
+    entry.path.setAttribute('d', pointsToPath(link.points, link.route, link.ends));
     const label = link.label ? `${link.label} (${link.id})` : link.id;
     const warnings = link.warnings ?? [];
     // A route that could not be drawn as authored says so where the reader is
@@ -630,6 +634,10 @@ export class SceneRenderer {
 }
 
 /** Polyline → SVG path d string. */
-export function pointsToPath(points: Polyline, mode: RouteMode = 'orthogonal'): string {
-  return routeToPath(points, mode);
+export function pointsToPath(
+  points: Polyline,
+  mode: RouteMode = 'orthogonal',
+  ends?: { start: Point; end: Point },
+): string {
+  return routeToPath(points, mode, ends);
 }

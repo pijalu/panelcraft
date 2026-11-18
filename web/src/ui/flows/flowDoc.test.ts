@@ -5,6 +5,7 @@
 // M4 sync machine).
 import { describe, expect, it } from 'vitest';
 import { parsePDL } from '../../engine/format/parser';
+import { printDoc } from '../../engine/format/printer';
 import type { Doc, Flow, FlowStep } from '../../engine/model/types';
 import {
   addBranch,
@@ -14,7 +15,10 @@ import {
   duplicateStep,
   appendStep,
   flatSteps,
+  framingPath,
+  framingText,
   getAt,
+  setFraming,
   moveStep,
   newStep,
   patchStep,
@@ -270,5 +274,63 @@ describe('duplicateStep (F-18)', () => {
     const d = doc();
     expect(duplicateStep(d.flows[0]!, [9])).toBe(false);
     expect(d.flows[0]!.steps).toHaveLength(2);
+  });
+});
+
+describe('framing steps — introduction and conclusion', () => {
+  const doc = (): Doc => parsePDL('pcd 1.0\nflow "F" as f {\n  info "two"\n}\n').doc!;
+
+  it('is absent by default, so nothing is authored and no row exists', () => {
+    const flow = doc().flows[0]!;
+    expect(framingText(flow, 'intro')).toBe('');
+    expect(framingText(flow, 'conclusion')).toBe('');
+    expect(framingPath(flow, 'intro')).toBeNull();
+    expect(flow.steps).toHaveLength(1);
+  });
+
+  it('creates the introduction first and the conclusion last', () => {
+    const flow = doc().flows[0]!;
+    setFraming(flow, 'conclusion', 'done');
+    setFraming(flow, 'intro', 'start');
+    expect(flow.steps.map((s) => s.type)).toEqual(['intro', 'info', 'conclusion']);
+    expect(framingText(flow, 'intro')).toBe('start');
+    expect(framingText(flow, 'conclusion')).toBe('done');
+  });
+
+  it('patches the authored frame instead of adding a second one', () => {
+    const flow = doc().flows[0]!;
+    setFraming(flow, 'intro', 'start');
+    setFraming(flow, 'intro', 'start over');
+    expect(flow.steps.filter((s) => s.type === 'intro')).toHaveLength(1);
+    expect(framingText(flow, 'intro')).toBe('start over');
+  });
+
+  it('clearing the text removes the step entirely', () => {
+    const flow = doc().flows[0]!;
+    setFraming(flow, 'intro', 'start');
+    setFraming(flow, 'conclusion', 'done');
+    setFraming(flow, 'intro', '');
+    setFraming(flow, 'conclusion', '   ');
+    expect(flow.steps.map((s) => s.type)).toEqual(['info']);
+    expect(framingPath(flow, 'intro')).toBeNull();
+  });
+
+  it('ignores a same-kind step nested in an alternative branch', () => {
+    const nested = parsePDL(
+      'pcd 1.0\nflow "F" as f {\n  alt "choose" {\n    "a" { intro "branch prose" }\n  }\n}\n',
+    ).doc!.flows[0]!;
+    expect(framingPath(nested, 'intro')).toBeNull();
+    setFraming(nested, 'intro', 'flow frame');
+    expect(nested.steps.map((s) => s.type)).toEqual(['intro', 'alt']);
+  });
+
+  it('round-trips through the printer', () => {
+    const d = doc();
+    const flow = d.flows[0]!;
+    setFraming(flow, 'intro', 'start');
+    setFraming(flow, 'conclusion', 'done');
+    const text = printDoc(d);
+    expect(text).toContain('intro "start"');
+    expect(text).toContain('conclusion "done"');
   });
 });

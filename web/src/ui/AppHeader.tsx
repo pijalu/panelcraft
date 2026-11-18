@@ -14,6 +14,7 @@ import { s } from './strings';
 import type { AppThemeHandle } from './useAppTheme';
 import type { PwaHandle } from './usePwa';
 import type { CanvasGridHandle } from './useCanvasGrid';
+import type { CommandSelection, RouteResetTarget } from './commandPolicy';
 
 function errorToShow(manager: WorkspaceManager, dismissed: string | null, ready: boolean): string | null {
   if (!ready || manager.openError === null || manager.openError === dismissed) return null;
@@ -40,6 +41,9 @@ export function AppHeader(props: {
   pwa: PwaHandle;
   /** UX08-WP05: canvas grid preference. */
   grid: CanvasGridHandle;
+  selection: CommandSelection;
+  onResetRoutes: (target: RouteResetTarget) => void;
+  onResetDiagramLayout: () => void;
 }) {
   const { ws } = props;
   const [dismissedError, setDismissedError] = useState<string | null>(null);
@@ -82,6 +86,9 @@ export function AppHeader(props: {
             setType: props.grid.setType,
             setSnap: props.grid.setSnap,
           }}
+          selection={props.selection}
+          onResetRoutes={props.onResetRoutes}
+          onResetDiagramLayout={props.onResetDiagramLayout}
         />
         {/* UX08-WP13: presentation is discoverable from the shell, not only a menu item. */}
         <button

@@ -47,9 +47,19 @@ export interface CameraCam {
 
 export interface FlowPlayerState {
   status: 'idle' | 'playing' | 'paused' | 'ended';
+  /** Authored id of the flow being played, null for derived/title-only flows.
+   *  A fact for the shell to publish as a link, never a URL policy here. */
+  flowId: string | null;
   narration: string;
   /** one-line prose of the current step (UX08-WP13; '' when none) */
   description: string;
+  /** Authored flow-level Markdown source (never rendered HTML). */
+  flowDescription: string;
+  /** The current beat's framing prose, when it is an introduction or conclusion.
+   *  Distinct from flow notes and from a step description: one owner per surface. */
+  framing: { kind: 'intro' | 'conclusion'; text: string } | null;
+  /** True only when flow notes exist and their presentation flag is set. */
+  showFlowNotes: boolean;
   breadcrumb: string[]; // titles of the frames above the current one
   awaitingChoice: AltInfo | null;
   progress: { index: number; total: number } | null;
@@ -58,12 +68,44 @@ export interface FlowPlayerState {
 /** Fully-reset player state (idle). */
 export const FRESH: FlowPlayerState = {
   status: 'idle',
+  flowId: null,
   narration: '',
   description: '',
+  flowDescription: '',
+  framing: null,
+  showFlowNotes: false,
   breadcrumb: [],
   awaitingChoice: null,
   progress: null,
 };
+
+/**
+ * Flow-level notes are a distinct playback fact: they never replace the
+ * current step's one-line description, including on the closing card.
+ */
+function notesOf(flow?: Flow): Pick<FlowPlayerState, 'flowDescription' | 'showFlowNotes'> {
+  const source = flow?.descriptionLines?.join('\n') ?? flow?.description ?? '';
+  return {
+    flowDescription: source,
+    showFlowNotes: flow?.presentation === true && source.trim() !== '',
+  };
+}
+
+/** A framing beat's prose, for the presentation popover. */
+function framingOf(beat: Beat): FlowPlayerState['framing'] {
+  if (beat.kind !== 'intro' && beat.kind !== 'conclusion') return null;
+  return beat.title.trim() === '' ? null : { kind: beat.kind, text: beat.title };
+}
+
+/** Panel visibility: one predicate shared by the shell class and the layer. */
+export function flowNotesVisible(state: FlowPlayerState): boolean {
+  return state.showFlowNotes && state.flowDescription.trim() !== '';
+}
+
+/** The current step's own explanation, shown beside the drawing while presenting. */
+export function stepExplanationVisible(state: FlowPlayerState): boolean {
+  return state.status !== 'idle' && state.description.trim() !== '';
+}
 
 interface Frame {
   plan: PlaybackPlan;
@@ -95,6 +137,9 @@ export class FlowRunner {
   private choices: Record<string, number> = {};
   private timer: number | null = null;
   private rects: FlowRects = { rectOf: () => null };
+  /** Where to start again when Play follows a natural end (the frame stack is
+   * empty by then). Cleared on exit so an idle runner cannot restart itself. */
+  private origin: { file: string; flowKey: string } | null = null;
   constructor(readonly io: ControllerIO) {}
 
   setRectProvider(r: FlowRects): void {
@@ -140,11 +185,14 @@ export class FlowRunner {
     this.io.publish({
       narration: beat.title,
       description: beat.description ?? '',
+      framing: framingOf(beat),
+      ...notesOf(f.flow),
       progress: { index: f.index + 1, total: f.plan.beats.length },
       awaitingChoice: null,
     });
     if (nav && beat.kind === 'alt') this.awaitChoice(beat);
     else if (nav && beat.kind === 'goto') this.enterGoto(f, beat);
+    else if (beat.advance === 'click') this.scheduleCycle(beat.delayMs);
     else this.scheduleAdvance(beat.delayMs);
   }
 
@@ -204,6 +252,21 @@ export class FlowRunner {
     }, ms);
   }
 
+  private scheduleCycle(ms: number): void {
+    this.cancelTimer();
+    this.timer = this.io.clock.delay(() => {
+      this.timer = null;
+      this.replay();
+    }, ms);
+  }
+
+  /** Presentation click: leave a click-driven beat and play the next one. */
+  next(): void {
+    if (this.stack.length === 0) return;
+    this.cancelTimer();
+    this.advance();
+  }
+
   private advance(): void {
     const f = this.frame();
     if (f.index + 1 >= f.plan.beats.length) this.finishFrame();
@@ -222,7 +285,9 @@ export class FlowRunner {
       this.io.publish({
         status: 'ended',
         narration: done === undefined ? '' : done.plan.flowTitle,
-        description: done?.plan.flowDescription ?? '',
+        description: '',
+        framing: null,
+        ...notesOf(done?.flow),
         breadcrumb: [],
         progress: done === undefined ? null : { index: total, total },
       });
@@ -259,12 +324,14 @@ export class FlowRunner {
   start(file: string, flowKey: string): void {
     this.cancelTimer();
     this.io.animator.stop();
+    this.origin = { file, flowKey };
     this.stack = [];
     this.choices = {};
     this.io.camera.save(this.io.currentViewport());
     const found = this.findFlow(this.io.textOf(file), flowKey);
     if (found === null) return;
     const plan = buildPlan({ doc: found.doc, flow: found.flow });
+    const authoredId = found.doc.flows.includes(found.flow) ? found.flow.id ?? null : null;
     this.stack.push({
       plan,
       doc: found.doc,
@@ -274,7 +341,7 @@ export class FlowRunner {
       returnTo: -1,
       retHere: false,
     });
-    this.io.publish({ ...FRESH, status: 'playing' });
+    this.io.publish({ ...FRESH, status: 'playing', flowId: authoredId, ...notesOf(found.flow) });
     this.runBeat();
   }
 
@@ -315,6 +382,10 @@ export class FlowRunner {
   }
 
   restart(): void {
+    if (this.stack.length === 0) {
+      this.replay(); // natural end: start the last flow over
+      return;
+    }
     this.choices = {};
     this.frame().index = 0;
     this.io.publish({ ...FRESH, status: 'playing', breadcrumb: this.breadcrumbOf() });
@@ -327,6 +398,27 @@ export class FlowRunner {
     // a token that keeps travelling while paused is an orphan (item 9).
     this.io.animator.pause();
     this.io.publish({ status: 'paused' });
+  }
+
+  /** Transport Play: replay the current beat from time zero. This is not the
+   * low-level `resume` (continue a frozen animation): a paused or parked beat
+   * gets a fresh animation and exactly one full-duration advance timer. The
+   * beat's goto/alt navigation is not re-entered. */
+  replay(): void {
+    if (this.stack.length === 0) {
+      if (this.origin !== null) {
+        const { file, flowKey } = this.origin;
+        this.start(file, flowKey);
+      }
+      return; // exited (no origin): Play has nothing to replay
+    }
+    const f = this.frame();
+    const beat = f.plan.beats[f.index];
+    // An open chooser must stay parked until a branch is picked.
+    if (beat === undefined || beat.kind === 'alt') return;
+    this.cancelTimer();
+    this.io.publish({ status: 'playing' });
+    this.runBeat(false);
   }
 
   resume(): void {
@@ -342,6 +434,7 @@ export class FlowRunner {
     this.io.animator.stop();
     this.io.camera.restoreSaved(this.io.currentViewport());
     this.stack = [];
+    this.origin = null;
     this.io.publish({ ...FRESH });
   }
 }

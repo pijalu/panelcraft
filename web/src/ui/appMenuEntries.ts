@@ -7,6 +7,7 @@ import { panelLabel } from './WorkspacePanels';
 import type { AppThemePreference } from './appTheme';
 import type { GridType } from '../engine/render/grid';
 import { s } from './strings';
+import { routeResetTarget, type CommandSelection, type RouteResetTarget } from './commandPolicy';
 
 export interface AppMenuActions {
   importFiles: () => void;
@@ -15,6 +16,8 @@ export interface AppMenuActions {
   exportWorkspaceZip: () => void;
   openPanel: (panel: PanelId) => void;
   resetLayout: () => void;
+  resetDiagramLayout: () => void;
+  resetRoutes: (target: RouteResetTarget) => void;
   setTheme: (theme: AppThemePreference) => void;
   history: () => void;
   present: () => void;
@@ -45,6 +48,8 @@ export interface AppMenuContext {
   theme: AppThemePreference;
   privateMode: boolean;
   layout: UiLayout;
+  /** Current canvas selection for the shared reset-command policy. */
+  selection: CommandSelection;
   grid?: AppMenuGrid;
   actions: AppMenuActions;
   install?: AppMenuInstall;
@@ -65,7 +70,8 @@ const THEMES: readonly { id: AppThemePreference; label: string }[] = [
   { id: 'dark', label: s('Dark') },
 ];
 
-function fileEntries(ctx: AppMenuContext): MenuEntry[] {
+/** The two frequent file actions stay on the root surface. */
+function primaryFileEntries(ctx: AppMenuContext): MenuEntry[] {
   const noFile = ctx.activePath === null;
   return [
     {
@@ -74,13 +80,6 @@ function fileEntries(ctx: AppMenuContext): MenuEntry[] {
       label: s('Import files…'),
       testId: 'tb-import-files',
       onSelect: ctx.actions.importFiles,
-    },
-    {
-      kind: 'item',
-      id: 'import-zip',
-      label: s('Open workspace ZIP…'),
-      testId: 'tb-import-zip',
-      onSelect: ctx.actions.importZip,
     },
     {
       kind: 'submenu',
@@ -96,12 +95,40 @@ function fileEntries(ctx: AppMenuContext): MenuEntry[] {
         onSelect: () => ctx.actions.exportCurrent(kind),
       })),
     },
+  ];
+}
+
+/** Whole-workspace file and data commands, one level down. */
+function fileDataEntries(ctx: AppMenuContext): MenuEntry[] {
+  return [
+    {
+      kind: 'item',
+      id: 'import-zip',
+      label: s('Open workspace ZIP…'),
+      testId: 'tb-import-zip',
+      onSelect: ctx.actions.importZip,
+    },
     {
       kind: 'item',
       id: 'export-zip',
       label: s('Export workspace ZIP'),
       testId: 'tb-export-zip',
       onSelect: ctx.actions.exportWorkspaceZip,
+    },
+    { kind: 'separator', id: 'workspace-sep' },
+    {
+      kind: 'item',
+      id: 'snapshots',
+      label: s('Snapshots'),
+      testId: 'tb-snapshots',
+      onSelect: ctx.actions.snapshots,
+    },
+    {
+      kind: 'item',
+      id: 'clear-data',
+      label: s('Clear data…'),
+      testId: 'tb-clear-data',
+      onSelect: ctx.actions.clearData,
     },
   ];
 }
@@ -134,26 +161,33 @@ function gridEntries(ctx: AppMenuContext): MenuEntry[] {
   ];
 }
 
-function viewEntries(ctx: AppMenuContext): MenuEntry[] {
+function themeEntries(ctx: AppMenuContext): MenuEntry[] {
+  return THEMES.map((theme) => ({
+    kind: 'item' as const,
+    id: `theme-${theme.id}`,
+    label: s('Theme: {theme}', { theme: theme.label }),
+    testId: `app-theme-${theme.id}`,
+    role: 'menuitemradio' as const,
+    checked: ctx.theme === theme.id,
+    onSelect: () => ctx.actions.setTheme(theme.id),
+  }));
+}
+
+function panelEntries(ctx: AppMenuContext): MenuEntry[] {
+  return PANELS.map((panel) => ({
+    kind: 'item' as const,
+    id: `panel-${panel}`,
+    label: s('Show {label} panel', { label: panelLabel(panel) }),
+    testId: `view-panel-${panel}`,
+    disabled: ctx.layout.panels[panel] === 'open',
+    onSelect: () => ctx.actions.openPanel(panel),
+  }));
+}
+
+/** Panel visibility, grid preferences and layout resets share one workspace task. */
+function layoutGroupEntries(ctx: AppMenuContext): MenuEntry[] {
   return [
-    ...THEMES.map((theme) => ({
-      kind: 'item' as const,
-      id: `theme-${theme.id}`,
-      label: s('Theme: {theme}', { theme: theme.label }),
-      testId: `app-theme-${theme.id}`,
-      role: 'menuitemradio' as const,
-      checked: ctx.theme === theme.id,
-      onSelect: () => ctx.actions.setTheme(theme.id),
-    })),
-    { kind: 'separator', id: 'view-sep-1' },
-    ...PANELS.map((panel) => ({
-      kind: 'item' as const,
-      id: `panel-${panel}`,
-      label: s('Show {label} panel', { label: panelLabel(panel) }),
-      testId: `view-panel-${panel}`,
-      disabled: ctx.layout.panels[panel] === 'open',
-      onSelect: () => ctx.actions.openPanel(panel),
-    })),
+    ...panelEntries(ctx),
     { kind: 'separator', id: 'view-grid-sep' },
     ...gridEntries(ctx),
     { kind: 'separator', id: 'view-sep-2' },
@@ -164,6 +198,43 @@ function viewEntries(ctx: AppMenuContext): MenuEntry[] {
       testId: 'reset-workspace-layout',
       onSelect: ctx.actions.resetLayout,
     },
+    { kind: 'separator', id: 'group-diagram' },
+    ...diagramEntries(ctx),
+  ];
+}
+
+/**
+ * Diagram reset commands (ADR 0007). Enablement comes from one pure selection
+ * policy shared with the canvas context menu, never from a second rule here.
+ */
+function diagramEntries(ctx: AppMenuContext): MenuEntry[] {
+  const target = routeResetTarget(ctx.selection);
+  const resetAll: MenuEntry = {
+    kind: 'item',
+    id: 'reset-all-routes',
+    label: s('Reset all routes'),
+    testId: 'menu-reset-all-routes',
+    disabled: target.kind === 'off' || ctx.activePath === null,
+    onSelect: () => ctx.actions.resetRoutes(target),
+  };
+  const resetOne: MenuEntry = {
+    kind: 'item',
+    id: 'reset-route',
+    label: s('Reset route'),
+    testId: 'menu-reset-route',
+    disabled: target.kind !== 'one',
+    onSelect: () => ctx.actions.resetRoutes(target),
+  };
+  return [
+    {
+      kind: 'item',
+      id: 'reset-diagram-layout',
+      label: s('Reset diagram layout'),
+      testId: 'menu-reset-diagram-layout',
+      disabled: ctx.activePath === null,
+      onSelect: ctx.actions.resetDiagramLayout,
+    },
+    target.kind === 'one' ? resetOne : resetAll,
   ];
 }
 
@@ -223,47 +294,50 @@ function applicationEntries(ctx: AppMenuContext): MenuEntry[] {
       onSelect: update.restart,
     });
   }
-  return entries.length === 0 ? [] : [...entries, { kind: 'separator', id: 'group-application' }];
+  return entries;
 }
 
-function workspaceEntries(ctx: AppMenuContext): MenuEntry[] {
+function privateEntry(ctx: AppMenuContext): MenuEntry {
+  return {
+    kind: 'item',
+    id: 'private',
+    label: s('Private mode'),
+    testId: 'tb-ephemeral',
+    role: 'menuitemcheckbox',
+    checked: ctx.privateMode,
+    onSelect: () => ctx.actions.setPrivate(!ctx.privateMode),
+  };
+}
+
+/** Preferences and lifecycle, kept separate from workspace content. */
+function applicationGroupEntries(ctx: AppMenuContext): MenuEntry[] {
   return [
-    {
-      kind: 'item',
-      id: 'snapshots',
-      label: s('Snapshots'),
-      testId: 'tb-snapshots',
-      onSelect: ctx.actions.snapshots,
-    },
-    {
-      kind: 'item',
-      id: 'private',
-      label: s('Private mode'),
-      testId: 'tb-ephemeral',
-      role: 'menuitemcheckbox',
-      checked: ctx.privateMode,
-      onSelect: () => ctx.actions.setPrivate(!ctx.privateMode),
-    },
-    { kind: 'separator', id: 'workspace-sep' },
-    {
-      kind: 'item',
-      id: 'clear-data',
-      label: s('Clear data…'),
-      testId: 'tb-clear-data',
-      onSelect: ctx.actions.clearData,
-    },
+    ...themeEntries(ctx),
+    { kind: 'separator', id: 'view-sep-1' },
+    privateEntry(ctx),
+    ...applicationEntries(ctx),
   ];
 }
 
-/** Grouped entries in Jakob-friendly application-menu order. */
+/** Task groups: frequent actions on the root, advanced commands one level down. */
 export function buildAppMenu(ctx: AppMenuContext): MenuEntry[] {
   return [
-    ...fileEntries(ctx),
-    { kind: 'separator', id: 'group-file' },
-    ...viewEntries(ctx),
-    { kind: 'separator', id: 'group-view' },
+    ...primaryFileEntries(ctx),
+    {
+      kind: 'submenu',
+      id: 'group-file',
+      label: s('File & data'),
+      testId: 'menu-group-file',
+      items: fileDataEntries(ctx),
+    },
     ...flowEntries(ctx),
-    { kind: 'separator', id: 'group-flows' },
+    {
+      kind: 'submenu',
+      id: 'group-layout',
+      label: s('Layout & workspace'),
+      testId: 'menu-group-layout',
+      items: layoutGroupEntries(ctx),
+    },
     {
       kind: 'item',
       id: 'history',
@@ -271,8 +345,12 @@ export function buildAppMenu(ctx: AppMenuContext): MenuEntry[] {
       testId: 'history-open',
       onSelect: ctx.actions.history,
     },
-    { kind: 'separator', id: 'group-history' },
-    ...applicationEntries(ctx),
-    ...workspaceEntries(ctx),
+    {
+      kind: 'submenu',
+      id: 'group-application',
+      label: s('Application'),
+      testId: 'menu-group-application',
+      items: applicationGroupEntries(ctx),
+    },
   ];
 }

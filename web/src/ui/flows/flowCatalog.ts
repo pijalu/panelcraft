@@ -10,6 +10,8 @@ import { flowsForDisplay, derivedFlow } from './derivedFlow';
 export interface FlowEntry {
   /** what the player resolves by: flow id, else the title */
   key: string;
+  /** authored id, when the flow has one — the only linkable address */
+  flowId?: string;
   title: string;
   description?: string;
   /** playback beats (alt/par expanded) — the honest count for a launcher */
@@ -25,6 +27,7 @@ function entryFor(doc: Doc, flow: Flow, derived: boolean): FlowEntry {
   const plan = buildPlan({ doc, flow });
   return {
     key: flow.id ?? flow.title ?? plan.flowTitle,
+    ...(doc.flows.includes(flow) && flow.id !== undefined ? { flowId: flow.id } : {}),
     title: plan.flowTitle,
     ...(flow.description === undefined ? {} : { description: flow.description }),
     steps: plan.beats.length,

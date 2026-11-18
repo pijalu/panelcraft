@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Properties panel (F-11): Identity / Metadata / Style / Advanced sections,
-// each collapsible and persisted with the workspace layout. Controls cover what
-// the format can express — name/kind/description/technology/tags, custom
-// key-value properties, style overrides (fill/stroke/text/icon), size (via
-// `Fit`) and the F-12 link model (type/label/head/tail/line/width/bidir).
-// Every change is an undoable ValueChange in the controller; this file is
-// presentational.
+// Properties panel: Identity / Style / Metadata / Decomposition /
+// Advanced sections, each collapsible and persisted with the workspace layout.
+// Controls cover what the format can express — name/kind/icon (identity),
+// description/technology/tags/custom key-value properties (metadata), style
+// overrides (fill/stroke/text), size (via `Fit`) and the link model
+// (type/label/head/tail/line/width/bidir). Icon writes the object's identity
+// field through one shared command. Every change is an undoable ValueChange in
+// the controller; this file is presentational.
 import type { ComponentChildren, Ref } from 'preact';
 import { useState } from 'preact/hooks';
 import type { CanvasController } from './CanvasController';
@@ -15,10 +16,17 @@ import { LINE_OPTIONS, MARKER_OPTIONS, ROUTE_OPTIONS, WIDTH_OPTIONS } from './co
 import { VisualPicker } from './VisualPicker';
 import { CloseIcon, DisclosureClosedIcon, DisclosureOpenIcon } from './icons';
 import { IconField } from './IconPicker';
+import { writeObjectIcon } from './iconCommands';
 import { HierarchyFields } from './HierarchyFields';
-import type { DrillTarget } from './useDrilldown';
+import type { DrillTarget, PathCandidate } from './useDrilldown';
 import type { IconDecl } from '../engine/model/types';
 import { anchorToChoice, choiceToAnchor, ANCHOR_SIDES, type AnchorSide } from '../engine/render/anchorControls';
+import {
+  SPARK_COUNT_BOUNDS,
+  SPARK_SPEED_BOUNDS,
+  validSparkCount,
+  validSparkSpeed,
+} from '../engine/flows/linkStyle';
 import { s } from './strings';
 
 type ObjectChange = CanvasController['updateObject'];
@@ -31,6 +39,7 @@ type AnchorChange = CanvasController['setLinkAnchor'];
  */
 export interface HierarchyProps {
   target: DrillTarget | null;
+  candidates: PathCandidate[];
   onSet: (path: string | null, view?: string) => void;
   onOpen: () => void;
   hasSource: boolean;
@@ -167,12 +176,10 @@ function PropertiesEditor(props: { obj: DiagramObject; onChange: ObjectChange })
   );
 }
 
-/** Style override controls (F-11): fill/stroke/text colours + icon name. */
+/** Style override controls: fill/stroke/text colours. */
 function StyleControls(props: {
   obj: DiagramObject;
   onChange: ObjectChange;
-  projectIcons?: IconDecl[];
-  onManageIcons?: () => void;
 }) {
   const style = props.obj.style ?? {};
   const set = (patch: Partial<NonNullable<DiagramObject['style']>>): void => {
@@ -201,26 +208,30 @@ function StyleControls(props: {
           />
         </Field>
       ))}
-      <Field label={s("Icon")}>
-        {/* IR v9: the field shows the icon that is actually drawn (style override
-            or the object's own `icon name`) and writes back to the object, so the
-            picker and the canvas can never disagree; a legacy `style { icon … }`
-            override is cleared in the same patch instead of being kept as a
-            second, invisible source of truth. */}
-        <IconField
-          value={style.icon ?? props.obj.icon}
-          project={props.projectIcons ?? []}
-          onChange={(icon) => {
-            if (style.icon !== undefined) {
-              props.onChange(props.obj.id, { style: { ...style, icon: undefined }, icon });
-              return;
-            }
-            props.onChange(props.obj.id, { icon });
-          }}
-          onManage={() => props.onManageIcons?.()}
-        />
-      </Field>
     </>
+  );
+}
+
+/**
+ * Icon lives in Identity because it writes the object's identity-level `icon`
+ * field. The drawn value (style override or own icon) is shown, and the one
+ * write command clears any stale override in the same patch.
+ */
+function IconIdentityField(props: {
+  obj: DiagramObject;
+  onChange: ObjectChange;
+  projectIcons?: IconDecl[];
+  onManageIcons?: () => void;
+}) {
+  return (
+    <Field label={s("Icon")}>
+      <IconField
+        value={props.obj.style?.icon ?? props.obj.icon}
+        project={props.projectIcons ?? []}
+        onChange={(icon) => props.onChange(props.obj.id, writeObjectIcon(props.obj, icon))}
+        onManage={() => props.onManageIcons?.()}
+      />
+    </Field>
   );
 }
 
@@ -258,6 +269,15 @@ function ObjectFields(props: {
         <Field label={s("Kind")}>
           <input data-testid="prop-kind" value={obj.kind} disabled />
         </Field>
+        <IconIdentityField
+          obj={obj}
+          onChange={onChange}
+          projectIcons={props.projectIcons}
+          onManageIcons={props.onManageIcons}
+        />
+      </Section>
+      <Section id="style" title={s("Style")} open={open('style')} onToggle={onToggleSection}>
+        <StyleControls obj={obj} onChange={onChange} />
       </Section>
       <Section id="metadata" title={s("Metadata")} open={open('metadata')} onToggle={onToggleSection}>
         <Field label={s("Description")}>
@@ -291,18 +311,11 @@ function ObjectFields(props: {
         </Field>
         <PropertiesEditor obj={obj} onChange={onChange} />
       </Section>
-      <Section id="style" title={s("Style")} open={open('style')} onToggle={onToggleSection}>
-        <StyleControls
-          obj={obj}
-          onChange={onChange}
-          projectIcons={props.projectIcons}
-          onManageIcons={props.onManageIcons}
-        />
-      </Section>
       {hierarchy !== undefined && (
         <Section id="hierarchy" title={s("Decomposition")} open={open('hierarchy')} onToggle={onToggleSection}>
           <HierarchyFields
             target={hierarchy.target}
+            candidates={hierarchy.candidates}
             onSet={hierarchy.onSet}
             onOpen={hierarchy.onOpen}
             hasSource={hierarchy.hasSource}
@@ -418,17 +431,17 @@ function ConnectorStyleControls(props: { link: DiagramLink; onChange: LinkChange
           }}
         />
       </Field>
-      <Field label={s("Spark count")}>
+      <Field label={s("Max sparks")}>
         <input
           type="number"
-          min={1}
-          max={8}
-          step={1}
+          min={SPARK_COUNT_BOUNDS.min}
+          max={SPARK_COUNT_BOUNDS.max}
+          step="1"
           data-testid="link-sparks"
           value={link.sparks ?? 1}
           onInput={(e) => {
             const v = Number((e.target as HTMLInputElement).value);
-            if (!Number.isInteger(v) || v < 1 || v > 8) return;
+            if (!validSparkCount(v)) return;
             onChange(link.id, { sparks: v === 1 ? undefined : v });
           }}
         />
@@ -436,14 +449,14 @@ function ConnectorStyleControls(props: { link: DiagramLink; onChange: LinkChange
       <Field label={s("Spark speed")}>
         <input
           type="number"
-          min={0.25}
-          max={4}
-          step={0.25}
+          min={SPARK_SPEED_BOUNDS.min}
+          max={SPARK_SPEED_BOUNDS.max}
+          step={SPARK_SPEED_BOUNDS.step}
           data-testid="link-speed"
           value={link.speed ?? 1}
           onInput={(e) => {
             const v = Number((e.target as HTMLInputElement).value);
-            if (!Number.isFinite(v) || v < 0.25 || v > 4) return;
+            if (!validSparkSpeed(v)) return;
             onChange(link.id, { speed: v === 1 ? undefined : v });
           }}
         />

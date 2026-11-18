@@ -169,7 +169,7 @@ const usesIcons = (doc: Doc): boolean =>
 const proseDrops = (doc: Doc): string[] => {
   const d: string[] = [];
   if (doc.flows.length > 0) d.push('flows');
-  if (doc.views.length > 0) d.push('views (positions/layout)');
+  if (doc.layout !== undefined) d.push('layout (positions/pins/hides)');
   if (doc.objects.some((o) => o.description || o.technology)) d.push('descriptions/technology');
   if (doc.objects.some((o) => o.properties?.length)) d.push('properties');
   if (doc.objects.some((o) => o.attributes?.length) || doc.links.some((l) => l.attributes?.length)) {
@@ -230,7 +230,7 @@ export const EXPORT_DROP_CATALOGUE = [
   'flow descriptions',
   'step descriptions',
   'camera overrides',
-  'views (positions/layout)',
+  'layout (positions/pins/hides)',
   'descriptions/technology',
   'properties',
   'unknown attributes',

@@ -63,7 +63,6 @@ const docOf = (objects: Array<[string, string]>) => ({
   })),
   links: [],
   flows: [],
-  views: [],
   styles: [],
 });
 

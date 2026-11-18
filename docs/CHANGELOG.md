@@ -4,6 +4,157 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — bug round: blank diagram, shared field layout, step prose
+
+- Creating a file offers a blank diagram beside the templates: it opens as the
+  active tab with a valid empty document and no sample shapes or flows.
+- Flow name, purpose, notes, introduction, conclusion, the step's text and its
+  description share one field layout, and every multiline field grows with its
+  content between a stable minimum and a readable maximum before it scrolls.
+- Step prose gained a block form (`intro { text "…" }`, and
+  `presentation { description { text "…" } }`), because a PDL quoted string
+  cannot carry a line break. The IR keeps the joined text, so no field was added
+  and existing documents round-trip unchanged; an empty block is a new syntax
+  error, `E120`.
+- Connector sparks now follow the drawn route instead of interpolating between
+  the two endpoints, so a curved or bent connector no longer shows the spark
+  cutting across the diagram.
+
+Details and evidence: [blank diagram](archive/bugs-blank-diagram.md),
+[shared field layout](archive/bugs-shared-field-layout.md),
+[framing fields and explanation](archive/bugs-flow-framing-fields.md),
+[step description explanation](archive/bugs-step-description-explanation.md),
+[spark route](archive/bugs-spark-route.md).
+
+## 2026-11-17 — browser assessment round 3
+
+- Selecting a flow step now shows its inspector directly in the Flow Steps
+  panel, above the cards, instead of leaving the fields below the fold.
+- Spark count is an at-most value: the beat timeline measures connector length,
+  caps concurrent tokens by their spacing and staggers their starts. A
+  bidirectional connector still travels between both elements and back.
+- Steps can set `advance click` to cycle the current beat until the presenter
+  clicks, or `advance end` for the previous auto-advance. The choice is stored
+  in the document and printed only when authored.
+- Delay edits commit once after a short quiet period instead of rewriting the
+  file on every keystroke; autosave stays debounced. Details and evidence:
+  [docs/archive/bugs-browser-assessment-round-3.md](archive/bugs-browser-assessment-round-3.md).
+
+## 2026-11-17 — application menu grouped by task
+
+- The hamburger menu now keeps the frequent file, flow and history commands on
+  its root surface and groups the rest into three named submenus: File & data,
+  Layout & workspace and Application. Every command keeps its id, checked and
+  disabled state and action; no menu state is persisted for the grouping.
+- Keyboard navigation of nested menus was hardened: ArrowRight focuses inside
+  a newly measured submenu, navigation keys no longer jump back to the root,
+  and an internal submenu scroll no longer shrinks its own placement. Details,
+  membership matrix and evidence:
+  [docs/archive/bugs-hamburger-task-groups.md](archive/bugs-hamburger-task-groups.md).
+
+## 2026-11-17 — selected flow-step properties edit the shared link
+
+- The inline step inspector keeps its single selection path and kind-correct
+  fields. Message endpoints are read-only context; picking a connector now
+  keeps its reference in sync, so a later edit resolves the same link.
+- For a message with a resolvable connector, the inspector exposes spark count
+  and speed as shared link animation, with one source of truth for the 1–8 and
+  0.25–4× bounds. Unknown or ambiguous references disable the controls and
+  explain why instead of editing a guessed link. Other step kinds show no spark
+  editor, and editing a derived flow's connector style does not materialise the
+  flow. Details: [docs/archive/bugs-step-properties.md](archive/bugs-step-properties.md).
+
+- Flows can carry an atomic multiline `description` block and a `presentation` flag
+  (IR v13), alongside the legacy one-line form. TypeScript and Go parser, printer,
+  IR and corpus parity changed together; new syntax error `E119` rejects an empty
+  block. Flow-level notes are separate from the current step's description in the
+  player, including on the closing card.
+- A local typed Markdown subset is shared by the presentation aside and the `.md`
+  export: headings, bold, italic, inline code, lists and links render as Preact
+  nodes, with one URL policy. Raw HTML stays text, images are unsupported, and
+  unsafe or active URL schemes never become links.
+- The notes panel is a labelled non-modal aside that does not steal focus,
+  refits the camera when it appears or disappears and on viewport resize, and
+  stacks above the canvas on narrow screens. Details and evidence:
+  [docs/archive/bugs-flow-markdown-panel.md](archive/bugs-flow-markdown-panel.md).
+
+## 2026-11-19 — complete decomposition picker and embedded export
+
+- Decomposition targets are a discriminated IR v12 value: a linked workspace
+  path or an embedded child with its own recursive document and stable logical
+  path. TypeScript and Go parser, printer, IR, validation, CLI and corpus parity
+  changed together; `source` stays separate embedded program text.
+- The properties panel picks from known workspace `.pcd` files and embedded
+  children, keeps unresolved legacy values visible, explains disabled cyclic
+  choices, and asks before an embedded child is converted to a linked file.
+- `.pcd` export asks only when a linked child is reachable. “Embed all” uses one
+  pure graph planner to embed every transitive descendant; any missing,
+  unparsable, invalid, cyclic, shared or unreadable child fails the whole export
+  with diagnostics. “Keep linked” preserves the root's authored links.
+- Embedded children appear as derived explorer rows under their owning root.
+  Their canvas, code, properties and flow editors use a root-plus-path document
+  reference and one root-document write; no fake VFS file is created. Details:
+  [docs/archive/bugs-embedded-decomposition.md](archive/bugs-embedded-decomposition.md).
+
+## 2026-11-18 — named views removed, layout state promoted
+
+- Named `view` blocks and the view bar are gone. One diagram now keeps its layout
+  in explicit top-level `layout`/`position`/`pin`/`hide` statements (IR v11);
+  `pcdToState` reads positions from that one block, so opening and editing a file
+  still restores the saved arrangement. Legacy `view "…" { … }` and
+  `drilldown "…" view <id>` are rejected with diagnostics E117/E118 and a manual
+  conversion is documented in FILE-FORMAT §7.1.
+- Route reset and diagram-layout reset are one undoable command each and use one
+  shared selection policy in both the application and canvas menus. Resetting
+  routes never changes object positions; Reset diagram layout clears positions
+  and persists deterministic auto-layout, distinct from Reset workspace layout.
+- TypeScript and Go parser, printer, IR, validation, CLI (`--view` removed),
+  corpus/parity fixtures and the architecture seeds changed atomically. Details:
+  [docs/adr/0007-remove-named-views.md](adr/0007-remove-named-views.md).
+
+## 2026-11-17 — the update offer leaves the presentation shell
+
+- A waiting-worker offer that was already visible no longer stays in the
+  chrome-free presentation shell under the transparent advance surface.
+  Presentation now hides the banner row with the rest of the editor chrome;
+  leaving presentation restores the same offer with Restart and Later
+  hit-testable. No lifecycle flag or service-worker behaviour changed.
+- The browser hit-test review covers narrow and zoomed viewports, menus, modals,
+  the presentation launcher, presentation and paused frames, and reload,
+  including real pointer and keyboard activation and the exact worker state,
+  hit stack and pointer-event data. Details:
+  [docs/archive/bugs-update-banner-hit-test.md](archive/bugs-update-banner-hit-test.md).
+
+## 2026-11-17 — orthogonal waypoints have one whole-path simplification contract
+
+- Explicit bends on orthogonal links are now planned as one route instead of one
+  leg at a time. Entity crossings remain a hard constraint; clean candidates are
+  ranked by fewer whole-path reversals, fewer skipped bends, shorter length and
+  authored-index ties. A bend inside a shape or one that makes the connector run
+  out and back is skipped with a reason on the connector, while an intentional
+  detour that reverses nothing still survives.
+- The authored `waypoint` lines stay untouched in PDL, IR, the code view and the
+  file. Straight and curved routes keep every waypoint verbatim. This replaces
+  the earlier rule that every outside bend was authoritative.
+  Details: [docs/archive/bugs-orthogonal-waypoint-simplification.md](archive/bugs-orthogonal-waypoint-simplification.md).
+
+## 2026-11-17 — presentation Play replays the current beat
+
+- Play in the presentation dock, the play bar and the presentation keyboard
+  toggle now ask the playback runner to replay the parked beat from time zero
+  with one full dwell, instead of resuming a frozen animation. Navigation is
+  not re-entered, and only the old beat's own animations are cancelled, so
+  camera work sharing the animation player is left alone.
+  Details: [docs/archive/bugs-presentation-replay-beat.md](archive/bugs-presentation-replay-beat.md).
+
+## 2026-11-17 — presentation step number sits on its badge centre
+
+- The number in the presentation's SVG beat badge no longer sits four units low
+  inside its circle. The renderer now places it exactly on the dot's centre,
+  which already uses a central baseline, so one-, two- and three-digit steps
+  are centred in both themes. The dock's text counter is unaffected.
+  Details: [docs/archive/bugs-presentation-badge-centering.md](archive/bugs-presentation-badge-centering.md).
+
 ## 2026-11-16 — the hosted site proves its own revision (item 11)
 
 - Every bundle now carries the commit it was built from: `build-info.json` (sha,

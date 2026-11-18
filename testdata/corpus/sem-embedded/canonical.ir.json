@@ -1,0 +1,68 @@
+{
+  "irVersion": 13,
+  "formatVersion": "1.0",
+  "title": "Embedded decomposition",
+  "level": "context",
+  "comments": [
+    "SPDX-License-Identifier: GPL-3.0-only"
+  ],
+  "objects": [
+    {
+      "kind": "system",
+      "id": "shop",
+      "name": "Webshop",
+      "drilldown": {
+        "kind": "embedded",
+        "path": "containers/shop.pcd",
+        "doc": {
+          "irVersion": 13,
+          "formatVersion": "1.0",
+          "title": "Containers",
+          "level": "container",
+          "objects": [
+            {
+              "kind": "container",
+              "id": "api",
+              "name": "API",
+              "drilldown": {
+                "kind": "embedded",
+                "path": "components/api.pcd",
+                "doc": {
+                  "irVersion": 13,
+                  "formatVersion": "1.0",
+                  "title": "Components",
+                  "level": "component",
+                  "objects": [
+                    {
+                      "kind": "component",
+                      "id": "handler",
+                      "name": "Handler",
+                      "pos": {
+                        "line": 18,
+                        "col": 9
+                      }
+                    }
+                  ]
+                }
+              },
+              "source": {
+                "language": "go",
+                "lines": [
+                  "func Run() {}"
+                ]
+              },
+              "pos": {
+                "line": 12,
+                "col": 5
+              }
+            }
+          ]
+        }
+      },
+      "pos": {
+        "line": 6,
+        "col": 1
+      }
+    }
+  ]
+}

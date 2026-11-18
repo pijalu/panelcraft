@@ -26,12 +26,10 @@ flow "Stacking" {
   process tray
 }
 
-view "Stack" {
-  layout saved
-  position tray (60, 60)
-  position auto (100, 100)
-  position back (130, 130)
-  position zero (160, 160)
-  position front (190, 190)
-  position tie (220, 220)
-}
+layout saved
+position tray (60, 60)
+position auto (100, 100)
+position back (130, 130)
+position zero (160, 160)
+position front (190, 190)
+position tie (220, 220)

@@ -49,6 +49,14 @@ const (
 	ErrInvalidIconMedia = "E115"
 	// ErrEmptySource: `source` block without a `text` line (IR v10, §3.3).
 	ErrEmptySource = "E116"
+	// ErrLegacyView: named `view` block removed (ADR 0007).
+	ErrLegacyView = "E117"
+	// ErrLegacyDrilldownView: named view on a decomposition removed (ADR 0007).
+	ErrLegacyDrilldownView = "E118"
+	// ErrEmptyFlowDescription: flow description block without a text line.
+	ErrEmptyFlowDescription = "E119"
+	// ErrEmptyStepText: step prose block without a text line.
+	ErrEmptyStepText = "E120"
 )
 
 // Semantic warning codes mirrored from TS validate.ts.

@@ -3,12 +3,12 @@
 // F-25: laws-of-UX affordances. Pure helpers are tested directly; the components
 // are rendered into jsdom with the project's testing-library setup.
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/preact';
+import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { groupKinds, quickAddKey } from './paletteGroups';
 import { clockLabel, StatusPill } from './StatusPill';
 import { hoverDetail } from './hoverInfo';
 import { HoverCard } from './HoverCard';
-import { TEMPLATES, EmptyState } from './EmptyState';
+import { TEMPLATES, EmptyState, galleryVisible, BLANK_TEXT } from './EmptyState';
 import type { Kind } from '../engine/model/types';
 import { parsePDL } from '../engine/format/parser';
 
@@ -97,8 +97,39 @@ describe('template gallery (paradox of the active user)', () => {
   });
 
   it('renders one button per template', () => {
-    render(<EmptyState onInsert={() => {}} />);
+    render(<EmptyState onInsert={() => {}} onBlank={() => {}} />);
     for (const t of TEMPLATES) expect(screen.getByTestId(`template-${t.id}`)).toBeTruthy();
     expect(html()).toContain('Start from a template');
+  });
+
+  it('offers a blank document first and inserts nothing', () => {
+    const inserted: string[] = [];
+    let blank = 0;
+    render(<EmptyState onInsert={(t) => inserted.push(t.id)} onBlank={() => { blank += 1; }} />);
+    const cards = [...document.querySelectorAll('.empty-card')];
+    expect(cards[0]?.getAttribute('data-testid')).toBe('template-blank');
+    fireEvent.click(screen.getByTestId('template-blank'));
+    expect(blank).toBe(1);
+    // Blank means "insert nothing": no template text may be seeded.
+    expect(inserted).toEqual([]);
+  });
+
+  it('seeds a valid empty document, not a template', () => {
+    const parsed = parsePDL(BLANK_TEXT);
+    expect(parsed.doc, parsed.diagnostics.map((d) => d.message).join('; ')).not.toBeNull();
+    expect(parsed.doc?.objects ?? []).toEqual([]);
+    expect(parsed.doc?.links ?? []).toEqual([]);
+    expect(parsed.doc?.flows ?? []).toEqual([]);
+  });
+
+  it('shows the gallery only when a file has no objects and no authored line', () => {
+    expect(galleryVisible(0, '')).toBe(true);
+    expect(galleryVisible(0, '   \n')).toBe(true);
+    // Opening an empty file already fills the code view with the canvas
+    // projection of a blank document — still unanswered, still offered.
+    expect(galleryVisible(0, BLANK_TEXT)).toBe(true);
+    expect(galleryVisible(0, 'pcd 1.0\n')).toBe(true);
+    expect(galleryVisible(0, 'pcd 1.0\nsystem a "A"\n')).toBe(false);
+    expect(galleryVisible(2, '')).toBe(false);
   });
 });

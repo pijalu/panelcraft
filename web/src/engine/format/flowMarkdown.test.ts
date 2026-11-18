@@ -19,16 +19,25 @@ function docFor(): Doc {
   return doc!;
 }
 
-describe('flowMarkdown', () => {
+describe('flowMarkdown goldens', () => {
   it('renders every step kind and all presentation metadata', () => {
     const doc = docFor();
     golden('testdata/markdown/all-steps.md', flowMarkdown(doc, doc.flows[0]!));
   });
 
+  it('renders flow notes as structured Markdown', () => {
+    const source = 'testdata/markdown/flow-notes.pcd';
+    const doc = parsePDL(readFileSync(source, 'utf8')).doc;
+    expect(doc).not.toBeNull();
+    golden('testdata/markdown/flow-notes.md', flowMarkdown(doc!, doc!.flows[0]!));
+  });
+
   it('renders all flows as one outline', () => {
     golden('testdata/markdown/all-flows.md', flowsMarkdown(docFor()));
   });
+});
 
+describe('flowMarkdown', () => {
   it('is deterministic across repeated runs', () => {
     const doc = docFor();
     expect(flowMarkdown(doc, doc.flows[0]!)).toBe(flowMarkdown(doc, doc.flows[0]!));
@@ -155,5 +164,35 @@ flow "Nest" as n {
     const out = flowMarkdown(doc, doc.flows[0]!);
     expect(out).toContain('1. **Go to** — other.pcd#refund (returns here)');
     expect(out).toContain('2. **Go to** — local');
+  });
+});
+
+describe('flow notes export', () => {
+  it('preserves the supported Markdown structure and nests headings under the flow', () => {
+    const doc = parsePDL(`pcd 1.0
+flow "Checkout" as c {
+  description {
+    text "# Notes"
+    text ""
+    text "**Pay** by _card_ with \`code\`"
+    text ""
+    text "- first"
+    text "- second [details](https://example.test/)"
+  }
+  presentation
+  info "start"
+}
+`).doc!;
+    const one = flowMarkdown(doc, doc.flows[0]!);
+    expect(one).toContain('# Checkout\n\n## Notes\n\n**Pay** by _card_ with `code`\n\n- first\n- second [details](https://example.test/)\n');
+    expect(flowsMarkdown(doc)).toContain('## Checkout\n\n### Notes\n');
+  });
+
+  it('keeps raw HTML and unsafe links as escaped text', () => {
+    const doc = parsePDL('pcd 1.0\nflow "F" as f {\n  description {\n    text "<b>bold</b> [x](javascript:alert(1))"\n  }\n  info "start"\n}\n').doc!;
+    const out = flowMarkdown(doc, doc.flows[0]!);
+    expect(out).toContain('\\<b\\>bold\\</b\\> x');
+    expect(out).not.toContain('<b>');
+    expect(out).not.toContain('javascript:');
   });
 });

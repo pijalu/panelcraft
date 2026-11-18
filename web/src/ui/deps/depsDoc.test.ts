@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { parsePDL } from '../../engine/format/parser';
 import type { Doc } from '../../engine/model/types';
-import { effectiveView } from '../views/viewDoc';
+import { effectiveLayout } from '../layoutDoc';
 import { adjacency, canvasLinkId, depsFade } from './depsDoc';
 
 function docOf(src: string): Doc {
@@ -47,7 +47,7 @@ describe('adjacency', () => {
 describe('depsFade', () => {
   it('active id: everything except the object + its neighbors fades', () => {
     const d = docOf(SRC);
-    const ev = effectiveView(d);
+    const ev = effectiveLayout(d);
     const f = depsFade(d, ev, 'api');
     expect(f.objects.has('db')).toBe(false); // neighbor
     expect(f.objects.has('web')).toBe(false); // neighbor
@@ -58,23 +58,23 @@ describe('depsFade', () => {
 
   it('non-adjacent links fade in focus mode', () => {
     const d = docOf(SRC + 'db -> auth\n');
-    const f = depsFade(d, effectiveView(d), 'api');
+    const f = depsFade(d, effectiveLayout(d), 'api');
     expect(f.links.has('db-auth')).toBe(true);
     expect(f.links.has('L1')).toBe(false);
   });
 
   it('no active id → view fade passes through (tag filter still works)', () => {
     const d = docOf(SRC);
-    const ev = effectiveView(docOf('pcd 1.0\nview "V" {\n hide tag x\n}\n'), 'V');
+    const ev = effectiveLayout(docOf('pcd 1.0\nhide tag x\n'));
     const f = depsFade(d, ev, null);
     expect(f.objects.size).toBe(4); // untagged all fade
-    const f2 = depsFade(d, effectiveView(d), null);
+    const f2 = depsFade(d, effectiveLayout(d), null);
     expect(f2.objects.size).toBe(0);
   });
 
   it('unknown active id falls back to view fade', () => {
     const d = docOf(SRC);
-    const f = depsFade(d, effectiveView(d), 'ghost');
+    const f = depsFade(d, effectiveLayout(d), 'ghost');
     expect(f.objects.size).toBe(0);
   });
 });

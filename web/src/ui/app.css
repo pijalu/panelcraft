@@ -425,14 +425,9 @@ body {
   stroke-dasharray: 4 4;
 }
 
-.flow-illustration {
-  min-height: 28px;
-  font-size: var(--pc-text-xs);
-  max-width: 120px;
-}
-
 /* F-16: present mode — editor chrome disappears, the diagram owns the viewport */
 .app-shell.presenting .app-header,
+.app-shell.presenting .banners,
 .app-shell.presenting .tab-strip,
 .app-shell.presenting .sidebar,
 .app-shell.presenting .palette,
@@ -440,7 +435,7 @@ body {
 .app-shell.presenting .props-col,
 .app-shell.presenting .panel-rail,
 .app-shell.presenting .panel-splitter,
-.app-shell.presenting .viewbar {
+.app-shell.presenting .drawer-backdrop {
   display: none;
 }
 
@@ -546,6 +541,229 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .present-dot,
   .present-row button {
+    transition: none;
+  }
+}
+
+/* Flow notes: a labelled, non-modal aside. It takes canvas space (rather than
+   covering it), so the runner refits the beat when its presence changes. */
+.app-shell.presenting.has-flow-notes .canvas-wrap {
+  margin-right: min(320px, 28vw);
+}
+
+/* Step explanation: Markdown in a column BESIDE the drawing. It reserves canvas
+   space (the runner refits when it appears), so the step component it explains
+   is never covered. With flow notes also visible the two columns sit side by
+   side instead of fighting for the same place. */
+.app-shell.presenting.has-step-explanation .canvas-wrap {
+  margin-right: min(360px, 32vw);
+}
+
+.app-shell.presenting.has-flow-notes.has-step-explanation .canvas-wrap {
+  margin-right: calc(min(320px, 28vw) + min(360px, 32vw));
+}
+
+.present-explanation {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  bottom: auto;
+  z-index: 25;
+  width: min(360px, 32vw);
+  max-height: calc(100vh - 132px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-panel-bg);
+  color: var(--pc-fg);
+  font-size: var(--pc-text-sm);
+  line-height: 1.5;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+}
+
+/* Both columns at once: the explanation sits inboard of the flow notes. */
+.app-shell.presenting.has-flow-notes .present-explanation {
+  right: calc(min(320px, 28vw) + 16px);
+}
+
+.present-explanation-title {
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--pc-panel-border);
+  font-size: var(--pc-text-md);
+  font-weight: 600;
+}
+
+@media (max-width: 719px) {
+  .app-shell.presenting.has-step-explanation .canvas-wrap {
+    margin-right: 0;
+    margin-top: 148px;
+  }
+
+  .present-explanation {
+    left: 8px;
+    right: 8px;
+    top: 8px;
+    width: auto;
+    max-height: 132px;
+  }
+
+  .app-shell.presenting.has-flow-notes .present-explanation {
+    right: 8px;
+    top: 148px;
+    max-height: 132px;
+  }
+}
+
+.present-notes-aside {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  bottom: auto;
+  z-index: 25;
+  width: min(320px, 28vw);
+  max-height: calc(100vh - 132px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-panel-bg);
+  color: var(--pc-fg);
+  font-size: var(--pc-text-sm);
+  line-height: 1.5;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+}
+
+/* Framing explanation: non-modal, placed above the narration card it explains,
+   clamped to the viewport. No backdrop, no transition (reduced motion safe). */
+.present-framing {
+  position: fixed;
+  /* Above the transport dock (z-index 30) and below a modal dialog. */
+  z-index: 32;
+  width: min(420px, calc(100vw - 16px));
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-md);
+  background: var(--pc-panel-bg);
+  color: var(--pc-fg);
+  font-size: var(--pc-text-sm);
+  line-height: 1.5;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+}
+
+.present-framing-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--pc-panel-border);
+}
+
+.present-framing-title {
+  margin: 0;
+  font-size: var(--pc-text-md);
+  font-weight: 600;
+}
+
+.present-framing-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--pc-fg);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  cursor: pointer;
+}
+
+.present-framing-close:hover {
+  background: var(--pc-button-hover-bg);
+}
+
+.present-framing-open {
+  align-self: flex-start;
+  padding: 2px 8px;
+  font-size: var(--pc-text-xs);
+  color: var(--pc-fg);
+  background: var(--pc-input-bg);
+  border: 1px solid var(--pc-input-border);
+  border-radius: var(--pc-radius-sm);
+  cursor: pointer;
+}
+
+.present-notes-title {
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--pc-panel-border);
+  font-size: var(--pc-text-md);
+  font-weight: 600;
+}
+
+.pc-md > :first-child {
+  margin-top: 0;
+}
+
+.pc-md > :last-child {
+  margin-bottom: 0;
+}
+
+.pc-md h3,
+.pc-md h4,
+.pc-md h5,
+.pc-md h6 {
+  margin: 12px 0 4px;
+  font-size: var(--pc-text-md);
+}
+
+.pc-md p,
+.pc-md ul,
+.pc-md ol {
+  margin: 6px 0;
+}
+
+.pc-md ul,
+.pc-md ol {
+  padding-left: 20px;
+}
+
+.pc-md a {
+  color: var(--pc-accent);
+  text-underline-offset: 2px;
+}
+
+.pc-md code {
+  padding: 1px 3px;
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-activity-bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@media (max-width: 719px) {
+  .app-shell.presenting.has-flow-notes .canvas-wrap {
+    margin-right: 0;
+    margin-top: 148px;
+  }
+
+  .present-notes-aside {
+    left: 8px;
+    right: 8px;
+    top: 8px;
+    width: auto;
+    max-height: 132px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .present-notes-aside,
+  .pc-md a {
     transition: none;
   }
 }
@@ -1566,79 +1784,11 @@ marker .pc-arrow[fill='none'] {
   color: var(--pc-warn-bg-fg);
 }
 
-/* view bar (M6): views + tag filter chips + layout actions */
-.viewbar {
-  display: flex;
-  align-items: center;
-  gap: var(--pc-space-3);
-  padding: var(--pc-space-1) var(--pc-space-2);
-  border-bottom: 1px solid var(--pc-panel-border);
-  background: var(--pc-panel-header-bg);
-  font-size: var(--pc-text-xs);
-  flex-wrap: wrap;
-}
-
-.viewbar-empty {
-  min-height: 27px;
-}
-
-.viewbar select {
-  font-family: inherit;
-  font-size: var(--pc-text-xs);
-  padding: 2px 6px;
-  border: 1px solid var(--pc-input-border);
-  border-radius: var(--pc-radius-sm);
-  background: var(--pc-input-bg);
-  color: var(--pc-input-fg);
-}
-
-.viewbar button {
-  font-family: inherit;
-  font-size: var(--pc-text-xs);
-  min-height: 24px;
-  padding: 2px 6px;
-  border: 1px solid var(--pc-input-border);
-  border-radius: var(--pc-radius-sm);
-  background: var(--pc-button-bg);
-  color: var(--pc-button-fg);
-  cursor: pointer;
-}
-
-.viewbar button:hover:not(:disabled) {
-  border-color: var(--pc-focus-ring);
-  background: var(--pc-button-hover-bg);
-}
-
-.viewbar button:disabled {
-  color: var(--pc-disabled-fg);
-  cursor: default;
-}
-
-.viewbar-views,
-.viewbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.viewbar-tags {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
 .chip {
   border-radius: 999px;
   padding: 1px 8px;
 }
 
-.chip-active {
-  background: var(--pc-button-primary-bg);
-  border-color: var(--pc-button-primary-bg);
-  color: var(--pc-button-primary-fg);
-}
 
 /* file tree sidebar */
 .sidebar {
@@ -1708,6 +1858,32 @@ marker .pc-arrow[fill='none'] {
 
 .tree-row:hover {
   background: var(--pc-list-hover-bg);
+}
+
+.tree-row.active {
+  background: var(--pc-list-selected-bg);
+  color: var(--pc-list-selected-fg);
+}
+
+/* Embedded children are documents inside the root, not files. The dotted
+   rail + italic label keeps that visible without relying on colour alone. */
+.tree-document > .tree-label {
+  border-left: 1px dotted var(--pc-menu-border);
+  padding-left: 4px;
+}
+
+.tree-document > .tree-label > .tree-name {
+  font-style: italic;
+}
+
+.tree-disclosure {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 2px;
+  cursor: pointer;
 }
 
 .tree-name {
@@ -1810,23 +1986,34 @@ marker .pc-arrow[fill='none'] {
 .tab {
   display: inline-flex;
   align-items: center;
-  gap: 0; /* button carries the visual tab chrome now (N5 restructure) */
-  border: none;
-  padding: 0;
+  gap: var(--pc-space-1);
+  /* The chrome belongs to the tab, not to its name button: the close cross is a
+     sibling of the name, so chrome on the name left the cross painted outside
+     the tab's own outline. */
+  padding: 3px 2px 3px 8px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--pc-radius-sm) var(--pc-radius-sm) 0 0;
   background: transparent;
   font-size: var(--pc-text-sm);
+}
+
+.tab.tab-active {
+  border-color: var(--pc-tab-border);
+  background: var(--pc-tab-active-bg);
+  font-weight: 600;
 }
 
 .tab > .tab-name {
   display: inline-flex;
   align-items: center;
   gap: var(--pc-space-1);
-  padding: 3px 6px 3px 8px;
-  border: 1px solid var(--pc-tab-border);
-  border-bottom: none;
-  border-radius: var(--pc-radius-sm) var(--pc-radius-sm) 0 0;
-  background: var(--pc-tab-active-bg);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   font-weight: inherit;
+  min-width: 0; /* a long name ellipsizes inside the chrome, not past it */
 }
 
 .tab > .tab-main {
@@ -1834,22 +2021,18 @@ marker .pc-arrow[fill='none'] {
 }
 
 .tab > .tab-close {
-  margin-left: -2px;
-  padding-bottom: 3px;
-  align-self: stretch;
+  padding: 0 2px;
+  align-self: center;
 }
 
 .tab > .tab-name[data-active="true"] {
-  border-color: var(--pc-tab-border);
-  border-bottom-color: var(--pc-tab-active-bg);
-  background: var(--pc-tab-active-bg);
   color: var(--pc-tab-active-fg);
-  font-weight: 600;
 }
 
 .tab > .tab-name[data-active="false"] {
   background: transparent;
   border-color: transparent;
+  color: var(--pc-tab-inactive-fg);
 }
 
 .tab > .tab-name[data-active="false"] .tab-name {
@@ -2315,6 +2498,70 @@ marker .pc-arrow[fill='none'] {
   gap: 4px;
 }
 
+/* Stacked prose field: label on its own line, one hint line, then a full-width
+   control. Every stacked field shares these rules so the panel has one width,
+   one label rhythm and one input measure instead of per-field styling. */
+.flow-field-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+}
+
+.flow-field-stacked > .flow-field-label {
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.flow-field-hint {
+  margin: 0 0 2px;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+  line-height: 1.3;
+}
+
+.flow-field-stacked > input,
+.flow-field-stacked > select,
+.flow-field-stacked > textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-input-fg);
+  background: var(--pc-input-bg);
+  border: 1px solid var(--pc-input-border);
+  border-radius: var(--pc-radius-sm);
+  padding: 4px 6px;
+  min-height: var(--pc-control-min);
+}
+
+.flow-field-stacked > textarea {
+  /* Height comes from the shared auto-grow rule; the user may still drag it. */
+  resize: vertical;
+  line-height: 1.45;
+  overflow-y: hidden;
+}
+
+.flow-field-stacked > input:focus-visible,
+.flow-field-stacked > select:focus-visible,
+.flow-field-stacked > textarea:focus-visible {
+  outline: 2px solid var(--pc-focus-ring);
+  outline-offset: 0;
+}
+
+.flow-shared-style {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--pc-panel-border);
+}
+
+.flow-shared-style > .flow-field-label {
+  min-width: 0;
+}
+
 .flow-field-label {
   color: var(--pc-muted);
   font-size: var(--pc-text-xs);
@@ -2322,9 +2569,32 @@ marker .pc-arrow[fill='none'] {
 }
 
 .flow-field input[type='text'],
+.flow-field input[type='number'],
 .flow-field input:not([type]) {
   flex: 1;
   min-width: 0;
+}
+
+.flow-field select,
+.flow-field output {
+  flex: 1;
+  min-width: 0;
+}
+
+.flow-field output {
+  padding: 3px 6px;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-fg);
+  background: var(--pc-canvas);
+  border: 1px solid var(--pc-border);
+  border-radius: var(--pc-radius-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-unresolved {
+  color: var(--pc-warn, var(--pc-accent));
 }
 
 /* Play bar overlay (canvas-wrap is the positioning context) */
@@ -2449,10 +2719,13 @@ marker .pc-arrow[fill='none'] {
   stroke: var(--pc-accent);
   transform-box: fill-box;
   transform-origin: center;
+  /* WAAPI reveals the border only for its scheduled pulse. */
+  opacity: 0;
 }
 
 .pc-token {
   fill: var(--pc-spark-core);
+  opacity: 0;
   /* Neon core: two tight halos, never wider than 8 px, so a spark can pass a
      label without washing it out (item 9). */
   filter: drop-shadow(0 0 3px var(--pc-spark-glow)) drop-shadow(0 0 8px var(--pc-spark-glow));
@@ -2460,15 +2733,16 @@ marker .pc-arrow[fill='none'] {
 
 /* Reduced motion: the arrived token is a still mark, same core and halo. */
 .pc-token-static {
+  opacity: 1;
   filter: drop-shadow(0 0 3px var(--pc-spark-glow)) drop-shadow(0 0 8px var(--pc-spark-glow));
 }
 
 .pc-trail {
   fill: none;
+  opacity: 0;
   stroke: var(--pc-spark-trail);
   stroke-width: 2;
   stroke-linecap: round;
-  opacity: 0.75;
   filter: drop-shadow(0 0 2px var(--pc-spark-glow));
 }
 
@@ -3804,9 +4078,35 @@ marker .pc-arrow[fill='none'] {
   align-items: center;
 }
 
-.icon-field > input {
+.icon-picker-trigger.icon-field-trigger {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 8px;
+  height: auto;
+  min-height: 28px;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: var(--pc-text-sm);
+}
+
+.icon-field-value {
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-option-unresolved {
+  color: var(--pc-muted);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.icon-picker[data-placement='above'] {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .icon-picker-trigger {

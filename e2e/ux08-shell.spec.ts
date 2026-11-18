@@ -6,7 +6,7 @@
 // controls carry accessible names, chrome uses the semantic tokens).
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels, setAppTheme } from './lib/panels';
+import { chooseAppMenu, openAppGroup, openWorkspacePanels, setAppTheme } from './lib/panels';
 
 const SCHEMES = ['light', 'dark'] as const;
 
@@ -27,6 +27,7 @@ test.describe('UX08-WP03 shell surfaces', () => {
 
       // Application menu: one elevation, 32 px rows, check marks and submenu carets.
       await page.getByTestId('app-menu').click();
+      await openAppGroup(page, 'menu-group-application');
       await expect(page.getByTestId('app-theme-light')).toBeVisible();
       await capture(page, `ux08-menu-${scheme}`);
       await page.keyboard.press('Escape');
@@ -37,8 +38,7 @@ test.describe('UX08-WP03 shell surfaces', () => {
       await capture(page, `ux08-focus-${scheme}`);
 
       // Dialog surface (clear-data), then dismiss without acting.
-      await page.getByTestId('app-menu').click();
-      await page.getByTestId('tb-clear-data').click();
+      await chooseAppMenu(page, 'tb-clear-data');
       await expect(page.getByTestId('clear-dialog')).toBeVisible();
       await capture(page, `ux08-dialog-${scheme}`);
       await page.keyboard.press('Escape');

@@ -135,9 +135,7 @@ describe('declared feature drop (FR-M4)', () => {
       'flow "F" as f {',
       '  info "x"',
       '}',
-      'view "V" {',
-      '  layout auto LR',
-      '}',
+      'layout auto LR',
       'style s {',
       '  fill #123456',
       '  stroke #000',
@@ -146,7 +144,7 @@ describe('declared feature drop (FR-M4)', () => {
     const { text, dropped } = docToMermaid(docOf(src));
     expect(dropped).toEqual([
       'title', 'theme', 'level', 'direction (auto-layout)',
-      'flows', 'views (positions/layout)', 'descriptions/technology',
+      'flows', 'layout (positions/pins/hides)', 'descriptions/technology',
       'properties', 'unknown attributes', 'icons', 'note anchors (detach)',
       'style beyond fill (stroke/text/shape)', 'endpoint perimeter anchors', 'waypoints',
       'system vs container kind distinction (both export as rect)',

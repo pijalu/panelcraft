@@ -25,14 +25,14 @@ describe('minimalChange (F-03)', () => {
   });
 
   it('a rename in the middle of a document keeps the head and tail', () => {
-    const before = 'pcd 1.0\n\n# header\nsystem a "Alpha"\n\nview "Default" {\n}\n';
-    const after = 'pcd 1.0\n\n# header\nsystem a "Beta"\n\nview "Default" {\n}\n';
+    const before = 'pcd 1.0\n\n# header\nsystem a "Alpha"\n\nlayout saved\n';
+    const after = 'pcd 1.0\n\n# header\nsystem a "Beta"\n\nlayout saved\n';
     const change = minimalChange(before, after);
     // the change stays inside the name: head and tail are untouched
     expect(change.from).toBeGreaterThanOrEqual(before.indexOf('Alpha'));
     expect(change.to).toBeLessThanOrEqual(before.indexOf('Alpha') + 'Alpha"'.length);
     expect(change.insert.length).toBeLessThan(8);
-    expect(before.slice(change.to)).toContain('view "Default"');
+    expect(before.slice(change.to)).toContain('layout saved');
     // applying it reproduces the target exactly
     expect(before.slice(0, change.from) + change.insert + before.slice(change.to)).toBe(after);
   });

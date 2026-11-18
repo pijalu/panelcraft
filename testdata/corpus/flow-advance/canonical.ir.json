@@ -1,0 +1,78 @@
+{
+  "irVersion": 13,
+  "formatVersion": "1.0",
+  "title": "Advance triggers",
+  "objects": [
+    {
+      "kind": "system",
+      "id": "a",
+      "name": "Ada",
+      "pos": {
+        "line": 4,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "b",
+      "name": "Web",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "L1",
+      "from": "a",
+      "to": "b",
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "id": "wait",
+      "title": "Wait",
+      "steps": [
+        {
+          "type": "intro",
+          "text": "Start",
+          "advance": "click",
+          "pos": {
+            "line": 10,
+            "col": 3
+          }
+        },
+        {
+          "type": "msg",
+          "from": "a",
+          "to": "b",
+          "label": "Sends",
+          "linkRef": "L1",
+          "delayMs": 1200,
+          "advance": "end",
+          "pos": {
+            "line": 11,
+            "col": 3
+          }
+        },
+        {
+          "type": "conclusion",
+          "text": "Done",
+          "pos": {
+            "line": 12,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 9,
+        "col": 1
+      }
+    }
+  ]
+}

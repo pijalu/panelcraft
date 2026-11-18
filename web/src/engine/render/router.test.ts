@@ -6,12 +6,14 @@ import {
   routeOrtho,
   routeLink,
   arrowDirection,
+  planLink,
   labelPoint,
   polylineLength,
   distanceToPolyline,
   ROUTER_CLEARANCE,
   type Polyline,
 } from './router';
+import { sampleRoute } from './routePath';
 
 const R = (x: number, y: number, w = 80, h = 40) => ({ x, y, w, h });
 
@@ -136,8 +138,54 @@ describe('route modes', () => {
 
   it('curved mode uses the same anchors and leaves orthogonal behavior unchanged', () => {
     const input = { from: R(0, 0), to: R(300, 100), obstacles: [R(150, 0, 60, 200)] };
-    expect(routeLink(input, 'curved')).toEqual(routeLink(input, 'straight'));
+    const curved = routeLink(input, 'curved');
+    const straight = routeLink(input, 'straight');
+    // The anchors are shared; the curved route adds short stubs at both ends so
+    // its tangents leave the source edge and arrive on the target edge.
+    expect(curved.at(0)).toEqual(straight.at(0));
+    expect(curved.at(-1)).toEqual(straight.at(-1));
     expect(routeLink(input, 'orthogonal')).toEqual(routeOrtho(input));
+  });
+
+  it('curved route arrives along the target edge normal, so the arrow points into the entity', () => {
+    // Reported shape: the target sits below-right, and the curve used to end by
+    // travelling straight down the target's left edge — the arrowhead pointed
+    // away from the element instead of into it.
+    const from = R(20, 20, 245, 145);
+    const to = R(408, 305, 317, 105);
+    const plan = planLink({ from, to }, 'curved');
+    // The polyline keeps the plain anchors: no invented geometry.
+    expect(plan.points).toEqual([{ x: 265, y: 92.5 }, { x: 408, y: 357.5 }]);
+    // The end tangent points into the entity (from the left edge, rightwards).
+    expect(plan.ends).toEqual({ start: { x: 1, y: 0 }, end: { x: 1, y: 0 } });
+    const sampled = sampleRoute(plan.points, 'curved', plan.ends);
+    const last = sampled.at(-1)!;
+    const prev = sampled.at(-2)!;
+    expect(last.x).toBeCloseTo(to.x, 5);
+    expect(Math.abs(last.x - prev.x)).toBeGreaterThan(Math.abs(last.y - prev.y));
+  });
+
+  it('curved route leaves the source along its edge normal too', () => {
+    const from = R(20, 20, 245, 145);
+    const to = R(408, 305, 317, 105);
+    const plan = planLink({ from, to }, 'curved');
+    const sampled = sampleRoute(plan.points, 'curved', plan.ends);
+    const first = sampled[0]!;
+    const second = sampled[1]!;
+    expect(first.x).toBeCloseTo(from.x + from.w, 5);
+    expect(Math.abs(second.x - first.x)).toBeGreaterThan(Math.abs(second.y - first.y));
+  });
+
+  it('an almost-aligned curved route stays a gentle curve, not a hook', () => {
+    // Left-to-right pair at nearly the same height: the end handles follow the
+    // horizontal normals, so the curve keeps to a thin band instead of dipping.
+    const from = R(0, 0, 100, 60);
+    const to = R(300, 10, 100, 60);
+    const plan = planLink({ from, to }, 'curved');
+    const sampled = sampleRoute(plan.points, 'curved', plan.ends);
+    const ys = sampled.map((p) => p.y);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(20);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(50);
   });
 });
 

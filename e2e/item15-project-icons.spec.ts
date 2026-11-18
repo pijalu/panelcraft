@@ -68,7 +68,7 @@ test('a document icon renders from the file itself, offline', async ({ page }) =
 test('the picker searches by meaning and picks a built-in', async ({ page }) => {
   await seed(page);
   await page.getByTestId('canvas').locator('g.pc-obj[data-id="shop"]').click();
-  await page.getByTestId('icon-picker-open').click();
+  await page.getByTestId('prop-style-icon').click();
   const picker = page.getByTestId('icon-picker');
   await expect(picker).toBeVisible();
   await picker.getByTestId('icon-search').fill('kafka');
@@ -90,7 +90,7 @@ test('the picker searches by meaning and picks a built-in', async ({ page }) => 
 test('renaming a handle moves every reference in one undo step', async ({ page }) => {
   await seed(page);
   await page.getByTestId('canvas').locator('g.pc-obj[data-id="shop"]').click();
-  await page.getByTestId('icon-picker-open').click();
+  await page.getByTestId('prop-style-icon').click();
   await page.getByTestId('icon-manage').click();
   await expect(page.getByTestId('icon-manager-overlay')).toBeVisible();
   await capture(page, 'item15-icon-manager');
@@ -112,7 +112,7 @@ test('renaming a handle moves every reference in one undo step', async ({ page }
 test('unsafe pasted markup is refused with a reason', async ({ page }) => {
   await seed(page);
   await page.getByTestId('canvas').locator('g.pc-obj[data-id="shop"]').click();
-  await page.getByTestId('icon-picker-open').click();
+  await page.getByTestId('prop-style-icon').click();
   await page.getByTestId('icon-manage').click();
   await page.getByTestId('icon-add-data').fill('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
   await page.getByTestId('icon-add').click();

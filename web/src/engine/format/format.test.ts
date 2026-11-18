@@ -64,12 +64,15 @@ describe('parser — happy paths', () => {
     expect(alt.type === 'alt' && alt.branches.map((b) => b.label)).toEqual(['card', 'invoice']);
     const par = flow.steps[4]!;
     expect(par.type === 'par' && par.lanes.map((l) => l.length)).toEqual([1, 1]);
-    const view = doc!.views[0]!;
-    expect(view.lines.map((l) => l.type)).toEqual(['layout', 'position', 'position']);
+    expect(doc!.layout?.directive).toEqual({ mode: 'auto', dir: 'LR' });
+    expect(doc!.layout?.positions).toEqual([
+      { id: 'user', x: 80, y: 120 },
+      { id: 'api', x: 420, y: 90 },
+    ]);
     expect(doc!.styles[0]).toEqual({
       target: 'api',
       style: { fill: '#2d6cdf' },
-      pos: { line: 49, col: 1 },
+      pos: { line: 47, col: 1 },
     });
   });
 
@@ -101,12 +104,15 @@ describe('parser — happy paths', () => {
     expect(steps[1]).toMatchObject({ type: 'goto', file: 'billing/refunds.pcd', flow: 'cleanup', ret: 'here' });
   });
 
-  it('parses views (hide/hideTag/pin/saved layout) and waypoints/link styles', () => {
+  it('parses top-level layout (hide/pin/saved layout) and waypoints/link styles', () => {
     const { doc } = parsePDL(
-      'pcd 1.0\nview "V" {\n hide tag external\n hide dagre\n pin db\n layout saved\n}\n' +
+      'pcd 1.0\nhide tag external\nhide dagre\npin db\nlayout saved\n' +
       'a -> b as L9 {\n label "x"\n style { dashed stroke #333 }\n waypoint (120, 300)\n}\n',
     );
-    expect(doc!.views[0]!.lines.map((l) => l.type)).toEqual(['hideTag', 'hide', 'pin', 'layout']);
+    expect(doc!.layout?.hiddenTags).toEqual(['external']);
+    expect(doc!.layout?.hidden).toEqual(['dagre']);
+    expect(doc!.layout?.pins).toEqual(['db']);
+    expect(doc!.layout?.directive).toEqual({ mode: 'saved' });
     const l = doc!.links[0]!;
     expect(l.style).toEqual({ dashed: true, stroke: '#333' });
     expect(l.waypoints).toEqual([[120, 300]]);

@@ -98,6 +98,14 @@ container cart "Cart"
     src: 'pcd 1.0\nsystem a "A" {\n  z 1.5\n}\n',
   },
   {
+    name: 'flow-advance',
+    src: 'pcd 1.0\nsystem a "A"\nsystem b "B"\na -> b as L1\nflow "Wait" as wait {\n  intro "start" advance click\n  a -> b : "go" delay 1200 advance end\n}\n',
+  },
+  {
+    name: 'flow-advance-invalid',
+    src: 'pcd 1.0\nflow "Wait" as wait {\n  intro "start" advance later\n}\n',
+  },
+  {
     name: 'link-sparks',
     src: 'pcd 1.0\nperson a "A"\nsystem b "B"\na -requests-> b as L1 {\n  style {\n    sparks 3\n    speed 2\n  }\n}\nb <-> a as L2\n',
   },
@@ -279,20 +287,18 @@ flow "F" as f {
   },
   { name: 'flow-minimal-msg', src: 'pcd 1.0\nperson a "A"\nperson b "B"\nflow {\n a -> b\n}\n' },
   {
-    name: 'view-full',
+    name: 'layout-full',
     src: `pcd 1.0
 person a "A"
 person b "B"
 a -> b
-view "Main" as main {
-  layout auto LR
-  layout saved
-  hide a
-  hide tag admin
-  position a (10, 20)
-  position b (10, 20)
-  pin b
-}
+layout auto LR
+layout saved
+hide a
+hide tag admin
+position a (10, 20)
+position b (10, 20)
+pin b
 `,
   },
   {
@@ -319,7 +325,7 @@ person a "A" {
 # not a color
 `,
   },
-  { name: 'empty-strings', src: `pcd 1.0\ntitle ""\nimport i0 as ""\nperson a "" {\n  description ""\n  property k ""\n}\nperson b "B"\na -> b\nflow "" {\n  intro ""\n  a -> b : ""\n  alt "" {\n    "" {\n      process a ""\n    }\n  }\n}\nview "" {\n}\n` },
+  { name: 'empty-strings', src: `pcd 1.0\ntitle ""\nimport i0 as ""\nperson a "" {\n  description ""\n  property k ""\n}\nperson b "B"\na -> b\nflow "" {\n  intro ""\n  a -> b : ""\n  alt "" {\n    "" {\n      process a ""\n    }\n  }\n}\n` },
   { name: 'goto-empty-parts', src: 'pcd 1.0\nflow {\n goto "#f"\n goto "f#"\n}\n' },
   // --- document icons (IR v9, FILE-FORMAT §3.1) ---
   {
@@ -416,7 +422,7 @@ icon pic {
   { name: 'unclosed-flow', src: 'pcd 1.0\nflow {\n intro "x"\n' },
   { name: 'unclosed-alt-branch', src: 'pcd 1.0\nflow {\n alt {\n "a" {\n info "x"\n' },
   { name: 'unclosed-par-lane', src: 'pcd 1.0\nflow {\n par {\n {\n info "x"\n' },
-  { name: 'unclosed-view', src: 'pcd 1.0\nview "v" {\n pin a\n' },
+  { name: 'legacy-view', src: 'pcd 1.0\nview "v" {\n pin a\n}\n' },
   { name: 'duplicate-attr', src: 'pcd 1.0\nperson a "A" {\n icon x\n icon y\n' },
   { name: 'arrow-needs-head', src: 'pcd 1.0\nperson a "A"\nperson b "B"\na - b\n' },
   { name: 'stray-lt', src: 'pcd 1.0\nperson a "A"\n<\n' },
@@ -428,9 +434,9 @@ icon pic {
   { name: 'invalid-goto', src: 'pcd 1.0\nflow {\n goto 5\n}\n' },
   { name: 'goto-bad-return', src: 'pcd 1.0\nperson a "A"\nflow {\n goto x return sideways\n}\n' },
   { name: 'bad-number-in-flow', src: 'pcd 1.0\nperson a "A"\nflow {\n 5\n}\n' },
-  { name: 'bad-view-line', src: 'pcd 1.0\nview "v" {\n zoom 2\n}\n' },
-  { name: 'bad-layout-mode', src: 'pcd 1.0\nview "v" {\n layout zoomy\n}\n' },
-  { name: 'hide-missing-id', src: 'pcd 1.0\nview "v" {\n hide 5\n}\n' },
+  { name: 'bad-layout-mode', src: 'pcd 1.0\nlayout zoomy\n' },
+  { name: 'hide-missing-id', src: 'pcd 1.0\nhide 5\n' },
+  { name: 'legacy-drilldown-view', src: 'pcd 1.0\nsystem s "S" {\n drilldown "c.pcd" view detail\n}\n' },
   // --- semantic validation cases ---
   {
     name: 'dup-ids',
@@ -442,12 +448,6 @@ flow "f" as f1 {
 }
 flow "g" as f1 {
  info "y"
-}
-view "v1" as v1 {
- layout saved
-}
-view "v2" as v1 {
- layout saved
 }
 `,
   },
@@ -490,11 +490,9 @@ flow "Main" as main {
   u -> web
   web -> db as q
 }
-view "V" {
-  position u (0, 0)
-  position web (100, 0)
-  position db (200, 0)
-}
+position u (0, 0)
+position web (100, 0)
+position db (200, 0)
 style u {
   shape person
 }
@@ -502,10 +500,10 @@ style u {
   },
   // IR v10: C4 decomposition and embedded source (FILE-FORMAT §3.2, §3.3).
   {
-    name: 'drilldown-view',
+    name: 'drilldown-plain-named',
     src: `pcd 1.0
 system shop "Webshop" {
-  drilldown "containers/shop.pcd" view containers
+  drilldown "containers/shop.pcd"
 }
 `,
   },
@@ -540,6 +538,26 @@ component svc "Svc" {
     text "a \\"quoted\\" line"
     language "ts"
     text "b"
+  }
+}
+`,
+  },
+  {
+    // IR v12: linked and embedded decomposition targets are distinct values.
+    name: 'decomposition-embedded',
+    src: `pcd 1.0
+system shop "Webshop" {
+  drilldown embedded "containers/shop.pcd" {
+    pcd 1.0
+    title "Containers"
+    level container
+    container api "API" {
+      drilldown "components/api.pcd"
+      source {
+        language "go"
+        text "func Run() {}"
+      }
+    }
   }
 }
 `,
@@ -582,6 +600,63 @@ system s "S" {
   drilldown "notes.md"
 }
 `,
+  },
+  {
+    // Flow notes are one multiline block plus the persisted presentation flag;
+    // the legacy one-line description stays valid. Both sides must agree.
+    name: 'flow-notes',
+    src: `pcd 1.0
+flow "Notes" as n {
+  description {
+    text "# Title"
+    text ""
+    text "**Bold** [link](https://example.test/)"
+  }
+  presentation
+  info "one"
+}
+flow "Legacy" as legacy {
+  description "one line"
+  info "start"
+}
+`,
+  },
+  { name: 'flow-notes-empty', src: 'pcd 1.0\nflow "F" {\n  description {\n  }\n}\n' },
+  {
+    // Step prose covers the same ground: framing steps, a process note and the
+    // step description may each be a block of text lines.
+    name: 'flow-step-text',
+    src: `pcd 1.0
+person a "A"
+person b "B"
+a -> b as ab
+flow "Step prose" as sp {
+  intro {
+    text "# Start"
+    text ""
+    text "**Go** left to right."
+  }
+  a -> b : "order" presentation {
+    description {
+      text "Two systems."
+      text ""
+      text "- send"
+      text "- accept"
+    }
+    camera hold
+  }
+  process b {
+    text "Accept the order"
+  } delay 900
+  conclusion "the end"
+}
+`,
+  },
+  { name: 'flow-step-text-empty', src: 'pcd 1.0\nflow "F" {\n  intro {\n  }\n}\n' },
+  {
+    // Atomic forms: mixing a legacy description with a multiline block aborts.
+    name: 'flow-notes-mixed',
+    src: 'pcd 1.0\nflow "F" {\n  description "one"\n  description {\n    text "two"\n  }\n}\n',
   },
 ];
 

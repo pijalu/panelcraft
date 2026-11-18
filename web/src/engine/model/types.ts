@@ -3,7 +3,7 @@
 // Normative shape: docs/FILE-FORMAT.md §7 + docs/milestones/M1.md decisions.
 // Versioning rule: `irVersion` (int) bumps on any schema change; forward-only.
 
-export const IR_VERSION = 10;
+export const IR_VERSION = 13;
 export const FORMAT_VERSION = '1.0';
 
 /** 1-based source position attached to every statement (FILE-FORMAT §10). */
@@ -104,16 +104,30 @@ export interface Size {
 }
 
 /**
- * C4 decomposition relation (IR v10, `drilldown "<path>" [view <id>]`): the object
- * owns a subordinate diagram in the same workspace. Authored on the parent only —
- * the child never declares a backlink — so an edge can never have two sources of
- * truth (docs/FILE-FORMAT.md §3.2).
+ * C4 decomposition relation (IR v12, docs/FILE-FORMAT.md §3.2). Authored on
+ * the parent only — the child never declares a backlink — so an edge has one
+ * source of truth. The discriminant makes a linked relation and an embedded
+ * child mutually exclusive values; an embedded child always carries its own
+ * recursive document, never an optional `doc` that might be missing.
  */
-export interface Drilldown {
+export type Drilldown = LinkedDrilldown | EmbeddedDrilldown;
+
+/** `drilldown "path.pcd"`: the child stays a separate workspace file. */
+export interface LinkedDrilldown {
+  kind: 'linked';
   /** Workspace-relative POSIX path exactly as authored. */
   path: string;
-  /** Optional view id inside the target file. */
-  view?: string;
+}
+
+/**
+ * `drilldown embedded "logical/path.pcd" { pcd 1.0 … }`: the child's full
+ * document travels inside the parent. `path` is the stable logical workspace
+ * path used for identity, nested resolution and export diagnostics.
+ */
+export interface EmbeddedDrilldown {
+  kind: 'embedded';
+  path: string;
+  doc: Doc;
 }
 
 /**
@@ -201,6 +215,8 @@ export interface CameraSpec {
 interface FlowStepBase extends StmtBase {
   /** Per-step dwell before auto-advance (F-18; overrides the beat default). */
   delayMs?: number;
+  /** Who moves the flow on: at the beat's end or on the next click. */
+  advance?: 'click' | 'end';
   /** What this step shows, in one line of prose (UX08-WP11). */
   description?: string;
   /** Optional camera override for this step (UX08-WP11). */
@@ -229,23 +245,38 @@ export interface Flow {
   title?: string;
   /** One-line summary shown before the flow runs (UX08-WP11). */
   description?: string;
+  /** Multiline Markdown notes. Mutually exclusive with the one-line form. */
+  descriptionLines?: string[];
+  /** Show the flow notes in the non-modal presentation aside. */
+  presentation?: boolean;
   steps: FlowStep[];
   comments?: Comments;
   pos: Pos;
 }
 
-export type ViewLine =
-  | ({ type: 'layout'; mode: 'auto'; dir: Dir } & StmtBase)
-  | ({ type: 'layout'; mode: 'saved' } & StmtBase)
-  | ({ type: 'hideTag'; id: string } & StmtBase)
-  | ({ type: 'hide'; id: string } & StmtBase)
-  | ({ type: 'position'; id: string; x: number; y: number } & StmtBase)
-  | ({ type: 'pin'; id: string } & StmtBase);
+/** One saved object position in top-level layout state (`position id (x, y)`). */
+export interface LayoutPos {
+  id: string;
+  x: number;
+  y: number;
+}
 
-export interface View {
-  id?: string;
-  name: string;
-  lines: ViewLine[];
+/**
+ * Top-level diagram layout state (ADR 0007, IR v11). Named views were removed;
+ * the concepts they carried are promoted to one document-level object. Absent
+ * means implicit auto layout with the document direction and no pins/hides.
+ */
+export interface LayoutState {
+  /** Explicit layout directive; absent = auto layout with the document direction. */
+  directive?: { mode: 'auto'; dir: Dir } | { mode: 'saved' };
+  /** Saved positions in authored order. */
+  positions: LayoutPos[];
+  /** ids excluded from automatic layout. */
+  pins: string[];
+  /** element-level hidden ids. */
+  hidden: string[];
+  /** hidden tags. */
+  hiddenTags: string[];
   comments?: Comments;
   pos: Pos;
 }
@@ -272,6 +303,7 @@ export interface Doc {
   objects: Obj[];
   links: Link[];
   flows: Flow[];
-  views: View[];
+  /** Top-level layout state; absent = implicit auto layout (ADR 0007). */
+  layout?: LayoutState;
   styles: StyleStmt[];
 }

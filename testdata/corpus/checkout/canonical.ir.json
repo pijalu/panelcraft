@@ -1,5 +1,5 @@
 {
-  "irVersion": 10,
+  "irVersion": 13,
   "formatVersion": "1.0",
   "title": "Checkout",
   "level": "container",
@@ -298,46 +298,28 @@
       }
     }
   ],
-  "views": [
-    {
-      "name": "Main",
-      "lines": [
-        {
-          "type": "layout",
-          "mode": "auto",
-          "dir": "LR",
-          "pos": {
-            "line": 64,
-            "col": 3
-          }
-        },
-        {
-          "type": "position",
-          "id": "user",
-          "x": 80,
-          "y": 120,
-          "pos": {
-            "line": 65,
-            "col": 3
-          }
-        },
-        {
-          "type": "position",
-          "id": "api",
-          "x": 420,
-          "y": 90,
-          "pos": {
-            "line": 66,
-            "col": 3
-          }
-        }
-      ],
-      "pos": {
-        "line": 63,
-        "col": 1
+  "layout": {
+    "directive": {
+      "mode": "auto",
+      "dir": "LR"
+    },
+    "positions": [
+      {
+        "id": "user",
+        "x": 80,
+        "y": 120
+      },
+      {
+        "id": "api",
+        "x": 420,
+        "y": 90
       }
+    ],
+    "pos": {
+      "line": 63,
+      "col": 1
     }
-  ],
+  },
   "styles": [
     {
       "target": "api",
@@ -345,7 +327,7 @@
         "fill": "#2d6cdf"
       },
       "pos": {
-        "line": 69,
+        "line": 67,
         "col": 1
       }
     }

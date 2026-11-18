@@ -409,7 +409,6 @@ export function fromSequence(src: string): MermaidResult {
     objects: ctx.objects,
     links: ctx.links,
     flows,
-    views: [],
     styles: [],
   };
   return { doc, diagnostics: ctx.diags };
@@ -495,7 +494,6 @@ export function fromMermaid(src: string): MermaidResult {
     objects: ctx.objects,
     links: ctx.links,
     flows: [],
-    views: [],
     styles: [],
   };
   return { doc, diagnostics: ctx.diags };

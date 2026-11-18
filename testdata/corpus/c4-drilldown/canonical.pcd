@@ -6,13 +6,11 @@ person shopper "Shopper"
 system shop "Webshop" {
   description "Storefront"
   technology "React"
-  drilldown "containers/shop.pcd" view containers
+  drilldown "containers/shop.pcd"
 }
 system_ext psp "Payment provider"
 
 shopper -> shop : "browses"
 shop -requests-> psp : "charges"
 
-view "Context" {
-  layout auto LR
-}
+layout auto LR

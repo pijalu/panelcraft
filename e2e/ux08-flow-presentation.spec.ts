@@ -104,7 +104,9 @@ test.describe('UX08-WP13 flow presentation', () => {
     await settle(page);
     await page.getByTestId('present-open').click();
     await page.getByTestId('launcher-flow-flow1').click();
-    await expect(page.getByTestId('present-description')).toHaveText('the order leaves the shop');
+    // The description narrates beside the drawing, not in the transport dock.
+    await expect(page.getByTestId('step-explanation')).toContainText('the order leaves the shop');
+    await expect(page.getByTestId('present-description')).toHaveCount(0);
     await page.keyboard.press('Escape');
   });
 

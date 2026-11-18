@@ -17,7 +17,7 @@ import {
   type IconAsset,
   type IconAssets,
 } from '../engine/render/iconAssets';
-import { routeLink, invalidWaypoints, crossingEntities, portPoint, type Side, type Polyline } from '../engine/render/router';
+import { planLink, crossingEntities, portPoint, type RoutePlan, type Side, type Polyline } from '../engine/render/router';
 import {
   invert,
   panBy,
@@ -257,6 +257,12 @@ export interface ControllerOptions {
    * drift out of sync.
    */
   onGridShortcut?: () => void;
+  /**
+   * A press landed on the diagram. The shell listens so that touching the
+   * picture ends whatever editing session was started from a panel — a gesture
+   * signal, because the controller cannot know what a press means elsewhere.
+   */
+  onUserPointer?: () => void;
 }
 
 const KIND_LABELS = {
@@ -478,6 +484,8 @@ export class CanvasController {
   private spaceDown = false;
   private suppressContextMenu = false;
   private routes = new Map<string, Polyline>();
+  /** Curved routes: direction of travel at each end (drives the end handles). */
+  private routeEnds = new Map<string, { start: Point; end: Point }>();
   /** Route problems per link id (invalid bends, unresolved crossings). */
   private warnings = new Map<string, string[]>();
   private seq = 0;
@@ -493,6 +501,7 @@ export class CanvasController {
   private readonly onHover?: (info: import('./hoverInfo').HoverInfo | null) => void;
   private readonly onGhostOpen?: (path: string) => void;
   private readonly onGridShortcut?: () => void;
+  private readonly onUserPointer?: () => void;
   /** F-20: read-only imported objects (never part of `state`). */
   private ghosts: Array<DiagramObject & { path: string }> = [];
   /** F-22: roving focus (keyboard navigation across scene objects). */
@@ -516,6 +525,7 @@ export class CanvasController {
     this.undo.setObserver((cmd) => this.onHistory?.(cmd.label, cmd.coalesceKey));
     this.onGhostOpen = opts.onGhostOpen;
     this.onGridShortcut = opts.onGridShortcut;
+    this.onUserPointer = opts.onUserPointer;
     // UX08-WP10: labels wrap on measured text, so the renderer gets the port.
     this.renderer = new SceneRenderer(svg, { measure: this.measure });
     this.attach();
@@ -1184,17 +1194,19 @@ export class CanvasController {
         ...(link.fromAnchor !== undefined ? { fromAnchor: link.fromAnchor } : {}),
         ...(link.toAnchor !== undefined ? { toAnchor: link.toAnchor } : {}),
       };
-      const points = routeLink(input, link.route);
-      this.routes.set(link.id, points);
-      const warnings = link.allowOverlap === true ? [] : this.warningsFor(link, input, points);
+      const plan = planLink(input, link.route);
+      this.routes.set(link.id, plan.points);
+      if (plan.ends === undefined) this.routeEnds.delete(link.id);
+      else this.routeEnds.set(link.id, plan.ends);
+      const warnings = link.allowOverlap === true ? [] : this.warningsFor(link, input, plan);
       if (warnings.length > 0) this.warnings.set(link.id, warnings);
     }
   }
 
   /**
    * Route problems a reader has to know about, in plain words and in authored
-   * order. The document keeps the authored point; only the drawing and this
-   * message reflect that it cannot be honoured.
+   * order. The engine owns the skip decision and its reason code; the document
+   * keeps the authored point, so only this text and the drawing reflect it.
    */
   private warningsFor(
     link: DiagramLink,
@@ -1202,21 +1214,24 @@ export class CanvasController {
       from: Rect; to: Rect; obstacles: Rect[]; waypoints?: [number, number][];
       fromAnchor?: number; toAnchor?: number; allowOverlap?: boolean;
     },
-    points: Polyline,
+    plan: RoutePlan,
   ): string[] {
     const entities = [input.from, input.to, ...input.obstacles];
     const nameOf = (rect: Rect): string => {
       const owner = entities.find((o) => o === rect) as unknown as DiagramObject | undefined;
       return owner?.name ?? owner?.id ?? s('an entity');
     };
-    const out = invalidWaypoints(input).map((invalid) =>
-      s('{link}: bend {n} at ({x}, {y}) is inside {entity} — the route skips it.', {
-        link: link.label ?? link.id, n: invalid.index + 1,
-        x: invalid.point.x, y: invalid.point.y, entity: nameOf(invalid.rect),
-      }));
-    out.push(...crossingEntities(points, input).map((rect) =>
+    const label = link.label ?? link.id;
+    const out = plan.skips.map((skip) => skip.reason === 'inside-entity'
+      ? s('{link}: bend {n} at ({x}, {y}) is inside {entity} — the route skips it.', {
+          link: label, n: skip.index + 1, x: skip.point.x, y: skip.point.y, entity: nameOf(skip.rect),
+        })
+      : s('{link}: bend {n} at ({x}, {y}) is skipped because it makes the route reverse direction.', {
+          link: label, n: skip.index + 1, x: skip.point.x, y: skip.point.y,
+        }));
+    out.push(...crossingEntities(plan.points, input).map((rect) =>
       s('{link}: no clear route past {entity} — the connector still crosses it.', {
-        link: link.label ?? link.id, entity: nameOf(rect),
+        link: label, entity: nameOf(rect),
       })));
     return out;
   }
@@ -1237,6 +1252,7 @@ export class CanvasController {
           line: (l.line ?? (l.dashed ? 'dashed' : 'solid')) as 'solid' | 'dashed' | 'dotted',
           route: l.route,
           width: l.width,
+          ...(this.routeEnds.has(l.id) ? { ends: this.routeEnds.get(l.id)! } : {}),
           ...(this.warnings.has(l.id) ? { warnings: this.warnings.get(l.id)! } : {}),
         },
       ];
@@ -1712,6 +1728,7 @@ export class CanvasController {
   // ---- pointer modes ------------------------------------------------------
 
   private onPointerDown(e: PointerEvent): void {
+    this.onUserPointer?.();
     if (this.beginPanOrHalo(e)) return;
     if (e.button !== 0) return;
     const p = this.toCanvas(e);
@@ -2230,6 +2247,43 @@ export class CanvasController {
       id, before, { waypoints: undefined, fromAnchor: undefined, toAnchor: undefined },
       s('reset route'),
     );
+  }
+
+  /**
+   * Reset every link's route in one undoable command (ADR 0007). Object
+   * positions are never touched — route state and layout state are separate.
+   */
+  resetAllRoutes(): void {
+    const changed = this.state.links.filter(
+      (l) => (l.waypoints?.length ?? 0) > 0 || l.fromAnchor !== undefined || l.toAnchor !== undefined,
+    );
+    if (changed.length === 0) return;
+    const before = new Map(changed.map((l) => [l.id, {
+      waypoints: l.waypoints?.map((w) => [w[0], w[1]] as [number, number]),
+      fromAnchor: l.fromAnchor,
+      toAnchor: l.toAnchor,
+    }]));
+    const set = (restore: boolean): void => {
+      this.state = {
+        ...this.state,
+        links: this.state.links.map((l) => {
+          const prior = before.get(l.id);
+          if (prior === undefined) return l;
+          return restore
+            ? { ...l, ...prior }
+            : { ...l, waypoints: undefined, fromAnchor: undefined, toAnchor: undefined };
+        }),
+      };
+      this.recomputeRoutes();
+      this.render();
+    };
+    this.undo.push({
+      label: s('reset all routes'),
+      undo: () => set(true),
+      redo: () => set(false),
+      coalesce: () => null,
+    });
+    set(false);
   }
 
   /** UX08-WP09 `Reset bends`: drop the waypoints, keep the endpoint anchors. */

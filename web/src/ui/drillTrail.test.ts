@@ -19,15 +19,14 @@ describe('drill-down trail', () => {
     expect(first.trail.map((e) => e.path)).toEqual(['context.pcd', 'containers.pcd']);
   });
 
-  it('keeps the parent relation and the requested view', () => {
+  it('keeps the parent relation on the new trail entry', () => {
     const { trail } = pushEntry(
       [{ path: 'context.pcd' }],
       'containers.pcd',
       from('context.pcd', 'shop', 'Webshop'),
-      'containers',
     );
     expect(parentOfTrail(trail)).toEqual(from('context.pcd', 'shop', 'Webshop'));
-    expect(trail[1]?.view).toBe('containers');
+    expect(trail[1]?.path).toBe('containers.pcd');
   });
 
   it('refuses a path already in the trail and explains why (cycle)', () => {
@@ -72,7 +71,7 @@ describe('resolveTarget', () => {
     'context.pcd': [
       'pcd 1.0',
       'system shop "Webshop" {',
-      '  drilldown "containers/shop.pcd" view containers',
+      '  drilldown "containers/shop.pcd"',
       '}',
       'system orphan "Orphan"',
       'system bad "Bad" {',
@@ -82,10 +81,9 @@ describe('resolveTarget', () => {
   };
   const read = (path: string): string | null => files[path] ?? null;
 
-  it('resolves a parent object to its child path and view', () => {
+  it('resolves a parent object to its child path', () => {
     expect(resolveTarget('context.pcd', 'shop', read)).toEqual({
       path: 'containers/shop.pcd',
-      view: 'containers',
     });
   });
 

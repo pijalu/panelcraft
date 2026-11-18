@@ -7,6 +7,7 @@
 // browser workspace, the validation pass and the CLI.
 import { diag, type Diagnostic } from '../format/diagnostics';
 import { parsePDL } from '../format/parser';
+import { printDoc } from '../format/printer';
 import type { Doc, Kind, Level, Obj } from './types';
 
 /** Child C4 levels a parent kind may open (§3.2 allowed transitions). */
@@ -23,6 +24,11 @@ export const SOURCE_MAX_DOC_BYTES = 262144;
 
 /** How deep a decomposition chain is followed before it is called broken. */
 const MAX_CHAIN = 32;
+
+/** Embedded decomposition limits (P218): depth, child count and root bytes. */
+export const EMBED_MAX_DEPTH = 8;
+export const EMBED_MAX_NODES = 64;
+export const EMBED_MAX_BYTES = 262144;
 
 /** Reads a workspace file's text, or `null` when the path is unknown. */
 export type ReadFile = (path: string) => string | null;
@@ -170,7 +176,7 @@ function checkKind(ctx: DrillCheckCtx, obj: Obj): boolean {
   return false;
 }
 
-/** Allowed level transition (`P214`) and view id (`P218`) of a readable child. */
+/** Allowed level transition (`P214`) of a readable child. */
 function checkChild(ctx: DrillCheckCtx, obj: Obj, targetPath: string): void {
   const allowed = ALLOWED_CHILD_LEVELS[obj.kind];
   if (allowed === undefined) return;
@@ -185,21 +191,6 @@ function checkChild(ctx: DrillCheckCtx, obj: Obj, targetPath: string): void {
       obj.pos.col,
     ));
   }
-  checkViewExists(ctx, obj, child, targetPath);
-}
-
-/** The optional `view` id must exist in the child file (`P218`). */
-function checkViewExists(ctx: DrillCheckCtx, obj: Obj, child: Doc, targetPath: string): void {
-  const view = obj.drilldown?.view;
-  if (view === undefined) return;
-  const declared = child.views.some((v) => v.id === view);
-  if (declared) return;
-  ctx.out.push(diag(
-    'P218',
-    `"${targetPath}" has no view with id "${view}" (add \`as ${view}\` to a view line)`,
-    obj.pos.line,
-    obj.pos.col,
-  ));
 }
 
 /** Target must be reachable, `.pcd`, inside the workspace and acyclic. */
@@ -270,8 +261,115 @@ function checkSource(doc: Doc, out: Diagnostic[]): void {
   }
 }
 
+interface EmbedState {
+  owners: Map<string, string>;
+  nodes: number;
+  bytes: number;
+}
+
+/** Validate the logical path of an embedded child (`P213`). */
+function checkEmbeddedPath(ctx: DrillCheckCtx, obj: Obj): string | null {
+  const raw = obj.drilldown?.path ?? '';
+  const target = resolveDrilldown(ctx.file ?? '', raw);
+  if (target.ok) return target.path;
+  ctx.out.push(diag(
+    'P213',
+    target.problem === 'not-pcd'
+      ? `embedded child path "${raw}" is not a .pcd path`
+      : `embedded child path "${raw}" escapes the workspace or is not a relative POSIX path`,
+    obj.pos.line,
+    obj.pos.col,
+  ));
+  return null;
+}
+
+/** Level rule for a child that is carried inside the parent document. */
+function checkEmbeddedChild(ctx: DrillCheckCtx, obj: Obj, child: Doc, path: string): void {
+  const allowed = ALLOWED_CHILD_LEVELS[obj.kind];
+  if (allowed === undefined) return;
+  if (child.level !== undefined && !allowed.includes(child.level)) {
+    ctx.out.push(diag(
+      'P214',
+      `"${path}" declares level ${child.level}, but a ${obj.kind} decomposes`
+        + ` into ${allowed.join(' or ')}`,
+      obj.pos.line,
+      obj.pos.col,
+    ));
+  }
+}
+
+/** Cycles, duplicate ownership and size limits of the embedded graph. */
+function checkEmbeddedGraph(
+  ctx: DrillCheckCtx,
+  obj: Obj,
+  child: Doc,
+  path: string,
+  depth: number,
+  ancestors: readonly string[],
+  state: EmbedState,
+): void {
+  if (ancestors.includes(path)) {
+    ctx.out.push(diag('P220',
+      `embedded decomposition cycle: ${[...ancestors, path].join(' → ')}`,
+      obj.pos.line, obj.pos.col));
+    return;
+  }
+  const owner = ctx.file ?? '';
+  const previous = state.owners.get(path);
+  if (previous !== undefined && previous !== owner) {
+    ctx.out.push(diag('P219',
+      `child "${path}" is embedded by both "${previous}" and "${owner}"`,
+      obj.pos.line, obj.pos.col));
+    return;
+  }
+  state.owners.set(path, owner);
+  state.nodes += 1;
+  state.bytes += new TextEncoder().encode(printDoc(child)).length;
+  if (depth > EMBED_MAX_DEPTH || state.nodes > EMBED_MAX_NODES || state.bytes > EMBED_MAX_BYTES) {
+    ctx.out.push(diag('P218',
+      `embedded decomposition exceeds limits (depth ${depth}/${EMBED_MAX_DEPTH},`
+        + ` children ${state.nodes}/${EMBED_MAX_NODES}, bytes ${state.bytes}/${EMBED_MAX_BYTES})`,
+      obj.pos.line, obj.pos.col));
+  }
+  if (depth > EMBED_MAX_DEPTH) return;
+  checkTree({ ...ctx, doc: child, file: path }, depth + 1,
+    [...ancestors, path], state);
+}
+
+/** One document of the tree; embedded children recurse with their logical path. */
+function checkTree(
+  ctx: DrillCheckCtx,
+  depth: number,
+  ancestors: readonly string[],
+  state: EmbedState,
+): void {
+  checkDuplicateTargets(ctx);
+  checkSource(ctx.doc, ctx.out);
+  for (const obj of decomposers(ctx.doc)) {
+    // The kind rule comes first: an object that cannot decompose at all has
+    // nothing to resolve, so it must not also report a missing target.
+    if (!checkKind(ctx, obj)) continue;
+    if (obj.drilldown?.kind === 'embedded') {
+      const path = checkEmbeddedPath(ctx, obj);
+      if (path === null) continue;
+      checkEmbeddedChild(ctx, obj, obj.drilldown.doc, path);
+      checkEmbeddedGraph(ctx, obj, obj.drilldown.doc, path, depth, ancestors, state);
+      continue;
+    }
+    const targetPath = checkReachable(ctx, obj);
+    if (targetPath === null) continue;
+    if (ancestors.includes(targetPath)) {
+      ctx.out.push(diag('P220',
+        `decomposition cycle: ${[...ancestors, targetPath].join(' → ')}`,
+        obj.pos.line, obj.pos.col));
+      continue;
+    }
+    checkChild(ctx, obj, targetPath);
+  }
+}
+
 /**
- * Registers every hierarchy finding for `doc` (§3.2/§3.3, codes P211–P218).
+ * Registers every hierarchy finding for `doc` (§3.2/§3.3, codes P211–P220).
  * `file` is the document's workspace path and `read` its file probe: without them
  * only the local rules (kind, duplicate target, source limits, path shape) run.
  */
@@ -282,13 +380,7 @@ export function checkHierarchy(
   out: Diagnostic[],
 ): void {
   const ctx: DrillCheckCtx = { doc, file, read, out };
-  checkDuplicateTargets(ctx);
-  checkSource(doc, out);
-  for (const obj of decomposers(doc)) {
-    // The kind rule comes first: an object that cannot decompose at all has
-    // nothing to resolve, so it must not also report a missing target.
-    if (!checkKind(ctx, obj)) continue;
-    const targetPath = checkReachable(ctx, obj);
-    if (targetPath !== null) checkChild(ctx, obj, targetPath);
-  }
+  checkTree(ctx, 1, file === undefined ? [] : [file], {
+    owners: new Map(), nodes: 0, bytes: 0,
+  });
 }

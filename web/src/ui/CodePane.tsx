@@ -10,6 +10,12 @@ import { s } from './strings';
 export interface CodePaneProps {
   machine: SyncMachine;
   snapshot: SyncSnapshot;
+  /**
+   * The machine holds the open file's text. Until then the editor is not shown:
+   * an empty buffer that merely reports "clean" must never accept typing, or the
+   * incoming file text would overwrite what the user just wrote.
+   */
+  loaded?: boolean;
   /** Format button / Shift-Alt-F hook (FR-K4). */
   onFormat: () => void;
   /** F-10: collapse into the sync-state rail. */
@@ -20,7 +26,7 @@ export interface CodePaneProps {
 }
 
 /** Split-pane code view for the active file. */
-export function CodePane({ machine, snapshot, onFormat, onCollapse, revealRef, onCaretObject }: CodePaneProps) {
+export function CodePane({ machine, snapshot, loaded = true, onFormat, onCollapse, revealRef, onCaretObject }: CodePaneProps) {
   return (
     <section class="code-pane" data-testid="code-pane" aria-label={s('Code view')}>
       <header class="code-pane-head">
@@ -44,7 +50,13 @@ export function CodePane({ machine, snapshot, onFormat, onCollapse, revealRef, o
           {s('Format')}
         </button>
       </header>
-      <CodeEditor machine={machine} revealRef={revealRef} onCaretObject={onCaretObject} />
+      {loaded ? (
+        <CodeEditor machine={machine} revealRef={revealRef} onCaretObject={onCaretObject} />
+      ) : (
+        <p class="muted panel-empty" data-testid="code-loading">
+          {s('Loading the file…')}
+        </p>
+      )}
     </section>
   );
 }

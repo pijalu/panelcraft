@@ -134,6 +134,58 @@ export function newStep(kind: FlowStep['type']): FlowStep {
 
 // --- mutators (in place on caller-owned Flow) --------------------------------
 
+/** The two steps that frame a walkthrough. */
+export type FramingKind = 'intro' | 'conclusion';
+
+/**
+ * Index of the flow's framing step of `kind`, or null.
+ *
+ * The properties panel always offers an introduction and a conclusion, and an
+ * empty one is not part of the document at all — so "absent" is the normal
+ * state of a fresh flow rather than an error. A framing step is only recognised
+ * at the top level: the same kind nested in an alternative is that branch's own
+ * prose, not the flow's frame.
+ */
+export function framingPath(flow: Flow, kind: FramingKind): number[] | null {
+  for (let i = 0; i < flow.steps.length; i += 1) {
+    if (flow.steps[i]?.type === kind) return [i];
+  }
+  return null;
+}
+
+/** Authored framing text, or '' when the flow has none. */
+export function framingText(flow: Flow, kind: FramingKind): string {
+  const path = framingPath(flow, kind);
+  const step = path === null ? null : getAt(flow, path);
+  if (step === null || !('text' in step) || step.text === undefined) return '';
+  return step.text;
+}
+
+/**
+ * Set (or clear) the flow's introduction or conclusion.
+ *
+ * Non-empty text creates the step the first time — an introduction at the front,
+ * a conclusion at the end — and patches it afterwards. Empty text removes the
+ * step, because an empty frame must not print a line or take a row in the step
+ * list.
+ */
+export function setFraming(flow: Flow, kind: FramingKind, text: string): void {
+  const value = text.trim() === '' ? '' : text;
+  const path = framingPath(flow, kind);
+  if (path === null) {
+    if (value === '') return;
+    const step = { type: kind, text: value, pos: { line: 0, col: 0 } } as FlowStep;
+    if (kind === 'intro') flow.steps.unshift(step);
+    else flow.steps.push(step);
+    return;
+  }
+  if (value === '') {
+    removeAt(flow, path);
+    return;
+  }
+  patchStep(flow, path, { text: value } as Partial<FlowStep>);
+}
+
 export function appendStep(flow: Flow, step: FlowStep): void {
   flow.steps.push(step);
 }
@@ -280,15 +332,35 @@ export function addFlow(doc: Doc, title: string, seq: number): void {
   doc.flows.push({ title, id: `flow${seq}`, steps, pos: { line: 0, col: 0 } });
 }
 
+export interface FlowPatch {
+  title?: string;
+  description?: string;
+  notes?: string;
+  presentation?: boolean;
+}
+
 /**
  * UX08-WP12: flow-level metadata edits. An empty title is ignored (the grammar
- * needs one) and an empty description removes the line rather than printing `""`.
+ * needs one). The two description forms are atomic: editing one removes the
+ * other, so a flow never carries two competing sources of prose.
  */
-export function patchFlow(flow: Flow, patch: { title?: string; description?: string }): void {
+export function patchFlow(flow: Flow, patch: FlowPatch): void {
   if (patch.title !== undefined && patch.title !== '') flow.title = patch.title;
-  if (patch.description === undefined) return;
-  if (patch.description === '') delete flow.description;
-  else flow.description = patch.description;
+  if (patch.description !== undefined) {
+    delete flow.descriptionLines;
+    if (patch.description === '') delete flow.description;
+    else flow.description = patch.description;
+  }
+  if (patch.notes !== undefined) {
+    delete flow.description;
+    const value = patch.notes.replace(/\r\n?/g, '\n');
+    if (value === '') delete flow.descriptionLines;
+    else flow.descriptionLines = value.split('\n');
+  }
+  if (patch.presentation !== undefined) {
+    if (patch.presentation) flow.presentation = true;
+    else delete flow.presentation;
+  }
 }
 
 /** Parse → mutate → print. null when the text does not parse (editor blocked).

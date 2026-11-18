@@ -9,10 +9,10 @@
 6. Check code quality with each tool run separately (do not chain them with `;` or `&&`):
 - `go vet ./...`
 - `staticcheck ./...`
-- `gocognit -over 15 .`
-- `gocyclo -over 12 .`
+- `gocyclo -over 15 cmd internal web` (CI fails >15; target is ≤10. Scoped paths
+  are required: `node_modules` ships Go code that would fail a bare `.` scan)
 - `go test -count=1 -race -cover ./...`
- Fix any issues.
+- Fix any issues.
  ! For cognitive and cyclomatic complexity, Pre-existing warnings are acceptable only if they are unrelated to the change and explicitly noted !
 
  At the end of the session - the bug list should be empty, change committed and this file should only contain the guidelines for bug reporting.
@@ -25,26 +25,26 @@
 ## Report format
 Describe the bug or feature request under `# To fix` below. Keep one section
 per item with a short title, the observed behavior, and the expected behavior.
+Copy this template for each new item:
+
+### Short title of the item
+
+Observed:
+
+- What actually happens, with the exact command, screen or file that shows it.
+
+Expected:
+
+- What should happen instead, stated so a test could check it.
+
+Fix plan and test approach:
+
+1. Reproduce it and record the failing command or capture.
+2. Add the failing test or regression that proves the defect.
+3. Make the smallest change that fixes it, on both language sides when the file
+   format is involved.
+4. State the validation: the commands to run and the captures to review.
 
 # To fix
 
-Nothing open. Every item from the last round — viewport-safe menus, long file
-names, presentation transport, the derived default flow, hosted release
-verification, the default grid, whole-route validity, entity label centring,
-project icons and C4 drill-down — is fixed, verified and written up under
-[docs/archive/](docs/archive/). The coordinated plan that drove them stays in
-[docs/BUGS-RESOLUTION-PLAN.md](docs/BUGS-RESOLUTION-PLAN.md) as the record of how
-each one was triaged and gated.
-
-Closed items, in the order they were archived:
-
-- `bugs-menu-viewport-contract.md` — one viewport-safe contract for every menu.
-- `bugs-long-filenames-file-actions.md` — a long name never hides file actions.
-- `bugs-presentation-playback.md` — presentation framing, sparks and transport.
-- `bugs-default-virtual-flow.md` — a link-only diagram is presentable at once.
-- `bugs-hosted-release-verification.md` — the live site proves its own revision.
-- `bugs-visible-default-grid.md` — a fresh profile shows the dots grid.
-- `bugs-route-validation.md` — routes are validated as a whole polyline.
-- `bugs-entity-label-centering.md` — labels sit on their rendered centre.
-- `bugs-project-icon-registry.md` — 43 built-ins plus portable project icons.
-- `bugs-c4-drill-down.md` — genuine C4 decomposition with embedded source.
+Nothing open. Closed items live in [docs/archive/](docs/archive/).

@@ -29,11 +29,9 @@ flow "Checkout" as f1 {
   api -> db : "query"
 }
 
-view "Default" {
-  layout saved
-  position api (120, 240)
-  position db (420, 240)
-}
+layout saved
+position api (120, 240)
+position db (420, 240)
 `;
 
 /** Paste text into the code view and wait for a clean sync. */
@@ -77,7 +75,7 @@ test('P0/D1: a canvas drag keeps flow, view, positions and link semantics', asyn
   const content = page.locator('.cm-content');
   // F-01: nothing outside objects/links may be lost by a canvas write
   await expect(content).toContainText('flow "Checkout"');
-  await expect(content).toContainText('view "Default"');
+  await expect(content).toContainText('layout saved');
   await expect(content).toContainText('position api (120, 240)');
   await expect(content).toContainText('stroke #abcdef');
   await expect(content).toContainText('waypoint (10, 20)');

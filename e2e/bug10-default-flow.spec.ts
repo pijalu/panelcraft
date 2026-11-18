@@ -77,6 +77,7 @@ test.describe('virtual default flow (item 10)', () => {
 
     await page.reload();
     await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
+    await expect(page.locator('.cm-content')).toContainText('pcd 1.0');
     expect(await docText(page)).toBe(before);
     await page.getByTestId('present-open').click();
     // Still exactly one entry after the reload.

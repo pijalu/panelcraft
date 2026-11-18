@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pijalu/panelcraft/internal/ir"
 	"github.com/pijalu/panelcraft/internal/pdl"
 	headless "github.com/pijalu/panelcraft/internal/render"
 	"github.com/pijalu/panelcraft/web"
@@ -20,7 +19,7 @@ import (
 
 var renderValueFlags = map[string]bool{
 	"--out": true, "-o": true, "--width": true, "--theme": true,
-	"--view": true, "--chrome": true,
+	"--chrome": true,
 }
 
 // runRender executes SPEC S6/FR-X: one PDL file → SVG/PNG via headless Chrome.
@@ -31,7 +30,6 @@ func runRender(args []string, stdout, stderr io.Writer) int {
 	flags.StringVar(out, "o", "", "output .png or .svg path")
 	width := flags.Int("width", 1920, "output width in CSS pixels")
 	theme := flags.String("theme", "light", "light or dark")
-	view := flags.String("view", "", "named view")
 	chrome := flags.String("chrome", "", "Chrome executable path")
 	if err := flags.Parse(flagsFirst(args, renderValueFlags)); err != nil {
 		return 2
@@ -52,17 +50,13 @@ func runRender(args []string, stdout, stderr io.Writer) int {
 		printDiags(stderr, input, parsed.Diagnostics)
 		return 1
 	}
-	if *view != "" && !hasView(parsed.Doc.Views, *view) {
-		fmt.Fprintf(stderr, "panelcraft: view %q not found in %s\n", *view, input)
-		return 1
-	}
 	assets, err := fs.Sub(web.Dist(), "dist")
 	if err != nil {
 		fmt.Fprintf(stderr, "panelcraft: embedded web assets: %v\n", err)
 		return 1
 	}
 	data, err := headless.Render(context.Background(), string(src), headless.Options{
-		Assets: assets, Width: *width, Theme: *theme, View: *view,
+		Assets: assets, Width: *width, Theme: *theme,
 		Chrome: *chrome, Format: format,
 	})
 	if err != nil {
@@ -100,15 +94,6 @@ func renderFormat(flags *flag.FlagSet, out, theme string, width int, stderr io.W
 		return "", 2
 	}
 	return format, 0
-}
-
-func hasView(views []ir.View, name string) bool {
-	for _, view := range views {
-		if view.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 func writeOutput(path string, data []byte) error {

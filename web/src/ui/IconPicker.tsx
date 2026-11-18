@@ -53,6 +53,118 @@ export interface IconPickerProps {
   onPick(name: string | undefined): void;
   onManage(): void;
   onClose(): void;
+  /** Popover side, chosen by the trigger so it stays inside the viewport. */
+  placement?: 'below' | 'above';
+}
+
+/** Whether a handle resolves to a built-in or a project icon. */
+export function isKnownIcon(value: string | undefined, project: IconDecl[]): boolean {
+  return value !== undefined &&
+    (builtinIcon(value) !== undefined || project.some((d) => d.id === value));
+}
+
+/** Move DOM focus between enabled option buttons inside a picker listbox. */
+function moveOptionFocus(from: HTMLElement | null, step: number): void {
+  const list = from?.closest('.icon-picker')?.querySelector('.icon-picker-list');
+  const options = Array.from(list?.querySelectorAll<HTMLButtonElement>('.icon-option:not([disabled])') ?? []);
+  if (options.length === 0) return;
+  const index = from instanceof HTMLButtonElement ? options.indexOf(from) : -1;
+  const next = index < 0
+    ? (step > 0 ? options[0] : options[options.length - 1])
+    : options[index + step];
+  const fallback = step > 0 ? 0 : options.length - 1;
+  (next ?? options[fallback]!).focus();
+}
+
+/** Arrow keys move focus between enabled options inside the same popover. */
+function arrowMove(e: { key: string; preventDefault(): void; currentTarget: HTMLElement }): void {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    moveOptionFocus(e.currentTarget, e.key === 'ArrowDown' ? 1 : -1);
+  }
+}
+
+interface IconOptionsProps {
+  value?: string;
+  project: IconDecl[];
+  builtins: BuiltinIcon[];
+  query: string;
+  onPick(name: string | undefined): void;
+}
+
+/** The listbox choices: unresolved handle, none, project icons, then built-ins. */
+function IconOptions(props: IconOptionsProps) {
+  const unknown = props.value !== undefined && !isKnownIcon(props.value, props.project);
+  const q = props.query.trim().toLowerCase();
+  const project = props.project.filter(
+    (d) => q === '' || d.id.includes(q) || iconLabel(d).toLowerCase().includes(q),
+  );
+  return (
+    <ul class="icon-picker-list" role="listbox" aria-label={s('Icons')}>
+      {unknown && (
+        <li>
+          <button
+            type="button"
+            class="icon-option icon-option-unresolved"
+            data-testid={`icon-option-unresolved-${props.value}`}
+            aria-selected="true"
+            disabled
+          >
+            <span class="icon-thumb icon-thumb-none" aria-hidden="true">?</span>
+            <span class="icon-option-label">{s('{name} (unknown)', { name: props.value ?? '' })}</span>
+          </button>
+        </li>
+      )}
+      <li>
+        <button
+          type="button"
+          class="icon-option"
+          data-testid="icon-option-none"
+          aria-selected={props.value === undefined}
+          onClick={() => props.onPick(undefined)}
+          onKeyDown={arrowMove}
+        >
+          <span class="icon-thumb icon-thumb-none" aria-hidden="true">∅</span>
+          <span class="icon-option-label">{s('no icon')}</span>
+        </button>
+      </li>
+      {project.length > 0 && <li class="icon-group" role="presentation">{s('This file')}</li>}
+      {project.map((decl) => (
+        <li key={`p-${decl.id}`}>
+          <button
+            type="button"
+            class="icon-option"
+            data-testid={`icon-option-${decl.id}`}
+            aria-selected={props.value === decl.id}
+            onClick={() => props.onPick(decl.id)}
+          >
+            <ProjectThumb decl={decl} />
+            <span class="icon-option-label">{iconLabel(decl)}</span>
+            <span class="icon-option-meta">{decl.id}</span>
+          </button>
+        </li>
+      ))}
+      {props.builtins.length > 0 && <li class="icon-group" role="presentation">{s('Built-in')}</li>}
+      {props.builtins.map((icon) => (
+        <li key={icon.name}>
+          <button
+            type="button"
+            class="icon-option"
+            data-testid={`icon-option-${icon.name}`}
+            aria-selected={props.value === icon.name}
+            onClick={() => props.onPick(icon.name)}
+          >
+            <BuiltinThumb name={icon.name} />
+            <span class="icon-option-label">{icon.label}</span>
+            <span class="icon-option-meta">{icon.category}</span>
+          </button>
+        </li>
+      ))}
+      {props.builtins.length === 0 && project.length === 0 && (
+        <li class="icon-empty">{s('no icons match “{query}”', { query: props.query })}</li>
+      )}
+    </ul>
+  );
 }
 
 /** Searchable built-in + project icon listbox. */
@@ -60,24 +172,16 @@ export function IconPicker(props: IconPickerProps) {
   const [query, setQuery] = useState('');
   const boxRef = useRef<HTMLDivElement | null>(null);
   const builtins: BuiltinIcon[] = useMemo(() => searchBuiltinIcons(query), [query]);
-  const q = query.trim().toLowerCase();
-  const project = props.project.filter(
-    (d) => q === '' || d.id.includes(q) || iconLabel(d).toLowerCase().includes(q),
-  );
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') props.onClose();
-    };
+    // Only outside *pointer* dismissal is global. Escape is handled on the
+    // popover root so it never reaches the canvas's own Escape gesture, which
+    // would drop the selection while the picker is closing.
     const onDown = (e: MouseEvent): void => {
       if (boxRef.current !== null && !boxRef.current.contains(e.target as Node)) props.onClose();
     };
-    document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDown);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onDown);
-    };
+    return () => document.removeEventListener('mousedown', onDown);
   }, [props]);
 
   const pick = (name: string | undefined): void => {
@@ -86,66 +190,37 @@ export function IconPicker(props: IconPickerProps) {
   };
 
   return (
-    <div class="icon-picker" data-testid="icon-picker" role="dialog" aria-label={s('Choose an icon')} ref={boxRef}>
+    <div
+      class="icon-picker"
+      data-testid="icon-picker"
+      data-placement={props.placement ?? 'below'}
+      role="dialog"
+      aria-label={s('Choose an icon')}
+      ref={boxRef}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          props.onClose();
+        }
+      }}
+    >
       <input
         class="icon-picker-search"
         data-testid="icon-search"
+        aria-label={s('Search icons')}
         placeholder={s('search icons…')}
         value={query}
         autoFocus
         onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
+        onKeyDown={arrowMove}
       />
-      <ul class="icon-picker-list" role="listbox" aria-label={s('Icons')}>
-        <li>
-          <button
-            type="button"
-            class="icon-option"
-            data-testid="icon-option-none"
-            aria-selected={props.value === undefined}
-            onClick={() => pick(undefined)}
-          >
-            <span class="icon-thumb icon-thumb-none" aria-hidden="true">∅</span>
-            <span class="icon-option-label">{s('no icon')}</span>
-          </button>
-        </li>
-        {project.length > 0 && (
-          <li class="icon-group" role="presentation">{s('This file')}</li>
-        )}
-        {project.map((decl) => (
-          <li key={`p-${decl.id}`}>
-            <button
-              type="button"
-              class="icon-option"
-              data-testid={`icon-option-${decl.id}`}
-              aria-selected={props.value === decl.id}
-              onClick={() => pick(decl.id)}
-            >
-              <ProjectThumb decl={decl} />
-              <span class="icon-option-label">{iconLabel(decl)}</span>
-              <span class="icon-option-meta">{decl.id}</span>
-            </button>
-          </li>
-        ))}
-        {builtins.length > 0 && <li class="icon-group" role="presentation">{s('Built-in')}</li>}
-        {builtins.map((icon) => (
-          <li key={icon.name}>
-            <button
-              type="button"
-              class="icon-option"
-              data-testid={`icon-option-${icon.name}`}
-              aria-selected={props.value === icon.name}
-              onClick={() => pick(icon.name)}
-            >
-              <BuiltinThumb name={icon.name} />
-              <span class="icon-option-label">{icon.label}</span>
-              <span class="icon-option-meta">{icon.category}</span>
-            </button>
-          </li>
-        ))}
-        {builtins.length === 0 && project.length === 0 && (
-          <li class="icon-empty">{s('no icons match “{query}”', { query })}</li>
-        )}
-      </ul>
+      <IconOptions
+        value={props.value}
+        project={props.project}
+        builtins={builtins}
+        query={query}
+        onPick={pick}
+      />
       <div class="icon-picker-actions">
         <button type="button" data-testid="icon-manage" onClick={props.onManage}>
           {s('Manage project icons…')}{' '}</button>
@@ -154,7 +229,22 @@ export function IconPicker(props: IconPickerProps) {
   );
 }
 
-/** Properties-panel field: handle text input + picker trigger. */
+/** Preview glyph of a stored handle (built-in, project, or unresolved/none). */
+function IconPreview(props: { value?: string; project: IconDecl[] }) {
+  const { value } = props;
+  if (value !== undefined && builtinIcon(value) !== undefined) return <BuiltinThumb name={value} />;
+  const decl = value === undefined ? undefined : props.project.find((d) => d.id === value);
+  if (decl !== undefined) return <ProjectThumb decl={decl} />;
+  return <span class="icon-thumb icon-thumb-none" aria-hidden="true">∅</span>;
+}
+
+/**
+ * Properties-panel icon control: one select-like trigger with one accessible
+ * name ("Icon") and one value. The handle is no longer a second, free-text
+ * editor — every icon is chosen from the searchable picker. An unknown stored
+ * handle stays visible as an unresolved choice, so loading a legacy file never
+ * silently erases it.
+ */
 export function IconField(props: {
   value?: string;
   project: IconDecl[];
@@ -162,49 +252,62 @@ export function IconField(props: {
   onManage(): void;
 }) {
   const [open, setOpen] = useState(false);
-  const known = props.value !== undefined && (builtinIcon(props.value) !== undefined ||
-    props.project.some((d) => d.id === props.value));
-  const label = props.value === undefined ? s('(none)') : known ? props.value : s('{name} (unknown)', { name: props.value });
+  const [above, setAbove] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const label = props.value === undefined
+    ? s('(none)')
+    : isKnownIcon(props.value, props.project)
+      ? props.value
+      : s('{name} (unknown)', { name: props.value });
+  const close = (): void => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+  const toggle = (): void => {
+    if (open) {
+      close();
+      return;
+    }
+    // Flip above when the panel sits low in the viewport so the popover stays
+    // on-screen; no measurement is needed when there is room below.
+    const box = triggerRef.current?.getBoundingClientRect();
+    setAbove(box !== undefined && window.innerHeight - box.bottom < 360 && box.top > 360);
+    setOpen(true);
+  };
   return (
     <div class="icon-field">
-      <input
-        data-testid="prop-style-icon"
-        value={props.value ?? ''}
-        placeholder={s('(none)')}
-        aria-label={s('Icon')}
-        onInput={(e) => {
-          const v = (e.target as HTMLInputElement).value.trim();
-          props.onChange(v === '' ? undefined : v);
-        }}
-      />
       <button
         type="button"
-        class="icon-picker-trigger"
-        data-testid="icon-picker-open"
-        aria-haspopup="dialog"
+        ref={triggerRef}
+        class="icon-picker-trigger icon-field-trigger"
+        data-testid="prop-style-icon"
+        role="combobox"
+        aria-label={s('Icon')}
+        aria-haspopup="listbox"
         aria-expanded={open}
         title={label}
-        onClick={() => setOpen(!open)}
+        onClick={toggle}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (!open) toggle();
+          }
+        }}
       >
-        {props.value !== undefined && builtinIcon(props.value) !== undefined ? (
-          <BuiltinThumb name={props.value} />
-        ) : props.value !== undefined && props.project.some((d) => d.id === props.value) ? (
-          <ProjectThumb decl={props.project.find((d) => d.id === props.value) as IconDecl} />
-        ) : (
-          <span class="icon-thumb icon-thumb-none" aria-hidden="true">∅</span>
-        )}
-        <span class="visually-hidden">{s('Choose an icon')}</span>
+        <IconPreview value={props.value} project={props.project} />
+        <span class="icon-field-value">{label}</span>
       </button>
       {open && (
         <IconPicker
           value={props.value}
           project={props.project}
+          placement={above ? 'above' : 'below'}
           onPick={props.onChange}
           onManage={() => {
             setOpen(false);
             props.onManage();
           }}
-          onClose={() => setOpen(false)}
+          onClose={close}
         />
       )}
     </div>

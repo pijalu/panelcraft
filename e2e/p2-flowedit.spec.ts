@@ -46,6 +46,8 @@ test('F-18: duplicate a step — the file gains a second copy', async ({ page })
 
 test('F-18: per-step delay is editable and persists as `delay <ms>`', async ({ page }) => {
   await seed(page);
+  // The dwell is a property of the chosen step, so select it first.
+  await page.getByTestId('step-0').click();
   await page.getByTestId('step-delay-0').fill('500');
   const content = page.locator('.cm-content');
   await expect(content).toContainText('intro "Kick off" delay 500');

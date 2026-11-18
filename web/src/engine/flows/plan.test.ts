@@ -219,6 +219,18 @@ flow "f" as f {
     const custom = buildPlan({ doc, flow, delayMs: 1000 }).beats;
     expect(custom.every((b) => b.delayMs === 1000)).toBe(true);
   });
+
+  it('carries a per-step advance trigger into the beat', () => {
+    const source = FIXTURE.replace(
+      'intro "Customer buys a cart"',
+      'intro "Customer buys a cart" advance click',
+    );
+    const clickDoc = parse(source);
+    const clickFlow = clickDoc.flows[0]!;
+    const beats = buildPlan({ doc: clickDoc, flow: clickFlow }).beats;
+    expect((beats[0] as unknown as Record<string, unknown>)['advance']).toBe('click');
+    expect((beats[1] as unknown as Record<string, unknown>)['advance']).toBeUndefined();
+  });
 });
 
 describe('msg ref resolution', () => {

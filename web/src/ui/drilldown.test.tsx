@@ -18,7 +18,7 @@ import { useDrillLayer } from './useDrilldown';
 const CONTEXT = `pcd 1.0
 title "Shop"
 system shop "Webshop" {
-  drilldown "../containers/shop.pcd" view containers
+  drilldown "../containers/shop.pcd"
   source {
     language "go"
     text "func main() {"
@@ -31,9 +31,6 @@ system shop "Webshop" {
 const CONTAINERS = `pcd 1.0
 title "Shop containers"
 level container
-view "Containers" as containers {
-  layout auto LR
-}
 container api "API" {
   drilldown "../components/api.pcd"
 }
@@ -64,7 +61,6 @@ function Harness(props: { manager: WorkspaceManager; objectId: string }) {
     ctrlRef: { current: null },
     commitDoc: (doc: Doc) => props.manager.saveText(props.manager.activePath ?? '', printDoc(doc)),
     openFile: (path) => props.manager.openFile(path),
-    onView: () => undefined,
   });
   return (
     <div>

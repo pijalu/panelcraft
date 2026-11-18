@@ -5,7 +5,7 @@
 
 import type {
   Branch, CameraSpec, Comments, Doc, Flow, FlowStep, IconDecl, ImportStmt, Link, Obj,
-  Pos, Property, RawAttr, StyleBlock, StyleStmt, View, ViewLine,
+  Pos, Property, RawAttr, StyleBlock, StyleStmt,
 } from './types';
 import { IR_VERSION } from './types';
 
@@ -87,7 +87,9 @@ const objectStmt = (o: Obj): JSONRecord =>
     ['drilldown',
       o.drilldown === undefined
         ? undefined
-        : obj(['path', o.drilldown.path], ['view', o.drilldown.view])],
+        : o.drilldown.kind === 'linked'
+          ? obj(['kind', 'linked'], ['path', o.drilldown.path])
+          : obj(['kind', 'embedded'], ['path', o.drilldown.path], ['doc', docJson(o.drilldown.doc)])],
     ['source',
       o.source === undefined
         ? undefined
@@ -183,6 +185,7 @@ const stepToJSON = (s: FlowStep): JSONRecord => {
     ['type', s.type],
     ...payload,
     ['delayMs', s.delayMs],
+    ['advance', s.advance],
     ['description', s.description],
     cameraJSON(s.camera),
     comments(s.comments),
@@ -195,39 +198,36 @@ const flowStmt = (f: Flow): JSONRecord =>
     ['id', f.id],
     ['title', f.title],
     ['description', f.description],
+    ['descriptionLines', f.descriptionLines],
+    ['presentation', f.presentation === true ? true : undefined],
     ['steps', arr(f.steps.map(stepToJSON))],
     comments(f.comments),
     ['pos', pos(f.pos)],
   );
 
-const viewLineBuilders: Record<string, (l: ViewLine) => Entry[]> = {
-  layout: (l) => {
-    const v = l as { mode: 'auto' | 'saved'; dir?: string };
-    return [['mode', v.mode], ['dir', v.dir]];
-  },
-  hideTag: (l) => [['id', (l as { id: string }).id]],
-  hide: (l) => [['id', (l as { id: string }).id]],
-  position: (l) => {
-    const p = l as { id: string; x: number; y: number };
-    return [['id', p.id], ['x', p.x], ['y', p.y]];
-  },
-  pin: (l) => [['id', (l as { id: string }).id]],
-};
-
-const viewLineToJSON = (l: ViewLine): JSONRecord => {
-  const build = viewLineBuilders[l.type];
-  const payload = build ? build(l) : [];
-  return obj(['type', l.type], ...payload, comments(l.comments), ['pos', pos(l.pos)]);
-};
-
-const viewStmt = (v: View): JSONRecord =>
-  obj(
-    ['id', v.id],
-    ['name', v.name],
-    ['lines', arr(v.lines.map(viewLineToJSON))],
-    comments(v.comments),
-    ['pos', pos(v.pos)],
-  );
+/**
+ * Top-level layout state (ADR 0007). Fixed key order mirrors internal/ir; empty
+ * collections are omitted, matching the other document-level collections.
+ */
+const layoutState = (l: Doc['layout']): Entry => [
+  'layout',
+  l === undefined
+    ? undefined
+    : obj(
+      ['directive',
+        l.directive === undefined
+          ? undefined
+          : l.directive.mode === 'saved'
+            ? obj(['mode', 'saved'])
+            : obj(['mode', 'auto'], ['dir', l.directive.dir])],
+      ['positions', arr(l.positions.map((p) => obj(['id', p.id], ['x', p.x], ['y', p.y])))],
+      ['pins', arr(l.pins)],
+      ['hidden', arr(l.hidden)],
+      ['hiddenTags', arr(l.hiddenTags)],
+      comments(l.comments),
+      ['pos', pos(l.pos)],
+    ),
+];
 
 const styleStmt = (st: StyleStmt): JSONRecord => {
   const [, inner] = styleBlock(st.style);
@@ -242,9 +242,9 @@ const styleStmt = (st: StyleStmt): JSONRecord => {
 /** Non-empty array or undefined (empty collections are omitted in IR JSON). */
 const arr = (xs: unknown[]): unknown[] | undefined => (xs.length > 0 ? xs : undefined);
 
-/** Serialize a Doc to canonical IR JSON (deterministic key order, 2-space indent). */
-export function serializeDoc(doc: Doc): string {
-  const json = obj(
+/** Canonical field order for one document, reused by embedded children. */
+function docJson(doc: Doc): JSONRecord {
+  return obj(
     ['irVersion', doc.irVersion ?? IR_VERSION],
     ['formatVersion', doc.formatVersion],
     ['title', doc.title],
@@ -257,8 +257,12 @@ export function serializeDoc(doc: Doc): string {
     ['objects', arr(doc.objects.map(objectStmt))],
     ['links', arr(doc.links.map(linkStmt))],
     ['flows', arr(doc.flows.map(flowStmt))],
-    ['views', arr(doc.views.map(viewStmt))],
+    layoutState(doc.layout),
     ['styles', arr(doc.styles.map(styleStmt))],
   );
-  return JSON.stringify(json, null, 2);
+}
+
+/** Serialize a Doc to canonical IR JSON (deterministic key order, 2-space indent). */
+export function serializeDoc(doc: Doc): string {
+  return JSON.stringify(docJson(doc), null, 2);
 }

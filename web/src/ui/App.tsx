@@ -4,32 +4,36 @@
 // around the SVG, never inside it); the WorkspaceManager owns the virtual FS,
 // tabs and autosave; chrome re-renders via manager.subscribe(). Lifecycle and
 // sync wiring live in useWorkspace.ts; panels below are presentational.
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { labelFor, CanvasController, type DiagramLink, type Snapshot } from './CanvasController';
 import { FileTree } from './FileTree';
 import { Tabs } from './Tabs';
 import { CodePane } from './CodePane';
 import { FlowPane, type FlowCanvasContext, type FlowSelection, type ViewPoint } from './flows/FlowPane';
+import type { FlowSession } from './flows/flowSession';
+import { useFlowEditing, type FlowEditing } from './flows/useFlowEditing';
+import type { FlowPanelProps } from './flows/FlowPanel';
 import { invert } from '../engine/render/viewport';
 import { PlayBar } from './flows/PlayBar';
 import { useStagePresentation } from './useStagePresentation';
-import { ViewBar } from './views/ViewBar';
 import { AppHeader } from './AppHeader';
 import { AppDialogs } from './AppDialogs';
 import { AppOverlays } from './AppOverlays';
-import { TemplateOverlay } from './EmptyState';
+import { BLANK_TEXT, TemplateOverlay } from './EmptyState';
+import { useGalleryPrompt, type GalleryPrompt } from './useGalleryPrompt';
 import type { RenameTarget } from './InlineRename';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useUiLayout } from './useUiLayout';
 import { useAppTheme } from './useAppTheme';
 import { useCanvasGrid } from './useCanvasGrid';
 import { useHistory } from './useHistory';
-import { useViewSession } from './useViewSession';
 import { useShellUi } from './useShellUi';
 import { layoutStyle, PANELS, type DockId, type PanelId } from './uiLayout';
 import { CollapseButton, PanelRail } from './PanelChrome';
 import { CanvasMenu } from './CanvasMenu';
+import { useDiagramCommands } from './useDiagramCommands';
+import type { CommandSelection } from './commandPolicy';
 import { MiniMap } from './MiniMap';
 import { s } from './strings';
 import type { Doc, IconDecl, Obj } from '../engine/model/types';
@@ -37,6 +41,9 @@ import { DrillBar } from './DrillBar';
 import { SourceViewer } from './SourceViewer';
 import { useDrillLayer, type DrillLayer, type DrilldownHandle } from './useDrilldown';
 import { useDocumentPipeline } from './useDocumentPipeline';
+import { useActiveDocument, useEmbeddedTree } from './useDocumentSource';
+import type { DocumentRef } from '../workspace/documents';
+import type { DocumentSource } from './useDocumentSource';
 import { ShellBanners } from './ShellBanners';
 import { DropZone, HostedPanel } from './WorkspacePanels';
 import { useCanvasRevealPort } from './useCanvasReveal';
@@ -49,6 +56,7 @@ import { useDrawer } from './useDrawer';
 import { useShellDialogs } from './useShellDialogs';
 
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
+import { flowNotesVisible, stepExplanationVisible } from './flows/flowController';
 import type { CodeSyncHandle } from './useCodeSync';
 import type { WorkspaceManager } from '../workspace/workspace';
 
@@ -115,6 +123,9 @@ function findLink(snap: Snapshot | null) {
 function FilesPane(props: {
   manager: WorkspaceManager;
   version: number;
+  embedded: ReturnType<typeof useEmbeddedTree>;
+  activeRef: DocumentRef | null;
+  onOpenRef: (ref: DocumentRef) => void;
   onCollapse: () => void;
 }) {
   return (
@@ -126,6 +137,10 @@ function FilesPane(props: {
       <FileTree
         manager={props.manager}
         version={props.version}
+        embedded={props.embedded}
+        embeddedRoot={props.activeRef?.root ?? props.manager.activePath}
+        activeRef={props.activeRef}
+        onOpenRef={props.onOpenRef}
         onOpen={(path) => props.manager.openFile(path)}
       />
     </aside>
@@ -135,13 +150,13 @@ function FilesPane(props: {
 /** Flow editor hosted separately from Files (FLOW-01 dependency). */
 function FlowStepsPane(props: {
   manager: WorkspaceManager;
-  version: number;
   activePath: string | null;
-  onText(text: string): void;
+  source?: DocumentSource;
+  /** One editing session for the open file, shared with the Properties panel. */
+  session: FlowSession;
+  doc: Doc | null;
   onPlay(flowKey: string): void;
   onCollapse: () => void;
-  illustration: IllustrationId | 'auto';
-  onIllustration(id: IllustrationId | 'auto'): void;
   onPlayFrom(flowKey: string, index: number): void;
   dirty: boolean;
   selection: FlowSelection | null;
@@ -149,6 +164,7 @@ function FlowStepsPane(props: {
   canvasContext: FlowCanvasContext;
   onHighlight(ids: string[] | null): void;
   currentView?: () => ViewPoint | null;
+  onEditFraming?(flowKey: string, kind: 'intro' | 'conclusion'): void;
 }) {
   return (
     <aside class="sidebar" aria-label={s('Flow step editor')}>
@@ -157,20 +173,21 @@ function FlowStepsPane(props: {
         <CollapseButton id="flows" label={s('flow steps')} onCollapse={props.onCollapse} />
       </div>
       <FlowPane
-        textOf={(path) => props.manager.text(path)}
-        activePath={props.activePath}
-        version={props.version}
-        onChangeText={props.onText}
+        textOf={(path) => path === props.source?.label
+          ? props.source.text
+          : (props.manager.hasFile(path) ? props.manager.text(path) : null)}
+        activePath={props.source?.label ?? props.activePath}
+        session={props.session}
+        doc={props.doc}
         onPlay={props.onPlay}
-        illustration={props.illustration}
-        onIllustration={props.onIllustration}
         onPlayFrom={props.onPlayFrom}
         dirty={props.dirty}
         selection={props.selection}
         onSelection={props.onSelection}
         canvas={props.canvasContext}
+        files={props.manager.files().map((file) => file.path)}
         onHighlight={props.onHighlight}
-        {...(props.currentView === undefined ? {} : { currentView: props.currentView })}
+        {...(props.onEditFraming === undefined ? {} : { onEditFraming: props.onEditFraming })}
       />
     </aside>
   );
@@ -206,16 +223,10 @@ function CanvasSplit(props: {
   );
 }
 
-/** Tab strip + view bar row (extracted to keep App under the length gate). */
+/** Tab strip above the canvas (extracted to keep App under the length gate). */
 function CanvasTopRow(props: {
   manager: WorkspaceManager;
   diverged: ReturnType<typeof useDivergedClose>;
-  activePath: string | null;
-  viewName: string | undefined;
-  onView(n: string | undefined): void;
-  onText(t: string): void;
-  ctrl: CanvasController | null;
-  selection: string[];
 }) {
   return (
     <>
@@ -229,14 +240,6 @@ function CanvasTopRow(props: {
         onClose={props.diverged.requestCloseTab}
         onReorder={(from, to) => props.manager.moveTabAt(from, to)}
       />
-      <ViewBar
-        text={props.activePath !== null ? props.manager.text(props.activePath) : null}
-        viewName={props.viewName}
-        onView={props.onView}
-        onChangeText={props.onText}
-        ctrl={props.ctrl}
-        selection={props.selection}
-      />
     </>
   );
 }
@@ -246,6 +249,9 @@ function SidebarSlot(props: {
   ui: ReturnType<typeof useUiLayout>;
   manager: WorkspaceManager;
   version: number;
+  embedded: ReturnType<typeof useEmbeddedTree>;
+  activeRef: DocumentRef | null;
+  onOpenRef: (ref: DocumentRef) => void;
 }) {
   return slot(
     props.ui.layout.panels.sidebar === 'collapsed',
@@ -255,6 +261,9 @@ function SidebarSlot(props: {
     <FilesPane
       manager={props.manager}
       version={props.version}
+      embedded={props.embedded}
+      activeRef={props.activeRef}
+      onOpenRef={props.onOpenRef}
       onCollapse={() => props.ui.togglePanel('sidebar')}
     />,
   );
@@ -264,12 +273,11 @@ function SidebarSlot(props: {
 function FlowSlot(props: {
   ui: ReturnType<typeof useUiLayout>;
   manager: WorkspaceManager;
-  version: number;
   activePath: string | null;
-  onText: (text: string) => void;
+  source?: DocumentSource;
+  session: FlowSession;
+  doc: Doc | null;
   onPlay: (flowKey: string) => void;
-  illustration: IllustrationId | 'auto';
-  onIllustration: (id: IllustrationId | 'auto') => void;
   onPlayFrom: (flowKey: string, index: number) => void;
   dirty: boolean;
   selection: FlowSelection | null;
@@ -277,6 +285,7 @@ function FlowSlot(props: {
   canvasContext: FlowCanvasContext;
   onHighlight: (ids: string[] | null) => void;
   currentView?: () => ViewPoint | null;
+  onEditFraming?(flowKey: string, kind: 'intro' | 'conclusion'): void;
 }) {
   return slot(
     props.ui.layout.panels.flows === 'collapsed',
@@ -285,13 +294,11 @@ function FlowSlot(props: {
     () => props.ui.togglePanel('flows'),
     <FlowStepsPane
       manager={props.manager}
-      version={props.version}
       activePath={props.activePath}
-      onText={props.onText}
+      session={props.session}
+      doc={props.doc}
       onPlay={props.onPlay}
       onCollapse={() => props.ui.togglePanel('flows')}
-      illustration={props.illustration}
-      onIllustration={props.onIllustration}
       onPlayFrom={props.onPlayFrom}
       dirty={props.dirty}
       selection={props.selection}
@@ -299,6 +306,7 @@ function FlowSlot(props: {
       canvasContext={props.canvasContext}
       onHighlight={props.onHighlight}
       {...(props.currentView === undefined ? {} : { currentView: props.currentView })}
+      {...(props.onEditFraming === undefined ? {} : { onEditFraming: props.onEditFraming })}
     />,
   );
 }
@@ -326,6 +334,7 @@ function CodeSlot(props: {
     <CodePane
       machine={props.code.machine}
       snapshot={props.code.snapshot}
+      loaded={props.code.loaded}
       onFormat={props.code.formatNow}
       onCollapse={() => props.ui.togglePanel('code')}
       revealRef={props.revealRef}
@@ -400,38 +409,95 @@ function flowsSlot(
     canvas: ReturnType<typeof useCanvasController>;
     code: CodeSyncHandle;
     activePath: string | null;
+    source?: DocumentSource;
     sel: ReturnType<typeof selections>;
-    illustration: IllustrationId | 'auto';
-    onIllustration: (id: IllustrationId | 'auto') => void;
     flowSelection: FlowSelection | null;
     onFlowSelection: (selection: FlowSelection) => void;
     manager: WorkspaceManager;
-    version: number;
+    session: FlowSession;
+    doc: Doc | null;
     player: FlowPlayerApi;
-    currentView?: () => ViewPoint | null;
+    onEditFraming?(flowKey: string, kind: 'intro' | 'conclusion'): void;
   },
 ): ComponentChildren {
   return (
     <FlowSlot
       ui={p.ui}
       manager={p.manager}
-      version={p.version}
-      activePath={p.activePath}
-      onText={(text) => p.code.machine.textChanged(text)}
+      activePath={p.source?.label ?? p.activePath}
+      source={p.source}
+      session={p.session}
+      doc={p.doc}
       onPlay={(flowKey) => {
         if (p.activePath !== null) p.player.start(p.activePath, flowKey);
       }}
-      illustration={p.illustration}
-      onIllustration={p.onIllustration}
       onPlayFrom={(flowKey, index) => playFrom(p.player, p.activePath, flowKey, index)}
       dirty={p.code.snapshot.divergedFromSaved}
       selection={p.flowSelection}
       onSelection={p.onFlowSelection}
       canvasContext={canvasContext(p.canvas.snap, p.sel.link)}
       onHighlight={(ids) => highlightParticipants(p.canvas, ids)}
-      {...(p.currentView === undefined ? {} : { currentView: p.currentView })}
+      {...(p.onEditFraming === undefined ? {} : { onEditFraming: p.onEditFraming })}
     />
   );
+}
+
+function hierarchyFor(p: Parameters<typeof propsSlot>[0], selected: ReturnType<typeof findObj>) {
+  if (selected === null || p.drill === undefined) return undefined;
+  const stored = p.doc?.objects.find((o) => o.id === selected.id);
+  return {
+    target: p.drill.targetOf(selected.id),
+    candidates: p.drill.candidates(selected.id),
+    onSet: (path: string | null) => p.drill?.setDrilldown(selected.id, path),
+    onOpen: () => p.drill?.drill(selected.id),
+    hasSource: stored?.source !== undefined,
+    language: stored?.source?.language,
+    onOpenSource: () => p.onSourceOpen?.(selected.id),
+  };
+}
+
+/** Everything the flow side of the Properties panel needs from the shell. */
+interface FlowPanelWiring {
+  session: FlowSession;
+  doc: Doc | null;
+  selection: FlowSelection | null;
+  textOf(path: string): string | null;
+  files: string[];
+  canvas: FlowCanvasContext;
+  view?: () => ViewPoint | null;
+  dirty: boolean;
+  illustration: IllustrationId | 'auto';
+  onIllustration(id: IllustrationId | 'auto'): void;
+  onPlay(flowKey: string): void;
+  onSelect(selection: FlowSelection | null): void;
+  /** A framing field the step list asked Properties to focus. */
+  focusField?: { kind: 'intro' | 'conclusion'; nonce: number };
+}
+
+/** Wrap the wiring into the panel's props; null while nothing flow-side is open. */
+function flowPanelProps(
+  p: { activePath: string | null; source?: DocumentSource; ui: ReturnType<typeof useUiLayout> },
+  flow: FlowPanelWiring,
+): FlowPanelProps | null {
+  if (flow.doc === null || flow.selection === null) return null;
+  return {
+    doc: flow.doc,
+    selection: flow.selection,
+    session: flow.session,
+    activePath: p.source?.label ?? p.activePath,
+    textOf: flow.textOf,
+    files: flow.files,
+    canvas: flow.canvas,
+    dirty: flow.dirty,
+    illustration: flow.illustration,
+    onIllustration: flow.onIllustration,
+    onPlay: flow.onPlay,
+    onSelect: flow.onSelect,
+    sections: p.ui.layout.sections,
+    onToggleSection: p.ui.toggleSection,
+    ...(flow.view === undefined ? {} : { view: flow.view }),
+    ...(flow.focusField === undefined ? {} : { focusField: flow.focusField }),
+  };
 }
 
 /** UX08-WP08: Properties + dependencies slot, wired to canvas edits and focus. */
@@ -441,27 +507,21 @@ function propsSlot(p: {
   manager: WorkspaceManager;
   sel: ReturnType<typeof selections>;
   activePath: string | null;
-  viewName: string | undefined;
+  source?: DocumentSource;
   linkLabelRef: { current: HTMLInputElement | null };
   projectIcons?: IconDecl[];
   onManageIcons?: () => void;
   drill?: DrilldownHandle;
   doc?: Doc | null;
   onSourceOpen?: (objectId: string) => void;
+  /** Flow editing surfaces: step or flow properties replace the object fields. */
+  flow?: FlowPanelWiring;
 }): ComponentChildren {
   const ctrl = p.canvas.ctrlRef.current;
-  const selected = p.sel.obj;
-  const stored = selected == null ? undefined : p.doc?.objects.find((o) => o.id === selected.id);
-  const hierarchy = selected == null || p.drill === undefined ? undefined : {
-    target: p.drill.targetOf(selected.id),
-    onSet: (path: string | null, view?: string) => p.drill?.setDrilldown(selected.id, path, view),
-    onOpen: () => p.drill?.drill(selected.id),
-    hasSource: stored?.source !== undefined,
-    language: stored?.source?.language,
-    onOpenSource: () => p.onSourceOpen?.(selected.id),
-  };
+  const hierarchy = hierarchyFor(p, p.sel.obj);
   return (
     <PropsSlot
+      flow={p.flow === undefined ? null : flowPanelProps(p, p.flow)}
       ui={p.ui}
       obj={p.sel.obj}
       link={p.sel.link}
@@ -473,9 +533,8 @@ function propsSlot(p: {
       onResetRoute={(id) => ctrl?.resetLinkRoute(id)}
       onResetBends={(id) => ctrl?.resetLinkBends(id)}
       onFit={() => ctrl?.fitSelection()}
-      depsText={p.activePath !== null ? p.manager.text(p.activePath) : null}
-      activePath={p.activePath}
-      viewName={p.viewName}
+      depsText={p.source?.text ?? (p.activePath !== null ? p.manager.text(p.activePath) : null)}
+      activePath={p.source?.label ?? p.activePath}
       activeId={p.sel.obj?.id ?? null}
       ctrl={ctrl}
       sections={p.ui.layout.sections}
@@ -537,27 +596,39 @@ function SourceLayer(props: { layer: DrillLayer; obj: Obj | null }): ComponentCh
  * function-length gate and each panel's wiring is one screen away from the dock
  * code that hosts it.
  */
+/** AppBody props plus the flow session it creates for its two editing surfaces. */
+type BodyProps = Parameters<typeof AppBody>[0] & { flowEdit: FlowEditing };
+
 function bodyPanels(
-  p: Parameters<typeof AppBody>[0],
+  p: BodyProps,
   ctrl: CanvasController | null,
 ): Record<PanelId, ComponentChildren> {
-  const { ws, canvas, code, ui, player, activePath, viewName } = p;
+  const { ws, canvas, code, ui, player, activePath, source, embedded } = p;
   return {
-    sidebar: <SidebarSlot ui={ui} manager={ws.manager} version={ws.version} />,
+    sidebar: (
+      <SidebarSlot
+        ui={ui}
+        manager={ws.manager}
+        version={ws.version}
+        embedded={embedded}
+        activeRef={source.ref}
+        onOpenRef={p.onOpenRef}
+      />
+    ),
     flows: flowsSlot({
       ui,
       canvas,
       code,
       activePath,
+      source,
       sel: p.sel,
-      illustration: p.illustration,
-      onIllustration: p.onIllustration,
       flowSelection: p.flowSelection,
-      onFlowSelection: p.onFlowSelection,
+      onFlowSelection: p.flowEdit.selectFlow,
       manager: ws.manager,
-      version: ws.version,
+      session: p.flowEdit.session,
+      doc: p.doc,
       player,
-      currentView: currentViewOf(canvas),
+      onEditFraming: p.flowEdit.focusFraming,
     }),
     palette: <PaletteSlot ui={ui} onPlace={(kind) => ctrl?.addObject(kind)} onDragDrop={canvas.onPaletteDrop} />,
     code: (
@@ -576,14 +647,51 @@ function bodyPanels(
       manager: ws.manager,
       sel: p.sel,
       activePath,
-      viewName,
+      source,
       linkLabelRef: p.linkLabelRef,
       projectIcons: p.projectIcons,
       onManageIcons: p.onManageIcons,
       drill: p.drill,
       doc: p.doc,
       onSourceOpen: p.onSourceOpen,
+      flow: {
+        session: p.flowEdit.session,
+        doc: p.doc,
+        selection: p.flowSelection,
+        textOf: (path) =>
+          path === p.source?.label
+            ? p.source.text
+            : (ws.manager.hasFile(path) ? ws.manager.text(path) : null),
+        files: ws.manager.files().map((file) => file.path),
+        canvas: canvasContext(canvas.snap, p.sel.link),
+        dirty: p.dirty,
+        illustration: p.illustration,
+        onIllustration: p.onIllustration,
+        onPlay: (flowKey) => {
+          if (activePath !== null) player.start(activePath, flowKey);
+        },
+        onSelect: p.flowEdit.selectFlow,
+        ...(p.flowEdit.framingFocus === undefined ? {} : { focusField: p.flowEdit.framingFocus }),
+        ...(currentViewOf(canvas) === undefined ? {} : { view: currentViewOf(canvas)! }),
+      },
     }),
+  };
+}
+
+/** Inputs of the flow-editing hook, gathered from the shell handles. */
+function flowEditingArgs(
+  ws: ReturnType<typeof useWorkspace>,
+  code: CodeSyncHandle,
+  source: DocumentSource,
+  canvas: ReturnType<typeof useCanvasController>,
+  setSelection: (next: FlowSelection | null) => void,
+): Parameters<typeof useFlowEditing>[0] {
+  return {
+    text: source.text,
+    version: ws.version,
+    onChangeText: (next) => code.machine.textChanged(next),
+    setSelection,
+    clearCanvasSelection: () => canvas.ctrlRef.current?.setSelection([]),
   };
 }
 
@@ -595,15 +703,16 @@ function AppBody(p: {
   ui: ReturnType<typeof useUiLayout>;
   player: FlowPlayerApi;
   activePath: string | null;
-  viewName: string | undefined;
-  onView: (n: string | undefined) => void;
+  source: DocumentSource;
+  embedded: ReturnType<typeof useEmbeddedTree>;
+  onOpenRef: (ref: DocumentRef) => void;
   onPresent: () => void;
   sel: ReturnType<typeof selections>;
   diverged: ReturnType<typeof useDivergedClose>;
   illustration: IllustrationId | 'auto';
   onIllustration: (id: IllustrationId | 'auto') => void;
   dirty: boolean; flowSelection: FlowSelection | null;
-  onFlowSelection: (selection: FlowSelection) => void;
+  onFlowSelection: (selection: FlowSelection | null) => void;
   revealRef: { current: ((id: string) => void) | null };
   /** Link Label field, focused when a link is inspected. */
   linkLabelRef: { current: HTMLInputElement | null };
@@ -615,12 +724,27 @@ function AppBody(p: {
   /** Parsed document of the open file (hierarchy + source authoring). */
   doc: Doc | null;
   onSourceOpen: (objectId: string) => void;
+  onResetDiagramLayout: () => void;
+  selection: CommandSelection;
 }) {
-  const { ws, canvas, code, ui, player, activePath, viewName } = p;
+  const { ws, canvas, code, ui, player, activePath, source } = p;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const ctrl = canvas.ctrlRef.current;
   const { drawer, dismiss } = useDrawer(ui);
-  const content = bodyPanels(p, ctrl);
+  // One flow-editing session, shared by the step list and the Properties panel.
+  const flowEdit = useFlowEditing(flowEditingArgs(ws, code, source, canvas, p.onFlowSelection));
+  // Touching the diagram ends the flow edit: the seam is the canvas press
+  // (`onUserPointer` above), not a state comparison — editing a step rewrites
+  // the file, and the reload may re-select its connector on its own, which must
+  // not close the step that was just edited.
+  // Choosing a flow or a step opens the panel its properties live in — a rail
+  // that stays collapsed would make the click look like it did nothing.
+  const flowChoice = p.flowSelection === null ? '' : `${p.flowSelection.flow}:${p.flowSelection.step.join('.')}`;
+  useEffect(() => {
+    if (flowChoice !== '' && ui.layout.panels.props === 'collapsed') ui.openPanel('props');
+  }, [flowChoice]);
+  const gallery = useGalleryPrompt();
+  const content = bodyPanels({ ...p, flowEdit }, ctrl);
   const docked = (dock: DockId) => dockedPanels(dock, ui, content);
   return (
     <div class="app-body" data-drawer={drawer === null ? undefined : 'open'}>
@@ -643,10 +767,9 @@ function AppBody(p: {
         manager={ws.manager}
         diverged={p.diverged}
         activePath={activePath}
-        viewName={viewName}
-        onView={p.onView}
         onPresent={p.onPresent}
         drill={p.drill}
+        gallery={gallery}
         onCanvasContextMenu={(event) => {
           event.preventDefault();
           setMenu({ x: event.clientX, y: event.clientY });
@@ -662,6 +785,8 @@ function AppBody(p: {
           y={menu.y}
           selectionCount={canvas.snap?.selection.objects.length ?? 0}
           linkCount={canvas.snap?.selection.links.length ?? 0}
+          selection={p.selection}
+          onResetDiagramLayout={p.onResetDiagramLayout}
           onClose={() => {
             setMenu(null);
             // The invoking surface is this canvas, whatever held focus before
@@ -686,29 +811,33 @@ function CenterColumn(props: {
   manager: WorkspaceManager;
   diverged: ReturnType<typeof useDivergedClose>;
   activePath: string | null;
-  viewName: string | undefined;
-  onView: (n: string | undefined) => void;
   onPresent: () => void;
   drill: DrilldownHandle;
+  gallery: GalleryPrompt;
   onCanvasContextMenu: (e: MouseEvent) => void;
 }) {
-  const { canvas, code, player } = props;
+  const { canvas, player } = props;
   const parent = props.drill.parent;
   return (
     <main class="canvas-col" data-parent={parent === undefined ? undefined : parent.label}>
       <TemplateOverlay
-        show={(props.canvas.snap?.objects.length ?? 0) === 0}
-        onInsert={(t) => props.code.machine.textChanged(t.text)}
+        show={props.gallery.visible(
+          props.activePath,
+          props.canvas.snap?.objects.length ?? 0,
+          props.code.snapshot.codeText,
+        )}
+        onInsert={(t) => {
+          props.gallery.answer(props.activePath);
+          props.code.machine.textChanged(t.text);
+        }}
+        onBlank={() => {
+          props.gallery.answer(props.activePath);
+          props.code.machine.textChanged(BLANK_TEXT);
+        }}
       />
       <CanvasTopRow
         manager={props.manager}
         diverged={props.diverged}
-        activePath={props.activePath}
-        viewName={props.viewName}
-        onView={props.onView}
-        onText={(t) => code.machine.textChanged(t)}
-        ctrl={canvas.ctrlRef.current}
-        selection={canvas.snap?.selection.objects ?? []}
       />
       <DrillBar drill={props.drill} />
       <CanvasSplit
@@ -721,39 +850,71 @@ function CenterColumn(props: {
   );
 }
 
+function useDialogsAndTheme(manager: WorkspaceManager, ready: boolean, version: number) {
+  const dialogs = useShellDialogs();
+  const theme = useAppTheme(manager, ready, version);
+  return { dialogs, theme };
+}
+
+function useShellLayout(
+  manager: WorkspaceManager,
+  ready: boolean,
+  version: number,
+) {
+  return { grid: useCanvasGrid(manager, ready, version), ui: useUiLayout(manager, ready, version) };
+}
+
+function useFlowPresentation(
+  manager: WorkspaceManager,
+  canvas: ReturnType<typeof useCanvasController>,
+  activePath: string | null,
+  illustration: IllustrationId | 'auto',
+  ready: boolean,
+) {
+  const player = useFlowStage({ manager, canvas, activePath, illustration });
+  const pres = useStagePresentation({
+    player, activePath, ready, textOf: (path) => manager.text(path),
+  });
+  return { player, pres };
+}
+
+function useHistoryAndReveal(
+  canvas: ReturnType<typeof useCanvasController>,
+  snapshot: CodeSyncHandle['snapshot'],
+  setFlash: (message: string | null) => void,
+) {
+  return {
+    history: useHistory(canvas.ctrlRef, snapshot, canvas.ctrlRef.current !== null, setFlash),
+    revealRef: useCanvasRevealPort(canvas.snap),
+  };
+}
+
 export function App() {
   const ws = useWorkspace();
   const activePath = ws.ready ? ws.manager.activePath : null;
-  const view = useViewSession(activePath);
-  const shell = useShellUi();
-  const { renaming, setRenaming, hover, setHover, illustration, setIllustration } = shell;
-  const { flowSelection, setFlowSelection, historyOpen, setHistoryOpen } = shell;
-  const grid = useCanvasGrid(ws.manager, ws.ready, ws.version);
-  const ui = useUiLayout(ws.manager, ws.ready, ws.version);
-  // controller → code-sync → project icons: one pipeline, one file writer
+  const { renaming, setRenaming, hover, setHover, illustration, setIllustration,
+    flowSelection, setFlowSelection, historyOpen, setHistoryOpen } = useShellUi();
+  const { grid, ui } = useShellLayout(ws.manager, ws.ready, ws.version);
+  const { manager } = ws;
+  const { source, embedded, setRef: setDocRef } = useActiveDocument(manager, activePath, ws.version);
   const { canvas, inspect, code, icons } = useDocumentPipeline({
-    ws, view, ui, grid, activePath,
+    ws, ui, grid, activePath, source,
     onRename: setRenaming, // inline rename request from the canvas
     onGhostOpen: (path) => ws.manager.openFile(path), // F-20
     onHover: setHover, // hover card content
+    onUserPointer: () => setFlowSelection(null), // a press on the diagram leaves the flow edit
   });
-  const { manager } = ws;
   const layer = useDrillLayer({
     activePath, manager, version: ws.version, revision: code.snapshot,
     ctrlRef: canvas.ctrlRef, commitDoc: code.commitDoc,
     openFile: (path) => manager.openFile(path),
-    onView: view.setViewName,
+    source, setRef: setDocRef,
   });
-  const sourceObj = layer.doc?.objects.find((o) => o.id === layer.sourceId) ?? null;
-  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = useShellDialogs();
-  const player = useFlowStage({ manager, canvas, activePath, illustration });
-  const appTheme = useAppTheme(manager, ws.ready, ws.version);
-  const history = useHistory(canvas.ctrlRef, code.snapshot, canvas.ctrlRef.current !== null, setFlash);
-  const revealRef = useCanvasRevealPort(canvas.snap); // F-22 canvas → code
-  const sel = selections(canvas.snap);
-  const renameTarget = renameBox(canvas.snap, canvas.svgRef.current, renaming);
-  const pres = useStagePresentation({ player, activePath, textOf: (path) => manager.text(path) });
-
+  const { dialogs, theme: appTheme } = useDialogsAndTheme(manager, ws.ready, ws.version);
+  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = dialogs;
+  const { history, revealRef } = useHistoryAndReveal(canvas, code.snapshot, setFlash);
+  const { selection: commandSelection, resetRoutes: onResetRoutes, resetDiagramLayout: onResetDiagramLayout } = useDiagramCommands(canvas, manager);
+  const { player, pres } = useFlowPresentation(manager, canvas, activePath, illustration, ws.ready);
   const { diverged, pwa } = useShellLifecycle({
     manager: ws.manager,
     activePath,
@@ -765,7 +926,7 @@ export function App() {
 
   return (
     <div
-      class={`app-shell${pres.presenting ? ' presenting' : ''}`}
+      class={`app-shell${pres.presenting ? ' presenting' : ''}${pres.presenting && flowNotesVisible(player.state) ? ' has-flow-notes' : ''}${pres.presenting && stepExplanationVisible(player.state) ? ' has-step-explanation' : ''}`}
       data-presenting={pres.presenting ? 'true' : 'false'}
       data-testid="app-shell"
       data-panels={Object.entries(ui.layout.panels).map(([k, v]) => `${k}:${v}`).join(',')}
@@ -783,6 +944,9 @@ export function App() {
         onHistoryRequest={() => setHistoryOpen(true)}
         onPresentRequest={pres.launcher.show}
         pwa={pwa} grid={grid}
+        selection={commandSelection}
+        onResetRoutes={onResetRoutes}
+        onResetDiagramLayout={onResetDiagramLayout}
       />
       <AppBody
         ws={ws}
@@ -791,10 +955,10 @@ export function App() {
         ui={ui}
         player={player}
         activePath={activePath}
-        viewName={view.viewName}
-        onView={view.setViewName}
-        onPresent={pres.start}
-        sel={sel}
+        source={source}
+        embedded={embedded}
+        onOpenRef={setDocRef} onPresent={pres.start}
+        sel={selections(canvas.snap)}
         diverged={diverged}
         illustration={illustration}
         onIllustration={setIllustration}
@@ -808,16 +972,19 @@ export function App() {
         drill={layer.drill}
         doc={layer.doc}
         onSourceOpen={layer.openSource}
+        onResetDiagramLayout={onResetDiagramLayout}
+        selection={commandSelection}
       />
-      <SourceLayer layer={layer} obj={sourceObj} />
+      <SourceLayer layer={layer} obj={layer.doc?.objects.find((o) => o.id === layer.sourceId) ?? null} />
       <AppOverlays
         hover={hover}
         presenting={pres.presenting}
         player={player}
         launcher={pres.launcher}
-        renameTarget={renameTarget}
+        renameTarget={renameBox(canvas.snap, canvas.svgRef.current, renaming)}
         onRenameCommit={(name) => {
-          if (renameTarget !== null) canvas.ctrlRef.current?.updateObject(renameTarget.id, { name });
+          const target = renameBox(canvas.snap, canvas.svgRef.current, renaming);
+          if (target !== null) canvas.ctrlRef.current?.updateObject(target.id, { name });
           setRenaming(null);
         }}
         onRenameCancel={() => setRenaming(null)}

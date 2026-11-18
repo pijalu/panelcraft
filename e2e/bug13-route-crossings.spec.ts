@@ -25,11 +25,9 @@ system_ext pay "Payment provider"
 user -> app : "buys" as L1
 app -> pay : "charges" as L2
 
-view "Default" {
-  position app (248, 128)
-  position pay (348, 52)
-  position user (40, 40)
-}
+position app (248, 128)
+position pay (348, 52)
+position user (40, 40)
 `;
 
 /** The report's explicit-path fixture: the second bend sits inside the target. */
@@ -150,7 +148,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
       await capture(page, `bug13-automatic-route-${colorScheme}`);
     });
 
-    test('the authored detour is preserved and the invalid bend is diagnosed', async ({ page }) => {
+    test('the out-and-back detour is simplified and both authored bends are diagnosed', async ({ page }) => {
       await page.goto('/');
       await seedDoc(page, DETOUR);
 
@@ -160,17 +158,20 @@ for (const colorScheme of ['light', 'dark'] as const) {
         expect(charges.filter((p) => contains(box, p)), `route L2 crosses ${id}`).toEqual([]);
       }
 
-      // The valid bend below both shapes is still visited…
-      const farBelow = charges.filter((p) => p.y > shapes.pay!.bottom + 40);
-      expect(farBelow.length).toBeGreaterThan(0);
-      expect(Math.min(...farBelow.map((p) => Math.abs(p.x - shapes.pay!.right)))).toBeLessThan(120);
+      // The authored down-and-back bend is gone: no sampled point sits far
+      // below the payment entity, and the route reads like the automatic one.
+      expect(charges.some((p) => p.y > shapes.pay!.bottom + 40)).toBe(false);
 
-      // …and the canvas says why the second one could not be drawn.
+      // Both reasons are stated on the connector and in its accessible text.
       const warning = page.getByTestId('canvas').locator('g.pc-link[data-id="L2"]');
+      await expect(warning).toHaveAttribute('data-route-warning', /makes the route reverse direction/);
       await expect(warning).toHaveAttribute('data-route-warning', /inside Payment provider/);
-      await expect(warning).toHaveAttribute('aria-description', /inside Payment provider/);
+      await expect(warning).toHaveAttribute('aria-description', /reverse direction/);
+      const tooltip = await warning.locator('title').textContent();
+      expect(tooltip).toContain('makes the route reverse direction');
+      expect(tooltip).toContain('inside Payment provider');
 
-      // The document keeps the authored point: the code view still has both.
+      // The document keeps the authored points: the code view still has both.
       const editorText = await page.locator('.cm-content').innerText();
       expect(editorText).toContain('waypoint (432, 254)');
       expect(editorText).toContain('waypoint (432, 70)');
@@ -181,7 +182,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
         expect(overlaps(label, box), `label L2 covers ${id}`).toBe(false);
       }
 
-      await capture(page, `bug13-authored-detour-${colorScheme}`);
+      await capture(page, `waypoint-simplification-${colorScheme}`);
     });
   });
 }

@@ -4,7 +4,7 @@
 // reload, never touch the document, and never appear in an export.
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
-import { chooseAppMenu, chooseExport, openWorkspacePanels, setAppTheme } from './lib/panels';
+import { chooseAppMenu, chooseExport, openAppGroup, openWorkspacePanels, setAppTheme } from './lib/panels';
 import { capture } from './lib/screenshots';
 
 const gridRect = (page: Page) => page.locator('svg[data-testid="canvas"] rect.pc-grid');
@@ -51,6 +51,7 @@ test.describe('canvas grid (UX08-WP05)', () => {
     // Item 12: a profile that never chose a grid shows dots, not an empty canvas.
     await expect.poll(() => gridFill(page)).toBe('url(#pc-grid-pattern-dots)');
     await page.getByTestId('app-menu').click();
+    await openAppGroup(page, 'menu-group-layout');
     await expect(page.getByTestId('view-grid-dots')).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByTestId('view-grid-snap')).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press('Escape');
@@ -124,6 +125,7 @@ test.describe('canvas grid (UX08-WP05)', () => {
     await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
     await expect.poll(() => gridFill(page)).toBeNull();
     await page.getByTestId('app-menu').click();
+    await openAppGroup(page, 'menu-group-layout');
     await expect(page.getByTestId('view-grid-snap')).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByTestId('view-grid-off')).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press('Escape');

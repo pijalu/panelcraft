@@ -109,7 +109,9 @@ function MenuList(props: MenuListProps): ComponentChildren {
     const root = list();
     if (root === null) return;
     setScrolls(needsScroll(root.scrollHeight, root.clientHeight));
-  }, [props.items]);
+    // A newly measured submenu becomes visible after this effect first runs;
+    // re-measure when that happens so its overflow cue is not missed.
+  }, [props.items, props.style?.visibility]);
 
   useLayoutEffect(() => {
     if (!props.autoFocus) return;
@@ -125,7 +127,10 @@ function MenuList(props: MenuListProps): ComponentChildren {
     const root = list();
     const enabled = menuElements(root).map((el) => !(el as HTMLButtonElement).disabled);
     focusAt(root, edgeIndex(enabled, 'first'));
-  }, [props.autoFocus]);
+    // A keyboard-opened submenu is visibility:hidden for the commit in which
+    // it is measured, so the first focus() is refused by the browser. Re-run
+    // when placement makes it visible; focus then lands inside the submenu.
+  }, [props.autoFocus, props.style?.visibility]);
 
   const move = (delta: number): void => {
     const root = list();
@@ -169,13 +174,19 @@ function MenuList(props: MenuListProps): ComponentChildren {
       return;
     }
     if (key === 'ArrowRight') {
-      if (openSubmenuForActive()) event.preventDefault();
+      if (openSubmenuForActive()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       return;
     }
     const command = moves[key];
     if (command === undefined) return;
     if (key === 'ArrowLeft' && props.depth === 0) return;
     event.preventDefault();
+    // A nested menu sits inside the parent's DOM: without this, End in a
+    // submenu also reaches the parent and jumps back to its last root row.
+    event.stopPropagation();
     command();
   };
 
@@ -263,10 +274,16 @@ function SubmenuRow(props: { entry: MenuSubmenuEntry; ctx: EntryContext }): Comp
     place();
     // A resize or a scrolled canvas moves the row under the open submenu.
     window.addEventListener('resize', place);
-    window.addEventListener('scroll', place, true);
+    // Scrolling the submenu's own overflow must not feed its clipped height
+    // back into placement: that shrinks maxHeight under the focused row.
+    const onScroll = (event: Event): void => {
+      if (isInside(event.target, [popRef.current])) return;
+      place();
+    };
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [open]);
 

@@ -24,12 +24,10 @@ system c "C"
 
 a -> b as L1
 
-view "Base" {
-  layout saved
-  position a (60, 60)
-  position b (280, 60)
-  position c (500, 60)
-}
+layout saved
+position a (60, 60)
+position b (280, 60)
+position c (500, 60)
 `;
 
 /** The direct entries the guide documents for a single-object selection. */
@@ -60,7 +58,6 @@ async function seed(page: Page): Promise<void> {
   await expect(page.getByTestId('canvas').locator('g.pc-obj')).toHaveCount(3);
   // Collapse the code panel so all three saved positions sit inside the canvas.
   await page.getByTestId('collapse-code').click();
-  await page.getByTestId('view-select').selectOption('Base');
 }
 
 for (const theme of ['light', 'dark'] as const) {
@@ -89,7 +86,9 @@ for (const theme of ['light', 'dark'] as const) {
     await canvas.locator('g.pc-obj[data-id="a"]').click({ button: 'right' });
     await expect(menu).toBeVisible();
     const labels = await menu.getByRole('menuitem').allInnerTexts();
-    expect(labels.map((t) => t.trim())).toEqual([...DOCUMENTED_SINGLE, 'Arrange']);
+    expect(labels.map((t) => t.trim())).toEqual([
+      ...DOCUMENTED_SINGLE, 'Arrange', 'Reset diagram layout', 'Reset all routes',
+    ]);
     await page.getByTestId('ctx-arrange').click();
     const arrangeLabels = await menu.locator('#arrange-menu').getByRole('menuitem').allInnerTexts();
     expect(arrangeLabels.map((t) => t.trim())).toEqual(DOCUMENTED_ARRANGE);

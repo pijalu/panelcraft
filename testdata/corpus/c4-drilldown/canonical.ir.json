@@ -1,5 +1,5 @@
 {
-  "irVersion": 10,
+  "irVersion": 13,
   "formatVersion": "1.0",
   "title": "Shop — system context",
   "level": "context",
@@ -20,8 +20,8 @@
       "description": "Storefront",
       "technology": "React",
       "drilldown": {
-        "path": "containers/shop.pcd",
-        "view": "containers"
+        "kind": "linked",
+        "path": "containers/shop.pcd"
       },
       "pos": {
         "line": 6,
@@ -59,24 +59,14 @@
       }
     }
   ],
-  "views": [
-    {
-      "name": "Context",
-      "lines": [
-        {
-          "type": "layout",
-          "mode": "auto",
-          "dir": "LR",
-          "pos": {
-            "line": 17,
-            "col": 3
-          }
-        }
-      ],
-      "pos": {
-        "line": 16,
-        "col": 1
-      }
+  "layout": {
+    "directive": {
+      "mode": "auto",
+      "dir": "LR"
+    },
+    "pos": {
+      "line": 16,
+      "col": 1
     }
-  ]
+  }
 }

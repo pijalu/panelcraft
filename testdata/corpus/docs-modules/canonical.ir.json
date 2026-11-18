@@ -1,5 +1,5 @@
 {
-  "irVersion": 10,
+  "irVersion": 13,
   "formatVersion": "1.0",
   "title": "PanelCraft web module graph",
   "level": "component",
@@ -371,32 +371,17 @@
       }
     }
   ],
-  "views": [
-    {
-      "name": "Dependencies",
-      "lines": [
-        {
-          "type": "layout",
-          "mode": "auto",
-          "dir": "LR",
-          "pos": {
-            "line": 95,
-            "col": 3
-          }
-        },
-        {
-          "type": "hideTag",
-          "id": "external",
-          "pos": {
-            "line": 96,
-            "col": 3
-          }
-        }
-      ],
-      "pos": {
-        "line": 94,
-        "col": 1
-      }
+  "layout": {
+    "directive": {
+      "mode": "auto",
+      "dir": "LR"
+    },
+    "hiddenTags": [
+      "external"
+    ],
+    "pos": {
+      "line": 94,
+      "col": 1
     }
-  ]
+  }
 }

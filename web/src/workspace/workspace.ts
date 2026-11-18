@@ -172,7 +172,6 @@ export function stateToDoc(state: CanvasState): Doc {
     icons: [],
     imports: [],
     flows: [],
-    views: [],
     styles: [],
   };
 }
@@ -191,17 +190,12 @@ function gridPos(index: number): { x: number; y: number } {
 }
 
 /**
- * Stored `position` lines of `viewName` (M6 FR-V4; undefined = the explicit
- * "Default" view — the UI's implicit-default session resolution). Local
- * resolver: workspace sits below ui/, so it must not import viewDoc.
+ * Stored `position` lines of the single top-level layout (ADR 0007). Local
+ * resolver: workspace sits below ui/, so it must not import layoutDoc.
  */
-function viewPositions(doc: Doc, viewName?: string): Map<string, { x: number; y: number }> {
+function layoutPositions(doc: Doc): Map<string, { x: number; y: number }> {
   const out = new Map<string, { x: number; y: number }>();
-  const view = doc.views.find((v) => v.name === (viewName ?? 'Default'));
-  if (!view) return out;
-  for (const l of view.lines) {
-    if (l.type === 'position') out.set(l.id, { x: l.x, y: l.y });
-  }
+  for (const p of doc.layout?.positions ?? []) out.set(p.id, { x: p.x, y: p.y });
   return out;
 }
 
@@ -211,10 +205,8 @@ function viewPositions(doc: Doc, viewName?: string): Map<string, { x: number; y:
  * valid ident (§1) — `from->to` would print `as from->to` and '>' is not an
  * ident char, so the buffer would never re-parse (M4 fix, FR-K2).
  *
- * `viewName` (M6 FR-V4): stored `position` lines of that view overlay the
- * grid (default resolution = the explicit "Default" view, matching the UI's
- * implicit-default session state). Objects without a stored position keep
- * their grid slot.
+ * Saved positions come from the one top-level layout block; objects without a
+ * stored position keep their grid slot.
  */
 /** Canvas fields of a document object, minus geometry (F-13 keeps size separate). */
 function docObjectFields(o: Obj): Omit<CanvasObject, 'x' | 'y' | 'w' | 'h'> {
@@ -288,8 +280,8 @@ function canvasLinkOf(l: Doc['links'][number], i: number): CanvasLink {
   };
 }
 
-export function docToState(doc: Doc, viewName?: string): CanvasState {
-  const positions = viewPositions(doc, viewName);
+export function docToState(doc: Doc): CanvasState {
+  const positions = layoutPositions(doc);
   // F-06: every kind the palette offers must survive a load (group/note used
   // to be filtered out here, so a drawn boundary vanished on the next apply).
   const objects: CanvasObject[] = doc.objects.map((o, i) => {
@@ -311,9 +303,9 @@ export function docToState(doc: Doc, viewName?: string): CanvasState {
 }
 
 /** File → canvas state; unparsable/empty text yields an empty state. */
-export function pcdToState(text: string, viewName?: string): CanvasState {
+export function pcdToState(text: string): CanvasState {
   const { doc } = parsePDL(text);
-  return doc === null ? { objects: [], links: [] } : docToState(doc, viewName);
+  return doc === null ? { objects: [], links: [] } : docToState(doc);
 }
 
 /* ---- manager ------------------------------------------------------------ */

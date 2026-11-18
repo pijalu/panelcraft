@@ -7,7 +7,7 @@
 // (STYLE-GUIDE §visual).
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { openAppGroup, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -59,73 +59,45 @@ async function objectTransforms(page: Page): Promise<Record<string, string>> {
   return out;
 }
 
-test('S5: tag filter fade + view switch isolates fades (FR-V1/V2)', async ({ page }) => {
+test('S5: top-level hide tag fades exactly the untagged objects', async ({ page }) => {
   await page.goto('/');
   const canvas = page.getByTestId('canvas');
-  await seedDoc(page, DOC);
+  await seedDoc(page, `${DOC}hide tag core\n`);
   await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
-  await expect(canvas.locator('g.pc-link')).toHaveCount(2);
-
-  // ---- no filter → nothing fades -------------------------------------------
-  await expect(canvas.locator('g.pc-faded')).toHaveCount(0);
-
-  // ---- hide tag `core` → tagged stay crisp, untagged fade (FR-V1) ----------
-  await page.getByTestId('tag-chip-core').click();
   await expect(canvas.locator('g.pc-obj[data-id="ada"]')).toHaveClass(/pc-faded/);
   await expect(canvas.locator('g.pc-obj[data-id="web"]')).not.toHaveClass(/pc-faded/);
   await expect(canvas.locator('g.pc-obj[data-id="db"]')).not.toHaveClass(/pc-faded/);
-  // aw: both endpoints tagged → crisp; wd: `web` tagged, `db` untagged → crisp
+  // Tagged endpoints keep their relation crisp even when one side is faded.
   await expect(canvas.locator('g.pc-link[data-id="aw"]')).not.toHaveClass(/pc-faded/);
   await expect(canvas.locator('g.pc-link[data-id="wd"]')).not.toHaveClass(/pc-faded/);
-
-  // the hide tag is committed to the (implicit) default view in the file
-  await page.getByTestId('tag-chip-core').click();
-  await expect(canvas.locator('g.pc-faded')).toHaveCount(0);
-
-  // ---- named view: fades are per-view (FR-V2) -------------------------------
-  await page.getByTestId('view-add').click();
-  await expect(page.getByTestId('view-select')).toHaveValue('View 1');
-  await expect(canvas.locator('g.pc-faded')).toHaveCount(0); // fresh view, no hides
-  await page.getByTestId('tag-chip-core').click(); // hide `core` in View 1 only
-  await expect(canvas.locator('g.pc-obj[data-id="ada"]')).toHaveClass(/pc-faded/);
-  await expect(canvas.locator('g.pc-obj[data-id="web"]')).not.toHaveClass(/pc-faded/);
-  // switch back to the default view — its state is untouched (crisp)
-  await page.getByTestId('view-select').selectOption('');
-  await expect(canvas.locator('g.pc-faded')).toHaveCount(0);
-  // ...and View 1 keeps its hide while the default is active
-  await page.getByTestId('view-select').selectOption('View 1');
-  await expect(canvas.locator('g.pc-obj[data-id="ada"]')).toHaveClass(/pc-faded/);
+  await expect(page.locator('.cm-content')).toContainText('hide tag core');
 });
 
-test('S5: auto-layout apply writes positions to the file, deterministic across runs (FR-V3/V4)', async ({ page }) => {
+test('S5: Reset diagram layout is deterministic across two runs', async ({ page }) => {
   await page.goto('/');
   const canvas = page.getByTestId('canvas');
   await seedDoc(page, DOC);
   await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
-
-  // ---- first apply: dagre runs, positions are committed to the file --------
-  await page.getByTestId('apply-layout').click();
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
-  await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
-  const first = await objectTransforms(page);
-  const xs = Object.values(first).map((t) => t);
-  expect(new Set(xs).size).toBe(3); // three distinct placements — a real layout
-
-  // ---- second apply: same input → identical output (determinism, FR-V3) ----
-  await page.getByTestId('apply-layout').click();
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
-  const second = await objectTransforms(page);
-  expect(second).toEqual(first); // byte-identical transforms
+  let first: Record<string, string> | undefined;
+  for (let run = 0; run < 2; run++) {
+    await page.getByTestId('app-menu').click();
+    await openAppGroup(page, 'menu-group-layout');
+    await page.getByTestId('menu-reset-diagram-layout').click();
+    await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
+      timeout: 5000,
+    });
+    const transforms = await objectTransforms(page);
+    expect(new Set(Object.values(transforms)).size).toBe(3);
+    if (run === 0) first = transforms;
+    else expect(transforms).toEqual(first);
+  }
+  await expect(page.locator('.cm-content')).toContainText('position ');
 });
 
 test('S5: quick search Ctrl+P — jump within file and across files (FR-W6)', async ({ page }) => {
   await page.goto('/');
   const canvas = page.getByTestId('canvas');
-  await seedDoc(page, DOC);
+  await seedDoc(page, `${DOC}hide tag core\n`);
 
   // ---- in-file object jump ---------------------------------------------------
   await page.keyboard.press('Control+p');
@@ -163,14 +135,13 @@ test('S5: quick search Ctrl+P — jump within file and across files (FR-W6)', as
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('search-overlay')).toHaveCount(0);
 
-  // vision round 3 input: light (filtered viewbar) + dark (search overlay)
+  // vision round 3 input: light (filtered diagram) + dark (search overlay)
   await page.keyboard.press('Control+p');
   await expect(page.getByTestId('search-overlay')).toBeVisible();
   await capture(page, 'm6-s5-search');
   await page.keyboard.press('Escape');
   // back to the tagged file for the filter screenshots
   await page.getByTestId('tab-untitled.pcd').click();
-  await page.getByTestId('tag-chip-core').click();
   await expect(canvas.locator('g.pc-faded').first()).toBeVisible();
   await capture(page, 'm6-s5-light');
   await page.emulateMedia({ colorScheme: 'dark' });

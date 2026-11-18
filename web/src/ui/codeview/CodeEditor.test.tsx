@@ -114,7 +114,6 @@ describe('CodeEditor', () => {
         objects: [{ kind: 'person', id: 'p1', name: 'Pat', pos: { line: 0, col: 0 } }],
         links: [],
         flows: [],
-        views: [],
         styles: [],
       });
     });

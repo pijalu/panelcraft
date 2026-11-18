@@ -8,16 +8,9 @@ const SOURCE = `pcd 1.0
 person ada "Ada"
 system web "Web"
 ada -> web : "calls"
-view "Default" {
-  layout saved
-  position ada (1000, 1000)
-  position web (1000, 1000)
-}
-view "Detail" {
-  layout saved
-  position ada (40, 60)
-  position web (280, 60)
-}
+layout saved
+position ada (40, 60)
+position web (280, 60)
 `;
 
 afterEach(() => {
@@ -26,8 +19,8 @@ afterEach(() => {
 });
 
 describe('CLI browser renderer (SPEC S6/FR-X)', () => {
-  it('renders canonical SVG at the requested width and selected view', () => {
-    const result = renderDiagram(SOURCE, { width: 800, theme: 'light', view: 'Detail' });
+  it('renders canonical SVG at the requested width using top-level layout positions', () => {
+    const result = renderDiagram(SOURCE, { width: 800, theme: 'light' });
     expect(result.width).toBe(800);
     expect(result.height).toBe(450);
     expect(result.svg).toContain('width="800"');
@@ -39,7 +32,7 @@ describe('CLI browser renderer (SPEC S6/FR-X)', () => {
     expect(result.svg).not.toContain('<script');
   });
 
-  it('lays out position-free C4 views before fitting the canvas', () => {
+  it('lays out position-free files before fitting the canvas', () => {
     const { svg } = renderDiagram(
       'pcd 1.0\nperson user\ngroup shop {\n  contains api\n}\ncontainer api\nuser -> api : "places order"\n',
       { width: 800, theme: 'dark' },
@@ -66,30 +59,27 @@ describe('CLI browser renderer (SPEC S6/FR-X)', () => {
       } as CSSStyleDeclaration;
     });
     document.documentElement.dataset.theme = 'dark';
-    const light = renderDiagram(SOURCE, { width: 800, theme: 'light', view: 'Detail' });
+    const light = renderDiagram(SOURCE, { width: 800, theme: 'light' });
     expect(light.svg).toContain('--pc-bg:#ffffff');
     expect(light.svg).not.toContain('--pc-bg:#14161a');
 
     document.documentElement.dataset.theme = 'light';
-    const dark = renderDiagram(SOURCE, { width: 800, theme: 'dark', view: 'Detail' });
+    const dark = renderDiagram(SOURCE, { width: 800, theme: 'dark' });
     expect(dark.svg).toContain('--pc-bg:#14161a');
-    // Go captures PNG after this function returns and restores the app root.
-    // The live SVG must retain the explicit CLI palette for that screenshot.
     expect(document.querySelector('[data-cli-render-root] svg')?.getAttribute('style'))
       .toContain('--pc-bg:#14161a');
     expect(document.documentElement.dataset.theme).toBe('light');
   });
 
-  it('rejects an unknown view instead of silently rendering another one', () => {
-    expect(() => renderDiagram(SOURCE, { width: 800, theme: 'dark', view: 'Missing' })).toThrow(
-      'view "Missing" not found',
-    );
+  it('rejects a legacy named view instead of silently rendering another layout', () => {
+    expect(() => renderDiagram('pcd 1.0\nview "Old" {\n layout saved\n}\n', {
+      width: 800, theme: 'dark',
+    })).toThrow(/E117/);
   });
 
   it('reports parser diagnostics and never returns partial SVG', () => {
     expect(() => renderDiagram('pcd 1.0\nperson broken "B" {\n', {
-      width: 800,
-      theme: 'light',
+      width: 800, theme: 'light',
     })).toThrow(/E104/);
   });
 });

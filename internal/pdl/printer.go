@@ -19,6 +19,18 @@ const indent = "  "
 
 func pad(depth int) string { return strings.Repeat(indent, depth) }
 
+// indentText indents a recursively printed child document without flattening
+// its blank lines.
+func indentText(text string, depth int) string {
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		if line != "" {
+			lines[i] = pad(depth) + line
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
 // Quote renders a PDL string literal (escapes `\` and `"` only, §1).
 func Quote(s string) string {
 	s = strings.ReplaceAll(s, "\\", "\\\\")
@@ -131,12 +143,34 @@ func arrowFor(typ string, bidir bool) string {
 	return s + ">"
 }
 
-// withDelay appends the optional per-step dwell (F-18).
+// withDelay appends the optional per-step dwell and advance trigger.
 func withDelay(line string, s ir.Step) string {
-	if s.DelayMs == nil {
-		return line
+	if s.DelayMs != nil {
+		line += " delay " + jsNum(*s.DelayMs)
 	}
-	return line + " delay " + jsNum(*s.DelayMs)
+	if s.Advance != nil {
+		line += " advance " + *s.Advance
+	}
+	return line
+}
+
+// stepTail is the leading space plus the trailing modifiers, so they can follow
+// a block's closing brace on the same line.
+func stepTail(s ir.Step) string { return withDelay("", s) }
+
+// printProse writes step prose as one `text …` line per authored line when it
+// holds a newline, and as the compact quoted form otherwise, so a single-line
+// document keeps its canonical bytes.
+func printProse(p *printer, depth int, head, text, tail string) {
+	if !strings.Contains(text, "\n") {
+		p.add(pad(depth) + head + " " + Quote(text) + tail)
+		return
+	}
+	p.add(pad(depth) + head + " {")
+	for _, line := range strings.Split(text, "\n") {
+		p.add(pad(depth+1) + "text " + Quote(line))
+	}
+	p.add(pad(depth) + "}" + tail)
 }
 
 func stepText(s ir.Step, depth int, p *printer) {
@@ -163,13 +197,14 @@ func stepText(s ir.Step, depth int, p *printer) {
 func stepBody(s ir.Step, depth int, p *printer) {
 	switch s.Type {
 	case "intro", "info", "conclusion":
-		p.add(withDelay(pad(depth)+s.Type+" "+Quote(deref(s.Text)), s))
+		printProse(p, depth, s.Type, deref(s.Text), stepTail(s))
 	case "process":
-		body := "process " + s.Target
-		if s.Text != nil {
-			body += " " + Quote(*s.Text)
+		head := "process " + s.Target
+		if s.Text == nil {
+			p.add(withDelay(pad(depth)+head, s))
+		} else {
+			printProse(p, depth, head, *s.Text, stepTail(s))
 		}
-		p.add(withDelay(pad(depth)+body, s))
 	case "msg":
 		line := s.From + " -> " + s.To
 		if s.Label != nil {
@@ -273,15 +308,20 @@ func objectAttrLines(o ir.Obj, p *printer) {
 	hierarchyLines(o, p)
 }
 
-// hierarchyLines prints the IR v10 decomposition and source lines (§3.2, §3.3):
-// `drilldown` first, then the nested `source` block.
+// hierarchyLines prints the IR v11 decomposition and source lines (§3.2, §3.3):
+// `drilldown` first, then the nested `source` block. No named view (ADR 0007).
 func hierarchyLines(o ir.Obj, p *printer) {
 	if o.Drilldown != nil {
-		line := indent + "drilldown " + Quote(o.Drilldown.Path)
-		if o.Drilldown.View != "" {
-			line += " view " + o.Drilldown.View
+		if o.Drilldown.Kind == "linked" {
+			p.add(indent + "drilldown " + Quote(o.Drilldown.Path))
+		} else {
+			p.add(indent + "drilldown embedded " + Quote(o.Drilldown.Path) + " {")
+			child := strings.TrimSuffix(PrintDoc(o.Drilldown.Doc), "\n")
+			for _, line := range strings.Split(indentText(child, 2), "\n") {
+				p.add(line)
+			}
+			p.add(indent + "}")
 		}
-		p.add(line)
 	}
 	if o.Source == nil {
 		return
@@ -384,6 +424,16 @@ func printFlow(f ir.Flow, p *printer) {
 	if f.Description != nil {
 		p.add(indent + "description " + Quote(*f.Description))
 	}
+	if len(f.DescriptionLines) > 0 {
+		p.add(indent + "description {")
+		for _, line := range f.DescriptionLines {
+			p.add(indent + indent + "text " + Quote(line))
+		}
+		p.add(indent + "}")
+	}
+	if f.Presentation {
+		p.add(indent + "presentation")
+	}
 	for _, s := range f.Steps {
 		stepText(s, 1, p)
 	}
@@ -417,7 +467,17 @@ func derefF(v *float64) float64 {
 func presentationLines(s ir.Step, depth int, p *printer) {
 	prefix := pad(depth)
 	if s.Description != nil {
-		p.add(prefix + "description " + Quote(*s.Description))
+		// The description owns the presenter's Markdown, so it uses the same
+		// block form as step prose once it holds more than one line.
+		if strings.Contains(*s.Description, "\n") {
+			p.add(prefix + "description {")
+			for _, line := range strings.Split(*s.Description, "\n") {
+				p.add(prefix + "  text " + Quote(line))
+			}
+			p.add(prefix + "}")
+		} else {
+			p.add(prefix + "description " + Quote(*s.Description))
+		}
 	}
 	if s.Camera == nil {
 		return
@@ -428,37 +488,28 @@ func presentationLines(s ir.Step, depth int, p *printer) {
 	}
 }
 
-func printViewLine(l ir.ViewLine, p *printer) {
-	p.comment(l.Comments, 1)
-	switch l.Type {
-	case "layout":
-		if l.Mode == "saved" {
-			p.add(indent + "layout saved")
+// printLayout prints the single top-level layout block (ADR 0007).
+func printLayout(l *ir.LayoutState, p *printer) {
+	p.comment(l.Comments, 0)
+	if l.Directive != nil {
+		if l.Directive.Mode == "saved" {
+			p.add("layout saved")
 		} else {
-			p.add(indent + "layout auto " + l.Dir)
+			p.add("layout auto " + l.Directive.Dir)
 		}
-	case "hideTag":
-		p.add(indent + "hide tag " + l.ID)
-	case "hide":
-		p.add(indent + "hide " + l.ID)
-	case "position":
-		p.add(indent + "position " + l.ID + " (" + jsNum(*l.X) + ", " + jsNum(*l.Y) + ")")
-	case "pin":
-		p.add(indent + "pin " + l.ID)
 	}
-}
-
-func printView(v ir.View, p *printer) {
-	p.comment(v.Comments, 0)
-	head := "view " + Quote(v.Name)
-	if v.ID != "" {
-		head += " as " + v.ID
+	for _, pos := range l.Positions {
+		p.add("position " + pos.ID + " (" + jsNum(pos.X) + ", " + jsNum(pos.Y) + ")")
 	}
-	p.add(head + " {")
-	for _, l := range v.Lines {
-		printViewLine(l, p)
+	for _, id := range l.Pins {
+		p.add("pin " + id)
 	}
-	p.add("}")
+	for _, id := range l.Hidden {
+		p.add("hide " + id)
+	}
+	for _, tag := range l.HiddenTags {
+		p.add("hide tag " + tag)
+	}
 }
 
 func printStyleStmt(st ir.StyleStmt, p *printer) {
@@ -519,7 +570,10 @@ func PrintDoc(doc *ir.Doc) string {
 	printSection(p, doc.Objects, printObject)
 	printSection(p, doc.Links, printLink)
 	printSection(p, doc.Flows, printFlow)
-	printSection(p, doc.Views, printView)
+	if doc.Layout != nil {
+		p.blank()
+		printLayout(doc.Layout, p)
+	}
 	printSection(p, doc.Styles, printStyleStmt)
 	return p.text()
 }

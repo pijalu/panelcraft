@@ -5,7 +5,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
-import { openWorkspacePanels } from './lib/panels';
+import { openAppGroup, openWorkspacePanels } from './lib/panels';
 
 const DOC = `pcd 1.0
 
@@ -98,35 +98,27 @@ test('F-14: opening and switching files never re-positions', async ({ page }) =>
   expect(await transforms(page)).toEqual(before);
 });
 
-test('Views preserve drawing geometry when created and switched', async ({ page }) => {
+test('Top-level layout positions survive a reload without a view session', async ({ page }) => {
   await page.goto('/');
-  await seedDoc(page, `${DOC}view "Default" {\n  layout saved\n  position a (40, 40)\n  position b (260, 40)\n  position c (480, 40)\n}\n`);
+  await seedDoc(page, `${DOC}layout saved\nposition a (40, 40)\nposition b (260, 40)\nposition c (480, 40)\n`);
   const canvas = page.getByTestId('canvas');
   await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
+  await expect(canvas.locator('g.pc-link')).toHaveCount(2);
   const before = await transforms(page);
-
-  await page.getByTestId('view-add').click();
-  await expect(page.getByTestId('view-select')).toHaveValue('View 1');
-  expect(await transforms(page)).toEqual(before);
+  await page.reload();
   await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
-  await expect(canvas.locator('g.pc-link')).toHaveCount(2);
-
-  await page.getByTestId('view-select').selectOption('');
-  await page.getByTestId('view-select').selectOption('View 1');
   expect(await transforms(page)).toEqual(before);
-  await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
-  await expect(canvas.locator('g.pc-link')).toHaveCount(2);
   await expect(page.locator('.cm-content')).toContainText('position a (40, 40)');
 
   for (const theme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: theme });
-    await capture(page, `views-non-destructive-${theme}`);
+    await capture(page, `layout-persistence-${theme}`);
     const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
     expect(result.violations).toEqual([]);
   }
 });
 
-test('F-14: Auto-layout reorganises, undo restores, reset clears positions', async ({ page }) => {
+test('Reset diagram layout reorganises, undo restores and stays one command', async ({ page }) => {
   await page.goto('/');
   await seedDoc(page, DOC);
   const canvas = page.getByTestId('canvas');
@@ -134,26 +126,20 @@ test('F-14: Auto-layout reorganises, undo restores, reset clears positions', asy
   await expect(page.locator('.cm-content')).toContainText('position a (');
   const dragged = await transforms(page);
 
-  await page.getByTestId('apply-layout').click();
+  await page.getByTestId('app-menu').click();
+  await openAppGroup(page, 'menu-group-layout');
+  await page.getByTestId('menu-reset-diagram-layout').click();
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
   });
   const laidOut = await transforms(page);
-  expect(laidOut).not.toEqual(dragged); // Auto-layout really reorganised
+  expect(laidOut).not.toEqual(dragged);
   await expect(page.locator('.cm-content')).toContainText('position');
 
-  // undo restores the dragged geometry (and the commit writes it back)
-  await page.mouse.click(5, 300); // focus the canvas, not an editor field
+  await page.mouse.click(5, 300);
   await page.keyboard.press('Control+z');
-  await expect(page.getByTestId('canvas')).toBeVisible();
   await expect
     .poll(async () => transforms(page), { timeout: 5000 })
     .toEqual(dragged);
-
-  // reset forgets the view's stored positions but keeps the diagram intact
-  await page.getByTestId('reset-layout').click();
   await expect(canvas.locator('g.pc-obj')).toHaveCount(3);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
 });

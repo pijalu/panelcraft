@@ -12,7 +12,7 @@ import (
 )
 
 // IRVersion is the schema version (bump on any change; forward-only).
-const IRVersion = 10
+const IRVersion = 13
 
 // Pos is a 1-based source position (line, col).
 type Pos struct {
@@ -77,12 +77,13 @@ type ObjSize struct {
 	H float64 `json:"h"`
 }
 
-// Drilldown is a C4 decomposition relation (IR v10, FILE-FORMAT §3.2):
-// `drilldown "<path>" [view <id>]` on the parent object only. View is optional
-// and names a view *id* inside the target file.
+// Drilldown is a discriminated C4 decomposition relation (IR v12,
+// FILE-FORMAT §3.2). Kind is `linked` for a workspace path or `embedded` for
+// a logical path plus its recursive Doc; Doc is present only in the latter.
 type Drilldown struct {
+	Kind string `json:"kind"`
 	Path string `json:"path"`
-	View string `json:"view,omitempty"`
+	Doc  *Doc   `json:"doc,omitempty"`
 }
 
 // SourceBlock is embedded source text (IR v10, FILE-FORMAT §3.3): `language`
@@ -95,24 +96,24 @@ type SourceBlock struct {
 
 // Obj is an object statement (§3).
 type Obj struct {
-	Kind        string      `json:"kind"`
-	ID          string      `json:"id"`
-	Name        *string     `json:"name,omitempty"`
-	Description *string     `json:"description,omitempty"`
-	Technology  *string     `json:"technology,omitempty"`
-	Tags        []string    `json:"tags,omitempty"`
-	Properties  []Property  `json:"properties,omitempty"`
-	Contains    []string    `json:"contains,omitempty"`
-	Attach      string      `json:"attach,omitempty"`
-	Icon        string      `json:"icon,omitempty"`
-	Size        *ObjSize    `json:"size,omitempty"`
-	Z           *float64    `json:"z,omitempty"`
-	Drilldown   *Drilldown  `json:"drilldown,omitempty"`
+	Kind        string       `json:"kind"`
+	ID          string       `json:"id"`
+	Name        *string      `json:"name,omitempty"`
+	Description *string      `json:"description,omitempty"`
+	Technology  *string      `json:"technology,omitempty"`
+	Tags        []string     `json:"tags,omitempty"`
+	Properties  []Property   `json:"properties,omitempty"`
+	Contains    []string     `json:"contains,omitempty"`
+	Attach      string       `json:"attach,omitempty"`
+	Icon        string       `json:"icon,omitempty"`
+	Size        *ObjSize     `json:"size,omitempty"`
+	Z           *float64     `json:"z,omitempty"`
+	Drilldown   *Drilldown   `json:"drilldown,omitempty"`
 	Source      *SourceBlock `json:"source,omitempty"`
-	Style       *StyleBlock `json:"style,omitempty"`
-	Attributes  []RawAttr   `json:"attributes,omitempty"`
-	Comments    []string    `json:"comments,omitempty"`
-	Pos         Pos         `json:"pos"`
+	Style       *StyleBlock  `json:"style,omitempty"`
+	Attributes  []RawAttr    `json:"attributes,omitempty"`
+	Comments    []string     `json:"comments,omitempty"`
+	Pos         Pos          `json:"pos"`
 }
 
 // Link is a link statement (§4); endpoints normalized to from -> to.
@@ -172,6 +173,8 @@ type Step struct {
 	Ret      string   `json:"ret,omitempty"`      // goto: "here" only
 	// DelayMs overrides the beat dwell (F-18)
 	DelayMs *float64 `json:"delayMs,omitempty"`
+	// Advance chooses click-driven cycling over end-driven auto-advance.
+	Advance *string `json:"advance,omitempty"`
 	// Description is one line of prose for this step (UX08-WP11).
 	Description *string  `json:"description,omitempty"`
 	Camera      *Camera  `json:"camera,omitempty"`
@@ -181,33 +184,41 @@ type Step struct {
 
 // Flow is a flow statement (§6).
 type Flow struct {
-	ID          string   `json:"id,omitempty"`
-	Title       *string  `json:"title,omitempty"`
-	Description *string  `json:"description,omitempty"`
-	Steps       []Step   `json:"steps,omitempty"`
-	Comments    []string `json:"comments,omitempty"`
-	Pos         Pos      `json:"pos"`
+	ID          string  `json:"id,omitempty"`
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
+	// DescriptionLines is the multiline form; one entry per authored source line.
+	DescriptionLines []string `json:"descriptionLines,omitempty"`
+	// Presentation shows the flow notes in the non-modal presentation aside.
+	Presentation bool     `json:"presentation,omitempty"`
+	Steps        []Step   `json:"steps,omitempty"`
+	Comments     []string `json:"comments,omitempty"`
+	Pos          Pos      `json:"pos"`
 }
 
-// ViewLine is one view body line (§7.1); tagged union like Step.
-type ViewLine struct {
-	Type     string   `json:"type"`
-	Mode     string   `json:"mode,omitempty"` // layout
-	Dir      string   `json:"dir,omitempty"`  // layout auto
-	ID       string   `json:"id,omitempty"`
-	X        *float64 `json:"x,omitempty"` // position
-	Y        *float64 `json:"y,omitempty"` // position
-	Comments []string `json:"comments,omitempty"`
-	Pos      Pos      `json:"pos"`
+// LayoutDirective is the explicit `layout auto <dir>` / `layout saved` line.
+type LayoutDirective struct {
+	Mode string `json:"mode"`
+	Dir  string `json:"dir,omitempty"`
 }
 
-// View is a view statement (§7.1).
-type View struct {
-	ID       string     `json:"id,omitempty"`
-	Name     string     `json:"name"`
-	Lines    []ViewLine `json:"lines,omitempty"`
-	Comments []string   `json:"comments,omitempty"`
-	Pos      Pos        `json:"pos"`
+// LayoutPos is one `position <id> (<x>, <y>)` line.
+type LayoutPos struct {
+	ID string  `json:"id"`
+	X  float64 `json:"x"`
+	Y  float64 `json:"y"`
+}
+
+// LayoutState is the single top-level diagram layout state (ADR 0007, IR v11).
+// Absent means implicit auto layout with the document direction.
+type LayoutState struct {
+	Directive  *LayoutDirective `json:"directive,omitempty"`
+	Positions  []LayoutPos      `json:"positions,omitempty"`
+	Pins       []string         `json:"pins,omitempty"`
+	Hidden     []string         `json:"hidden,omitempty"`
+	HiddenTags []string         `json:"hiddenTags,omitempty"`
+	Comments   []string         `json:"comments,omitempty"`
+	Pos        Pos              `json:"pos"`
 }
 
 // StyleStmt is a top-level style override statement (§7.3).
@@ -238,7 +249,7 @@ type Doc struct {
 	Objects       []Obj        `json:"objects,omitempty"`
 	Links         []Link       `json:"links,omitempty"`
 	Flows         []Flow       `json:"flows,omitempty"`
-	Views         []View       `json:"views,omitempty"`
+	Layout        *LayoutState `json:"layout,omitempty"`
 	Styles        []StyleStmt  `json:"styles,omitempty"`
 }
 

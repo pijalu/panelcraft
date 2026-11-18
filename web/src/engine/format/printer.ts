@@ -11,6 +11,10 @@ import type {
 const INDENT = '  ';
 const pad = (depth: number): string => INDENT.repeat(depth);
 
+/** Indent a recursively printed child document without flattening blank lines. */
+const indentText = (text: string, depth: number): string =>
+  text.replace(/^(?!$)/gm, pad(depth));
+
 /** Quote a string literal with PDL escapes (`\` and `"` only, §1). */
 export function quote(s: string): string {
   return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -70,19 +74,50 @@ const arrowFor = (l: Pick<Link, 'type' | 'bidir'>): string =>
 
 type StepPrinter = (s: FlowStep, depth: number, p: Printer) => void;
 
-/** Append the optional per-step dwell (F-18). */
-const withDelay = (line: string, step: { delayMs?: number }): string =>
-  step.delayMs === undefined ? line : `${line} delay ${jsNum(step.delayMs)}`;
+/** Append the optional per-step dwell and advance trigger. */
+const withDelay = (line: string, step: { delayMs?: number; advance?: 'click' | 'end' }): string => {
+  const withMs = step.delayMs === undefined ? line : `${line} delay ${jsNum(step.delayMs)}`;
+  return step.advance === undefined ? withMs : `${withMs} advance ${step.advance}`;
+};
+
+/**
+ * Step prose is printed as one `text "…"` line per authored line when it holds a
+ * newline, and as the compact quoted form otherwise, so a single-line document
+ * keeps its canonical bytes. The block hangs off `head` exactly where the quoted
+ * string would have been, and `tail` (delay, advance) follows the closing brace.
+ */
+const printProse = (
+  p: Printer,
+  depth: number,
+  head: string,
+  text: string,
+  tail: string,
+): void => {
+  if (!text.includes('\n')) {
+    p.add(`${pad(depth)}${head} ${quote(text)}${tail}`);
+    return;
+  }
+  p.add(`${pad(depth)}${head} {`);
+  for (const line of text.split('\n')) p.add(`${pad(depth + 1)}text ${quote(line)}`);
+  p.add(`${pad(depth)}}${tail}`);
+};
+
+/** The trailing modifiers of a step, printed after its body. */
+const stepTail = (step: { delayMs?: number; advance?: 'click' | 'end' }): string =>
+  withDelay('', step);
 
 const printSimpleStep: StepPrinter = (s, depth, p) => {
   const t = s as { type: string; text: string };
-  p.add(withDelay(`${pad(depth)}${t.type} ${quote(t.text)}`, s));
+  printProse(p, depth, t.type, t.text, stepTail(s));
 };
 
 const printProcessStep: StepPrinter = (s, depth, p) => {
   const pr = s as { target: string; text?: string };
-  const body = pr.text === undefined ? `process ${pr.target}` : `process ${pr.target} ${quote(pr.text)}`;
-  p.add(withDelay(pad(depth) + body, s));
+  if (pr.text === undefined) {
+    p.add(withDelay(`${pad(depth)}process ${pr.target}`, s));
+    return;
+  }
+  printProse(p, depth, `process ${pr.target}`, pr.text, stepTail(s));
 };
 
 const printMsgStep: StepPrinter = (s, depth, p) => {
@@ -166,7 +201,17 @@ const cameraText = (camera: NonNullable<FlowStep['camera']>): string => {
 /** Canonical order: description, camera, camera duration. */
 const presentationLines = (s: FlowStep, depth: number, p: Printer): void => {
   const prefix = pad(depth);
-  if (s.description !== undefined) p.add(`${prefix}description ${quote(s.description)}`);
+  if (s.description !== undefined) {
+    // The description owns the presenter's Markdown, so it uses the same block
+    // form as step prose once it holds more than one line.
+    if (s.description.includes('\n')) {
+      p.add(`${prefix}description {`);
+      for (const line of s.description.split('\n')) p.add(`${prefix}${INDENT}text ${quote(line)}`);
+      p.add(`${prefix}}`);
+    } else {
+      p.add(`${prefix}description ${quote(s.description)}`);
+    }
+  }
   if (s.camera === undefined) return;
   p.add(prefix + cameraText(s.camera));
   if (s.camera.durationMs !== undefined) {
@@ -193,14 +238,20 @@ const objectAttrLines = (o: Obj, p: Printer): void => {
 };
 
 /**
- * IR v10 hierarchy lines (FILE-FORMAT §3.2/§3.3): decomposition first, then the
+ * IR v11 hierarchy lines (FILE-FORMAT §3.2/§3.3): decomposition first, then the
  * source block. `source` needs the nested block, so it is printed here rather than
- * in a flat `objectAttrLines` chain.
+ * in a flat `objectAttrLines` chain. A decomposition carries no named view (ADR 0007).
  */
 const hierarchyLines = (o: Obj, p: Printer): void => {
   if (o.drilldown !== undefined) {
-    const view = o.drilldown.view === undefined ? '' : ` view ${o.drilldown.view}`;
-    p.add(`${INDENT}drilldown ${quote(o.drilldown.path)}${view}`);
+    if (o.drilldown.kind === 'linked') {
+      p.add(`${INDENT}drilldown ${quote(o.drilldown.path)}`);
+    } else {
+      p.add(`${INDENT}drilldown embedded ${quote(o.drilldown.path)} {`);
+      const child = printDoc(o.drilldown.doc).replace(/\n$/, '');
+      for (const line of indentText(child, 2).split('\n')) p.add(line);
+      p.add(`${INDENT}}`);
+    }
   }
   if (o.source === undefined) return;
   p.add(`${INDENT}source {`);
@@ -293,38 +344,30 @@ const printFlow = (f: Doc['flows'][number], p: Printer): void => {
   if (f.id !== undefined) head += ` as ${f.id}`;
   p.add(head + ' {');
   if (f.description !== undefined) p.add(`${INDENT}description ${quote(f.description)}`);
+  if (f.descriptionLines !== undefined) {
+    p.add(`${INDENT}description {`);
+    for (const line of f.descriptionLines) p.add(`${INDENT}${INDENT}text ${quote(line)}`);
+    p.add(`${INDENT}}`);
+  }
+  if (f.presentation === true) p.add(`${INDENT}presentation`);
   for (const s of f.steps) stepText(s, 1, p);
   p.add('}');
 };
 
-const printViewLine = (l: Doc['views'][number]['lines'][number], p: Printer): void => {
-  p.comment(l.comments, 1);
-  switch (l.type) {
-    case 'layout':
-      p.add(l.mode === 'saved' ? `${INDENT}layout saved` : `${INDENT}layout auto ${l.dir}`);
-      return;
-    case 'hideTag':
-      p.add(`${INDENT}hide tag ${l.id}`);
-      return;
-    case 'hide':
-      p.add(`${INDENT}hide ${l.id}`);
-      return;
-    case 'position':
-      p.add(`${INDENT}position ${l.id} (${l.x}, ${l.y})`);
-      return;
-    case 'pin':
-      p.add(`${INDENT}pin ${l.id}`);
-      return;
+/**
+ * Top-level layout statements (ADR 0007): the single diagram's retained layout
+ * state. Printed in canonical order directive → positions → pins → hides so
+ * print∘parse∘print is stable regardless of source order.
+ */
+const printLayout = (l: NonNullable<Doc['layout']>, p: Printer): void => {
+  p.comment(l.comments, 0);
+  if (l.directive !== undefined) {
+    p.add(l.directive.mode === 'saved' ? 'layout saved' : `layout auto ${l.directive.dir}`);
   }
-};
-
-const printView = (v: Doc['views'][number], p: Printer): void => {
-  p.comment(v.comments, 0);
-  let head = `view ${quote(v.name)}`;
-  if (v.id !== undefined) head += ` as ${v.id}`;
-  p.add(head + ' {');
-  for (const l of v.lines) printViewLine(l, p);
-  p.add('}');
+  for (const pos of l.positions) p.add(`position ${pos.id} (${pos.x}, ${pos.y})`);
+  for (const id of l.pins) p.add(`pin ${id}`);
+  for (const id of l.hidden) p.add(`hide ${id}`);
+  for (const tag of l.hiddenTags) p.add(`hide tag ${tag}`);
 };
 
 const printStyleStmt = (st: StyleStmt, p: Printer): void => {
@@ -378,7 +421,10 @@ export function printDoc(doc: Doc): string {
   printSection(p, doc.objects, printObject);
   printSection(p, doc.links, printLink);
   printSection(p, doc.flows, printFlow);
-  printSection(p, doc.views, printView);
+  if (doc.layout !== undefined) {
+    p.blank();
+    printLayout(doc.layout, p);
+  }
   printSection(p, doc.styles, printStyleStmt);
   return p.text();
 }
