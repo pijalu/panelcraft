@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Template gallery prompt (F-25): the gallery is a question asked once per file.
+// Template gallery prompt: the gallery is a question asked once per file.
 //
 // An empty canvas alone cannot answer it. A brand-new file already holds the
 // canvas projection of a blank document (`pcd 1.0`), so "the file stores text"

@@ -355,7 +355,7 @@ describe('code view sync + close guard (M4-WP3/4/5)', () => {
   });
 });
 
-describe('blank diagram creation (F-25)', () => {
+describe('blank diagram creation (the gallery asks once per file)', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
   });
