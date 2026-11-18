@@ -3,7 +3,7 @@
 // clamping and cleanup, now expressed on the shared beat timeline.
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { FlowAnimator, type BeatCtx } from './engine';
+import { FlowAnimator, MAX_SPARK_SAMPLES, sparkRoute, type BeatCtx, type PathGeometry } from './engine';
 import type { AnimHandle, AnimOpts, AnimPlayer, Keyframe } from './ports';
 import { beatTimeline, clampCount, clampSpeed } from './timeline';
 import { MOTION } from './timings';
@@ -157,5 +157,65 @@ describe('FLOW-02 connector sparks on one beat timeline', () => {
     anim.stop();
     expect(moving(svg)).toHaveLength(0);
     expect(svg.querySelector('.pc-anim-layer')).toBeNull();
+  });
+});
+
+describe('spark follows the drawn connector', () => {
+  // A curved route: a spark interpolating only between the endpoints would cut
+  // the corner and leave the drawn line at mid-travel.
+  const ARC_LEN = 400;
+  const arcGeometry: PathGeometry = {
+    length: () => ARC_LEN,
+    pointAt: (_path: Element, dist: number) => ({
+      x: dist,
+      y: -Math.sin((Math.PI * dist) / ARC_LEN) * 100,
+    }),
+  };
+
+  const play = (link: BeatLink): Call[] => {
+    const svg = mkSvg();
+    const fx = mkPlayer();
+    const anim = new FlowAnimator(svg, { player: fx.player, geometry: arcGeometry });
+    anim.play(beatOf(link), ctx);
+    return roleCalls(fx.calls, 'spark');
+  };
+
+  // The keyframe transform carries raw numbers, which can print in exponent
+  // form for values a hair off zero — parse the field, do not pattern-match it.
+  const positions = (call: Call): { x: number; y: number }[] =>
+    call.kf.map((kf) => {
+      const m = /translate\((\S+?)px, (\S+?)px\)/.exec(String(kf.transform));
+      return { x: Number(m?.[1] ?? NaN), y: Number(m?.[2] ?? NaN) };
+    });
+
+  const bulgeAt = (x: number): number => -Math.sin((Math.PI * x) / ARC_LEN) * 100;
+
+  it('emits keyframes sampled along the route, not only at the endpoints', () => {
+    const [call] = play(linkOf());
+    expect(call).toBeDefined();
+    const points = positions(call!);
+    // Every position sits on the drawn route, including the ones between ends.
+    for (const p of points) expect(p.y).toBeCloseTo(bulgeAt(p.x), 3);
+    // A curve whose midpoint is 100 units off the straight line needs samples.
+    expect(points.filter((p) => Math.abs(p.y) > 1).length).toBeGreaterThan(1);
+  });
+
+  it('travels in path order forward and in reverse for a flipped step', () => {
+    const forward = positions(play(linkOf())[0]!).map((p) => p.x);
+    const reversed = positions(play(linkOf({ flipped: true, from: 'b', to: 'a' }))[0]!).map((p) => p.x);
+    expect(forward[0]).toBeCloseTo(0);
+    expect(forward.at(-1)).toBeCloseTo(ARC_LEN);
+    expect(reversed[0]).toBeCloseTo(ARC_LEN);
+    expect(reversed.at(-1)).toBeCloseTo(0);
+    const ascending = forward.filter((x, i) => i > 0 && x > forward[i - 1]! - 0.001).length;
+    expect(ascending).toBeGreaterThan(forward.length / 2);
+    const descending = reversed.filter((x, i) => i > 0 && x < reversed[i - 1]! + 0.001).length;
+    expect(descending).toBeGreaterThan(reversed.length / 2);
+  });
+
+  it('caps the sample count so a long route cannot flood the keyframe list', () => {
+    expect(sparkRoute(0, 100_000).length).toBeLessThanOrEqual(MAX_SPARK_SAMPLES + 1);
+    // A degenerate (zero-length) leg still yields its two endpoints.
+    expect(sparkRoute(20, 20)).toEqual([20, 20]);
   });
 });

@@ -45,6 +45,25 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const TOKEN_R = 6;
 const TRAIL_FRAC = 0.18;
 
+/** Spark spacing along the route, in world units. Short spans still get one
+ * interior sample; long ones get no more than the cap below. */
+const SAMPLE_STEP = 24;
+/** Keyframes per travel leg are bounded: a long route must not flood the list. */
+export const MAX_SPARK_SAMPLES = 64;
+
+/** Distances to visit along a connector when travelling from `fromDist` to
+ * `toDist`, in travel order (reversed travel yields a descending list). The
+ * endpoints are always included, so a degenerate leg returns both ends. Pure:
+ * the animator turns these into keyframes, the geometry port places them. */
+export function sparkRoute(fromDist: number, toDist: number): number[] {
+  const delta = toDist - fromDist;
+  const span = Math.abs(delta);
+  const steps = Math.min(MAX_SPARK_SAMPLES, Math.max(1, Math.ceil(span / SAMPLE_STEP)));
+  const out: number[] = [];
+  for (let i = 0; i <= steps; i++) out.push(fromDist + (delta * i) / steps);
+  return out;
+}
+
 const mkEl = (tag: string, cls: string): SVGGElement => {
   const e = document.createElementNS(SVG_NS, tag) as unknown as SVGGElement;
   e.setAttribute('class', cls);
@@ -437,8 +456,10 @@ export class FlowAnimator {
     const gap = Math.min(1, duration * 0.02);
     const kf: Keyframe[] = [];
     for (const pass of spark.passes) {
-      const fromPoint = this.geometry.pointAt(pathEl, geometry[pass.travel.from === 'from' ? 'fromDist' : 'toDist']);
-      const toPoint = this.geometry.pointAt(pathEl, geometry[pass.travel.to === 'from' ? 'fromDist' : 'toDist']);
+      const fromDist = geometry[pass.travel.from === 'from' ? 'fromDist' : 'toDist'];
+      const toDist = geometry[pass.travel.to === 'from' ? 'fromDist' : 'toDist'];
+      const fromPoint = this.geometry.pointAt(pathEl, fromDist);
+      const toPoint = this.geometry.pointAt(pathEl, toDist);
       const frame = (at: number, p: { x: number; y: number }, opacity: number): Keyframe => ({
         offset: Math.min(1, Math.max(0, (at - spark.start) / duration)),
         transform: `translate(${p.x}px, ${p.y}px)`,
@@ -446,6 +467,15 @@ export class FlowAnimator {
       });
       kf.push(frame(pass.source.start, fromPoint, 0));
       kf.push(frame(pass.source.peak, fromPoint, 1));
+      // Follow the drawn connector instead of cutting across it: sample the
+      // route between the resolved ends and place each sample at the moment the
+      // spark reaches it. The endpoints are already keyframes above and below.
+      const route = sparkRoute(fromDist, toDist);
+      for (let i = 1; i < route.length - 1; i++) {
+        const frac = i / (route.length - 1);
+        const at = pass.travel.start + (pass.travel.arrival - pass.travel.start) * frac;
+        kf.push(frame(at, this.geometry.pointAt(pathEl, route[i]!), 1));
+      }
       kf.push(frame(pass.travel.arrival, toPoint, 1));
       kf.push(frame(pass.travel.arrival + gap, toPoint, 0));
     }
