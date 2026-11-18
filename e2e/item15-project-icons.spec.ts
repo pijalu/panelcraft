@@ -7,6 +7,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM7 7h10v10H7z"/></svg>';
 const B64 = btoa(SVG);
@@ -35,11 +36,7 @@ shop -> cache : "assets"
 async function replaceCode(page: Page, text: string): Promise<void> {
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', { timeout: 5000 });
+  await seedCode(page, text);
 }
 
 async function seed(page: Page, text = DOC): Promise<void> {

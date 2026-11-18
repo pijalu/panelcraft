@@ -6,6 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const FLOW_DOC = `pcd 1.0
 
@@ -51,10 +52,7 @@ async function seed(page: Page, doc: string, theme: 'light' | 'dark' = 'light'):
   await page.goto('/');
   await openWorkspacePanels(page, ['code', 'flows']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(doc);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, doc);
   await page.getByTestId('collapse-code').click();
   await page.getByTestId('flow-row-checkout').click();
 }
@@ -110,10 +108,7 @@ test('a settled delay edit is one undoable write, and a keystroke burst is not',
   await page.goto('/');
   await openWorkspacePanels(page, ['code', 'flows']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(FLOW_DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, FLOW_DOC);
   await page.getByTestId('flow-row-checkout').click();
 
   // The code view stays open: the document is the observable under test.

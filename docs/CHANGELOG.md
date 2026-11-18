@@ -4,6 +4,21 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — test infrastructure: one seeding primitive
+
+- The browser suites author documents through one helper instead of 79
+  hand-written copies of "click the code editor, select all, type". It requires
+  the editor to hold focus before the chord, proves the buffer ends up holding
+  the text it was given, and re-types once when the editor was rebuilt mid-typing
+  (which is what produced the recurring, unrelated-looking CI failures).
+- Two assertions that measured the machine rather than the product were replaced
+  by the property they were meant to protect: a paused beat's animation clock may
+  advance one frame (it cannot advance less), and the unparseable-buffer dialog
+  is asserted to refuse Apply outright instead of clicking a button that was only
+  enabled while the parse was in flight.
+
+Details and evidence: [browser-suite determinism](archive/bugs-ci-e2e-determinism.md).
+
 ## Unreleased — bug round: palette add, default names
 
 - One press on a shape in the Shapes palette adds exactly one element. Before,

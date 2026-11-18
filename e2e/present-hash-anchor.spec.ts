@@ -6,6 +6,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -53,13 +54,7 @@ async function seed(page: Page, doc = DOC): Promise<void> {
   await openWorkspacePanels(page, ['code']);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(doc);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 10_000,
-  });
+  await seedCode(page, doc);
 }
 
 /** Code-view text, i.e. exactly what a save would write. */

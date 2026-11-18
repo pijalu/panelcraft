@@ -3,6 +3,7 @@
 // properties and style overrides that reach the file and survive a reload.
 import { expect, test, type Page } from '@playwright/test';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -17,12 +18,7 @@ async function seedDoc(page: Page, text: string): Promise<void> {
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
   });
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
+  await seedCode(page, text);
 }
 
 test('F-11: sections collapse and their state survives a reload', async ({ page }) => {

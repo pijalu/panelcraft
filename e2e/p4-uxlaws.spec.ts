@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openFlowSteps, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -16,13 +17,7 @@ async function seed(page: Page, text: string): Promise<void> {
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 15_000,
-  });
+  await seedCode(page, text);
 }
 
 test.describe('F-25 laws-of-UX affordances', () => {
@@ -66,9 +61,7 @@ test.describe('F-25 laws-of-UX affordances', () => {
     await expect(card).toContainText('#core');
 
     // a broken statement raises the problem chip
-    await page.locator('.cm-content').click();
-    await page.keyboard.press('ControlOrMeta+a');
-    await page.keyboard.insertText('pcd 1.0\n\nsystem app "Shop" bogusattr\n');
+    await seedCode(page, 'pcd 1.0\n\nsystem app "Shop" bogusattr\n', { sync: 'error' });
     await expect(page.getByTestId('problem-chip')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('problem-chip')).toContainText('problem');
   });
@@ -78,16 +71,12 @@ test.describe('F-25 laws-of-UX affordances', () => {
     await page.screenshot({ path: 'test-results/f25-clean-light.png' });
 
     await page.emulateMedia({ colorScheme: 'dark' });
-    await page.locator('.cm-content').click();
-    await page.keyboard.press('ControlOrMeta+a');
-    await page.keyboard.insertText(DOC.replace('technology "Go" ', ''));
+    await seedCode(page, DOC.replace('technology "Go" ', ''));
     await expect(page.getByTestId('status-pill')).toBeVisible();
     await page.screenshot({ path: 'test-results/f25-dirty-dark.png' });
 
     await page.emulateMedia({ colorScheme: 'light' });
-    await page.locator('.cm-content').click();
-    await page.keyboard.press('ControlOrMeta+a');
-    await page.keyboard.insertText('pcd 1.0\n\nsystem app "Shop" bogusattr\n');
+    await seedCode(page, 'pcd 1.0\n\nsystem app "Shop" bogusattr\n', { sync: 'error' });
     await expect(page.getByTestId('canvas-stale')).toBeVisible({ timeout: 15_000 });
     await page.screenshot({ path: 'test-results/f25-error-light.png' });
   });

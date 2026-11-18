@@ -6,6 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
 import { openAppGroup, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 title "Layout contract"
@@ -23,13 +24,7 @@ async function seedDoc(page: Page, text: string): Promise<void> {
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
+  await seedCode(page, text);
 }
 
 async function transforms(page: Page): Promise<Record<string, string | null>> {
@@ -77,10 +72,9 @@ test('legacy named view syntax is rejected with an actionable diagnostic', async
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText('pcd 1.0\nview "Old" {\n  layout saved\n}\n');
+  // The legacy `view` block is deliberately invalid: this scenario asserts the
+  // diagnostic, so the document must settle in the error state, not clean.
+  await seedCode(page, 'pcd 1.0\nview "Old" {\n  layout saved\n}\n', { sync: 'error' });
   await expect(page.locator('.cm-content')).toContainText('view "Old"');
   await expect(page.getByTestId('problem-chip')).toContainText('problem', { timeout: 15_000 });
   await expect(page.getByTestId('problem-item').first()).toContainText('E117');

@@ -6,6 +6,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openFlowSteps, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -38,10 +39,7 @@ async function seed(page: Page, theme: 'light' | 'dark'): Promise<void> {
   await page.goto('/');
   await openWorkspacePanels(page, ['code', 'flows']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', { timeout: 10_000 });
+  await seedCode(page, DOC);
   await openFlowSteps(page);
   await page.getByTestId('flow-row-main').click();
 }

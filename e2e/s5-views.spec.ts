@@ -8,6 +8,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openAppGroup, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -37,13 +38,7 @@ async function seedDoc(page: Page, text: string): Promise<void> {
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
+  await seedCode(page, text);
 }
 
 /** Map object id → transform for every rendered object group. */

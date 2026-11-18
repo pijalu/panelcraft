@@ -7,6 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -39,14 +40,7 @@ async function seedDoc(page: Page): Promise<void> {
   await openWorkspacePanels(page, ['code']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
   const editor = page.locator('.cm-content');
-  await editor.click();
-  // A select-all that misses the editor selects the page instead and the
-  // previous document survives, which then fails as a product defect much later;
-  // require the focus before trusting the chord.
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, DOC);
   // …and prove the editor holds what was typed: a half-replaced document parses
   // into a different diagram, so the scenario would assert against the wrong one.
   const lines = await editor.locator('.cm-line').allInnerTexts();
@@ -183,10 +177,7 @@ for (const theme of ['light', 'dark'] as const) {
 
     // Code editing and the panel stay two views of one document.
     await openWorkspacePanels(page, ['code']);
-    await page.locator('.cm-content').click();
-    await page.locator('.cm-content').press('ControlOrMeta+a');
-    await page.keyboard.insertText(DOC.replace('layout saved', 'flow "Named" as named {\n  intro "hello"\n}\n\nlayout saved'));
-    await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+    await seedCode(page, DOC.replace('layout saved', 'flow "Named" as named {\n  intro "hello"\n}\n\nlayout saved'));
     await expect(page.getByTestId('flow-row-named')).toContainText('Named');
 
     // Reload keeps document and panel state (selection is session-only).

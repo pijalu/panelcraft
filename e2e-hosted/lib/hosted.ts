@@ -5,6 +5,8 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type Page } from '@playwright/test';
 
+import { documentText, normalise, seedCode } from '../../e2e/lib/seed';
+
 /** The deployed site under test (a trailing slash keeps relative URLs correct). */
 export const HOSTED_URL = (process.env.HOSTED_URL ?? 'https://pijalu.github.io/panelcraft/').replace(
   /\/?$/,
@@ -81,35 +83,21 @@ export async function watchOrigins(page: Page): Promise<string[]> {
  * nodes carry their own newline, so blank lines would be counted twice, and the
  * comparison is about *what* the document holds, not its spacing.
  */
-function normalise(text: string): string {
-  return text
-    .replace(/\u200b/g, '')
-    .split('\n')
-    .map((line) => line.trimEnd())
-    .filter((line) => line !== '')
-    .join('\n');
-}
+export { normalise };
 
-/** Replace the code view's text and wait until the model round-trips it. */
+/**
+ * Replace the code view's text and wait until the model round-trips it.
+ *
+ * The typing itself lives in the shared seeder so the hosted suite and the local
+ * suite cannot drift apart on the part that matters (the focus gate before the
+ * select-all chord). This adds the precondition the hosted scenarios rely on:
+ * the editor is already showing a document, so a failed seed is detectable
+ * rather than looking like an empty start.
+ */
 export async function setDocument(page: Page, text: string): Promise<void> {
-  const editor = page.locator('.cm-content');
-  await expect(editor).toContainText('pcd 1.0');
-  // A contenteditable `fill()` can lose the trailing lines when a re-render
-  // lands mid-keystroke; typing into a select-all selection is atomic.
-  await editor.click();
-  // A select-all that misses the editor selects the page instead, the previous
-  // document survives, and the scenario then measures a diagram it never
-  // authored. Require the focus before trusting the chord.
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
-  // Assert the document actually holds what was typed: a silently truncated
-  // document would make the following assertions test the wrong diagram.
-  expect(normalise(await documentText(page)), 'document text').toBe(normalise(text));
+  await expect(page.locator('.cm-content')).toContainText('pcd 1.0');
+  await seedCode(page, text);
 }
 
 /** The code view's text — i.e. exactly what a save would write. */
-export async function documentText(page: Page): Promise<string> {
-  return (await page.locator('.cm-content .cm-line').allInnerTexts()).join('\n');
-}
+export { documentText };

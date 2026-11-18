@@ -5,6 +5,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const MAIN = `pcd 1.0
 
@@ -29,12 +30,7 @@ async function seedFile(page: Page, path: string, text: string): Promise<void> {
   const input = page.getByTestId('tree-create-input');
   await input.fill(path);
   await input.press('Enter');
-  await page.locator('.cm-content').click();
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
+  await seedCode(page, text);
 }
 
 test('F-20: imported objects render as ghosts and links to them survive', async ({ page }) => {

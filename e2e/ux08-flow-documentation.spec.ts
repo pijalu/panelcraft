@@ -5,6 +5,7 @@ import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { openFlowSteps, openWorkspacePanels } from './lib/panels';
 import { capture } from './lib/screenshots';
+import { seedCode } from './lib/seed';
 
 const SOURCE = 'testdata/markdown/all-steps.pcd';
 const GOLDEN_FLOW = 'testdata/markdown/all-steps.md';
@@ -15,11 +16,7 @@ async function loadGolden(page: import('@playwright/test').Page): Promise<void> 
   await openWorkspacePanels(page);
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(await readFile(SOURCE, 'utf8'));
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, await readFile(SOURCE, 'utf8'));
   await openFlowSteps(page);
 }
 

@@ -5,6 +5,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -30,15 +31,7 @@ async function seedDoc(page: Page, text: string): Promise<void> {
     timeout: 5000,
   });
   const editor = page.locator('.cm-content');
-  await editor.click();
-  // A select-all that misses the editor selects the page instead, leaving the
-  // previous document in place; require the focus before trusting the chord.
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
+  await seedCode(page, text);
   // …and prove the editor holds what was typed: a partially replaced document
   // parses into a different diagram and would make the scenario lie.
   const lines = await editor.locator('.cm-line').allInnerTexts();

@@ -6,6 +6,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { readFile } from 'node:fs/promises';
 import { capture } from './lib/screenshots';
 import { chooseExport, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const ROOT_LINKED = `pcd 1.0
 title "Checkout"
@@ -54,12 +55,7 @@ async function seedFile(page: Page, path: string, text: string): Promise<void> {
   const input = page.getByTestId('tree-create-input');
   await input.fill(path);
   await input.press('Enter');
-  const editor = page.locator('.cm-content');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', { timeout: 5000 });
+  await seedCode(page, text);
 }
 
 async function downloadedText(page: Page): Promise<string> {

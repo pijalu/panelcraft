@@ -5,6 +5,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { chooseAppMenu, choosePanelMenu, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const FLOW_DOC = `pcd 1.0
 person ada "Ada"
@@ -31,11 +32,7 @@ async function seedFlow(page: Page): Promise<void> {
   await show(page, 'code');
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
-  await page.keyboard.insertText(FLOW_DOC);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, FLOW_DOC);
 }
 
 async function axe(page: Page): Promise<void> {
@@ -115,12 +112,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await expect(page.locator('[data-panel="sidebar"]')).toHaveAttribute('data-dock', 'float');
     await capture(page, `ux03-floating-${colorScheme}`);
 
-    const editor = page.locator('.cm-content');
-    await editor.click();
-    await expect(editor).toBeFocused();
-    await editor.press('ControlOrMeta+a');
-    await page.keyboard.insertText('pcd 1.0\nsystem');
-    await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'error');
+    await seedCode(page, 'pcd 1.0\nsystem', { sync: 'error' });
     await capture(page, `ux03-dirty-${colorScheme}`);
   });
 }
@@ -133,13 +125,8 @@ test('UX-03: keyboard close preserves dirty tabs, code, search and toolbar comma
   await page.getByTestId('tree-create-input').press('Enter');
   await expect(page.getByTestId('tab-arch.pcd')).toHaveAttribute('data-active', 'true');
 
-  const editor = page.locator('.cm-content');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
   const dirty = 'pcd 1.0\nsystem';
-  await page.keyboard.insertText(dirty);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'error');
+  await seedCode(page, dirty, { sync: 'error' });
 
   await page.getByTestId('panel-menu-sidebar').focus();
   await page.keyboard.press('Enter');

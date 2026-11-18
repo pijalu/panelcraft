@@ -5,6 +5,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { chooseAppMenu, choosePanelMenu } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 type Panel = 'sidebar' | 'flows' | 'palette' | 'code' | 'props';
 type Dock = 'left' | 'right' | 'bottom' | 'float';
@@ -217,12 +218,8 @@ test('UX-02: unapplied code survives docking, floating, close and reopen', async
   await show(page, 'code');
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
-  await editor.click();
-  await expect(editor).toBeFocused();
-  await editor.press('ControlOrMeta+a');
   const dirty = 'pcd 1.0\nsystem';
-  await page.keyboard.insertText(dirty);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'error');
+  await seedCode(page, dirty, { sync: 'error' });
 
   for (const target of ['bottom', 'float', 'right'] as const) {
     await dock(page, 'code', target);

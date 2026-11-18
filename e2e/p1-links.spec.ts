@@ -6,6 +6,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -26,14 +27,7 @@ async function seedDoc(page: Page, text: string): Promise<void> {
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
     timeout: 5000,
   });
-  await page.locator('.cm-content').click();
-  // element-scoped press: page-level shortcuts do not re-select reliably after
-  // a machine write in this Playwright build
-  await page.locator('.cm-content').press('ControlOrMeta+a');
-  await page.keyboard.insertText(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
-    timeout: 5000,
-  });
+  await seedCode(page, text);
 }
 
 async function selectLink(page: Page, id: string): Promise<void> {
