@@ -75,3 +75,17 @@ setup defects:
 No production behavior, test timeout, retry policy, or assertion was weakened.
 Only browser-test synchronization and fixture replacement changed; existing
 failed scenarios provide the regression coverage.
+
+## Follow-up: the same seed race in the canvas-flow seeder
+
+The flow-editing scenario keeps its own `seedDoc` helper, which still clicked
+and pressed select-all without requiring the editor to hold focus. In the CI run
+of the merged bug round the dark variant reached a parse error instead of a
+clean document — the select-all had gone to the page, the previous document
+survived, and the scenario then asserted against a diagram it had not authored.
+The helper now requires editor focus before the chord and checks the seeded
+document round-trips, as the link-properties helper already does.
+
+Verified: `npm run check` clean; `npx playwright test e2e/flow01-canvas-flows.spec.ts`
+passed three consecutive runs (both themes); the CI run of the pull request and
+the one on `main` are the remaining evidence.
