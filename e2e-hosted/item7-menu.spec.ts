@@ -40,7 +40,10 @@ async function expectInsideViewport(page: Page, selector: string): Promise<void>
 
 test.describe('item 7 — menus on the hosted build', () => {
   test('a long application menu and its submenu stay inside a short window', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 420 });
+    // The menu's commands sit in task groups, so it is shorter than it used to be:
+    // a 420px-tall window no longer overflows. 240px still does, which is the
+    // condition this scenario is about.
+    await page.setViewportSize({ width: 1280, height: 240 });
     await openApp(page);
     await page.getByTestId('app-menu').click();
     await expectInsideViewport(page, '#app-menu');

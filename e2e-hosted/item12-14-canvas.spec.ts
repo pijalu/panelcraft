@@ -5,7 +5,7 @@
 // measured in the deployed browser rather than read from the source.
 import { expect, test, type Page } from '@playwright/test';
 import { documentText, openApp, setDocument, shoot } from './lib/hosted';
-import { openWorkspacePanels } from '../e2e/lib/panels';
+import { openAppGroup, openWorkspacePanels } from '../e2e/lib/panels';
 import { contentBox, type SceneObject } from '../web/src/engine/render/shapes';
 
 const ROUTE_DOC = `pcd 1.0
@@ -19,11 +19,10 @@ system_ext pay "Payment provider"
 user -> app : "buys" as L1
 app -> pay : "charges" as L2
 
-view "Default" {
-  position app (248, 128)
-  position pay (348, 52)
-  position user (40, 40)
-}
+layout saved
+position app (248, 128)
+position pay (348, 52)
+position user (40, 40)
 `;
 
 interface Rect {
@@ -82,7 +81,7 @@ test.describe('item 12 — default grid on the hosted build', () => {
     // The menu reports the same state, so the grid is a visible preference and not
     // a stray paint. The interactive toggles themselves (`g`, the radio group) are
     // exercised against this same build by `e2e/ux08-grid.spec.ts`.
-    await page.getByTestId('app-menu').click();
+    await openAppGroup(page, 'menu-group-layout');
     await expect(page.getByTestId('view-grid-dots')).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByTestId('view-grid-snap')).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press('Escape');
