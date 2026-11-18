@@ -354,3 +354,34 @@ describe('code view sync + close guard (M4-WP3/4/5)', () => {
     expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(1);
   });
 });
+
+describe('blank diagram creation (F-25)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  afterEach(cleanup);
+
+  it('the blank choice seeds a valid empty document and the gallery stays closed', async () => {
+    const { svg } = await mountReady();
+    expect(screen.getByTestId('empty-state')).not.toBeNull();
+    fireEvent.click(screen.getByTestId('template-blank'));
+    // The seed is saved by the machine's idle parse; the gate reads the file.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 400));
+    });
+    // The gallery closes and does not reopen over the empty canvas.
+    expect(screen.queryByTestId('empty-state')).toBeNull();
+    // Still the same, active, untitled file — blank means "insert nothing".
+    expect(screen.getByTestId('tab-untitled.pcd').getAttribute('data-active')).toBe('true');
+    expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(0);
+    expect(svg.querySelectorAll('g.pc-link')).toHaveLength(0);
+    // The code view holds a valid empty document, not template content.
+    const text = codeView().state.doc.toString();
+    expect(text.trim()).toBe('pcd 1.0');
+    // …and keyboard placement still works on it.
+    fireEvent.keyDown(svg, { key: '2' });
+    await act(async () => {});
+    expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(1);
+  });
+});

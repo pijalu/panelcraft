@@ -20,7 +20,8 @@ import { useStagePresentation } from './useStagePresentation';
 import { AppHeader } from './AppHeader';
 import { AppDialogs } from './AppDialogs';
 import { AppOverlays } from './AppOverlays';
-import { TemplateOverlay } from './EmptyState';
+import { BLANK_TEXT, TemplateOverlay } from './EmptyState';
+import { useGalleryPrompt, type GalleryPrompt } from './useGalleryPrompt';
 import type { RenameTarget } from './InlineRename';
 import { useCanvasController, useWorkspace } from './useWorkspace';
 import { useUiLayout } from './useUiLayout';
@@ -731,6 +732,7 @@ function AppBody(p: {
   useEffect(() => {
     if (flowChoice !== '' && ui.layout.panels.props === 'collapsed') ui.openPanel('props');
   }, [flowChoice]);
+  const gallery = useGalleryPrompt();
   const content = bodyPanels({ ...p, flowEdit }, ctrl);
   const docked = (dock: DockId) => dockedPanels(dock, ui, content);
   return (
@@ -756,6 +758,7 @@ function AppBody(p: {
         activePath={activePath}
         onPresent={p.onPresent}
         drill={p.drill}
+        gallery={gallery}
         onCanvasContextMenu={(event) => {
           event.preventDefault();
           setMenu({ x: event.clientX, y: event.clientY });
@@ -799,6 +802,7 @@ function CenterColumn(props: {
   activePath: string | null;
   onPresent: () => void;
   drill: DrilldownHandle;
+  gallery: GalleryPrompt;
   onCanvasContextMenu: (e: MouseEvent) => void;
 }) {
   const { canvas, player } = props;
@@ -806,8 +810,19 @@ function CenterColumn(props: {
   return (
     <main class="canvas-col" data-parent={parent === undefined ? undefined : parent.label}>
       <TemplateOverlay
-        show={(props.canvas.snap?.objects.length ?? 0) === 0}
-        onInsert={(t) => props.code.machine.textChanged(t.text)}
+        show={props.gallery.visible(
+          props.activePath,
+          props.canvas.snap?.objects.length ?? 0,
+          props.code.snapshot.codeText,
+        )}
+        onInsert={(t) => {
+          props.gallery.answer(props.activePath);
+          props.code.machine.textChanged(t.text);
+        }}
+        onBlank={() => {
+          props.gallery.answer(props.activePath);
+          props.code.machine.textChanged(BLANK_TEXT);
+        }}
       />
       <CanvasTopRow
         manager={props.manager}

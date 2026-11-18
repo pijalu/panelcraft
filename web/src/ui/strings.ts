@@ -195,6 +195,8 @@ const EN = {
   "Apply": "Apply",
   "Discard": "Discard",
   "Start from a template": "Start from a template",
+  "Blank diagram": "Blank diagram",
+  "An empty canvas you fill yourself": "An empty canvas you fill yourself",
   "…or press": "…or press",
   "to place a shape, or type in the code view.": "to place a shape, or type in the code view.",
   "New file": "New file",
