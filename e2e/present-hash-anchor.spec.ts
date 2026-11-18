@@ -173,23 +173,36 @@ test.describe('dedicated presentation URL anchor', () => {
     await expect.poll(() => hashOf(page)).toBe('');
     await exitPresent(page);
 
-    // Put an anchor in the URL silently (pushState/replaceState fire no event),
-    // then switch files: a stale link must not outlive its document.
+    // A second file supplies the switch below. Creating a file activates it, so
+    // land back on the document under test first: the click that follows must be
+    // a real file change, not a no-op that would leave the anchor in place.
     await openWorkspacePanels(page, ['sidebar']);
     await page.getByTestId('tree-new-file').click();
     await page.getByTestId('tree-create-input').fill('other.pcd');
     await page.getByTestId('tree-create-input').press('Enter');
     await expect(page.getByTestId('tab-other.pcd')).toBeVisible();
     await expect(page.locator('.cm-content')).toContainText('pcd 1.0');
+    await page.getByTestId('tab-untitled.pcd').click();
+    await expect.poll(() => hashOf(page)).toBe('');
+    // Poll rather than read once: the editor re-renders the buffer after a switch.
+    await expect
+      .poll(() => docText(page), { message: 'creating a file never rewrites the other one' })
+      .toBe(before);
+
+    // Put an anchor in the URL silently (pushState/replaceState fire no event),
+    // then switch files: a stale link must not outlive its document.
     await page.evaluate((hash) => {
       window.history.replaceState(null, '', window.location.pathname + hash);
     }, ANCHOR);
     await expect.poll(() => hashOf(page)).toBe(ANCHOR);
 
-    await page.getByTestId('tree-row-untitled.pcd').click();
-    await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
+    await page.getByTestId('tab-other.pcd').click();
     await expect.poll(() => hashOf(page)).toBe('');
     expect(await presenting(page)).toBe(false);
-    expect(await docText(page), 'file switch never rewrites the file').toBe(before);
+
+    await page.getByTestId('tab-untitled.pcd').click();
+    await expect
+      .poll(() => docText(page), { message: 'file switch never rewrites the file' })
+      .toBe(before);
   });
 });
