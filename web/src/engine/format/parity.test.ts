@@ -623,6 +623,37 @@ flow "Legacy" as legacy {
   },
   { name: 'flow-notes-empty', src: 'pcd 1.0\nflow "F" {\n  description {\n  }\n}\n' },
   {
+    // Step prose covers the same ground: framing steps, a process note and the
+    // step description may each be a block of text lines.
+    name: 'flow-step-text',
+    src: `pcd 1.0
+person a "A"
+person b "B"
+a -> b as ab
+flow "Step prose" as sp {
+  intro {
+    text "# Start"
+    text ""
+    text "**Go** left to right."
+  }
+  a -> b : "order" presentation {
+    description {
+      text "Two systems."
+      text ""
+      text "- send"
+      text "- accept"
+    }
+    camera hold
+  }
+  process b {
+    text "Accept the order"
+  } delay 900
+  conclusion "the end"
+}
+`,
+  },
+  { name: 'flow-step-text-empty', src: 'pcd 1.0\nflow "F" {\n  intro {\n  }\n}\n' },
+  {
     // Atomic forms: mixing a legacy description with a multiline block aborts.
     name: 'flow-notes-mixed',
     src: 'pcd 1.0\nflow "F" {\n  description "one"\n  description {\n    text "two"\n  }\n}\n',

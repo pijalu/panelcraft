@@ -92,6 +92,12 @@ class Parser {
     if (t.type !== 'number') this.fail(t, E.unexpected, `expected number, got '${t.text || t.type}'`);
     return Number(t.text);
   }
+  /** Line of the last consumed token. A step body may end in a block, so a
+   * trailing `delay`/`advance` follows its closing brace rather than the line
+   * the step started on. */
+  private lastLine(): number {
+    return this.toks[Math.max(0, this.i - 1)]!.line;
+  }
   /** Consume tokens through end of line; return the raw source slice. */
   private captureRaw(first: Token): { raw: string; last: Token } {
     let last = first;
@@ -764,20 +770,33 @@ class Parser {
 
   /** One `text "…"` line per source line, including intentional blank lines. */
   private descriptionBlock(t0: Token): string[] {
+    return this.textLines(t0, E.emptyFlowDescription, 'description block needs at least one text line');
+  }
+
+  /** A `{ text "…" … }` block: the one place multiline prose is authored. Used
+   * by the flow notes block and by every step-level prose string, so a newline
+   * never has to be an escape sequence. */
+  private textLines(t0: Token, emptyCode: string, emptyMessage: string): string[] {
     this.expect('punct', '{');
     const lines: string[] = [];
     for (;;) {
       this.skipComments();
-      if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed description block');
+      if (this.peek().type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed text block');
       if (this.peek().type === 'punct' && this.peek().text === '}') { this.next(); break; }
       const t = this.expect('ident');
-      if (t.text !== 'text') this.fail(t, E.unexpected, `unknown description line '${t.text}'`);
+      if (t.text !== 'text') this.fail(t, E.unexpected, `unknown text block line '${t.text}'`);
       lines.push(this.str());
     }
-    if (lines.length === 0) {
-      this.fail(t0, E.emptyFlowDescription, 'description block needs at least one text line');
-    }
+    if (lines.length === 0) this.fail(t0, emptyCode, emptyMessage);
     return lines;
+  }
+
+  /** Step prose: a quoted string, or a block of `text` lines for Markdown. */
+  private stepText(t0: Token, what: string): string {
+    if (this.peek().type === 'punct' && this.peek().text === '{') {
+      return this.textLines(t0, E.emptyStepText, `${what} block needs at least one text line`).join('\n');
+    }
+    return this.quoted(this.next(), what);
   }
 
   private parseSteps(depth: number): FlowStep[] {
@@ -833,17 +852,18 @@ class Parser {
         ...(comments.length ? { ...base, comments } : base),
         type: kw,
         pos,
-        ...(kw === 'alt' || kw === 'par' ? {} : this.stepModifiers(t0.line)),
+        ...(kw === 'alt' || kw === 'par' ? {} : this.stepModifiers(this.lastLine())),
       }) as unknown as FlowStep);
     switch (kw) {
       case 'intro':
       case 'info':
       case 'conclusion':
-        return wrap({ text: this.quoted(this.next(), kw) });
+        return wrap({ text: this.stepText(t0, kw) });
       case 'process': {
         const target = this.refId();
-        const text = this.peek().type === 'string' ? this.next().value : undefined;
-        return wrap(text === undefined ? { target } : { target, text });
+        const t = this.peek();
+        const hasText = t.type === 'string' || (t.type === 'punct' && t.text === '{');
+        return wrap(hasText ? { target, text: this.stepText(t0, kw) } : { target });
       }
       case 'alt':
         return wrap(this.parseAltBody(t0, depth));
@@ -927,7 +947,7 @@ class Parser {
       ...(comments.length ? { comments } : {}),
     } as { type: 'msg'; from: string; to: string; pos: Pos; label?: string; linkRef?: string; flip?: boolean; comments?: Comments };
     this.msgModifiers(step);
-    const mods = this.stepModifiers(t0.line);
+    const mods = this.stepModifiers(this.lastLine());
     return this.presentation(t0, mods.delayMs === undefined ? { ...step, ...mods } : { ...step, ...mods });
   }
 
@@ -971,7 +991,7 @@ class Parser {
       if (key.type === 'eof') this.fail(t0, E.unclosedBlock, 'unclosed presentation block');
       const name = this.presentationKey(key, seen);
       out.empty = false;
-      if (name === 'description') out.description = this.quoted(this.next(), 'description');
+      if (name === 'description') out.description = this.stepText(key, 'description');
       else if (name === 'camera') out.camera = this.parseCamera(key);
       else durationMs = this.cameraDuration(key);
     }

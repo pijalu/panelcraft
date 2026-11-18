@@ -92,6 +92,10 @@ describe('useUiLayout (UX-02)', () => {
   });
 
   it('restores an unchanged stored layout and persists dock/close operations at once', () => {
+    // The layout is normalised against the live viewport, so state the viewport
+    // the stored layout was made for instead of inheriting a neighbour's width.
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
     const stored = openPanel(defaultLayout(1280), 'code');
     const { manager, setSetting } = managerWith(stored);
     const { result } = renderHook(() => useUiLayout(manager, true, 0));

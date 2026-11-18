@@ -40,6 +40,8 @@ export const E = {
   legacyDrilldownView: 'E118',
   /** Flow description block with no `text` line (§6). */
   emptyFlowDescription: 'E119',
+  /** Step prose block with no `text` line — nothing to show or print (§6). */
+  emptyStepText: 'E120',
 } as const;
 
 export const diag = (

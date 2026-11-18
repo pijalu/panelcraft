@@ -1,0 +1,30 @@
+pcd 1.0
+title "Step prose blocks"
+
+person a "Ada"
+system b "Web"
+
+a -> b as ab
+
+flow "Checkout" as checkout {
+  intro {
+    text "# Before we start"
+    text ""
+    text "The story runs **left to right**."
+  }
+  a -> b : "order" presentation {
+    description {
+      text "One order, two systems."
+      text ""
+      text "- the person sends"
+      text "- the web accepts"
+    }
+    camera hold
+  }
+  process b "Accept the order" delay 900
+  info {
+    text ""
+    text "Blank first line is authored on purpose."
+  }
+  conclusion "That is the **whole** story."
+}

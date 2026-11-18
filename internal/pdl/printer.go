@@ -154,6 +154,25 @@ func withDelay(line string, s ir.Step) string {
 	return line
 }
 
+// stepTail is the leading space plus the trailing modifiers, so they can follow
+// a block's closing brace on the same line.
+func stepTail(s ir.Step) string { return withDelay("", s) }
+
+// printProse writes step prose as one `text …` line per authored line when it
+// holds a newline, and as the compact quoted form otherwise, so a single-line
+// document keeps its canonical bytes.
+func printProse(p *printer, depth int, head, text, tail string) {
+	if !strings.Contains(text, "\n") {
+		p.add(pad(depth) + head + " " + Quote(text) + tail)
+		return
+	}
+	p.add(pad(depth) + head + " {")
+	for _, line := range strings.Split(text, "\n") {
+		p.add(pad(depth+1) + "text " + Quote(line))
+	}
+	p.add(pad(depth) + "}" + tail)
+}
+
 func stepText(s ir.Step, depth int, p *printer) {
 	p.comment(s.Comments, depth)
 	body := &printer{}
@@ -178,13 +197,14 @@ func stepText(s ir.Step, depth int, p *printer) {
 func stepBody(s ir.Step, depth int, p *printer) {
 	switch s.Type {
 	case "intro", "info", "conclusion":
-		p.add(withDelay(pad(depth)+s.Type+" "+Quote(deref(s.Text)), s))
+		printProse(p, depth, s.Type, deref(s.Text), stepTail(s))
 	case "process":
-		body := "process " + s.Target
-		if s.Text != nil {
-			body += " " + Quote(*s.Text)
+		head := "process " + s.Target
+		if s.Text == nil {
+			p.add(withDelay(pad(depth)+head, s))
+		} else {
+			printProse(p, depth, head, *s.Text, stepTail(s))
 		}
-		p.add(withDelay(pad(depth)+body, s))
 	case "msg":
 		line := s.From + " -> " + s.To
 		if s.Label != nil {
@@ -447,7 +467,17 @@ func derefF(v *float64) float64 {
 func presentationLines(s ir.Step, depth int, p *printer) {
 	prefix := pad(depth)
 	if s.Description != nil {
-		p.add(prefix + "description " + Quote(*s.Description))
+		// The description owns the presenter's Markdown, so it uses the same
+		// block form as step prose once it holds more than one line.
+		if strings.Contains(*s.Description, "\n") {
+			p.add(prefix + "description {")
+			for _, line := range strings.Split(*s.Description, "\n") {
+				p.add(prefix + "  text " + Quote(line))
+			}
+			p.add(prefix + "}")
+		} else {
+			p.add(prefix + "description " + Quote(*s.Description))
+		}
 	}
 	if s.Camera == nil {
 		return

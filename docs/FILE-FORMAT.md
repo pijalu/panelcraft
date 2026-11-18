@@ -484,10 +484,10 @@ Steps (ordered; each becomes one numbered beat in playback):
 Step        := IntroStep | MsgStep | ProcessStep | AltStep | ParStep
              | GotoStep | InfoStep | ConclusionStep
 
-IntroStep       := "intro" QuotedText
+IntroStep       := "intro" StepProse
 MsgStep         := Id LinkTail [Type] LinkHead Id [":" QuotedLabel] ["as" RefId] ["flip"]
                    // resolves to an existing link between the pair (see below)
-ProcessStep     := "process" Id [QuotedText]
+ProcessStep     := "process" Id [StepProse]
 AltStep         := "alt" [QuotedText] "{" (Branch)* "}"
 Branch          := QuotedText "{" Step* "}"          // branch label + its steps
 ParStep         := "par" [QuotedText] "{" (Lane)* "}"
@@ -495,11 +495,15 @@ Lane            := "{" Step* "}"                      // unlabeled parallel lane
 GotoStep        := "goto" [Target] ["return" ("end" | "here")]
                    Target := FilePath "#" FlowId      // other file (workspace-relative)
                           | FlowId                    // same file
-InfoStep        := "info" QuotedText
-ConclusionStep  := "conclusion" QuotedText
+InfoStep        := "info" StepProse
+ConclusionStep  := "conclusion" StepProse
+
+StepProse       := QuotedText                        // one line
+                 | "{" TextLine+ "}"                  // one authored line each
+TextLine        := "text" QuotedText
 
 StepPresentation := ["presentation" "{" PresentationLine* "}"]   // after any step
-PresentationLine := "description" QuotedText
+PresentationLine := "description" StepProse
                   | "camera" ("auto" | "hold"
                               | "focus" "(" Number "," Number ")" ["zoom" Number])
                   | "duration" Number                              // camera, 0–300 ms
@@ -513,6 +517,15 @@ Rules:
   without a `text` line is `E119`. Blank lines are authored as `text ""` and kept
   verbatim. The source text lives in the IR as `description` or `descriptionLines`;
   no rendered HTML is stored.
+* **Step prose**: a quoted string escapes only `\` and `"`, so it cannot hold a
+  line break. Prose that needs one — the flow's own `intro`/`info`/`conclusion`, a
+  `process` note, or a step's `presentation { description … }` — uses the block
+  form: one `text "…"` line per authored line, with blank lines written as
+  `text ""`. It is the same syntax as the flow notes block, and the IR stores the
+  joined text in `text` or `description`, never a rendered form. A block without a
+  `text` line is `E120`. Printing keeps the compact quoted form for single-line
+  prose, so a document that needs no block keeps its canonical bytes, and a
+  trailing `delay`/`advance` may follow the block's closing brace.
 * **Presentation flag**: a bare `presentation` at the top of a flow body (at most
   once) persists **Show during presentation**. It is distinct from a step's
   `presentation { … }` block, which follows a step on its own line.
@@ -531,8 +544,10 @@ Rules:
   step — including `alt`/`par` after their closing brace. It carries three order-free lines,
   each at most once:
 
-  * `description "…"` — one line of prose for the step (what the presenter narrates). The
-    flow itself may carry a matching `description` at the top of its body.
+  * `description "…"` — prose for the step (what the presenter narrates). It
+    accepts the block form above once it holds more than one line, which is how a
+    presenter writes Markdown. The flow itself may carry a matching `description`
+    at the top of its body.
   * `camera auto | hold | focus (x, y) [zoom n]` — `auto` is the default when a step has no
     camera at all, `hold` keeps the previous camera, `focus` frames a canvas point
     (`x`, `y` in document units) with an optional `zoom` inside the existing 0.1–4 limits.
@@ -870,7 +885,7 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
   Base64; `E115` = the `media` string names a type this version cannot draw.
   Both abort the file: the declaration could never be rendered, and re-printing
   it would emit a file the app refuses to load.
-- E-15 Syntax errors (E100–E119) abort the whole file (doc = null + diagnostics);
+- E-15 Syntax errors (E100–E120) abort the whole file (doc = null + diagnostics);
   semantic findings never abort (§10, §14 sample).
 
 **Validation**
@@ -891,6 +906,13 @@ Rulings made while implementing M1 (docs/milestones/M1.md D-M1-*). The grammar i
 - E-19 Key order is fixed (TS builder order = Go struct field order); empty
   arrays omitted; `true`-only booleans (`bidir`, `flip`, `dashed`); 2-space
   indent + trailing newline; no HTML escaping in `<`, `>`, `&` (§11).
+
+- E-26 Step prose blocks: `intro`, `info`, `conclusion`, a `process`
+  note and a step's `presentation { description … }` accept the flow-notes block
+  form, so multiline Markdown no longer needs an escape sequence. Single-line
+  prose keeps the quoted form and its canonical bytes; a block with no `text` line
+  is `E120`. The IR stores the joined text in the existing `text`/`description`
+  string, so no field was added and old documents round-trip unchanged.
 
 - E-25 Flow notes (IR v13): `description { text "…" … }` is one atomic block with
   one `text` line per authored Markdown line; an empty block is E119. The optional

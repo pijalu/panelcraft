@@ -80,15 +80,44 @@ const withDelay = (line: string, step: { delayMs?: number; advance?: 'click' | '
   return step.advance === undefined ? withMs : `${withMs} advance ${step.advance}`;
 };
 
+/**
+ * Step prose is printed as one `text "…"` line per authored line when it holds a
+ * newline, and as the compact quoted form otherwise, so a single-line document
+ * keeps its canonical bytes. The block hangs off `head` exactly where the quoted
+ * string would have been, and `tail` (delay, advance) follows the closing brace.
+ */
+const printProse = (
+  p: Printer,
+  depth: number,
+  head: string,
+  text: string,
+  tail: string,
+): void => {
+  if (!text.includes('\n')) {
+    p.add(`${pad(depth)}${head} ${quote(text)}${tail}`);
+    return;
+  }
+  p.add(`${pad(depth)}${head} {`);
+  for (const line of text.split('\n')) p.add(`${pad(depth + 1)}text ${quote(line)}`);
+  p.add(`${pad(depth)}}${tail}`);
+};
+
+/** The trailing modifiers of a step, printed after its body. */
+const stepTail = (step: { delayMs?: number; advance?: 'click' | 'end' }): string =>
+  withDelay('', step);
+
 const printSimpleStep: StepPrinter = (s, depth, p) => {
   const t = s as { type: string; text: string };
-  p.add(withDelay(`${pad(depth)}${t.type} ${quote(t.text)}`, s));
+  printProse(p, depth, t.type, t.text, stepTail(s));
 };
 
 const printProcessStep: StepPrinter = (s, depth, p) => {
   const pr = s as { target: string; text?: string };
-  const body = pr.text === undefined ? `process ${pr.target}` : `process ${pr.target} ${quote(pr.text)}`;
-  p.add(withDelay(pad(depth) + body, s));
+  if (pr.text === undefined) {
+    p.add(withDelay(`${pad(depth)}process ${pr.target}`, s));
+    return;
+  }
+  printProse(p, depth, `process ${pr.target}`, pr.text, stepTail(s));
 };
 
 const printMsgStep: StepPrinter = (s, depth, p) => {
@@ -172,7 +201,17 @@ const cameraText = (camera: NonNullable<FlowStep['camera']>): string => {
 /** Canonical order: description, camera, camera duration. */
 const presentationLines = (s: FlowStep, depth: number, p: Printer): void => {
   const prefix = pad(depth);
-  if (s.description !== undefined) p.add(`${prefix}description ${quote(s.description)}`);
+  if (s.description !== undefined) {
+    // The description owns the presenter's Markdown, so it uses the same block
+    // form as step prose once it holds more than one line.
+    if (s.description.includes('\n')) {
+      p.add(`${prefix}description {`);
+      for (const line of s.description.split('\n')) p.add(`${prefix}${INDENT}text ${quote(line)}`);
+      p.add(`${prefix}}`);
+    } else {
+      p.add(`${prefix}description ${quote(s.description)}`);
+    }
+  }
   if (s.camera === undefined) return;
   p.add(prefix + cameraText(s.camera));
   if (s.camera.durationMs !== undefined) {

@@ -78,6 +78,17 @@ func (p *parser) next() Token {
 	return t
 }
 
+// lastLine is the line of the last consumed token. A step body may end in a
+// text block, so a trailing `delay`/`advance` follows its closing brace rather
+// than the line the step started on.
+func (p *parser) lastLine() int {
+	idx := p.i - 1
+	if idx < 0 {
+		idx = 0
+	}
+	return p.toks[idx].Line
+}
+
 func (p *parser) expect(typ TokenType, text string) Token {
 	t := p.next()
 	if t.Type != typ || (text != "" && t.Text != text) {
@@ -860,12 +871,18 @@ func (p *parser) flowHeader(f *ir.Flow) {
 // descriptionBlock reads one text line per authored Markdown line, including
 // blank ones. An empty block is E119: it would not survive a print round-trip.
 func (p *parser) descriptionBlock(t0 Token) []string {
+	return p.textLines(t0, ErrEmptyFlowDescription, "description block needs at least one text line")
+}
+
+// textLines reads a `{ text "…" … }` block: the one place multiline prose is
+// authored, shared by the flow notes block and by every step-level prose string.
+func (p *parser) textLines(t0 Token, emptyCode, emptyMessage string) []string {
 	p.expect(TokPunct, "{")
 	var lines []string
 	for {
 		p.skipComments()
 		if p.peek().Type == TokEOF {
-			p.fail(t0, ErrUnclosedBlock, "unclosed description block")
+			p.fail(t0, ErrUnclosedBlock, "unclosed text block")
 		}
 		if p.peek().Type == TokPunct && p.peek().Text == "}" {
 			p.next()
@@ -873,14 +890,24 @@ func (p *parser) descriptionBlock(t0 Token) []string {
 		}
 		t := p.expect(TokIdent, "")
 		if t.Text != "text" {
-			p.fail(t, ErrUnexpected, fmt.Sprintf("unknown description line '%s'", t.Text))
+			p.fail(t, ErrUnexpected, fmt.Sprintf("unknown text block line '%s'", t.Text))
 		}
 		lines = append(lines, p.str())
 	}
 	if len(lines) == 0 {
-		p.fail(t0, ErrEmptyFlowDescription, "description block needs at least one text line")
+		p.fail(t0, emptyCode, emptyMessage)
 	}
 	return lines
+}
+
+// stepText reads step prose: a quoted string, or a block of text lines whose
+// lines are joined with a newline.
+func (p *parser) stepText(t0 Token, what string) string {
+	if p.peek().Type == TokPunct && p.peek().Text == "{" {
+		lines := p.textLines(t0, ErrEmptyStepText, what+" block needs at least one text line")
+		return strings.Join(lines, "\n")
+	}
+	return p.quoted(p.next(), what)
 }
 
 func (p *parser) parseSteps(depth int) []ir.Step {
@@ -971,12 +998,12 @@ func (p *parser) parseKeywordStep(kw string, depth int) ir.Step {
 	s := ir.Step{Type: kw, Comments: comments, Pos: tokPos(t0)}
 	switch kw {
 	case "intro", "info", "conclusion":
-		v := p.quoted(p.next(), kw)
+		v := p.stepText(t0, kw)
 		s.Text = &v
 	case "process":
 		s.Target = p.refID()
-		if p.peek().Type == TokString {
-			v := p.next().Value
+		if n := p.peek(); n.Type == TokString || (n.Type == TokPunct && n.Text == "{") {
+			v := p.stepText(t0, kw)
 			s.Text = &v
 		}
 	case "alt":
@@ -987,7 +1014,7 @@ func (p *parser) parseKeywordStep(kw string, depth int) ir.Step {
 		p.parseGoto(&s)
 	}
 	if kw != "alt" && kw != "par" {
-		p.stepModifiers(t0.Line, &s)
+		p.stepModifiers(p.lastLine(), &s)
 	}
 	p.presentation(t0, &s)
 	return s
@@ -1037,7 +1064,7 @@ func (p *parser) presentationBody(t0 Token) (*string, *ir.Camera, *float64, bool
 		empty = false
 		switch name {
 		case "description":
-			v := p.quoted(p.next(), "description")
+			v := p.stepText(key, "description")
 			description = &v
 		case "camera":
 			camera = p.parseCamera(key)
@@ -1210,7 +1237,7 @@ func (p *parser) parseMsgModifiers(t0 Token, s *ir.Step) {
 			p.next()
 			s.Flip = true
 		case t.Type == TokIdent && (t.Text == "delay" || t.Text == "advance") && t.Line == t0.Line:
-			p.stepModifiers(t0.Line, s)
+			p.stepModifiers(p.lastLine(), s)
 			p.presentation(t0, s)
 			return
 		default:

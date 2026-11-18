@@ -55,6 +55,8 @@ const (
 	ErrLegacyDrilldownView = "E118"
 	// ErrEmptyFlowDescription: flow description block without a text line.
 	ErrEmptyFlowDescription = "E119"
+	// ErrEmptyStepText: step prose block without a text line.
+	ErrEmptyStepText = "E120"
 )
 
 // Semantic warning codes mirrored from TS validate.ts.

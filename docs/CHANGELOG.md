@@ -4,6 +4,22 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — bug round: blank diagram, shared field layout, step prose
+
+- Creating a file offers a blank diagram beside the templates: it opens as the
+  active tab with a valid empty document and no sample shapes or flows.
+- Flow name, purpose, notes, introduction, conclusion, the step's text and its
+  description share one field layout, and every multiline field grows with its
+  content between a stable minimum and a readable maximum before it scrolls.
+- Step prose gained a block form (`intro { text "…" }`, and
+  `presentation { description { text "…" } }`), because a PDL quoted string
+  cannot carry a line break. The IR keeps the joined text, so no field was added
+  and existing documents round-trip unchanged; an empty block is a new syntax
+  error, `E120`.
+- Connector sparks now follow the drawn route instead of interpolating between
+  the two endpoints, so a curved or bent connector no longer shows the spark
+  cutting across the diagram.
+
 ## 2026-11-17 — browser assessment round 3
 
 - Selecting a flow step now shows its inspector directly in the Flow Steps

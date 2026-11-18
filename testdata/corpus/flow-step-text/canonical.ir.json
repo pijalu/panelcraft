@@ -1,0 +1,96 @@
+{
+  "irVersion": 13,
+  "formatVersion": "1.0",
+  "title": "Step prose blocks",
+  "objects": [
+    {
+      "kind": "person",
+      "id": "a",
+      "name": "Ada",
+      "pos": {
+        "line": 4,
+        "col": 1
+      }
+    },
+    {
+      "kind": "system",
+      "id": "b",
+      "name": "Web",
+      "pos": {
+        "line": 5,
+        "col": 1
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "ab",
+      "from": "a",
+      "to": "b",
+      "pos": {
+        "line": 7,
+        "col": 1
+      }
+    }
+  ],
+  "flows": [
+    {
+      "id": "checkout",
+      "title": "Checkout",
+      "steps": [
+        {
+          "type": "intro",
+          "text": "# Before we start\n\nThe story runs **left to right**.",
+          "pos": {
+            "line": 10,
+            "col": 3
+          }
+        },
+        {
+          "type": "msg",
+          "from": "a",
+          "to": "b",
+          "label": "order",
+          "description": "One order, two systems.\n\n- the person sends\n- the web accepts",
+          "camera": {
+            "mode": "hold"
+          },
+          "pos": {
+            "line": 15,
+            "col": 3
+          }
+        },
+        {
+          "type": "process",
+          "text": "Accept the order",
+          "target": "b",
+          "delayMs": 900,
+          "pos": {
+            "line": 24,
+            "col": 3
+          }
+        },
+        {
+          "type": "info",
+          "text": "\nBlank first line is authored on purpose.",
+          "pos": {
+            "line": 25,
+            "col": 3
+          }
+        },
+        {
+          "type": "conclusion",
+          "text": "That is the **whole** story.",
+          "pos": {
+            "line": 29,
+            "col": 3
+          }
+        }
+      ],
+      "pos": {
+        "line": 9,
+        "col": 1
+      }
+    }
+  ]
+}

@@ -1758,6 +1758,30 @@
       "validateDiags": []
     },
     {
+      "name": "flow-step-text",
+      "src": "pcd 1.0\nperson a \"A\"\nperson b \"B\"\na -> b as ab\nflow \"Step prose\" as sp {\n  intro {\n    text \"# Start\"\n    text \"\"\n    text \"**Go** left to right.\"\n  }\n  a -> b : \"order\" presentation {\n    description {\n      text \"Two systems.\"\n      text \"\"\n      text \"- send\"\n      text \"- accept\"\n    }\n    camera hold\n  }\n  process b {\n    text \"Accept the order\"\n  } delay 900\n  conclusion \"the end\"\n}\n",
+      "doc": "{\n  \"irVersion\": 13,\n  \"formatVersion\": \"1.0\",\n  \"objects\": [\n    {\n      \"kind\": \"person\",\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"pos\": {\n        \"line\": 2,\n        \"col\": 1\n      }\n    },\n    {\n      \"kind\": \"person\",\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"pos\": {\n        \"line\": 3,\n        \"col\": 1\n      }\n    }\n  ],\n  \"links\": [\n    {\n      \"id\": \"ab\",\n      \"from\": \"a\",\n      \"to\": \"b\",\n      \"pos\": {\n        \"line\": 4,\n        \"col\": 1\n      }\n    }\n  ],\n  \"flows\": [\n    {\n      \"id\": \"sp\",\n      \"title\": \"Step prose\",\n      \"steps\": [\n        {\n          \"type\": \"intro\",\n          \"text\": \"# Start\\n\\n**Go** left to right.\",\n          \"pos\": {\n            \"line\": 6,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"msg\",\n          \"from\": \"a\",\n          \"to\": \"b\",\n          \"label\": \"order\",\n          \"description\": \"Two systems.\\n\\n- send\\n- accept\",\n          \"camera\": {\n            \"mode\": \"hold\"\n          },\n          \"pos\": {\n            \"line\": 11,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"process\",\n          \"text\": \"Accept the order\",\n          \"target\": \"b\",\n          \"delayMs\": 900,\n          \"pos\": {\n            \"line\": 20,\n            \"col\": 3\n          }\n        },\n        {\n          \"type\": \"conclusion\",\n          \"text\": \"the end\",\n          \"pos\": {\n            \"line\": 23,\n            \"col\": 3\n          }\n        }\n      ],\n      \"pos\": {\n        \"line\": 5,\n        \"col\": 1\n      }\n    }\n  ]\n}",
+      "print": "pcd 1.0\n\nperson a \"A\"\nperson b \"B\"\n\na -> b as ab\n\nflow \"Step prose\" as sp {\n  intro {\n    text \"# Start\"\n    text \"\"\n    text \"**Go** left to right.\"\n  }\n  a -> b : \"order\" presentation {\n    description {\n      text \"Two systems.\"\n      text \"\"\n      text \"- send\"\n      text \"- accept\"\n    }\n    camera hold\n  }\n  process b \"Accept the order\" delay 900\n  conclusion \"the end\"\n}\n",
+      "parseDiags": [],
+      "validateDiags": []
+    },
+    {
+      "name": "flow-step-text-empty",
+      "src": "pcd 1.0\nflow \"F\" {\n  intro {\n  }\n}\n",
+      "doc": null,
+      "print": null,
+      "parseDiags": [
+        {
+          "code": "E120",
+          "message": "intro block needs at least one text line",
+          "line": 3,
+          "col": 3,
+          "severity": "error"
+        }
+      ],
+      "validateDiags": []
+    },
+    {
       "name": "flow-notes-mixed",
       "src": "pcd 1.0\nflow \"F\" {\n  description \"one\"\n  description {\n    text \"two\"\n  }\n}\n",
       "doc": null,
