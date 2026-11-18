@@ -97,6 +97,10 @@ export async function setDocument(page: Page, text: string): Promise<void> {
   // A contenteditable `fill()` can lose the trailing lines when a re-render
   // lands mid-keystroke; typing into a select-all selection is atomic.
   await editor.click();
+  // A select-all that misses the editor selects the page instead, the previous
+  // document survives, and the scenario then measures a diagram it never
+  // authored. Require the focus before trusting the chord.
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(text);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');

@@ -611,3 +611,16 @@ format end-to-end.
   done-criteria include corpus-green for every doc file.
 * When prose must reference a diagram: link the `.pcd` file and describe intent in
   words (a picture never carries normative content alone).
+
+## 12.3 Release-gate follow-ups (found during the bug round)
+
+* **Pages publishes only the last merge** — the deploy gate decides whether to
+  publish by diffing the merge commit against its first parent. When a red `main`
+  build is later fixed by a follow-up pull request, the shipped changes behind it
+  are not republished: the follow-up looks documentation-only, and the site keeps
+  serving the older revision until the deploy is dispatched by hand. Comparing
+  against the revision the site actually serves (`build-info.json`) would close it.
+* **The hosted smoke only runs after a deploy** — nothing exercises `e2e-hosted`
+  against the previous revision, so a spec that drifts from the shipped interface
+  is invisible until a deploy finally happens, and then fails the release gate
+  instead of the pull request that broke it.

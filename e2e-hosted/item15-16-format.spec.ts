@@ -36,7 +36,7 @@ title "Shop context"
 level context
 person shopper "Shopper"
 system shop "Webshop" {
-  drilldown "shop.pcd" view containers
+  drilldown "shop.pcd"
   source {
     language "ts"
     text "export function charge(total: number) {"
@@ -51,9 +51,7 @@ shopper -> shop : "browses"
 const CONTAINERS = `pcd 1.0
 title "Shop containers"
 level container
-view "Containers" as containers {
-  layout auto LR
-}
+layout auto LR
 container api "Checkout API"
 datastore db "Orders DB"
 api -> db
