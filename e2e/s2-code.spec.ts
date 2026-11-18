@@ -22,6 +22,7 @@ test('S2: mermaid paste → canvas → canvas edit → code view updates', async
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(MERMAID);
   // D-M4-4: the buffer converts to canonical PDL at paste time
@@ -67,6 +68,7 @@ test('S2/WP4: garbage buffer blocks apply; diverged close offers discard', async
   await openWorkspacePanels(page, ['code']);
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText('pcd 1.0\nsystem');
 

@@ -49,6 +49,7 @@ const OVERLAP = { x: 200, y: 170 };
 async function setDoc(page: Page, source: string): Promise<void> {
   const editor = page.locator('.cm-content');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(source);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');

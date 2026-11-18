@@ -42,6 +42,7 @@ async function seedDoc(page: Page, text: string): Promise<void> {
   // initial file has reached the editor, or that write can reset the selection.
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(text);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {

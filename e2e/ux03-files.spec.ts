@@ -32,6 +32,7 @@ async function seedFlow(page: Page): Promise<void> {
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(FLOW_DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
@@ -116,6 +117,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
     const editor = page.locator('.cm-content');
     await editor.click();
+    await expect(editor).toBeFocused();
     await editor.press('ControlOrMeta+a');
     await page.keyboard.insertText('pcd 1.0\nsystem');
     await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'error');
@@ -133,6 +135,7 @@ test('UX-03: keyboard close preserves dirty tabs, code, search and toolbar comma
 
   const editor = page.locator('.cm-content');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   const dirty = 'pcd 1.0\nsystem';
   await page.keyboard.insertText(dirty);

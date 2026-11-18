@@ -107,6 +107,7 @@ async function seedDoc(page: Page): Promise<void> {
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(FLOW_DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
@@ -357,12 +358,14 @@ test('update banner hit test across shell states', async ({ page, context }) => 
     // consent; its hit surface must stay the same.
     const editor = page.locator('.cm-content');
     await editor.click();
+    await expect(editor).toBeFocused();
     await editor.press('ControlOrMeta+a');
     await page.keyboard.insertText('pcd 1.0\nsystem');
     await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'error');
     await expect(banner).toContainText('Unapplied code');
     await record(page, 'unapplied-confirmation', 'update-hit-unapplied', true);
     await editor.click();
+    await expect(editor).toBeFocused();
     await editor.press('ControlOrMeta+a');
     await page.keyboard.insertText(FLOW_DOC);
     await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');

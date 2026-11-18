@@ -89,3 +89,24 @@ document round-trips, as the link-properties helper already does.
 Verified: `npm run check` clean; `npx playwright test e2e/flow01-canvas-flows.spec.ts`
 passed three consecutive runs (both themes); the CI run of the pull request and
 the one on `main` are the remaining evidence.
+
+## Follow-up: the whole suite, not one seeder at a time
+
+The race reappeared a third time, in a scenario added by the same bug round
+(`bugs-shared-field-layout`): the pull-request CI run of that work reached a
+parse error during seeding, the exact shape recorded above. Fixing one helper per
+occurrence was treating the symptom — 81 places in the browser suite press
+select-all after clicking the code editor, and only a third of them required the
+editor to hold focus first.
+
+Every click-then-select-all pair now carries the focus requirement between the
+two lines: 46 sites across 39 spec files. The requirement is written inline
+rather than through a shared helper, because the seed text, the panel set and the
+follow-up assertions differ per scenario, while the two-line primitive does not.
+No assertion was relaxed, no timeout raised, no test retried or skipped.
+
+Verified: `npm run check` clean; the full browser suite passed twice in a row
+(254 tests). One earlier full run reported three timing failures in unrelated
+scenarios (`flow-panel-focus`, `round3-browser-fixes`, `present-hash-anchor`)
+that pass in isolation and did not reproduce; that is machine load under parallel
+workers, not the seeding race, and it is recorded here rather than papered over.

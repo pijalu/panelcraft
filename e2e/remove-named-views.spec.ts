@@ -24,6 +24,7 @@ async function seedDoc(page: Page, text: string): Promise<void> {
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(text);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
@@ -77,6 +78,7 @@ test('legacy named view syntax is rejected with an actionable diagnostic', async
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText('pcd 1.0\nview "Old" {\n  layout saved\n}\n');
   await expect(page.locator('.cm-content')).toContainText('view "Old"');

@@ -218,6 +218,7 @@ test('UX-02: unapplied code survives docking, floating, close and reopen', async
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   const dirty = 'pcd 1.0\nsystem';
   await page.keyboard.insertText(dirty);
