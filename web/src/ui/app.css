@@ -425,12 +425,6 @@ body {
   stroke-dasharray: 4 4;
 }
 
-.flow-illustration {
-  min-height: 28px;
-  font-size: var(--pc-text-xs);
-  max-width: 120px;
-}
-
 /* F-16: present mode — editor chrome disappears, the diagram owns the viewport */
 .app-shell.presenting .app-header,
 .app-shell.presenting .banners,
@@ -2373,6 +2367,58 @@ marker .pc-arrow[fill='none'] {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+/* Stacked prose field: label on its own line, one hint line, then a full-width
+   control. Every stacked field shares these rules so the panel has one width,
+   one label rhythm and one input measure instead of per-field styling. */
+.flow-field-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+}
+
+.flow-field-stacked > .flow-field-label {
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.flow-field-hint {
+  margin: 0 0 2px;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+  line-height: 1.3;
+}
+
+.flow-field-stacked > input,
+.flow-field-stacked > select,
+.flow-field-stacked > textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: var(--pc-text-sm);
+  color: var(--pc-input-fg);
+  background: var(--pc-input-bg);
+  border: 1px solid var(--pc-input-border);
+  border-radius: var(--pc-radius-sm);
+  padding: 4px 6px;
+  min-height: var(--pc-control-min);
+}
+
+.flow-field-stacked > textarea {
+  /* Height comes from the shared auto-grow rule; the user may still drag it. */
+  resize: vertical;
+  line-height: 1.45;
+  overflow-y: hidden;
+}
+
+.flow-field-stacked > input:focus-visible,
+.flow-field-stacked > select:focus-visible,
+.flow-field-stacked > textarea:focus-visible {
+  outline: 2px solid var(--pc-focus-ring);
+  outline-offset: 0;
 }
 
 .flow-shared-style {

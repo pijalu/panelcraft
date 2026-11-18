@@ -68,7 +68,7 @@ function Group(props: {
 }
 
 function TextFields({ step, patch }: { step: { text: string }; patch: Patch }) {
-  return <Field label={s('Text')} value={step.text} onInput={(v) => patch({ text: v })} testid="insp-text" />;
+  return <Field variant="stacked" label={s('Text')} value={step.text} onInput={(v) => patch({ text: v })} testid="insp-text" />;
 }
 
 function MsgFields(props: {
@@ -458,6 +458,7 @@ export function StepProperties(props: StepPropertiesProps) {
         <>
           <KindFields step={step} a={a} targets={props.targets} />
           <Field
+            variant="stacked"
             label={s('Description')}
             value={step.description ?? ''}
             onInput={(v) => a.patch({ description: v === '' ? undefined : v })}

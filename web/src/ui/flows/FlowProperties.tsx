@@ -14,7 +14,7 @@ import { downloadText } from '../download';
 import { stem } from '../paths';
 import { s } from '../strings';
 import { PlayIcon } from '../icons';
-import { Field, TextArea, CheckField } from './fields';
+import { Field, TextArea, CheckField, fieldClass } from './fields';
 import type { FlowSession } from './flowSession';
 import { editFlow, flowKey } from './flowEdit';
 import { framingPath, framingText, patchFlow, setFraming, type FlowPatch } from './flowDoc';
@@ -90,6 +90,7 @@ function FramingField(props: {
   return (
     <>
       <TextArea
+        variant="stacked"
         label={s(props.kind === 'intro' ? 'Introduction' : 'Conclusion')}
         hint={s('Shown before the first step')}
         value={framingText(props.flow, props.kind)}
@@ -125,12 +126,15 @@ export function FlowProperties(props: FlowPropertiesProps) {
       )}
       <Group id="flow" title={s('Flow')} open={open('flow')} onToggle={props.onToggleSection}>
         <Field
+          variant="stacked"
           label={s('Flow name')}
+          hint={s('Shown in the flow list')}
           value={flow.title ?? flow.id ?? ''}
           onInput={(v) => patch({ title: v })}
           testid="flow-title"
         />
         <TextArea
+          variant="stacked"
           label={s('Flow purpose')}
           hint={s('What this walkthrough explains')}
           value={flow.description ?? ''}
@@ -138,6 +142,7 @@ export function FlowProperties(props: FlowPropertiesProps) {
           testid="flow-description"
         />
         <TextArea
+          variant="stacked"
           label={s('Flow notes (Markdown)')}
           hint={s('Headings, bold, italic, code, lists and links')}
           value={flow.descriptionLines?.join('\n') ?? ''}
@@ -155,10 +160,9 @@ export function FlowProperties(props: FlowPropertiesProps) {
           onChange={(checked) => patch({ presentation: checked })}
         />
         {props.onIllustration && (
-          <label class="flow-field">
+          <label class={fieldClass('stacked')}>
             <span class="flow-field-label">{s('Illustration style')}</span>
             <select
-              class="flow-illustration"
               data-testid="flow-illustration"
               aria-label={s('Illustration style')}
               title={s('How this flow is illustrated')}

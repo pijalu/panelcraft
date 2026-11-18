@@ -879,3 +879,44 @@ describe('per-step advance trigger editor', () => {
     expect(out()).not.toContain('advance click');
   });
 });
+
+describe('shared stacked field layout', () => {
+  /** Every prose field of the open Flow properties panel. */
+  const PROSE = ['flow-title', 'flow-description', 'flow-notes', 'flow-intro', 'flow-conclusion'];
+
+  it('gives flow name, purpose, notes, intro and conclusion one stacked layout', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    for (const testid of PROSE) {
+      const control = screen.getByTestId(testid);
+      const field = control.closest('.flow-field');
+      expect(field, `${testid} sits in a field row`).not.toBeNull();
+      // One layout: label above the control, so nothing keeps the inline
+      // label-beside-control measure in the prose panel.
+      expect(field!.classList.contains('flow-field-stacked'), `${testid} is stacked`).toBe(true);
+      expect(field!.lastElementChild, `${testid} control is last`).toBe(control);
+      expect(field!.querySelector('.flow-field-label')!.textContent, `${testid} label first`).toBeTruthy();
+    }
+  });
+
+  it('puts the step Description in the same stacked layout', () => {
+    mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-0'));
+    const control = screen.getByTestId('insp-description');
+    const field = control.closest('.flow-field');
+    expect(field!.classList.contains('flow-field-stacked')).toBe(true);
+    expect(field!.lastElementChild).toBe(control);
+  });
+
+  it('grows the notes field with its content and keeps the written text', () => {
+    const { out } = mount();
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    const notes = screen.getByTestId('flow-notes') as HTMLTextAreaElement;
+    Object.defineProperty(notes, 'scrollHeight', { value: 200, configurable: true });
+    fireEvent.focus(notes);
+    fireEvent.input(notes, { target: { value: 'one\ntwo\nthree\nfour\nfive' } });
+    expect(notes.style.height).toBe('200px');
+    expect(out()).toContain('text "five"');
+  });
+});
