@@ -67,6 +67,7 @@ test.describe('blank diagram creation', () => {
     await page.keyboard.insertText('# notes\n');
     await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', { timeout: 15_000 });
     await editor.click();
+    await expect(editor).toBeFocused();
     await editor.press('ControlOrMeta+a');
     await page.keyboard.press('Backspace');
     await expect(page.getByTestId('empty-state')).toHaveCount(0);

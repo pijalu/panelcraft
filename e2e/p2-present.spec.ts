@@ -28,6 +28,7 @@ async function seed(page: Page): Promise<void> {
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', {
@@ -130,6 +131,7 @@ test('F-16: a chooser waits in present mode, choices advance, R restarts', async
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(CHOICE_DOC);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', { timeout: 5000 });

@@ -82,3 +82,50 @@ describe('stable id allocation (F-02)', () => {
     expect(uniqueId(new Set<string>(), 'o', 0)).toBe('o1');
   });
 });
+
+// The default name is what the user sees and edits, so it must read as a
+// per-kind sequence from 1. It used to be derived from the element id, which is
+// one counter shared by every kind and every link — a person added after a
+// component was called "Person 2" even though "Person 1" was free.
+describe('default name numbering', () => {
+  const nameOf = (id: string): string => ctrl.snapshot.objects.find((o) => o.id === id)?.name ?? '';
+
+  it('numbers each kind from 1 independently', () => {
+    const component = ctrl.addObject('component');
+    const person = ctrl.addObject('person');
+    expect(nameOf(component)).toBe('Component 1');
+    expect(nameOf(person)).toBe('Person 1');
+  });
+
+  it('fills the first free number for the kind, not the highest', () => {
+    ctrl.loadState({
+      objects: [
+        { id: 'o1', kind: 'container', x: 0, y: 0, w: 160, h: 60, name: 'Container 1' },
+        { id: 'o2', kind: 'container', x: 0, y: 0, w: 160, h: 60, name: 'Container 3' },
+      ],
+      links: [],
+    });
+    expect(nameOf(ctrl.addObject('container'))).toBe('Container 2');
+  });
+
+  it('a loaded file with high ids does not push the name number up', () => {
+    ctrl.loadState({
+      objects: [
+        { id: 'o5', kind: 'system', x: 0, y: 0, w: 160, h: 60, name: 'Gateway' },
+        { id: 'o6', kind: 'system', x: 300, y: 0, w: 160, h: 60, name: 'Worker' },
+      ],
+      links: [{ id: 'l6', from: 'o5', to: 'o6' }],
+    });
+    const id = ctrl.addObject('system');
+    expect(id).toBe('o7');
+    expect(nameOf(id)).toBe('System 1');
+  });
+
+  it('keeps names unique when a renamed element already holds the default name', () => {
+    ctrl.loadState({
+      objects: [{ id: 'o1', kind: 'queue', x: 0, y: 0, w: 160, h: 60, name: 'Queue 1' }],
+      links: [],
+    });
+    expect(nameOf(ctrl.addObject('queue'))).toBe('Queue 2');
+  });
+});

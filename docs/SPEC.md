@@ -113,7 +113,10 @@ play mode, exports PNG/SVG for docs.
   SVG/PNG/CLI output).
 * **FR-C3** Stencil palette (C4 types): Person, Software System, External System,
   Container, Component, Data Store, Queue/Topic, Group/Boundary, Note.
-  Drag-drop or click-to-place.
+  Drag-drop or click-to-place; one press adds one element. A new element is
+  labelled with the first free `Kind n` name for its own kind, counted from 1
+  ("Container 1", then "Container 2"), independent of other kinds and of the
+  element ids.
 * **FR-C4** Objects: select, multi-select (rubber band, shift-click), drag, resize
   (groups/boundaries), rotate *not* supported (C4 shapes are axis-aligned).
 * **FR-C5** Inline rename (double-click), description tooltip, icon per object

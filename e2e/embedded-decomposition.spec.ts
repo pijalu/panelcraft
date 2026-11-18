@@ -56,6 +56,7 @@ async function seedFile(page: Page, path: string, text: string): Promise<void> {
   await input.press('Enter');
   const editor = page.locator('.cm-content');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(text);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean', { timeout: 5000 });

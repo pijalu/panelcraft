@@ -4,6 +4,19 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — bug round: palette add, default names
+
+- One press on a shape in the Shapes palette adds exactly one element. Before,
+  the press ran both the drag path and the click path, so a plain click placed
+  the shape twice — once at the pointer, once in the middle of the view.
+- A new element is named with the first free number for its own kind ("Container
+  1", then "Container 2"), counted from 1 and independent of other kinds and of
+  the element ids. Before, every kind drew its number from one counter, so a
+  person added after a component was called "Person 2".
+
+Details and evidence: [palette double add](archive/bugs-palette-double-add.md),
+[default name numbering](archive/bugs-default-name-numbering.md).
+
 ## Unreleased — bug round: blank diagram, shared field layout, step prose
 
 - Creating a file offers a blank diagram beside the templates: it opens as the

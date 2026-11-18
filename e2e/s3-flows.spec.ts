@@ -58,6 +58,7 @@ test('S3: 6-step flow playback — transport, alt chooser, par concurrency, dim,
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await editor.click();
+  await expect(editor).toBeFocused();
   await editor.press('ControlOrMeta+a');
   await page.keyboard.insertText(DOC);
   await expect(canvas.locator('g.pc-obj')).toHaveCount(3, { timeout: 5000 });
