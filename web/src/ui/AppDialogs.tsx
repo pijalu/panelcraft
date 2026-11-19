@@ -24,6 +24,8 @@ export function AppDialogs(props: {
   manager: WorkspaceManager;
   activePath: string | null;
   ctrlRef: RefObject<CanvasController | null>;
+  /** Invalidate same-path canvas/code load guards before restoring a snapshot. */
+  resyncDocuments: () => void;
   diverged: ReturnType<typeof useDivergedClose>;
   clearOpen: boolean;
   clearData(): void;
@@ -84,7 +86,10 @@ export function AppDialogs(props: {
         <SnapshotsDialog
           snapshots={() => store.list()}
           onSave={(n) => store.save(n, props.manager.record()).then(() => undefined)}
-          onRestore={(rec: SnapshotRecord) => props.manager.restoreRecord(rec.ws)}
+          onRestore={(rec: SnapshotRecord) => {
+            props.resyncDocuments();
+            props.manager.restoreRecord(rec.ws);
+          }}
           onDelete={(id) => store.delete(id)}
           onClose={props.onSnapsClose}
         />

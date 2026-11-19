@@ -98,6 +98,8 @@ export interface CodeSyncHandle {
    * a keystroke in that window would be overwritten by the incoming file text.
    */
   loaded: boolean;
+  /** Re-read the active document after an in-place workspace restoration. */
+  resync: () => void;
   /** Format button / save hook (FR-K4). */
   formatNow: () => void;
   /**
@@ -263,6 +265,9 @@ useEffect(() => {
     machine,
     snapshot,
     loaded,
+    resync: () => {
+      lastLoadedRef.current = null;
+    },
     formatNow: () => machine.formatNow(),
     commitDoc,
   };

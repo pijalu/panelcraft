@@ -910,6 +910,12 @@ function usePresentationCanvasChrome(
   }, [canvas.ctrlRef, presenting]);
 }
 
+/** Reload both views after restoring content under the same document key. */
+function resyncDocuments(canvas: { resync(): void }, code: { resync(): void }): void {
+  canvas.resync();
+  code.resync();
+}
+
 export function App() {
   const ws = useWorkspace();
   const activePath = ws.ready ? ws.manager.activePath : null;
@@ -1013,7 +1019,7 @@ export function App() {
       <AppDialogs
         manager={manager}
         activePath={activePath}
-        ctrlRef={canvas.ctrlRef}
+        ctrlRef={canvas.ctrlRef} resyncDocuments={() => resyncDocuments(canvas, code)}
         diverged={diverged}
         clearOpen={clearOpen}
         clearData={() => clearWorkspace(manager, canvas, () => setClearOpen(false))}
