@@ -9,9 +9,9 @@ import {
 } from './uiLayout';
 
 describe('defaultLayout (F-10)', () => {
-  it('opens only Shapes on a fresh wide viewport', () => {
+  it('keeps every panel available as a collapsed rail on a fresh wide viewport', () => {
     const l = defaultLayout(1600);
-    expect(Object.values(l.panels)).toEqual(['collapsed', 'collapsed', 'open', 'collapsed', 'collapsed']);
+    expect(Object.values(l.panels)).toEqual(['collapsed', 'collapsed', 'collapsed', 'collapsed', 'collapsed']);
     expect(l.widths).toEqual(DEFAULT_WIDTHS);
   });
 
@@ -23,7 +23,7 @@ describe('defaultLayout (F-10)', () => {
 
 describe('togglePanel', () => {
   it('flips only the target panel', () => {
-    const start = openPanel(defaultLayout(1600), 'sidebar');
+    const start = openPanel(openPanel(defaultLayout(1600), 'sidebar'), 'palette');
     const l = togglePanel(start, 'sidebar');
     expect(l.panels.sidebar).toBe('collapsed');
     expect(l.panels.palette).toBe('open');
@@ -95,7 +95,7 @@ describe('normaliseLayout', () => {
       1600,
     );
     expect(l.panels.sidebar).toBe('collapsed');
-    expect(l.panels.palette).toBe('open'); // invalid mode → default
+    expect(l.panels.palette).toBe('collapsed'); // invalid mode → default
     expect(l.widths.sidebar).toBe(160); // clamped
     expect(l.widths.code).toBe(480);
     expect(l.widths.props).toBe(DEFAULT_WIDTHS.props);
@@ -111,13 +111,14 @@ describe('normaliseLayout', () => {
 
 describe('drawerPanel (UX08-WP02)', () => {
   it('picks the first expanded side-docked panel', () => {
-    expect(drawerPanel(defaultLayout(1600))).toBe('palette');
-    const onlyProps = openPanel(togglePanel(defaultLayout(1600), 'palette'), 'props');
+    const palette = openPanel(defaultLayout(1600), 'palette');
+    expect(drawerPanel(palette)).toBe('palette');
+    const onlyProps = openPanel(togglePanel(palette, 'palette'), 'props');
     expect(drawerPanel(onlyProps)).toBe('props');
   });
 
   it('ignores collapsed, closed, floating and bottom panels', () => {
-    const collapsed = togglePanel(defaultLayout(1600), 'palette');
+    const collapsed = togglePanel(openPanel(defaultLayout(1600), 'palette'), 'palette');
     expect(collapsed.panels.palette).toBe('collapsed');
     expect(drawerPanel(collapsed)).toBeNull();
     expect(drawerPanel({ ...collapsed, docks: { ...collapsed.docks, palette: 'bottom' } })).toBeNull();

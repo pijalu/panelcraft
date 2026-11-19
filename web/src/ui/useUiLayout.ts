@@ -248,7 +248,7 @@ export function useUiLayout(manager: WorkspaceManager, ready: boolean, version: 
   );
   const resetLayout = useCallback(() => {
     update((l) => resetPure(l, window.innerWidth), true);
-    focusPanel('palette', false);
+    focusPanel('palette', true);
   }, [focusPanel, update]);
   const toggleSection = useCallback(
     (section: string) => update((l) => togglePure2(l, section), true),

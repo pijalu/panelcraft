@@ -35,6 +35,7 @@ test.describe('F-25 laws-of-UX affordances', () => {
 
   test('palette is grouped by C4 level and keeps 32 px hit targets', async ({ page }) => {
     await page.goto('/');
+    await openWorkspacePanels(page, ['palette']);
     await expect(page.getByTestId('palette-group-context')).toBeVisible();
     await expect(page.getByTestId('palette-group-container')).toBeVisible();
     await expect(page.getByTestId('palette-group-component')).toBeVisible();

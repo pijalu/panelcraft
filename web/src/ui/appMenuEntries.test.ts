@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { MenuEntry } from './Menu';
 import { buildAppMenu, type AppMenuActions, type AppMenuContext } from './appMenuEntries';
-import { closePanel, defaultLayout, PANELS, type PanelId } from './uiLayout';
+import { closePanel, defaultLayout, openPanel, PANELS, type PanelId } from './uiLayout';
 
 function actions(): AppMenuActions {
   return {
@@ -160,7 +160,7 @@ describe('application menu model', () => {
   });
 
   it('offers closed panels and disables panels already open', () => {
-    const layout = closePanel(defaultLayout(1600), 'sidebar');
+    const layout = openPanel(closePanel(defaultLayout(1600), 'sidebar'), 'palette');
     const ctx = context({ layout });
     const entries = buildAppMenu(ctx);
     expect(find(entries, 'view-panel-sidebar')).toHaveProperty('disabled', false);

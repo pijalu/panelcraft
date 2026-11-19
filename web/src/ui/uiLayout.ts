@@ -75,13 +75,13 @@ const DEFAULT_DOCKS: Record<PanelId, DockId> = {
   props: 'right',
 };
 
-/** Canvas-first defaults: Shapes is open; every other secondary panel is a rail. */
+/** Canvas-first defaults: every panel stays available as a labelled rail. */
 export function defaultLayout(_viewportWidth = Number.POSITIVE_INFINITY): UiLayout {
   return {
     version: 2,
     // UX08-WP12: Flows keeps a labelled rail entry so authoring is discoverable
     // from the default shell; a closed panel has no affordance at all.
-    panels: { sidebar: 'collapsed', flows: 'collapsed', palette: 'open', code: 'collapsed', props: 'collapsed' },
+    panels: { sidebar: 'collapsed', flows: 'collapsed', palette: 'collapsed', code: 'collapsed', props: 'collapsed' },
     docks: { ...DEFAULT_DOCKS },
     order: { sidebar: 0, flows: 1, palette: 2, code: 0, props: 1 },
     widths: { ...DEFAULT_WIDTHS },

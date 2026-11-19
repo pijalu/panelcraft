@@ -276,6 +276,20 @@ body {
   background: var(--pc-panel-header-bg);
 }
 
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--pc-space-2);
+  min-width: 0;
+}
+
+.app-brand-icon {
+  display: block;
+  width: var(--pc-control-min);
+  height: var(--pc-control-min);
+  border-radius: var(--pc-radius-md);
+}
+
 .app-title {
   color: var(--pc-fg);
   font-size: var(--pc-text-lg);
@@ -298,13 +312,22 @@ body {
   }
 }
 
+@media (max-width: 719px) {
+  .app-title {
+    display: none;
+  }
+}
+
 /* UX08-WP13: presentation launcher entry point in the shell header. */
 .app-present {
   display: inline-flex;
   align-items: center;
-  gap: var(--pc-space-2);
+  justify-content: center;
+  flex: 0 0 var(--pc-control-min);
+  width: var(--pc-control-min);
+  height: var(--pc-control-min);
   margin-left: auto;
-  padding: var(--pc-space-1) var(--pc-space-3);
+  padding: 0;
   border: 1px solid var(--pc-panel-border);
   border-radius: var(--pc-radius-sm);
   background: var(--pc-panel-bg);
