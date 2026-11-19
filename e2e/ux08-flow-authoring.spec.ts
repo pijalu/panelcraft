@@ -20,6 +20,7 @@ async function axe(page: Page): Promise<void> {
 
 /** Drag two shapes from the palette and link them (setup for the authoring path). */
 async function seedShapes(page: Page): Promise<void> {
+  await openWorkspacePanels(page, ['palette']);
   const canvas = page.getByTestId('canvas');
   const box = (await canvas.boundingBox()) ?? { x: 0, y: 0, width: 800, height: 600 };
   const drops = [
