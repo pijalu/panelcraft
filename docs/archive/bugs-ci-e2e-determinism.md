@@ -149,19 +149,31 @@ trace in this document's first section — same failure, different spec.
 
 ### Cause
 
-Two facts combine:
+Not pinned. What the probes ruled out is more useful than what they suggested:
 
-1. `CodeEditor`'s mount effect depends on `[machine]`
-   (`web/src/ui/codeview/CodeEditor.tsx`), so a new machine identity destroys and
-   rebuilds the CodeMirror view.
-2. The sync machine for a file is rebuilt when the stored document arrives from
-   browser storage.
+- **The CodeMirror view is not rebuilt on a file switch.** A marker property set on
+  `.cm-content` survived a file creation that made a new document active, so the
+  same DOM node took the incoming text. The earlier explanation ("the mount effect
+  depends on `[machine]`, so a new machine identity rebuilds the view") does not
+  apply: `useCodeSync` creates the machine with `useMemo(…, [])`, i.e. once per App
+  lifetime, so its identity never changes after startup.
+- **A machine write into a focused buffer does not break the editor.** Formatting via
+  `Shift+Alt+F` in a focused editor kept focus, and the following select-all still
+  selected the buffer (50 of 53 characters, the rest being the trailing line), after
+  which typing replaced rather than appended.
+- **Typing immediately after a file switch is clean** in 60 consecutive trials at six
+  concurrent workers: the new document's text was already in the buffer by the time
+  the click resolved, in every trial.
 
-So on a slow load, a seed that clicks, selects and types lands across the rebuild
-window. The view that received the input is destroyed mid-flight, and what
-survives is a partial application against the old document. Requiring focus
-before the chord (the earlier fix) does not help: focus was established, then the
-editor was replaced underneath it.
+What remains is the window the code itself documents: `loaded` in
+`web/src/ui/useCodeSync.ts` is sticky for the App lifetime, so on a *file switch* the
+editor stays available while the new document's text is in flight. The comment that
+introduced `loaded` says a keystroke in that window "would be overwritten by the
+incoming file text" — that reasoning is applied at startup and not on a switch. A
+machine write landing between the select-all and the insert collapses the selection,
+and the insert then appends, which is exactly the buffer shape in the trace above.
+That is consistent with the evidence but not proven by it; the corruption was only
+seen under CI load and never reproduced locally.
 
 ### What changed
 
@@ -207,14 +219,20 @@ buffer cannot be applied"). It now asserts the refusal directly.
 - `npm run check` clean (tsc, service-worker tsc, eslint).
 - Full browser suite: 254 passed, twice in a row.
 - `bugs-palette-add.spec.ts` at 20 repeats × 6 workers: 60 of 60 passed. Before
-the primitive, the same command failed at repeat 12 with the buffer above.
+  the primitive, the same command failed at repeat 12 with the buffer above.
 - `bug09-transport.spec.ts:347` at 8 repeats × 4 workers: 8 of 8 passed.
 
 ### Residual risk, recorded not fixed
 
-The re-type inside the primitive repairs the *harness* against the mid-typing
-remount. The underlying app behaviour is unchanged: if a document arrives from
-storage while a person is typing in the code view, their input is mangled the
-same way. Reaching that window requires the code panel to be open before the
-stored document resolves, which is what tests do and people normally do not, so
-it is recorded here instead of being changed in the same pull request.
+The re-type inside the primitive repairs the *harness*; the app behaviour is
+unchanged. If a document arrives (a file switch, or storage resolving) while a person
+is typing in the code view, that input can be lost the same way. Three probes narrowed
+the mechanism without pinning it (see "Cause"): the view survives the switch, a write
+to a focused buffer keeps focus and keymap, and typing after a landed switch was clean
+in 60 trials. What is left is the documented-but-unenforced window — `loaded` is sticky
+for the App lifetime, so the editor accepts keystrokes while a newly active document's
+text is still in flight, the exact case its own comment says must not be offered for
+typing. Reaching it needs the code panel open across a switch, which is what tests do
+and people mostly do not, so it is recorded rather than changed here. The proposed fix
+is written up in
+[proposal-code-view-load-window.md](proposal-code-view-load-window.md).
