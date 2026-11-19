@@ -142,6 +142,17 @@ describe('diff-patch (re-render count assertions)', () => {
     expect(after?.querySelector('path')).not.toBeNull(); // cylinder glyph
   });
 
+  it('renames update the visible label and accessible name on the same node', () => {
+    r.render(scene([obj('a', { name: 'System 1' })]));
+    const before = r.elementFor('a');
+    r.render(scene([obj('a', { name: 'Checkout API' })]));
+    expect(r.elementFor('a')).toBe(before);
+    expect(before?.getAttribute('aria-label')).toBe('system Checkout API');
+    expect(before?.textContent).toContain('Checkout API');
+    r.render(scene([obj('a', { name: undefined })]));
+    expect(before?.getAttribute('aria-label')).toBe('system a');
+  });
+
   it('removes deleted objects', () => {
     r.render(scene([obj('a'), obj('b')]));
     const stats = r.render(scene([obj('a')]));

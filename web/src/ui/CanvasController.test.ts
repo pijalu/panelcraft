@@ -175,6 +175,25 @@ describe('selection + drag (FR-C2/C4)', () => {
     expect(ctrl.snapshot.selection.objects).toEqual([]);
   });
 
+  it('hides editing chrome without clearing selection, including after later renders', () => {
+    expect(svg.querySelector('.pc-obj.pc-selected')).not.toBeNull();
+    expect(svg.querySelectorAll('.pc-resize-handle')).toHaveLength(8);
+
+    ctrl.setEditingChromeVisible(false);
+    expect(svg.querySelector('.pc-selected, .pc-link-selected')).toBeNull();
+    expect(svg.querySelector('.pc-layer-overlay')?.childNodes).toHaveLength(0);
+    expect(ctrl.snapshot.selection.objects).toEqual(['o1']);
+
+    ctrl.updateObject('o1', { name: 'Still selected' });
+    expect(svg.querySelector('.pc-selected, .pc-link-selected')).toBeNull();
+    expect(svg.querySelector('.pc-layer-overlay')?.childNodes).toHaveLength(0);
+    expect(ctrl.snapshot.selection.objects).toEqual(['o1']);
+
+    ctrl.setEditingChromeVisible(true);
+    expect(svg.querySelector('.pc-obj.pc-selected[data-id="o1"]')).not.toBeNull();
+    expect(svg.querySelectorAll('.pc-resize-handle')).toHaveLength(8);
+  });
+
   it('drag moves with grid snap and pushes one undo command', () => {
     const c = center('o1'); // (280,230)
     drag(c, { x: c.x + 10, y: c.y + 3 });

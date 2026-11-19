@@ -884,6 +884,7 @@ function useFlowPresentation(
   const pres = useStagePresentation({
     player, activePath, ready, textOf: (path) => manager.text(path),
   });
+  usePresentationCanvasChrome(canvas, pres.presenting);
   return { player, pres };
 }
 
@@ -896,6 +897,23 @@ function useHistoryAndReveal(
     history: useHistory(canvas.ctrlRef, snapshot, canvas.ctrlRef.current !== null, setFlash),
     revealRef: useCanvasRevealPort(canvas.snap),
   };
+}
+
+function usePresentationCanvasChrome(
+  canvas: ReturnType<typeof useCanvasController>,
+  presenting: boolean,
+): void {
+  useEffect(() => {
+    // Selection remains editing state, but its handles and outlines must not
+    // follow the presentation camera. FlowAnimator owns a separate SVG layer.
+    canvas.ctrlRef.current?.setEditingChromeVisible(!presenting);
+  }, [canvas.ctrlRef, presenting]);
+}
+
+/** Reload both views after restoring content under the same document key. */
+function resyncDocuments(canvas: { resync(): void }, code: { resync(): void }): void {
+  canvas.resync();
+  code.resync();
 }
 
 export function App() {
@@ -1001,7 +1019,7 @@ export function App() {
       <AppDialogs
         manager={manager}
         activePath={activePath}
-        ctrlRef={canvas.ctrlRef}
+        ctrlRef={canvas.ctrlRef} resyncDocuments={() => resyncDocuments(canvas, code)}
         diverged={diverged}
         clearOpen={clearOpen}
         clearData={() => clearWorkspace(manager, canvas, () => setClearOpen(false))}

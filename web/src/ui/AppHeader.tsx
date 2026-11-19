@@ -50,8 +50,32 @@ export function AppHeader(props: {
   return (
     <>
       <header class="app-header">
-        <span class="app-title">{s('PanelCraft')}</span>
+        <div class="app-brand">
+          <img
+            class="app-brand-icon"
+            data-testid="app-brand-icon"
+            src="./icons/icon-192.png"
+            width="32"
+            height="32"
+            alt={s('PanelCraft')}
+          />
+          <span class="app-title" aria-hidden="true">
+            <span>{s('Panel')}</span>
+            <span class="app-title-accent">{s('Craft')}</span>
+          </span>
+        </div>
         <StatusPill dirty={props.dirty} savedAt={props.savedAt} problems={props.problems} />
+        {/* Keep presentation discoverable from the shell, not only in a menu. */}
+        <button
+          type="button"
+          class="app-present"
+          data-testid="present-open"
+          aria-label={s('Present a flow')}
+          title={s('Present a flow')}
+          onClick={props.onPresentRequest}
+        >
+          <PlayIcon />
+        </button>
         <AppMenu
           manager={ws.manager}
           ready={ws.ready}
@@ -90,17 +114,6 @@ export function AppHeader(props: {
           onResetRoutes={props.onResetRoutes}
           onResetDiagramLayout={props.onResetDiagramLayout}
         />
-        {/* UX08-WP13: presentation is discoverable from the shell, not only a menu item. */}
-        <button
-          type="button"
-          class="app-present"
-          data-testid="present-open"
-          title={s('Present a flow')}
-          onClick={props.onPresentRequest}
-        >
-          <PlayIcon />
-          <span>{s('Present')}</span>
-        </button>
       </header>
       <Banners
         openError={errorToShow(ws.manager, dismissedError, ws.ready)}

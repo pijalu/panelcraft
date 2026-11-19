@@ -90,10 +90,10 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
     await expect(page.getByTestId('app-shell')).toHaveAttribute(
       'data-panels',
-      'sidebar:collapsed,flows:collapsed,palette:open,code:collapsed,props:collapsed',
+      'sidebar:collapsed,flows:collapsed,palette:collapsed,code:collapsed,props:collapsed',
     );
-    await expect(page.getByTestId('palette')).toBeVisible();
-    for (const panel of ['sidebar', 'flows', 'code', 'props'] as const) {
+    await expect(page.getByTestId('palette')).toHaveCount(0);
+    for (const panel of PANELS) {
       await expect(page.getByTestId(`rail-${panel}`)).toBeVisible();
     }
     await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
@@ -165,9 +165,9 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await chooseAppMenu(page, 'reset-workspace-layout');
     await expect(page.getByTestId('app-shell')).toHaveAttribute(
       'data-panels',
-      'sidebar:collapsed,flows:collapsed,palette:open,code:collapsed,props:collapsed',
+      'sidebar:collapsed,flows:collapsed,palette:collapsed,code:collapsed,props:collapsed',
     );
-    await expect(page.getByTestId('panel-title-palette')).toBeFocused();
+    await expect(page.getByTestId('expand-palette')).toBeFocused();
     await capture(page, `ux02-reset-${colorScheme}`);
 
     await dock(page, 'code', 'bottom');
@@ -181,6 +181,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     const newHeight = (await code.boundingBox())!.height;
     expect(newHeight).toBeGreaterThan(oldHeight + 30);
 
+    await show(page, 'palette');
     const palette = page.locator('[data-panel="palette"]');
     const oldWidth = (await palette.boundingBox())!.width;
     const vertical = (await page.getByTestId('splitter-palette').boundingBox())!;
@@ -251,5 +252,5 @@ test('UX-02: keyboard-only open, dock, float, close, reopen and reset', async ({
   await expect(page.getByTestId('panel-title-code')).toBeFocused();
 
   await pressMenuItem(page, 'app-menu', 'reset-workspace-layout');
-  await expect(page.getByTestId('panel-title-palette')).toBeFocused();
+  await expect(page.getByTestId('expand-palette')).toBeFocused();
 });

@@ -3,7 +3,22 @@
 // a reload with the network cut must still boot the app fully from the SW
 // cache. The app itself proves liveness (header renders, workspace storage
 // boots). User data lives in IDB, never in the SW (FR-S1).
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { openWorkspacePanels } from './lib/panels';
+
+/** Wait for an activated worker and its complete, content-versioned precache. */
+async function expectInstalledShell(page: Page): Promise<void> {
+  await expect.poll(async () => page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration?.active?.state !== 'activated') return false;
+    const name = (await caches.keys()).find((key) => key.startsWith('panelcraft-shell-'));
+    if (name === undefined) return false;
+    const paths = (await (await caches.open(name)).keys()).map((request) => new URL(request.url).pathname);
+    return ['/index.html', '/manifest.webmanifest', '/icons/icon-192.png'].every((path) => paths.includes(path))
+      && paths.some((path) => path.endsWith('.js'))
+      && paths.some((path) => path.endsWith('.css'));
+  }), { timeout: 20_000 }).toBe(true);
+}
 
 // Both tests install/claim the same service worker in the same origin; running
 // them concurrently races the precache (observed: `caches.keys()[0]` may be an
@@ -14,14 +29,8 @@ test.describe.configure({ mode: 'serial' });
 test('offline reload serves the app shell from the service worker', async ({ page }) => {
   await page.goto('/');
 
-  // wait for the SW to control the page (first install claims clients)
-  await page.waitForFunction(async () => {
-    const reg = await navigator.serviceWorker.getRegistration();
-    return !!reg?.active;
-  }, undefined, { timeout: 15_000 });
-
-  // give the precache install a beat to finish all puts
-  await page.waitForTimeout(500);
+  // Activation alone is not the assertion: the executable shell must be cached.
+  await expectInstalledShell(page);
 
   await page.reload();
 
@@ -32,8 +41,20 @@ test('offline reload serves the app shell from the service worker', async ({ pag
   const title = await page.title();
   expect(title).toBe('PanelCraft');
   await expect(page.locator('#app')).toBeVisible();
-  // the app actually booted (Preact rendered the header chrome)
-  await expect(page.locator('header, [class*="header"], [class*="Header"]').first()).toBeVisible();
+  // Prove the real application and a browser-local template work without a network.
+  await expect(page.getByTestId('app-shell')).toBeVisible();
+  const brandIcon = page.getByRole('img', { name: 'PanelCraft', exact: true });
+  await expect(brandIcon).toBeVisible();
+  await expect.poll(() => brandIcon.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(192);
+  await expect(page.getByTestId('template-c4')).toBeVisible();
+  await page.getByTestId('template-c4').click();
+  const objects = page.getByTestId('canvas').locator('g.pc-obj');
+  await expect(objects).toHaveCount(3);
+  await expect(objects.filter({ hasText: 'Customer' })).toHaveCount(1);
+  await expect(objects.filter({ hasText: 'Shop' })).toHaveCount(1);
+  await expect(objects.filter({ hasText: 'Payment provider' })).toHaveCount(1);
+  await openWorkspacePanels(page, ['code']);
+  await expect(page.locator('.cm-content')).toContainText('Payment provider');
 });
 
 test('SW caches the hashed bundle (assets served cache-first)', async ({ page }) => {
@@ -64,7 +85,9 @@ test('SW caches the hashed bundle (assets served cache-first)', async ({ page })
     const cache = await caches.open(name);
     return (await cache.keys()).map((request) => new URL(request.url).pathname);
   });
-  for (const path of ['/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']) {
+  for (const path of ['/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']) {
     expect(cached, `precache is missing ${path}`).toContain(path);
   }
+  expect(cached.some((path) => path.endsWith('.js')), 'precache is missing executable JS').toBe(true);
+  expect(cached.some((path) => path.endsWith('.css')), 'precache is missing the stylesheet').toBe(true);
 });

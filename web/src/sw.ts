@@ -95,9 +95,15 @@ sw.addEventListener('fetch', (event: FetchEvent) => {
         }
         return res;
       } catch {
-        const hit = (await caches.match(SHELL)) ?? (await caches.match(event.request));
+        // Icons and the manifest are precached outside /assets/: return their own
+        // responses offline. Only a navigation may fall back to the HTML shell.
+        const hit = await caches.match(event.request);
         if (hit) return hit;
-        throw new Error('offline and no cached shell');
+        if (event.request.mode === 'navigate') {
+          const shell = await caches.match(SHELL);
+          if (shell) return shell;
+        }
+        throw new Error('offline and no matching cached response');
       }
     })(),
   );

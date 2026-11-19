@@ -15,7 +15,7 @@ layout saved
 
 async function seed(page: Page): Promise<void> {
   await page.goto('/');
-  await openWorkspacePanels(page, ['code']);
+  await openWorkspacePanels(page, ['code', 'palette']);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
   await seedCode(page, DOC);
 }

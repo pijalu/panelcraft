@@ -8,7 +8,7 @@ import { documentText, seedCode } from './lib/seed';
 
 async function blankDiagram(page: Page): Promise<void> {
   await page.goto('/');
-  await openWorkspacePanels(page, ['code', 'flows']);
+  await openWorkspacePanels(page, ['code', 'flows', 'palette']);
   await page.getByTestId('template-blank').click();
   await expect(page.getByTestId('template-gallery')).toHaveCount(0);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
@@ -90,7 +90,7 @@ test('a diagram with one unconnected element still presents a default process st
 
 test('editing Default creates a selected custom copy while Default follows later elements', async ({ page }) => {
   await page.goto('/');
-  await openWorkspacePanels(page, ['code', 'flows']);
+  await openWorkspacePanels(page, ['code', 'flows', 'palette']);
   await seedCode(page, `pcd 1.0
 person customer "Customer"
 container shop "Shop"
@@ -125,7 +125,7 @@ customer -> shop : "buys"
 
 test('typing into Default keeps focus when another custom flow already exists', async ({ page }) => {
   await page.goto('/');
-  await openWorkspacePanels(page, ['code', 'flows']);
+  await openWorkspacePanels(page, ['code', 'flows', 'palette']);
   await seedCode(page, `pcd 1.0
 person customer "Customer"
 container shop "Shop"

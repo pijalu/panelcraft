@@ -47,11 +47,13 @@ test.describe('UX08-WP03 shell surfaces', () => {
   }
 
   test('narrow viewport opens panels as overlay drawers, not a squeeze', async ({ page }) => {
-    // A 520 px shell shows one panel at a time behind a backdrop (UX08-WP02); the
-    // drawer is the realistic narrow entry state, so capture it from a fresh load.
+    // At 520 px, one panel at a time opens in a modal drawer behind a backdrop.
+    // Fresh panels stay collapsed; the user opens the drawer from its rail.
     await page.setViewportSize({ width: 520, height: 640 });
     await page.goto('/');
     await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
+    await page.getByTestId('expand-palette').click();
+    await expect(page.getByTestId('drawer-backdrop')).toBeVisible();
     for (const scheme of SCHEMES) {
       await setAppTheme(page, scheme);
       await expect(page.locator('html')).toHaveAttribute('data-theme', scheme);

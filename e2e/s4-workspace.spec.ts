@@ -9,6 +9,7 @@ import { unzipSync } from 'fflate';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { chooseAppMenu, openAppGroup, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const EXTERNAL = /^https?:\/\/(?!localhost|127\.0\.0\.1)/;
 
@@ -121,8 +122,37 @@ test('S4: zip export → clear storage → import → identical workspace', asyn
   expect(blockedExternal).toEqual([]);
 });
 
+test('S4: restoring the active snapshot refreshes canvas, code and persisted state', async ({ page }) => {
+  await page.goto('/');
+  await openWorkspacePanels(page, ['code']);
+  await seedCode(page, 'pcd 1.0\nsystem api "Before snapshot"\n');
+  const object = page.getByTestId('canvas').locator('g.pc-obj[data-id="api"]');
+  await expect(object).toHaveAttribute('aria-label', 'system Before snapshot');
+
+  await chooseAppMenu(page, 'tb-snapshots');
+  await page.getByTestId('snapshot-name').fill('Before editing');
+  await page.getByTestId('snapshot-save').click();
+  await page.getByTestId('snapshot-close').click();
+  await seedCode(page, 'pcd 1.0\nsystem api "After snapshot"\n');
+  await expect(object).toHaveAttribute('aria-label', 'system After snapshot');
+
+  await chooseAppMenu(page, 'tb-snapshots');
+  await page.getByTestId('snapshots-overlay').getByRole('button', { name: 'restore', exact: true }).click();
+  await expect(object).toHaveAttribute('aria-label', 'system Before snapshot');
+  await expect(page.locator('.cm-content')).toContainText('Before snapshot');
+  await expect(page.locator('.cm-content')).not.toContainText('After snapshot');
+
+  // Autosave is trailing; reload proves the restored tree, not just the view.
+  await page.waitForTimeout(900);
+  await page.reload();
+  await openWorkspacePanels(page, ['code']);
+  await expect(object).toHaveAttribute('aria-label', 'system Before snapshot');
+  await expect(page.locator('.cm-content')).toContainText('Before snapshot');
+});
+
 test('S4: autosaved workspace survives reload (FR-S1)', async ({ page }) => {
   await page.goto('/');
+  await openWorkspacePanels(page, ['palette']);
   const canvas = page.getByTestId('canvas');
   const box = (await canvas.boundingBox()) ?? { x: 0, y: 0, width: 800, height: 600 };
   const item = page.getByTestId('palette-system');
@@ -204,6 +234,7 @@ test('S4: quota failure degrades to in-memory session with banner (FR-S3)', asyn
   });
 
   await page.goto('/');
+  await openWorkspacePanels(page, ['palette']);
   const canvas = page.getByTestId('canvas');
   const box = (await canvas.boundingBox()) ?? { x: 0, y: 0, width: 800, height: 600 };
   const item = page.getByTestId('palette-person');

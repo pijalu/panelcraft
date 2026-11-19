@@ -68,6 +68,8 @@ const EN = {
   "Resize properties panel": "Resize properties panel",
   "dismiss": "dismiss",
   "PanelCraft": "PanelCraft",
+  "Panel": "Panel",
+  "Craft": "Craft",
   "History": "History",
   "⟲ History": "⟲ History",
   "Could not open saved workspace:": "Could not open saved workspace:",

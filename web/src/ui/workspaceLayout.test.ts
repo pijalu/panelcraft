@@ -15,7 +15,7 @@ import {
 } from './uiLayout';
 
 describe('UX-02 workspace layout', () => {
-  it('starts canvas-first with only Shapes open', () => {
+  it('starts canvas-first with every panel present but collapsed', () => {
     const layout = defaultLayout(1600);
     expect(layout.version).toBe(2);
     // UX08-WP12: Flows keeps a labelled rail (collapsed, not closed) so flow
@@ -23,14 +23,14 @@ describe('UX-02 workspace layout', () => {
     expect(layout.panels).toEqual({
       sidebar: 'collapsed',
       flows: 'collapsed',
-      palette: 'open',
+      palette: 'collapsed',
       code: 'collapsed',
       props: 'collapsed',
     });
   });
 
   it('distinguishes collapse, close, and accessible reopening', () => {
-    const start = defaultLayout(1600);
+    const start = openPanel(defaultLayout(1600), 'palette');
     const collapsed = togglePanel(start, 'palette');
     expect(collapsed.panels.palette).toBe('collapsed');
     const closed = closePanel(collapsed, 'palette');
@@ -102,6 +102,7 @@ describe('UX-02 workspace layout', () => {
     const migrated = normaliseLayout(old, 1600);
     expect(migrated.version).toBe(2);
     expect(migrated.panels.sidebar).toBe('open');
+    expect(migrated.panels.palette).toBe('open'); // saved layouts are not forced to the new default
     expect(migrated.docks.sidebar).toBe('left');
     expect(migrated.sections.identity).toBe(false);
 

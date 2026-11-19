@@ -19,6 +19,7 @@ describe('App shell + palette (WP9)', () => {
   function mount() {
     const { container } = render(<App />);
     fireEvent.click(screen.getByTestId('expand-props'));
+    fireEvent.click(screen.getByTestId('expand-palette'));
     // UX08-WP03: the chrome carries inline SVG icons now, so the canvas must be
     // addressed by its test id instead of "the first svg" in the shell.
     const svg = screen.getByTestId('canvas') as unknown as SVGSVGElement;
@@ -32,7 +33,7 @@ describe('App shell + palette (WP9)', () => {
 
     const left = screen.getByTestId('collapsed-rail-left');
     const right = screen.getByTestId('collapsed-rail-right');
-    expect(left.querySelectorAll('[data-testid="rail-sidebar"], [data-testid="rail-flows"]')).toHaveLength(2);
+    expect(left.querySelectorAll('[data-testid="rail-sidebar"], [data-testid="rail-flows"], [data-testid="rail-palette"]')).toHaveLength(3);
     expect(right.querySelectorAll('[data-testid="rail-code"], [data-testid="rail-props"]')).toHaveLength(2);
     expect(screen.getByTestId('dock-left').querySelectorAll('.panel-rail-group')).toHaveLength(1);
     expect(screen.getByTestId('dock-right').querySelectorAll('.panel-rail-group')).toHaveLength(1);
@@ -105,6 +106,7 @@ describe('properties panel edits (WP7)', () => {
     const svg = (() => {
       render(<App />);
       fireEvent.click(screen.getByTestId('expand-props'));
+      fireEvent.click(screen.getByTestId('expand-palette'));
       const s = screen.getByTestId('canvas') as unknown as SVGSVGElement;
       s.getBoundingClientRect = () =>
         ({ x: 0, y: 0, left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON: () => ({}) }) as DOMRect;
@@ -154,7 +156,7 @@ async function mountReady() {
   await act(async () => {
     await new Promise((r) => setTimeout(r, 0)); // storage fallback macrotask → setReady
   });
-  for (const panel of ['sidebar', 'code', 'props']) {
+  for (const panel of ['sidebar', 'palette', 'code', 'props']) {
     fireEvent.click(screen.getByTestId(`expand-${panel}`));
   }
   const svg = container.querySelector('svg[data-testid="canvas"]') as SVGSVGElement;
