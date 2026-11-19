@@ -40,6 +40,7 @@ async function seedDoc(page: Page, text: string): Promise<void> {
 async function ready(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
+  await openWorkspacePanels(page, ['palette']);
   // A "returning visit": the shell is already installed *and* has claimed this
   // page. Only a controlled page can be updated — on the very first visit the
   // worker activates immediately instead of waiting, so there is nothing to

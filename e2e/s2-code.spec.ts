@@ -13,7 +13,7 @@ const MERMAID = 'flowchart TD\n  api[API Server] --> db[(Database)]\n';
 test('S2: mermaid paste → canvas → canvas edit → code view updates', async ({ page }) => {
   await page.goto('/');
   const canvas = page.getByTestId('canvas');
-  await openWorkspacePanels(page, ['code']);
+  await openWorkspacePanels(page, ['code', 'palette']);
   const codePane = page.getByTestId('code-pane');
   await expect(canvas).toBeVisible();
   await expect(codePane).toBeVisible();

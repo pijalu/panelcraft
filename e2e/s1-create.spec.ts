@@ -8,7 +8,7 @@ import { openWorkspacePanels } from './lib/panels';
 
 test('S1: create diagram via palette drop + link + properties', async ({ page }) => {
   await page.goto('/');
-  await openWorkspacePanels(page, ['props']);
+  await openWorkspacePanels(page, ['palette', 'props']);
   const canvas = page.getByTestId('canvas');
   await expect(canvas).toBeVisible();
 

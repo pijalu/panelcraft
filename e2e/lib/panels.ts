@@ -59,7 +59,7 @@ export async function setAppTheme(page: Page, preference: 'system' | 'light' | '
 /** Open only the panels a legacy scenario uses; fresh-layout specs opt out. */
 export async function openWorkspacePanels(
   page: Page,
-  panels: readonly WorkspacePanel[] = ['sidebar', 'code', 'props'],
+  panels: readonly WorkspacePanel[] = ['sidebar', 'palette', 'code', 'props'],
 ): Promise<void> {
   for (const panel of panels) {
     if (await page.locator(`[data-panel="${panel}"]`).count()) continue;

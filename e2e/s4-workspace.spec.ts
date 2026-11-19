@@ -123,6 +123,7 @@ test('S4: zip export → clear storage → import → identical workspace', asyn
 
 test('S4: autosaved workspace survives reload (FR-S1)', async ({ page }) => {
   await page.goto('/');
+  await openWorkspacePanels(page, ['palette']);
   const canvas = page.getByTestId('canvas');
   const box = (await canvas.boundingBox()) ?? { x: 0, y: 0, width: 800, height: 600 };
   const item = page.getByTestId('palette-system');
@@ -204,6 +205,7 @@ test('S4: quota failure degrades to in-memory session with banner (FR-S3)', asyn
   });
 
   await page.goto('/');
+  await openWorkspacePanels(page, ['palette']);
   const canvas = page.getByTestId('canvas');
   const box = (await canvas.boundingBox()) ?? { x: 0, y: 0, width: 800, height: 600 };
   const item = page.getByTestId('palette-person');

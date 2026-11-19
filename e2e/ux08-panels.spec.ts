@@ -3,7 +3,7 @@
 // narrow dock widths, and degrade to a dismissible drawer on narrow viewports.
 import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
-import { chooseAppMenu, choosePanelMenu } from './lib/panels';
+import { chooseAppMenu, choosePanelMenu, openWorkspacePanels } from './lib/panels';
 
 const WIDTHS = [200, 232, 280, 420] as const;
 
@@ -12,6 +12,7 @@ test.setTimeout(120_000);
 async function ready(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
+  await openWorkspacePanels(page, ['palette']);
 }
 
 async function setPanelWidth(page: Page, panel: 'props' | 'flows', px: number): Promise<void> {

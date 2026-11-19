@@ -128,7 +128,7 @@ test('P0/D2: adding objects to a loaded file never duplicates an id', async ({ p
 test('P0/D5: a group survives a reload with its size (F-06)', async ({ page }) => {
   await page.goto('/');
   const canvas = page.getByTestId('canvas');
-  await openWorkspacePanels(page, ['code']);
+  await openWorkspacePanels(page, ['code', 'palette']);
   const item = page.getByTestId('palette-group');
   const ib = (await item.boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 };
   await page.mouse.move(ib.x + ib.width / 2, ib.y + ib.height / 2);
