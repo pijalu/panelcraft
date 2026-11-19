@@ -65,7 +65,7 @@ export function AppHeader(props: {
           </span>
         </div>
         <StatusPill dirty={props.dirty} savedAt={props.savedAt} problems={props.problems} />
-        {/* UX08-WP13: presentation is discoverable from the shell, not only a menu item. */}
+        {/* Keep presentation discoverable from the shell, not only in a menu. */}
         <button
           type="button"
           class="app-present"

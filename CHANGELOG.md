@@ -11,6 +11,23 @@ versioning: SemVer (pre-1.0 = milestone-driven).
   **Craft**, adapted for readable contrast in both themes. The favicon, installable PWA icons,
   maskable icons and Apple touch icon now use the supplied architecture-diagram artwork; all
   source and generated images remain local to the repository and bundle.
+- The supplied icon sits beside the wide wordmark. Below 720 px the wordmark is hidden and the
+  icon retains the `PanelCraft` alternative text. Present is an icon-only button with a tooltip,
+  and the hamburger remains the rightmost header control.
+- A fresh or reset workspace starts with Files, Flow Steps, Shapes, Code and Properties visible as
+  collapsed rails; a returning user's saved panel layout is still restored.
+
+### Fixed — browser workflow validation
+
+- Presentation suppresses selection outlines, resize handles and other editing chrome without
+  hiding flow highlights or badges; exiting restores the previous selection.
+- Object renames now refresh the existing SVG group's accessible name as well as its visible label.
+- Restoring a snapshot refreshes the active file's canvas and code even when its path is unchanged,
+  and the restored document persists across reload.
+- Offline requests for precached icons and the manifest now return their own cached responses rather
+  than the HTML shell. Offline coverage checks decoded artwork, executable assets and template editing.
+
+Details and evidence: [brand and browser-workflow validation](docs/archive/bugs-brand-workflow-validation.md).
 
 ### Changed — every diagram has a live Default flow
 

@@ -11,6 +11,22 @@ milestone-aligned minors. Dates are UTC.
   icons, maskable icons and Apple touch icon. Source artwork lives at
   `web/assets/brand/panelcraft-icon.png`; the standard-library generator writes the checked-in
   sizes, so no remote asset or new dependency is involved.
+- The icon sits beside the wide wordmark; below 720 px only the icon remains, with `PanelCraft`
+  alternative text. Present is icon-only with a tooltip, and the hamburger is the rightmost control.
+- Fresh and reset workspaces expose Files, Flow Steps, Shapes, Code and Properties as collapsed
+  rails without overwriting a returning user's saved layout.
+
+## Unreleased — fixes: presentation, restoration and offline identity
+
+- Presentation hides selection outlines, resize handles and editing overlays while retaining flow
+  highlights and badges. Exiting restores the previous selection.
+- Renaming an object refreshes its SVG accessible name along with the visible label. Restoring a
+  snapshot refreshes the active canvas and code under the same path and persists across reload.
+- Offline icon and manifest requests return their matching cached response instead of the HTML
+  shell. Browser coverage proves the icon decoded, JavaScript and CSS were cached, and a template
+  can be edited with the network offline.
+
+Details and evidence: [brand and browser-workflow validation](archive/bugs-brand-workflow-validation.md).
 
 ## Unreleased — flows: a live Default for every diagram
 
