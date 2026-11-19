@@ -20,6 +20,8 @@ test('S7: app functions with external requests blocked (N7 runtime proof)', asyn
   await page.goto('/');
   await expect(page.getByTestId('app-shell')).toBeVisible();
   await expect(page.locator('.app-title')).toHaveText('PanelCraft');
+  await expect(page.locator('.app-title-accent')).toHaveText('Craft');
+  await expect(page.locator('.app-title-accent')).toHaveCSS('background-image', /linear-gradient/);
   // M2 shell: all three regions render and function without any network
   await expect(page.getByTestId('palette')).toBeVisible();
   await expect(page.getByTestId('canvas')).toBeVisible();

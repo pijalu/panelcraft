@@ -5,6 +5,13 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Changed — brand identity
+
+- The header wordmark now uses a heavier Panel/Craft treatment with a purple gradient on
+  **Craft**, adapted for readable contrast in both themes. The favicon, installable PWA icons,
+  maskable icons and Apple touch icon now use the supplied architecture-diagram artwork; all
+  source and generated images remain local to the repository and bundle.
+
 ### Changed — every diagram has a live Default flow
 
 - Every non-empty diagram now has a virtual **Default flow**, alongside any custom flows.

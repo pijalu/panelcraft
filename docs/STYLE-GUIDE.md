@@ -54,6 +54,7 @@ below WCAG AA, or when a raw colour literal appears outside a theme block.
 | `--pc-panel-bg` | `#ffffff` | `#1e2126` | panel/list body |
 | `--pc-panel-border` | `#d7dce4` | `#333a45` | panel and separator hairlines |
 | `--pc-panel-header-bg` | `#f4f6f9` | `#232730` | header row, panel headers, view bar |
+| `--pc-brand-craft-start` / `--pc-brand-craft-end` | `#7c3aed` / `#6d28d9` | `#d8c8ff` / `#aa78ef` | purple gradient on the Craft half of the app wordmark |
 | `--pc-tab-bg` | `#eef0f4` | `#1b1e23` | tab strip background |
 | `--pc-tab-active-bg` | `#ffffff` | `#1e2126` | active tab (merges with the editor) |
 | `--pc-tab-active-fg` | `#1a1d21` | `#e5e7eb` | active tab label |

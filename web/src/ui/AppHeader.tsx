@@ -50,7 +50,10 @@ export function AppHeader(props: {
   return (
     <>
       <header class="app-header">
-        <span class="app-title">{s('PanelCraft')}</span>
+        <span class="app-title">
+          <span>{s('Panel')}</span>
+          <span class="app-title-accent">{s('Craft')}</span>
+        </span>
         <StatusPill dirty={props.dirty} savedAt={props.savedAt} problems={props.problems} />
         <AppMenu
           manager={ws.manager}

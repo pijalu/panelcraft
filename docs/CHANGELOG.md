@@ -4,6 +4,14 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — brand: wordmark and application icon
+
+- The header wordmark uses a bold Panel/Craft treatment with a theme-aware purple gradient on
+  **Craft**. The supplied architecture-diagram artwork now provides the favicon, PWA install
+  icons, maskable icons and Apple touch icon. Source artwork lives at
+  `web/assets/brand/panelcraft-icon.png`; the standard-library generator writes the checked-in
+  sizes, so no remote asset or new dependency is involved.
+
 ## Unreleased — flows: a live Default for every diagram
 
 - Every non-empty diagram has a virtual **Default flow**, including an element-only diagram

@@ -11,7 +11,7 @@ const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
 /** Every semantic chrome token the theme promises, with its documented role. */
 const CHROME_TOKENS = [
   'activity-bg', 'activity-fg', 'activity-selected-fg',
-  'panel-bg', 'panel-border', 'panel-header-bg',
+  'panel-bg', 'panel-border', 'panel-header-bg', 'brand-craft-start', 'brand-craft-end',
   'tab-bg', 'tab-active-bg', 'tab-active-fg', 'tab-inactive-fg', 'tab-border',
   'list-hover-bg', 'list-selected-bg', 'list-selected-fg',
   'menu-bg', 'menu-border', 'menu-shadow',
@@ -136,6 +136,8 @@ describe('application chrome tokens (UX08-WP03)', () => {
       ['warn-bg-fg', 'warn-bg', 4.5],
       ['warn-fg', 'panel-bg', 4.5],
       ['warn-fg', 'panel-header-bg', 4.5],
+      ['brand-craft-start', 'panel-header-bg', 4.5],
+      ['brand-craft-end', 'panel-header-bg', 4.5],
       // the status dot is a non-text indicator (WCAG 1.4.11)
       ['ok', 'panel-header-bg', 3],
     ];

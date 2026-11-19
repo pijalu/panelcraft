@@ -1,5 +1,5 @@
 {
-  "$comment": "SPDX-License-Identifier: GPL-3.0-only — generated icons: scripts/gen-icons.go (checked in, no external asset).",
+  "$comment": "SPDX-License-Identifier: GPL-3.0-only — user-supplied source: web/assets/brand/panelcraft-icon.png; resized by scripts/gen-icons.go; all assets checked in and local.",
   "id": "./",
   "name": "PanelCraft",
   "short_name": "PanelCraft",

@@ -53,6 +53,8 @@
   --pc-panel-bg: #ffffff;
   --pc-panel-border: #d7dce4;
   --pc-panel-header-bg: #f4f6f9;
+  --pc-brand-craft-start: #7c3aed;
+  --pc-brand-craft-end: #6d28d9;
   --pc-tab-bg: #eef0f4;
   --pc-tab-active-bg: #ffffff;
   --pc-tab-active-fg: #1a1d21;
@@ -121,6 +123,8 @@
   --pc-panel-bg: #1e2126;
   --pc-panel-border: #333a45;
   --pc-panel-header-bg: #232730;
+  --pc-brand-craft-start: #d8c8ff;
+  --pc-brand-craft-end: #aa78ef;
   --pc-tab-bg: #1b1e23;
   --pc-tab-active-bg: #1e2126;
   --pc-tab-active-fg: #e5e7eb;
@@ -273,7 +277,25 @@ body {
 }
 
 .app-title {
-  font-weight: 600;
+  color: var(--pc-fg);
+  font-size: var(--pc-text-lg);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.4;
+}
+
+.app-title-accent {
+  background: linear-gradient(100deg, var(--pc-brand-craft-start), var(--pc-brand-craft-end));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (forced-colors: active) {
+  .app-title-accent {
+    background: none;
+    color: var(--pc-fg);
+  }
 }
 
 /* UX08-WP13: presentation launcher entry point in the shell header. */
