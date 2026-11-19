@@ -89,13 +89,14 @@ export async function seedCode(page: Page, text: string, options: SeedOptions = 
   const { sync = 'clean', verify = true } = options;
   await typeDocument(page, text);
   if (verify) {
-    // The editor view is rebuilt whenever the sync machine changes identity, and
-    // the machine for a file is rebuilt when the stored document arrives from
-    // storage. Typing across that window destroys the in-flight input and leaves
-    // a mangled buffer (seen as an original document with a stray line appended).
-    // Re-type once into the settled editor instead of reporting it as a product
+    // The buffer can still come back wrong: an incoming document write can land
+    // between the select-all and the insert, and the insert then appends instead
+    // of replacing (observed only under CI load, as the previous document with a
+    // stray first line appended; the exact interleaving is not pinned, and one
+    // frame of the sync machine's diff is enough to collapse the selection).
+    // Re-type once into the settled editor rather than reporting it as a product
     // defect; the second attempt must hold, and every assertion after this point
-    // still runs against a verified document.
+    // runs against a verified document.
     let held = await holdsText(page, text);
     if (!held) {
       await typeDocument(page, text);
