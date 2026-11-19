@@ -88,11 +88,11 @@ test.describe('item 10 — derived default flow on the hosted build', () => {
 
     await page.getByTestId('present-open').click();
     await expect(page.getByTestId('present-launcher')).toBeVisible();
-    await expect(page.getByTestId('launcher-derived-flow1')).toBeVisible();
-    await expect(page.getByTestId('launcher-title-flow1')).toHaveText('Default flow');
+    await expect(page.getByTestId('launcher-derived-default')).toBeVisible();
+    await expect(page.getByTestId('launcher-title-default')).toHaveText('Default flow');
     await shoot(page, 'hosted-item10-launcher');
 
-    await page.getByTestId('launcher-flow-flow1').click();
+    await page.getByTestId('launcher-flow-default').click();
     await expect(page.getByTestId('present-notes')).toContainText('buys');
     await page.getByTestId('present-next').click();
     await expect(page.getByTestId('present-notes')).toContainText('charges');
