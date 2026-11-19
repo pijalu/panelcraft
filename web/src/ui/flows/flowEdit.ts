@@ -27,10 +27,11 @@ export function nameOf(names: Names, id: string): string {
   return id === '' ? s('no shape') : (names.get(id) ?? id);
 }
 
-export function stepTitle(step: FlowStep, names: Names): string {
-  // A message card shows its label as the title; the actor summary below
-  // already carries "from → to", so an unlabelled message has no title.
-  if (step.type === 'msg') return step.label ?? '';
+export function stepTitle(step: FlowStep, names: Names, doc?: Doc): string {
+  // A message card inherits its connector label unless this flow overrides it.
+  if (step.type === 'msg') {
+    return step.label ?? (doc === undefined ? undefined : inheritedStepValues(doc, step).label) ?? '';
+  }
   if (step.type === 'process') return step.text ?? nameOf(names, step.target);
   if (step.type === 'alt' || step.type === 'par') return step.label ?? s(step.type);
   if (step.type === 'goto') return `→ ${step.file === undefined ? '' : `${step.file}#`}${step.flow}`;
@@ -88,22 +89,45 @@ export function flowsInFile(path: string, textOf: (path: string) => string | nul
 }
 
 /**
- * Edit the flow behind `key`, materialising the derived default flow into the
- * document on the first real edit (one ordinary undoable command, never on
- * open/present).
+ * Edit a custom flow, copying the virtual default first when it is targeted.
+ * The returned flow lets callers follow the custom copy's new selection key.
  */
-export function editFlow(doc: Doc, key: string, fn: (flow: Flow) => void): void {
+export function editFlow(doc: Doc, key: string, fn: (flow: Flow) => void): Flow | null {
   const flow = flowForEdit(doc, key);
-  if (flow !== null) fn(flow);
+  if (flow === null) return null;
+  fn(flow);
+  return flow;
+}
+
+/** Element-owned values inherited by a step that has no explicit override. */
+export function inheritedStepValues(doc: Doc, step: FlowStep): { label?: string; description?: string } {
+  if (step.type === 'msg') {
+    const target = resolveMsgLink(doc, step);
+    return target.status === 'ok' && target.link.label !== undefined ? { label: target.link.label } : {};
+  }
+  if (step.type === 'process') {
+    const description = doc.objects.find((obj) => obj.id === step.target)?.description;
+    return description === undefined ? {} : { description };
+  }
+  return {};
 }
 
 /** Mutation of the selected flow, written through the one session. */
 export type FlowMutator = (fn: (flow: Flow, path: number[]) => void) => void;
 
-export function flowMutator(session: FlowSession, selection: FlowSelection | null): FlowMutator {
+export function flowMutator(
+  session: FlowSession,
+  selection: FlowSelection | null,
+  onSelect?: (selection: FlowSelection) => void,
+): FlowMutator {
   return (fn) => {
     if (selection === null) return;
-    session.apply((doc) => editFlow(doc, selection.flow, (flow) => fn(flow, selection.step)));
+    let nextKey = selection.flow;
+    session.apply((doc) => {
+      const edited = editFlow(doc, selection.flow, (flow) => fn(flow, selection.step));
+      if (edited !== null) nextKey = flowKey(edited);
+    });
+    if (nextKey !== selection.flow) onSelect?.({ flow: nextKey, step: selection.step });
   };
 }
 
@@ -146,8 +170,9 @@ export function stepActions(args: {
   selection: FlowSelection | null;
   step: FlowStep | null;
   linkStyle: (patch: LinkStylePatch) => void;
+  onSelect?: (selection: FlowSelection) => void;
 }): InspectActions {
-  const mutate = flowMutator(args.session, args.selection);
+  const mutate = flowMutator(args.session, args.selection, args.onSelect);
   return {
     patch: (p) => mutate((flow, path) => patchStep(flow, path, p)),
     move: (d) =>

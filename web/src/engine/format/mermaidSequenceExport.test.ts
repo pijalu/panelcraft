@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parsePDL } from './parser';
 import { flowToMermaid } from './mermaidSequenceExport';
+import { derivedFlow } from '../../ui/flows/derivedFlow';
 
 const DOC = `pcd 1.0
 person user "Customer"
@@ -97,6 +98,21 @@ flow "Timed" as timed {
     expect(dropped).toEqual(['per-step delays']);
     const empty = parsePDL('pcd 1.0\nflow "Empty" as empty { info "nothing visual" }').doc!;
     expect(flowToMermaid(empty, empty.flows[0]!).dropped).toEqual(['notes without participants']);
+  });
+
+  it('keeps anonymous parallel links distinct in a virtual default flow', () => {
+    const doc = parsePDL(`pcd 1.0
+  system a "A"
+  system b "B"
+  a -> b : "first" {
+    style { dashed }
+  }
+  a -> b : "second"`).doc!;
+    const flow = derivedFlow(doc)!;
+    expect(flow.steps.map((step) => step.type === 'msg' ? step.linkRef : undefined)).toEqual(['#0', '#1']);
+    const { text } = flowToMermaid(doc, flow);
+    expect(text).toContain('a-->>b: first');
+    expect(text).toContain('a->>b: second');
   });
 
   it('matches the checked-in checkout sequence golden', () => {

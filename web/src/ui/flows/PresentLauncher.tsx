@@ -82,7 +82,7 @@ export function PresentLauncher({ entries, onPresent, onClose }: PresentLauncher
                         length: formatDuration(entry.estimatedMs),
                       })}
                       {entry.derived === true && (
-                        <span data-testid={`launcher-derived-${entry.key}`}>{` · ${s('from the connections')}`}</span>
+                        <span data-testid={`launcher-derived-${entry.key}`}>{` · ${s('from the elements')}`}</span>
                       )}
                     </span>
                   </span>

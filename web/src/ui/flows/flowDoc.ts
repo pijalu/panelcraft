@@ -283,7 +283,7 @@ export function topologicalLinks(doc: Doc): IndexedLink[] {
 }
 
 /** Explicit references keep parallel links distinct when steps are restored. */
-function ensureLinkIds(doc: Doc): void {
+export function ensureLinkIds(doc: Doc): void {
   const used = new Set(doc.links.flatMap((link) => link.id === undefined ? [] : [link.id]));
   let seq = 1;
   doc.links.forEach((link) => {
@@ -295,15 +295,49 @@ function ensureLinkIds(doc: Doc): void {
   });
 }
 
-function connectionStep(link: Link): FlowStep {
+function connectionStep(link: Link, virtualRef?: string): FlowStep {
+  const linkRef = link.id ?? virtualRef;
   return {
     type: 'msg',
     from: link.from,
     to: link.to,
-    ...(link.label === undefined ? {} : { label: link.label }),
-    ...(link.id === undefined ? {} : { linkRef: link.id }),
+    // Labels stay on the connector. A step may add its own label override later.
+    ...(linkRef === undefined ? {} : { linkRef }),
     pos: { line: 0, col: 0 },
   };
+}
+
+/** Direction-insensitive identity used when resolving message references. */
+function endpointPair(link: Link): string {
+  return [link.from, link.to].sort().join('\u0000');
+}
+
+/** A current, reference-only walkthrough covering every usable diagram element. */
+export function diagramSteps(doc: Doc): FlowStep[] {
+  const ids = new Set(doc.objects.map((obj) => obj.id));
+  const represented = new Set<string>();
+  const steps: FlowStep[] = [];
+  const pairCounts = new Map<string, number>();
+  doc.links.forEach((link) => {
+    const pair = endpointPair(link);
+    pairCounts.set(pair, (pairCounts.get(pair) ?? 0) + 1);
+  });
+  topologicalLinks(doc).forEach(({ link, index }) => {
+    if (!ids.has(link.from) || !ids.has(link.to)) return;
+    // Parallel anonymous links need an ephemeral index ref in the virtual flow.
+    // Materialisation replaces it with a real id; no diagram write happens here.
+    const virtualRef = link.id === undefined && (pairCounts.get(endpointPair(link)) ?? 0) > 1
+      ? `#${index}`
+      : undefined;
+    steps.push(connectionStep(link, virtualRef));
+    represented.add(link.from);
+    represented.add(link.to);
+  });
+  doc.objects.forEach((obj) => {
+    if (represented.has(obj.id)) return;
+    steps.push({ type: 'process', target: obj.id, pos: { line: 0, col: 0 } });
+  });
+  return steps;
 }
 
 /** Diagram connections absent from this flow's message projection. */
@@ -328,8 +362,7 @@ export function showFlowLink(doc: Doc, flowId: string, linkIndex: number): void 
 
 export function addFlow(doc: Doc, title: string, seq: number): void {
   ensureLinkIds(doc);
-  const steps = topologicalLinks(doc).map(({ link }) => connectionStep(link));
-  doc.flows.push({ title, id: `flow${seq}`, steps, pos: { line: 0, col: 0 } });
+  doc.flows.push({ title, id: `flow${seq}`, steps: diagramSteps(doc), pos: { line: 0, col: 0 } });
 }
 
 export interface FlowPatch {
@@ -369,6 +402,17 @@ export function patchFlow(flow: Flow, patch: FlowPatch): void {
 export function retext(text: string, mutate: (doc: Doc) => void): string | null {
   const { doc } = parsePDL(text.trim() === '' ? 'pcd 1.0\n' : text);
   if (doc === null) return null;
+  const before = diagramMembership(doc);
   mutate(doc);
+  // Flow commands may annotate links, but they never own diagram membership.
+  if (JSON.stringify(before) !== JSON.stringify(diagramMembership(doc))) return null;
   return printDoc(doc);
+}
+
+/** Identity of the drawing protected by every flow-only whole-document write. */
+function diagramMembership(doc: Doc): { objects: string[]; links: string[] } {
+  return {
+    objects: doc.objects.map((obj) => obj.id),
+    links: doc.links.map((link) => `${link.from}\u0000${link.to}\u0000${link.bidir === true}`),
+  };
 }

@@ -141,7 +141,7 @@ test('derived flow connector style does not materialise a flow', async ({ page }
   await page.getByTestId('collapse-code').click();
 
   await expect(page.getByTestId('flow-derived-hint')).toBeVisible();
-  await page.getByTestId('flow-row-flow1').click();
+  await page.getByTestId('flow-row-default').click();
   await page.getByTestId('step-0').click();
   await expect(page.getByTestId('insp-sparks')).toHaveValue('2');
   await page.getByTestId('insp-sparks').fill('5');

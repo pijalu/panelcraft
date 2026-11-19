@@ -3,6 +3,7 @@
 // Renders the parsed IR — never flattened playback beats — so the output is a
 // faithful, reviewable description of what the flow does.
 import type { CameraSpec, Doc, Flow, FlowStep } from '../model/types';
+import { resolveMsg } from '../flows/plan';
 import { parseSafeMarkdown, serializeSafeMarkdown } from './safeMarkdown';
 
 /** One nesting level; three spaces keeps ordered and bullet lists aligned. */
@@ -67,7 +68,8 @@ function gotoText(step: Extract<FlowStep, { type: 'goto' }>): string {
 }
 
 function messageText(doc: Doc, step: Extract<FlowStep, { type: 'msg' }>): string {
-  const label = step.label === undefined ? '' : `: ${prose(step.label)}`;
+  const value = step.label ?? resolveMsg(doc, step)?.link.label;
+  const label = value === undefined ? '' : `: ${prose(value)}`;
   return `${ref(doc, step.from)} → ${ref(doc, step.to)}${label}${step.flip === true ? ', flipped' : ''}`;
 }
 
@@ -97,8 +99,12 @@ function nested(doc: Doc, steps: FlowStep[], depth: number, lines: string[]): vo
     const label = step.type === 'alt' || step.type === 'par' ? quoted(step.label) : ` — ${detail(doc, step)}`;
     lines.push(`${badge}${label}`);
     const inner = `${pad}${INDENT}`;
-    if (step.description !== undefined && step.description !== '') {
-      lines.push(`${inner}_${prose(step.description)}_`);
+    const inherited = step.type === 'process'
+      ? doc.objects.find((obj) => obj.id === step.target)?.description
+      : undefined;
+    const description = step.description ?? inherited;
+    if (description !== undefined && description !== '') {
+      lines.push(`${inner}_${prose(description)}_`);
     }
     const meta = metaText(step);
     if (meta !== '') lines.push(`${inner}${meta}`);

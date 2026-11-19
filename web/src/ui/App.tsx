@@ -11,7 +11,7 @@ import { FileTree } from './FileTree';
 import { Tabs } from './Tabs';
 import { CodePane } from './CodePane';
 import { FlowPane, type FlowCanvasContext, type FlowSelection, type ViewPoint } from './flows/FlowPane';
-import type { FlowSession } from './flows/flowSession';
+import { flowSessionText, parseForEditor, type FlowSession } from './flows/flowSession';
 import { useFlowEditing, type FlowEditing } from './flows/useFlowEditing';
 import type { FlowPanelProps } from './flows/FlowPanel';
 import { invert } from '../engine/render/viewport';
@@ -317,29 +317,31 @@ function CodeSlot(props: {
   revealRef: { current: ((id: string) => void) | null };
   onCaretObject: (id: string | null) => void;
 }) {
-  if (props.ui.layout.panels.code === 'collapsed') {
-    return (
-      <PanelRail id="code" labelKey="code" onExpand={() => props.ui.togglePanel('code')}>
-        <span
-          class="rail-chip"
-          data-testid="sync-state-rail"
-          data-sync-state={props.code.snapshot.state}
-        >
-          {props.code.snapshot.state.slice(0, 1)}
-        </span>
-      </PanelRail>
-    );
-  }
+  const collapsed = props.ui.layout.panels.code === 'collapsed';
   return (
-    <CodePane
-      machine={props.code.machine}
-      snapshot={props.code.snapshot}
-      loaded={props.code.loaded}
-      onFormat={props.code.formatNow}
-      onCollapse={() => props.ui.togglePanel('code')}
-      revealRef={props.revealRef}
-      onCaretObject={props.onCaretObject}
-    />
+    <>
+      {collapsed && (
+        <PanelRail id="code" labelKey="code" onExpand={() => props.ui.togglePanel('code')}>
+          <span
+            class="rail-chip"
+            data-testid="sync-state-rail"
+            data-sync-state={props.code.snapshot.state}
+          >
+            {props.code.snapshot.state.slice(0, 1)}
+          </span>
+        </PanelRail>
+      )}
+      <CodePane
+        machine={props.code.machine}
+        snapshot={props.code.snapshot}
+        loaded={props.code.loaded}
+        onFormat={props.code.formatNow}
+        onCollapse={() => props.ui.togglePanel('code')}
+        collapsed={collapsed}
+        revealRef={props.revealRef}
+        onCaretObject={props.onCaretObject}
+      />
+    </>
   );
 }
 
@@ -604,6 +606,11 @@ function bodyPanels(
   ctrl: CanvasController | null,
 ): Record<PanelId, ComponentChildren> {
   const { ws, canvas, code, ui, player, activePath, source, embedded } = p;
+  // A virtual Default edit selects its custom copy before the async file writer
+  // reparses it. Read that pending source for both flow surfaces so the new
+  // selection never makes the properties editor unmount between keystrokes.
+  const pendingFlowText = p.flowEdit.session.read();
+  const flowDoc = pendingFlowText === source.text ? p.doc : (parseForEditor(pendingFlowText) ?? p.doc);
   return {
     sidebar: (
       <SidebarSlot
@@ -626,7 +633,7 @@ function bodyPanels(
       onFlowSelection: p.flowEdit.selectFlow,
       manager: ws.manager,
       session: p.flowEdit.session,
-      doc: p.doc,
+      doc: flowDoc,
       player,
       onEditFraming: p.flowEdit.focusFraming,
     }),
@@ -656,7 +663,7 @@ function bodyPanels(
       onSourceOpen: p.onSourceOpen,
       flow: {
         session: p.flowEdit.session,
-        doc: p.doc,
+        doc: flowDoc,
         selection: p.flowSelection,
         textOf: (path) =>
           path === p.source?.label
@@ -687,7 +694,9 @@ function flowEditingArgs(
   setSelection: (next: FlowSelection | null) => void,
 ): Parameters<typeof useFlowEditing>[0] {
   return {
-    text: source.text,
+    // Reconcile with the buffer during edit/undo, but never replace a clean,
+    // non-empty file with an older canvas projection still awaiting render.
+    text: flowSessionText(source.text, code.snapshot),
     version: ws.version,
     onChangeText: (next) => code.machine.textChanged(next),
     setSelection,

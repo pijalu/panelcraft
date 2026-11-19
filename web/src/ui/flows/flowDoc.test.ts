@@ -85,6 +85,15 @@ describe('retext (parse → mutate → print)', () => {
     expect(retext('total garbage', () => {})).toBeNull();
   });
 
+  it('refuses a flow mutation that would remove diagram elements or connections', () => {
+    expect(retext(FLOW_TEXT, (doc) => {
+      doc.objects = [];
+    })).toBeNull();
+    expect(retext(FLOW_TEXT, (doc) => {
+      doc.links = [];
+    })).toBeNull();
+  });
+
   it('keeps flows across the round trip (projection semantics stay out)', () => {
     const out = retext(FLOW_TEXT, (doc) => {
       appendStep(doc.flows[0] as Flow, newStep('conclusion'));
@@ -140,7 +149,7 @@ describe('connection-backed flow editing', () => {
     showFlowLink(original, 'f', 0);
     expect(original.links[0]?.id).toBe('L1');
     expect(flow.steps).toEqual([
-      { type: 'msg', from: 'A', to: 'B', label: 'request', linkRef: 'L1', pos },
+      { type: 'msg', from: 'A', to: 'B', linkRef: 'L1', pos },
     ]);
   });
 });
@@ -239,6 +248,15 @@ describe('editing operations', () => {
 });
 
 describe('addFlow / doc-level edits', () => {
+  it('creates a presentable flow from elements even without connections', () => {
+    const doc = parse('pcd 1.0\nperson a "Ada"\ncontainer shop "Shop"\n');
+    addFlow(doc, 'Elements', 1);
+    expect(doc.flows[0]?.steps).toMatchObject([
+      { type: 'process', target: 'a' },
+      { type: 'process', target: 'shop' },
+    ]);
+  });
+
   it('adds a connection-backed flow with a generated id', () => {
     const out = retext(FLOW_TEXT, (doc) => {
       addFlow(doc, 'Refund', 2);

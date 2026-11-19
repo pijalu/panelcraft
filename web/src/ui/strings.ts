@@ -422,9 +422,14 @@ const EN = {
   "New flow": "New flow",
   "Arrange": "Arrange",
   "Default flow": "Default flow",
-  "from the connections": "from the connections",
-  "Derived from the connections in this diagram. Editing it makes it a real flow.":
-    "Derived from the connections in this diagram. Editing it makes it a real flow.",
+  "Custom flow": "Custom flow",
+  "from the elements": "from the elements",
+  "Derived from this diagram. Editing creates a custom copy; Default flow stays up to date.":
+    "Derived from this diagram. Editing creates a custom copy; Default flow stays up to date.",
+  "Inherited from the connector. Edit to override for this flow; clear to inherit.":
+    "Inherited from the connector. Edit to override for this flow; clear to inherit.",
+  "Inherited from the element. Edit to override for this flow; clear to inherit.":
+    "Inherited from the element. Edit to override for this flow; clear to inherit.",
   "option {n}": "option {n}",
   "New intro": "New intro",
   "Alternative": "Alternative",

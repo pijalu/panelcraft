@@ -121,6 +121,9 @@ for (const theme of THEMES) {
     await expect(page.getByTestId('flow-needs-link')).toContainText('connector');
     await page.getByTestId('canvas').locator('g.pc-link path.pc-route').click({ force: true });
     await expect(page.getByTestId('add-msg')).toBeEnabled();
+    // Canvas selection ends flow editing; with the live Default flow listed
+    // alongside custom flows, explicitly return to the flow being authored.
+    await page.getByTestId('flow-row-flow1').click();
 
     // Cards number the steps and name the shapes instead of their ids.
     await expect(page.getByTestId('step-0')).toContainText('msg', { timeout: 15_000 });

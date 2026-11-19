@@ -21,6 +21,7 @@ import { editFlow, flowKey } from './flowEdit';
 import { framingPath, framingText, patchFlow, setFraming, type FlowPatch } from './flowDoc';
 import type { Doc } from '../../engine/model/types';
 import type { FlowSelection } from './flowTypes';
+import { flowHistoryKeyDown } from './flowHistory';
 
 const ILLUSTRATION_LABELS = {
   'travel-token': 'travel token',
@@ -144,18 +145,21 @@ export function FlowProperties(props: FlowPropertiesProps) {
   const { flow, doc, selection, session } = props;
   const open = (id: string): boolean => props.sections?.[id] !== false;
   const key = selection.flow;
-  const patch = (value: FlowPatch): void => {
-    session.apply((doc) => editFlow(doc, key, (target) => patchFlow(target, value)));
-    // A flow written without an id is keyed by its title, so follow a rename.
-    if (flow.id === undefined && value.title !== undefined && value.title !== '') {
-      props.onSelect({ flow: value.title, step: [] });
-    }
+  const mutate = (fn: (target: Flow) => void): void => {
+    let nextKey = key;
+    session.apply((doc) => {
+      const edited = editFlow(doc, key, fn);
+      if (edited !== null) nextKey = flowKey(edited);
+    });
+    // Follow a derived-to-custom copy or an id-less flow rename.
+    if (nextKey !== key) props.onSelect({ flow: nextKey, step: [] });
   };
+  const patch = (value: FlowPatch): void => mutate((target) => patchFlow(target, value));
   const framing = (kind: 'intro' | 'conclusion', text: string): void => {
-    session.apply((doc) => editFlow(doc, key, (target) => setFraming(target, kind, text)));
+    mutate((target) => setFraming(target, kind, text));
   };
   return (
-    <aside class="properties" data-testid="flow-properties" aria-label={s('Properties')}>
+    <aside class="properties" data-testid="flow-properties" aria-label={s('Properties')} onKeyDown={flowHistoryKeyDown}>
       <h2 class="panel-title" data-testid="flow-props-title">{flow.title ?? flow.id}</h2>
       {props.dirty === true && (
         <span class="chip chip-dirty" data-testid="flow-dirty" title={s('Unapplied code edits')}>

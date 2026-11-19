@@ -150,7 +150,13 @@ export function resolveMsg(doc: Doc, s: MsgStepLike): { link: Link; index: numbe
     const link = doc.links[i];
     return link === undefined ? null : { link, index: i };
   };
-  if (s.linkRef !== undefined) return pick(doc.links.findIndex((l) => l.id === s.linkRef));
+  if (s.linkRef !== undefined) {
+    // Virtual default flows use #<index> only to distinguish anonymous parallel
+    // links. The grammar cannot author '#', and custom copies replace it by id.
+    const virtual = /^#(\d+)$/.exec(s.linkRef);
+    if (virtual !== null) return pick(Number(virtual[1]));
+    return pick(doc.links.findIndex((l) => l.id === s.linkRef));
+  }
   return pick(
     doc.links.findIndex(
       (l) => (l.from === s.from && l.to === s.to) || (l.from === s.to && l.to === s.from),
@@ -165,7 +171,7 @@ const nameOf = (doc: Doc, id: string): string =>
 const unique = (ids: string[]): string[] => [...new Set(ids)];
 
 const msgTitle = (doc: Doc, s: MsgStepLike): string =>
-  s.label ?? `${nameOf(doc, s.from)} → ${nameOf(doc, s.to)}`;
+  s.label ?? resolveMsg(doc, s)?.link.label ?? `${nameOf(doc, s.from)} → ${nameOf(doc, s.to)}`;
 
 function beatLink(doc: Doc, s: MsgStepLike): BeatLink | null {
   const r = resolveMsg(doc, s);
@@ -221,19 +227,23 @@ const msgBeat = (s: MsgStepLike & { type: 'msg' }, ctx: ResolveCtx, index: numbe
   ];
 };
 
-const processBeat = (s: { target: string; text?: string }, ctx: ResolveCtx, index: number): Beat[] => [
-  {
-    index,
-    delayMs: ctx.delayMs,
-    kind: 'process',
-    title: s.text ?? nameOf(ctx.doc, s.target),
-    actors: [s.target],
-    links: [],
-    dim: [],
-    camera: { mode: 'auto' },
-    cameraIds: [s.target],
-  },
-];
+const processBeat = (s: { target: string; text?: string }, ctx: ResolveCtx, index: number): Beat[] => {
+  const description = ctx.doc.objects.find((obj) => obj.id === s.target)?.description;
+  return [
+    {
+      index,
+      delayMs: ctx.delayMs,
+      kind: 'process',
+      title: s.text ?? nameOf(ctx.doc, s.target),
+      ...(description === undefined ? {} : { description }),
+      actors: [s.target],
+      links: [],
+      dim: [],
+      camera: { mode: 'auto' },
+      cameraIds: [s.target],
+    },
+  ];
+};
 
 const altBeats = (
   s: { label?: string; branches: { label: string; steps: FlowStep[] }[] },

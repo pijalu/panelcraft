@@ -18,7 +18,7 @@ export interface FlowEntry {
   steps: number;
   /** dwell + camera transit, from the playback plan */
   estimatedMs: number;
-  /** true for the virtual flow derived from connections (item 10) */
+  /** true for the virtual flow derived from current diagram elements */
   derived?: boolean;
 }
 
@@ -36,12 +36,13 @@ function entryFor(doc: Doc, flow: Flow, derived: boolean): FlowEntry {
   };
 }
 
-/** Every presentable flow in the document, in source order. A link-only document
- *  contributes its derived default flow, so it is presentable immediately. */
+/** The live default followed by custom flows in source order. */
 export function flowCatalog(doc: Doc | null): FlowEntry[] {
   if (doc === null) return [];
   const derived = derivedFlow(doc);
-  return flowsForDisplay(doc).map((flow) => entryFor(doc, flow, derived !== null));
+  return flowsForDisplay(doc).map((flow) =>
+    entryFor(doc, flow, derived !== null && !doc.flows.includes(flow) && flow.id === derived.id),
+  );
 }
 
 /** Human duration for the launcher ("8 s", "1 min 35 s"). */

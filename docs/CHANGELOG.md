@@ -4,6 +4,21 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — flows: a live Default for every diagram
+
+- Every non-empty diagram has a virtual **Default flow**, including an element-only diagram
+  and one that already has custom flows. It covers current connectors and objects without
+  being persisted; editing it creates a separate **Custom flow**, while Default keeps tracking
+  the drawing. Flow creation and editing preserve the whole document.
+- Steps reference their elements and inherit connector labels and object descriptions. A step
+  can override those values for one flow and return to inheritance when cleared. Parallel
+  anonymous connectors retain their identity through playback and both documentation exports.
+- Browser regressions also closed Default-to-Custom focus loss, canvas-assisted selection,
+  document-history routing from flow controls (including collapsed Code), the fast-undo
+  stale-projection race, and history loss when the Code panel changes dock.
+
+Details and evidence: [Default flow integrity](archive/bugs-default-flow-integrity.md).
+
 ## Unreleased — release: the site publishes what it is missing
 
 - Whether a merge reaches the live site is now decided by comparing the revision

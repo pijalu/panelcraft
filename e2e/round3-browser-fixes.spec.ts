@@ -102,6 +102,29 @@ test('a click-driven beat cycles until the presentation advances', async ({ page
   await axe(page);
 });
 
+test('flow undo and redo work while the Code panel is collapsed', async ({ page }) => {
+  test.setTimeout(120_000);
+  await seed(page, FLOW_DOC);
+  await page.getByTestId('step-1').click();
+  await page.getByTestId('step-delay-1').fill('1500');
+  await expect(page.getByTestId('sync-state-rail')).toHaveAttribute('data-sync-state', 'clean');
+  await page.waitForTimeout(250);
+
+  // A flow button, not the hidden editor, owns the shortcut. Neither command
+  // may fall through to the independent canvas undo stack.
+  await page.getByTestId('step-2').click();
+  await page.keyboard.press('Control+z');
+  await page.getByTestId('expand-code').click();
+  const source = page.locator('.cm-content');
+  await expect(source).not.toContainText('delay 1500');
+
+  await page.getByTestId('collapse-code').click();
+  await page.getByTestId('step-2').click();
+  await page.keyboard.press('Control+Shift+z');
+  await page.getByTestId('expand-code').click();
+  await expect(source).toContainText('delay 1500');
+});
+
 test('a settled delay edit is one undoable write, and a keystroke burst is not', async ({ page }) => {
   test.setTimeout(120_000);
   await page.emulateMedia({ colorScheme: 'light' });

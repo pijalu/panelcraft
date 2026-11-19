@@ -33,23 +33,26 @@ const doc = (): NonNullable<ReturnType<typeof parsePDL>['doc']> => {
 };
 
 describe('flow catalog (UX08-WP13)', () => {
-  it('lists each flow with its title, purpose, steps and estimate', () => {
+  it('lists the live default and each custom flow with its own metadata', () => {
     const entries = flowCatalog(doc());
-    expect(entries.map((e) => e.title)).toEqual(['Order walkthrough', 'Slow refunds']);
-    expect(entries[0]).toMatchObject({
+    expect(entries.map((e) => e.title)).toEqual(['Default flow', 'Order walkthrough', 'Slow refunds']);
+    expect(entries[0]).toMatchObject({ key: 'default', steps: 1, derived: true });
+    expect(entries[1]).toMatchObject({
       key: 'order',
       description: 'How an order reaches the shop',
       steps: 3,
     });
     // dwell + camera transit per beat, exactly what buildPlan reports
-    expect(entries[0]?.estimatedMs).toBe(3 * MOTION.stepDelayMs + 3 * MOTION.cameraMs);
-    expect(entries[1]?.estimatedMs).toBe(1000 + MOTION.stepDelayMs + 2 * MOTION.cameraMs);
-    expect(entries[1]?.description).toBeUndefined();
+    expect(entries[1]?.estimatedMs).toBe(3 * MOTION.stepDelayMs + 3 * MOTION.cameraMs);
+    expect(entries[2]?.estimatedMs).toBe(1000 + MOTION.stepDelayMs + 2 * MOTION.cameraMs);
+    expect(entries[2]?.description).toBeUndefined();
   });
 
-  it('is empty for a file without flows or connections', () => {
+  it('offers an element-backed default without connections', () => {
     const { doc: bare } = parsePDL('pcd 1.0\nperson a "Ada"\n');
-    expect(flowCatalog(bare)).toEqual([]);
+    expect(flowCatalog(bare)).toMatchObject([
+      { key: 'default', title: 'Default flow', steps: 1, derived: true },
+    ]);
   });
 
   it('lists the derived default flow for a link-only file (item 10)', () => {
@@ -62,9 +65,9 @@ customer -> shop : "buys"
 `);
     const entries = flowCatalog(linked);
     expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({ key: 'flow1', title: 'Default flow', steps: 1, derived: true });
-    // An authored flow always wins: nothing is derived alongside it.
-    expect(flowCatalog(doc()).every((entry) => entry.derived === undefined)).toBe(true);
+    expect(entries[0]).toMatchObject({ key: 'default', title: 'Default flow', steps: 1, derived: true });
+    // Only the virtual entry is marked derived; custom flows keep their identity.
+    expect(flowCatalog(doc()).slice(1).every((entry) => entry.derived === undefined)).toBe(true);
   });
 });
 
