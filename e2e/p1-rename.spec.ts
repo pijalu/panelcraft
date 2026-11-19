@@ -43,6 +43,7 @@ test('F-15: double-click renames in place and every surface agrees', async ({ pa
 
   // canvas label, properties field and code line all show the new name
   await expect(obj.locator('text.pc-label')).toContainText('Payments API');
+  await expect(obj).toHaveAttribute('aria-label', 'system Payments API');
   await expect(page.getByTestId('prop-name')).toHaveValue('Payments API');
   await expect(page.locator('.cm-content')).toContainText('system api "Payments API"');
 

@@ -499,6 +499,7 @@ export class SceneRenderer {
     g.setAttribute('class', `pc-obj pc-kind-${obj.kind}`);
     g.classList.toggle('pc-dashed', obj.dashed === true);
     g.classList.toggle('pc-ghost', obj.ghost === true);
+    g.setAttribute('aria-label', `${obj.kind.replace(/_/g, ' ')} ${obj.name ?? obj.id}`);
     this.applyStyleOverrides(g, obj);
     for (const spec of shapeGlyphs(obj)) this.applySpec(g, spec);
     this.positionObject(g, obj);

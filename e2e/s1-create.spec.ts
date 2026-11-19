@@ -66,6 +66,8 @@ test('S1: create diagram via palette drop + link + properties', async ({ page })
   await name.fill('Payment API');
   await name.blur();
   await expect(canvas.locator('g.pc-obj text', { hasText: 'Payment API' })).toBeVisible();
+  await expect(canvas.locator('g.pc-obj', { hasText: 'Payment API' }))
+    .toHaveAttribute('aria-label', 'system Payment API');
 
   const tech = page.getByTestId('prop-technology');
   await tech.fill('Go, gRPC');
