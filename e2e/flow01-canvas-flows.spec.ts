@@ -138,7 +138,8 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByTestId('insp-alt-label').fill('payment');
     await expect(page.getByTestId('step-1')).toContainText('payment');
     await page.getByTestId('insp-branch-add').click();
-    await expect(page.getByTestId('step-summary-1')).toContainText('2 branches');
+    // A new alt starts with two options; this action adds the third.
+    await expect(page.getByTestId('step-summary-1')).toContainText('3 branches');
     // A block step has no canvas participants, so the highlight clears.
     await page.getByTestId('step-1').click();
     await expect(page.getByTestId('canvas').locator('.pc-faded')).toHaveCount(0);

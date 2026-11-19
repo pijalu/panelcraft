@@ -7,12 +7,13 @@ import type { IllustrationId } from '../../engine/anim/illustrations';
 import type { Doc } from '../../engine/model/types';
 import { s } from '../strings';
 import type { FlowSession } from './flowSession';
-import { inspectorTargets, messageLinkStyle, sparkTargetFor, stepActions } from './flowEdit';
+import { inheritedStepValues, inspectorTargets, messageLinkStyle, sparkTargetFor, stepActions } from './flowEdit';
 import { resolveTarget, type FlowCanvasContext, type FlowSelection, type ViewPoint } from './flowTypes';
 import { FlowProperties, type FlowPropertiesProps } from './FlowProperties';
 import { StepProperties, type StepPropertiesProps } from './StepProperties';
 import type { Flow, FlowStep } from '../../engine/model/types';
 import { pick } from './pick';
+import { flowHistoryKeyDown } from './flowHistory';
 
 export interface FlowPanelProps {
   /** Parsed document of the open file. */
@@ -50,7 +51,7 @@ export function FlowPanel(props: FlowPanelProps) {
   // and would give a selected step a flow-level panel id it does not have.
   if (target.step === null) return <FlowProperties {...flowPropsOf(props, target.flow)} />;
   return (
-    <aside class="properties" data-testid="step-panel" aria-label={s('Properties')}>
+    <aside class="properties" data-testid="step-panel" aria-label={s('Properties')} onKeyDown={flowHistoryKeyDown}>
       <StepProperties {...stepPropsOf(props, target.step)} index={rowIndexOf(target.flat, props.selection.step)} />
     </aside>
   );
@@ -82,7 +83,8 @@ function stepPropsOf(props: FlowPanelProps, step: FlowStep): Omit<StepProperties
   const linkStyle = messageLinkStyle(props.session, step);
   return {
     step,
-    a: stepActions({ session: props.session, selection: props.selection, step, linkStyle }),
+    a: stepActions({ session: props.session, selection: props.selection, step, linkStyle, onSelect: props.onSelect }),
+    inherited: inheritedStepValues(props.doc, step),
     targets: inspectorTargets({
       doc: props.doc,
       ...(props.files === undefined ? {} : { files: props.files }),

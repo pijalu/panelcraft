@@ -76,6 +76,7 @@ function MsgFields(props: {
   patch: Patch;
   objects: InspectorTargets['objects'];
   links: InspectorTargets['links'];
+  inheritedLabel?: string;
 }) {
   const { step, patch } = props;
   return (
@@ -106,10 +107,15 @@ function MsgFields(props: {
       />
       <Field
         label={s('Label')}
-        value={step.label ?? ''}
+        value={step.label ?? props.inheritedLabel ?? ''}
         onInput={(v) => patch({ label: v === '' ? undefined : v })}
         testid="insp-label"
       />
+      {step.label === undefined && props.inheritedLabel !== undefined && (
+        <p class="flow-hint" data-testid="insp-label-inherited">
+          {s('Inherited from the connector. Edit to override for this flow; clear to inherit.')}
+        </p>
+      )}
     </>
   );
 }
@@ -394,6 +400,7 @@ export interface StepPropertiesProps {
   canvas?: FlowCanvasContext;
   view?: () => ViewPoint | null;
   targets: InspectorTargets;
+  inherited?: { label?: string; description?: string };
   sparkTarget: LinkStyleTarget | null;
   /** Edit the resolved connector's shared animation (message steps only). */
   linkStyle: (patch: LinkStylePatch) => void;
@@ -406,11 +413,18 @@ function KindFields(props: {
   step: FlowStep;
   a: InspectActions;
   targets: InspectorTargets;
+  inherited?: { label?: string; description?: string };
 }) {
   const { step, a, targets } = props;
   switch (step.type) {
     case 'msg':
-      return <MsgFields step={step} patch={a.patch} objects={targets.objects} links={targets.links} />;
+      return <MsgFields
+        step={step}
+        patch={a.patch}
+        objects={targets.objects}
+        links={targets.links}
+        {...(props.inherited?.label === undefined ? {} : { inheritedLabel: props.inherited.label })}
+      />;
     case 'process':
       return <ProcessFields step={step} patch={a.patch} objects={targets.objects} />;
     case 'alt':
@@ -427,6 +441,27 @@ function KindFields(props: {
     default:
       return <TextFields step={step} patch={a.patch} />;
   }
+}
+
+function StepDescription(props: {
+  step: FlowStep;
+  inheritedDescription?: string;
+  patch: Patch;
+}) {
+  const { step, inheritedDescription } = props;
+  const inherited = step.description === undefined ? inheritedDescription : undefined;
+  return (
+    <TextArea
+      variant="stacked"
+      label={s('Description')}
+      hint={inherited !== undefined
+        ? s('Inherited from the element. Edit to override for this flow; clear to inherit.')
+        : s('Shown beside the drawing while presenting. Markdown.')}
+      value={step.description ?? inheritedDescription ?? ''}
+      onInput={(v) => props.patch({ description: v === '' ? undefined : v })}
+      testid="insp-description"
+    />
+  );
 }
 
 export function StepProperties(props: StepPropertiesProps) {
@@ -456,14 +491,11 @@ export function StepProperties(props: StepPropertiesProps) {
         'step',
         s('Step'),
         <>
-          <KindFields step={step} a={a} targets={props.targets} />
-          <TextArea
-            variant="stacked"
-            label={s('Description')}
-            hint={s('Shown beside the drawing while presenting. Markdown.')}
-            value={step.description ?? ''}
-            onInput={(v) => a.patch({ description: v === '' ? undefined : v })}
-            testid="insp-description"
+          <KindFields step={step} a={a} targets={props.targets} inherited={props.inherited} />
+          <StepDescription
+            step={step}
+            inheritedDescription={props.inherited?.description}
+            patch={a.patch}
           />
         </>,
       )}

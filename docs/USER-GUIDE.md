@@ -221,14 +221,16 @@ system shop "Webshop" {
 1. **Find Flows** in the left rail — the labelled *flow steps* entry is present from the first
    load, so you never have to know a menu path. Open it from the rail (or **View → Flow Steps**);
    it docks, floats, collapses and closes like any other panel.
-2. **Create a flow** — or present the one you already have. A document with connections but no
-   authored flow shows **Default flow** straight away, derived from those connections in
-   topological source order; the presentation launcher offers it too, marked *from the
-   connections*. Nothing is written into the file until you edit it: opening, presenting,
-   saving and reloading leave the `.pcd` untouched, and the first edit turns it into a real,
-   undoable flow. An authored flow always wins. An empty document keeps the short explanation
-   and **New flow**, whose new flow also starts with the diagram's existing connections;
-   creation order breaks ties. Fill in **Flow name** and **Flow purpose** — the purpose is printed
+2. **Create a flow** — or present the current diagram. Every non-empty document shows
+   **Default flow**, alongside any custom flows. Connections become message steps in
+   topological source order (creation order breaks ties), and objects not represented by a
+   connection become process steps, so a link-free diagram is covered too. The presentation
+   launcher offers Default marked *from the elements*. Opening, presenting, saving and
+   reloading do not write it into the `.pcd`. Its first edit creates and selects an independent
+   **Custom flow** in one undoable command; Default remains beside it and follows later element
+   changes. **New flow** snapshots the current elements without removing or changing the
+   drawing. Only an empty document has no Default and keeps the short explanation plus
+   **New flow**. Fill in **Flow name** and **Flow purpose** — the purpose is printed
    as the flow's `description`, so it travels with the file instead of living in the UI.
    For longer walkthrough text use **Flow notes (Markdown)**: headings, bold, italic, inline
    code, bullet/numbered lists and links. The notes are saved as source text in the file.
@@ -240,15 +242,18 @@ system shop "Webshop" {
    **Camera**, then **Playback** (delay, advance), then the connector animation the step's link
    shares with the rest of the flow, then the advanced fields (flip, connector reference, hide
    connection). The list itself stays a list: play from a row, duplicate it, drag it (or
-   `Alt+↑`/`Alt+↓`) to reorder. Selecting a step clears the canvas selection, and pressing the
-   diagram clears the step — one panel, one subject.
+   `Alt+↑`/`Alt+↓`) to reorder. Message labels come from their connector and process
+   descriptions from their object unless the step has its own override; edit the value to
+   customise only this flow, or clear it to inherit again. Selecting a step clears the canvas
+   selection, and pressing the diagram clears the step — one panel, one subject.
 4. **Add steps**: **Add message**, **Add process**, **Add note** and the advanced entry for
    `alt`, `par` and `goto`. A message's endpoints are chosen from the diagram's own shapes in the
    step's Properties (never typed ids), and a message's × hides that connection from this flow
    without changing the canvas. **Hidden connections** lists those links and **Show** appends a
    step for the original connection again. A step that points at a shape the file does not
    define shows the problem on its row *and* in its Properties; repair it and the warning
-   disappears. Every edit is a normal file edit, so undo/redo and the code view stay in step.
+   disappears. Every edit is a normal file edit, so undo/redo and the code view stay in step,
+   including from flow controls while the Code panel is collapsed.
 5. **Introduction and Conclusion** are offered for every flow and are only written once you type
    into them — leave them empty and the flow has neither. Selecting the flow row itself (not a
    step) shows the flow's own properties: title, purpose, Markdown notes, the presentation

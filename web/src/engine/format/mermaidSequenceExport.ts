@@ -2,6 +2,7 @@
 // Loss-declared PDL Flow → Mermaid sequenceDiagram converter (FR-W4, M6-WP7).
 import type { Doc, Flow, FlowStep, Obj } from '../model/types';
 import type { MermaidExportResult } from './mermaidExport';
+import { resolveMsg } from '../flows/plan';
 
 // UX08-WP11: step descriptions and camera overrides are presentation metadata
 // with no Mermaid counterpart — declared, never silently dropped.
@@ -69,11 +70,12 @@ function emitNote(ctx: EmitContext, value: string, ids: string[], scope: string[
   ctx.lines.push(`${'  '.repeat(ctx.depth)}Note over ${sanitizeId(first)},${sanitizeId(last)}: ${text(value)}`);
 }
 
+function messageLink(doc: Doc, step: Extract<FlowStep, { type: 'msg' }>) {
+  return resolveMsg(doc, step)?.link;
+}
+
 function messageArrow(doc: Doc, step: Extract<FlowStep, { type: 'msg' }>): string {
-  const link = step.linkRef === undefined
-    ? doc.links.find((l) => (l.from === step.from && l.to === step.to) || (l.from === step.to && l.to === step.from))
-    : doc.links.find((l) => l.id === step.linkRef);
-  return link?.style?.dashed === true ? '-->>' : '->>';
+  return messageLink(doc, step)?.style?.dashed === true ? '-->>' : '->>';
 }
 
 function emitAlt(ctx: EmitContext, step: Extract<FlowStep, { type: 'alt' }>, pad: string): void {
@@ -103,7 +105,8 @@ function emitPar(ctx: EmitContext, step: Extract<FlowStep, { type: 'par' }>, pad
 function emitMessage(ctx: EmitContext, step: Extract<FlowStep, { type: 'msg' }>, pad: string): void {
   const from = step.flip === true ? step.to : step.from;
   const to = step.flip === true ? step.from : step.to;
-  ctx.lines.push(`${pad}${sanitizeId(from)}${messageArrow(ctx.doc, step)}${sanitizeId(to)}: ${label(step.label, '')}`);
+  const inherited = messageLink(ctx.doc, step)?.label;
+  ctx.lines.push(`${pad}${sanitizeId(from)}${messageArrow(ctx.doc, step)}${sanitizeId(to)}: ${label(step.label ?? inherited, '')}`);
 }
 
 function emitStep(ctx: EmitContext, step: FlowStep, siblings: FlowStep[], index: number, scope: string[]): void {

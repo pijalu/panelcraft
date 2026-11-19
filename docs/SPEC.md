@@ -192,11 +192,20 @@ IcePanel-style visual storytelling over the static diagram.
   flow rather than a step is selected. A flow selection and a canvas selection
   are mutually exclusive: picking a step clears the canvas selection and pressing
   the diagram clears the step.
-  A document with connections and no authored flow has a virtual default
-  flow derived from those connections (stable topological order, labels and parallel links
-  preserved, creation order as the cycle fallback). It is never persisted: opening,
-  presenting, saving and reloading leave the file unchanged, and the first explicit edit
-  materialises it as one undoable command. An authored flow is always authoritative.
+  Every non-empty document has a live virtual **Default flow**, whether or not custom flows
+  exist. Connections become message steps in stable topological order (creation order is the
+  cycle fallback and parallel links remain distinct); every otherwise unrepresented object
+  becomes a process step, so the walkthrough covers the current diagram. Default flow is never
+  persisted merely by opening, presenting, saving or reloading. Its first explicit edit creates
+  and selects an independent **Custom flow** as one undoable command, while Default remains
+  available and follows later diagram changes. **New flow** likewise snapshots the current
+  elements without changing object or connection membership.
+  Message and process steps reference their connector or object instead of copying its content:
+  connector labels and object descriptions are inherited during editing, playback and Markdown
+  export. Mermaid export inherits connector labels and line styles; step descriptions remain a
+  declared Mermaid drop. An explicit step label, note or description is a per-flow override;
+  clearing it restores inheritance. Step order, grouping, camera, dwell and advance remain
+  flow-specific.
 * **FR-F2** Step types (all in v1):
   | Type | Meaning | Visual behavior |
   |---|---|---|

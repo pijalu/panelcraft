@@ -39,11 +39,11 @@ test.describe('virtual default flow (item 10)', () => {
 
     await page.getByTestId('present-open').click();
     await expect(page.getByTestId('present-launcher')).toBeVisible();
-    await expect(page.getByTestId('launcher-title-flow1')).toHaveText('Default flow');
-    await expect(page.getByTestId('launcher-derived-flow1')).toBeVisible();
+    await expect(page.getByTestId('launcher-title-default')).toHaveText('Default flow');
+    await expect(page.getByTestId('launcher-derived-default')).toBeVisible();
     await capture(page, 'item10-launcher-derived');
 
-    await page.getByTestId('launcher-flow-flow1').click();
+    await page.getByTestId('launcher-flow-default').click();
     await expect(page.getByTestId('app-shell')).toHaveAttribute('data-presenting', 'true');
     // First beat: Customer → Shop, labelled "buys".
     await expect(page.getByTestId('present-counter')).toContainText('1');
@@ -68,7 +68,7 @@ test.describe('virtual default flow (item 10)', () => {
 
     for (const round of [1, 2]) {
       await page.getByTestId('present-open').click();
-      await page.getByTestId('launcher-flow-flow1').click();
+      await page.getByTestId('launcher-flow-default').click();
       await expect(page.getByTestId('app-shell')).toHaveAttribute('data-presenting', 'true');
       await page.getByTestId('present-exit').click();
       await expect(page.getByTestId('app-shell')).toHaveAttribute('data-presenting', 'false');
@@ -92,32 +92,37 @@ test.describe('virtual default flow (item 10)', () => {
 
     await openWorkspacePanels(page, ['flows']);
     await expect(page.getByTestId('flow-derived-hint')).toBeVisible();
-    await expect(page.getByTestId('flow-row-flow1')).toHaveText('Default flow');
+    await expect(page.getByTestId('flow-row-default')).toHaveText('Default flow');
 
-    // Editing a step is an explicit edit: materialise once, as an undoable command.
+    // Editing Default creates one custom copy; Default remains live alongside it.
     await page.getByTestId('step-0').click();
     await page.getByTestId('step-remove').click();
     await expect(page.getByTestId('flow-derived-hint')).toHaveCount(0);
+    await expect(page.getByTestId('flow-row-default')).toHaveText('Default flow');
+    await expect(page.getByTestId('flow-row-flow1')).toHaveText('Custom flow');
 
     const text = await docText(page);
     // Exactly one flow block, and the removed step is gone from it (the diagram
     // connection itself is untouched, which is the point of a flow being a view).
     const flowBody = text.slice(text.indexOf('flow '));
     expect(text.match(/^flow /gm) ?? []).toHaveLength(1);
-    expect(flowBody).toContain('charges');
+    // Connector labels stay on the diagram and are inherited by the step.
+    expect(flowBody).toContain('shop -> pay');
     expect(flowBody).not.toContain('buys');
     expect(text).toContain('customer -> shop : "buys"');
 
     // Undo restores the derived state; the file is authoritative afterwards.
     await page.keyboard.press('ControlOrMeta+z');
-    await expect(page.getByTestId('flow-row-flow1')).toHaveText('Default flow');
+    await expect(page.getByTestId('flow-row-default')).toHaveText('Default flow');
   });
 
-  test('a document without connections keeps the empty flow state', async ({ page }) => {
+  test('a document without connections still gets an element-backed default flow', async ({ page }) => {
     await page.goto('/');
     await seedDoc(page, 'pcd 1.0\n\nsystem lonely "Lonely"\n');
     await openWorkspacePanels(page, ['flows']);
-    await expect(page.getByTestId('flow-empty')).toBeVisible();
-    await expect(page.getByTestId('flow-derived-hint')).toHaveCount(0);
+    await expect(page.getByTestId('flow-empty')).toHaveCount(0);
+    await expect(page.getByTestId('flow-derived-hint')).toBeVisible();
+    await expect(page.getByTestId('flow-row-default')).toHaveText('Default flow');
+    await expect(page.getByTestId('step-title-0')).toHaveText('Lonely');
   });
 });

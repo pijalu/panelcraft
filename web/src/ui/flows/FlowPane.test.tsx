@@ -353,14 +353,14 @@ describe('FlowPane guided authoring (UX08-WP12)', () => {
     expect(out()).toContain('flow "New flow" as flow1');
   });
 
-  it('explains flows and offers New flow when the document has none to derive', () => {
-    // No connections means no derivable flow: the guide still explains the feature.
+  it('offers an element-backed default and New flow without connections', () => {
     mountDoc('pcd 1.0\n\nperson a "Ada"\nsystem b "Web"\n');
-    expect(screen.getByTestId('flow-empty').textContent).toContain('guided walkthrough');
-    const add = screen.getByTestId('flow-add');
-    expect(add.textContent).toBe('New flow');
-    fireEvent.click(add);
-    expect(screen.queryByTestId('flow-empty')).toBeNull();
+    expect(screen.getByTestId('flow-row-default').textContent).toBe('Default flow');
+    expect(screen.getByTestId('step-title-0').textContent).toBe('Ada');
+    expect(screen.getByTestId('step-title-1').textContent).toBe('Web');
+    fireEvent.click(screen.getByTestId('flow-add'));
+    expect(screen.getByTestId('flow-row-default')).not.toBeNull();
+    expect(screen.getByTestId('flow-row-flow1').textContent).toBe('New flow');
     expect(screen.getByTestId('flow-steps')).not.toBeNull();
   });
 
@@ -369,23 +369,22 @@ describe('FlowPane guided authoring (UX08-WP12)', () => {
     // Item 10: connections alone make the diagram presentable.
     expect(screen.queryByTestId('flow-empty')).toBeNull();
     expect(screen.getByTestId('flow-derived-hint')).not.toBeNull();
-    expect(screen.getByTestId('flow-row-flow1').textContent).toBe('Default flow');
+    expect(screen.getByTestId('flow-row-default').textContent).toBe('Default flow');
     expect(screen.getByTestId('step-number-0').textContent).toBe('1');
     // Everything above is presentation only: the file is untouched.
     expect(out()).toBe(FRESH);
     expect(out()).not.toContain('flow');
   });
 
-  it('materialises the derived flow once on the first real edit', () => {
+  it('copies the derived flow once and selects the custom copy on the first edit', () => {
     const { out } = mountDoc(FRESH);
-    // Selecting a step and removing it is a real edit: the flow is written once,
-    // as an ordinary undoable command, and the derived hint disappears.
     fireEvent.click(screen.getByTestId('step-0'));
     fireEvent.click(screen.getByTestId('step-remove'));
-    expect(out()).toContain('flow');
+    expect(out()).toContain('flow "Custom flow" as flow1');
+    // The custom copy is selected; the independent live default remains listed.
     expect(screen.queryByTestId('flow-derived-hint')).toBeNull();
-    expect(screen.getByTestId('flow-row-flow1')).not.toBeNull();
-    // No second copy: the viewer is now an authored flow.
+    expect(screen.getByTestId('flow-row-default')).not.toBeNull();
+    expect(screen.getByTestId('flow-row-flow1').textContent).toBe('Custom flow');
     expect(out().match(/flow /g) ?? []).toHaveLength(1);
   });
 
@@ -454,6 +453,35 @@ describe('FlowPane step cards (UX08-WP12)', () => {
     expect(screen.getByTestId('step-number-0').textContent).toBe('1');
     expect(screen.getByTestId('step-number-1').textContent).toBe('2');
     expect(screen.getByTestId('step-summary-1').textContent).toContain('Ada → Web');
+  });
+
+  it('inherits element content and clears per-flow overrides back to inheritance', () => {
+    const source = `pcd 1.0
+person a "Ada" { description "Customer actor" }
+system b "Web"
+a -> b : "uses" as ab
+flow "Main" as main {
+  a -> b
+  process a
+}
+`;
+    const { out } = mount(undefined, { doc: source });
+    fireEvent.click(screen.getByTestId('flow-row-main'));
+    fireEvent.click(screen.getByTestId('step-0'));
+    expect((screen.getByTestId('insp-label') as HTMLInputElement).value).toBe('uses');
+    expect(screen.getByTestId('insp-label-inherited').textContent).toContain('Inherited');
+    fireEvent.input(screen.getByTestId('insp-label'), { target: { value: 'flow label' } });
+    expect(out()).toContain('a -> b : "uses" as ab');
+    expect(out()).toContain('a -> b : "flow label"');
+
+    fireEvent.click(screen.getByTestId('step-1'));
+    expect((screen.getByTestId('insp-description') as HTMLTextAreaElement).value).toBe('Customer actor');
+    fireEvent.input(screen.getByTestId('insp-description'), { target: { value: 'Custom for this flow' } });
+    expect(out()).toContain('description "Custom for this flow"');
+    fireEvent.input(screen.getByTestId('insp-description'), { target: { value: '' } });
+    fireEvent.blur(screen.getByTestId('insp-description'));
+    expect(out()).not.toContain('Custom for this flow');
+    expect((screen.getByTestId('insp-description') as HTMLTextAreaElement).value).toBe('Customer actor');
   });
 
   it('describes a step without lengthening its row', () => {
@@ -580,7 +608,7 @@ describe('known-value step targets (property hierarchy)', () => {
     expect(flow.tagName).toBe('SELECT');
     expect(Array.from(file.options).map((o) => o.value)).toEqual(['', 'main.pcd', 'other.pcd']);
     expect(file.value).toBe('other.pcd');
-    expect(Array.from(flow.options).map((o) => o.value)).toEqual(['refund', 'refund2']);
+    expect(Array.from(flow.options).map((o) => o.value)).toEqual(['default', 'refund', 'refund2']);
     // changing the file re-derives the flow choices from that file
     fireEvent.change(file, { target: { value: 'main.pcd' } });
     expect(out()).toContain('goto "main.pcd#refund"');
@@ -782,7 +810,7 @@ describe('StepInspector message link resolution and kind fields', () => {
   it('edits a derived flow connector style without materialising the flow', () => {
     const derived = `pcd 1.0\nperson a "Ada"\nsystem b "Web"\na -> b as ab {\n  style {\n    sparks 2\n  }\n}\n`;
     mount(undefined, { doc: derived });
-    fireEvent.click(screen.getByTestId('flow-row-flow1'));
+    fireEvent.click(screen.getByTestId('flow-row-default'));
     fireEvent.click(screen.getByTestId('step-0'));
     expect((screen.getByTestId('insp-sparks') as HTMLInputElement).value).toBe('2');
     fireEvent.input(screen.getByTestId('insp-sparks'), { target: { value: '5' } });

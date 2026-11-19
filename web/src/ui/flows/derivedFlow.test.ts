@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { parsePDL } from '../../engine/format/parser';
 import { printDoc } from '../../engine/format/printer';
+import { buildPlan } from '../../engine/flows/plan';
 import type { Doc } from '../../engine/model/types';
 import {
   derivedFlow,
@@ -44,9 +45,10 @@ function doc(text: string): Doc {
 
 describe('derived default flow (item 10)', () => {
   it('derives the provider template as "buys" then "charges"', () => {
-    const flow = derivedFlow(doc(C4));
-    expect(flow?.title).toBe('Default flow');
-    expect(flow?.steps.map((step) => step.type === 'msg' ? step.label : null)).toEqual([
+    const d = doc(C4);
+    const flow = derivedFlow(d)!;
+    expect(flow.title).toBe('Default flow');
+    expect(buildPlan({ doc: d, flow }).beats.map((beat) => beat.title)).toEqual([
       'buys',
       'charges',
     ]);
@@ -56,18 +58,22 @@ describe('derived default flow (item 10)', () => {
     ]);
   });
 
-  it('never derives a flow when one is authored', () => {
-    expect(derivedFlow(doc(AUTHORED))).toBeNull();
-    expect(flowsForDisplay(doc(AUTHORED)).map((f) => f.title)).toEqual(['Checkout']);
+  it('keeps an up-to-date default alongside authored custom flows', () => {
+    const d = doc(AUTHORED);
+    expect(derivedFlow(d)).toMatchObject({ id: 'default', title: 'Default flow' });
+    expect(flowsForDisplay(d).map((f) => f.title)).toEqual(['Default flow', 'Checkout']);
   });
 
-  it('derives nothing without usable connections', () => {
-    expect(derivedFlow(doc('pcd 1.0\n\nsystem a "A"\n'))).toBeNull();
+  it('derives process steps for unconnected elements and nothing for an empty diagram', () => {
+    expect(derivedFlow(doc('pcd 1.0\n\nsystem a "A"\ncontainer b "B"\n'))?.steps).toMatchObject([
+      { type: 'process', target: 'a' },
+      { type: 'process', target: 'b' },
+    ]);
     expect(derivedFlow(doc('pcd 1.0\n'))).toBeNull();
     expect(derivedFlow(null)).toBeNull();
-    // A link to a shape the document does not define is not presentable. The
-    // parser reports it, so the text is read without the "no diagnostics" guard.
-    expect(derivedFlow(parsePDL('pcd 1.0\n\nsystem a "A"\nb -> a : "orphan"\n').doc)).toBeNull();
+    // An orphan connection is not presentable, but its real object still is.
+    const orphan = parsePDL('pcd 1.0\n\nsystem a "A"\nb -> a : "orphan"\n').doc;
+    expect(derivedFlow(orphan)?.steps).toMatchObject([{ type: 'process', target: 'a' }]);
   });
 
   it('keeps parallel links distinct and keeps a cycle deterministic', () => {
@@ -80,7 +86,7 @@ a -> b : "one"
 a -> b : "two"
 `);
     expect(derivedFlow(parallel)?.steps).toHaveLength(2);
-    expect(derivedFlow(parallel)?.steps.map((s) => s.type === 'msg' ? s.label : null)).toEqual([
+    expect(buildPlan({ doc: parallel, flow: derivedFlow(parallel)! }).beats.map((beat) => beat.title)).toEqual([
       'one',
       'two',
     ]);
@@ -94,15 +100,16 @@ a -> b : "ab"
 b -> a : "ba"
 `);
     // Creation order is the documented fallback for a cycle.
-    expect(derivedFlow(cyclic)?.steps.map((s) => s.type === 'msg' ? s.label : null)).toEqual([
+    expect(buildPlan({ doc: cyclic, flow: derivedFlow(cyclic)! }).beats.map((beat) => beat.title)).toEqual([
       'ab',
       'ba',
     ]);
   });
 
-  it('references only link ids that already exist', () => {
+  it('references elements without copying their labels into step overrides', () => {
     const flow = derivedFlow(doc(C4));
     expect(flow?.steps.every((step) => step.type === 'msg' && step.linkRef === undefined)).toBe(true);
+    expect(flow?.steps.every((step) => step.type === 'msg' && step.label === undefined)).toBe(true);
 
     const identified = doc(`pcd 1.0
 
@@ -124,31 +131,36 @@ a -> b as L1 : "named"
     expect(d.flows).toHaveLength(0);
   });
 
-  it('resolves the derived flow by its key, and materialises at most once', () => {
+  it('copies the derived flow for editing while preserving the live default', () => {
     const d = doc(C4);
     const derived = derivedFlow(d)!;
     expect(findFlow(d, derived.id!)).toEqual(derived);
     expect(findFlow(d, 'nope')).toBeNull();
 
     const edited = flowForEdit(d, derived.id!)!;
+    expect(edited).toMatchObject({ id: 'flow1', title: 'Custom flow' });
     expect(d.flows).toHaveLength(1);
     expect(edited.steps).toHaveLength(derived.steps.length);
-    // A second edit finds the authored flow instead of appending a duplicate.
-    flowForEdit(d, derived.id!);
+    expect(derivedFlow(d)).not.toBeNull();
+    expect(flowsForDisplay(d).map((flow) => flow.title)).toEqual(['Default flow', 'Custom flow']);
+    // The editor follows the custom copy; editing it does not append another.
+    expect(flowForEdit(d, edited.id!)).toBe(edited);
     expect(d.flows).toHaveLength(1);
-    expect(derivedFlow(d)).toBeNull();
-    expect(printDoc(d)).toContain('flow');
+    expect(printDoc(d)).toContain('flow "Custom flow" as flow1');
   });
 
-  it('two users get the materialised flow with the derived playback order', () => {
+  it('keeps the custom copy reference-based after a save and reload', () => {
     const d = doc(C4);
     const derived = derivedFlow(d)!;
     flowForEdit(d, derived.id!);
-    const printed = printDoc(d);
-    const reread = doc(printed);
+    const reread = doc(printDoc(d));
     expect(reread.flows[0]?.steps.map((s) => s.type === 'msg' ? s.label : null)).toEqual([
-      'buys',
-      'charges',
+      undefined,
+      undefined,
+    ]);
+    expect(reread.flows[0]?.steps.map((s) => s.type === 'msg' ? s.from : null)).toEqual([
+      'customer',
+      'shop',
     ]);
   });
 });

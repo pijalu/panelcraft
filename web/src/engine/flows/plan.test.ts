@@ -86,6 +86,21 @@ describe('playback plan builder (M5-WP1)', () => {
     expect(b.delayMs).toBe(MOTION.stepDelayMs);
   });
 
+  it('inherits connector labels and element descriptions unless a step overrides them', () => {
+    const inherited = parse(`pcd 1.0
+person a "Ada" { description "Customer actor" }
+system b "Web"
+a -> b : "uses" as ab
+flow "Inherited" as inherited {
+  a -> b
+  process a
+}
+`);
+    const beats = buildPlan({ doc: inherited, flow: firstFlow(inherited) }).beats;
+    expect(beats[0]?.title).toBe('uses');
+    expect(beats[1]).toMatchObject({ title: 'Ada', description: 'Customer actor' });
+  });
+
   it('flip reverses the travel direction but keeps the link', () => {
     const b = beat(buildPlan({ doc, flow }).beats, 3);
     expect(b.links).toEqual([{ linkId: 'a-c-2', from: 'c', to: 'a', flipped: true }]);

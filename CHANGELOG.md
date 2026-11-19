@@ -5,6 +5,23 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Changed — every diagram has a live Default flow
+
+- Every non-empty diagram now has a virtual **Default flow**, alongside any custom flows.
+  Connections provide topologically ordered message steps and unrepresented objects provide
+  process steps, including diagrams with no connections. Editing Default creates and selects
+  an independent **Custom flow**; Default stays live as elements change. Creating or editing a
+  flow rebases onto the current document and cannot discard its objects or connectors.
+- Flow steps now reference diagram elements instead of duplicating their content. Connector
+  labels and object descriptions are inherited in the inspector, playback and Markdown export;
+  Mermaid export inherits connector labels and line styles. An explicit step value is a per-flow
+  override and clearing it restores inheritance. Anonymous parallel connectors retain their
+  distinct labels and styles.
+- Flow-panel undo/redo now reaches the document history even while Code is collapsed, and
+  collapsing or docking the panel preserves editor history. The editing session reconciles
+  fast undo against the code buffer without mistaking a stale clean projection for the current
+  file. This also fixes the first-keystroke focus loss when Default becomes a custom copy.
+
 ### Changed — Flow Steps lists the flow, Properties edits the step
 
 - Flow Steps is a list again: one row per step with its number, type, title, the

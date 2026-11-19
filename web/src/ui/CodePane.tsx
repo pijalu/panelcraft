@@ -18,22 +18,30 @@ export interface CodePaneProps {
   loaded?: boolean;
   /** Format button / Shift-Alt-F hook (FR-K4). */
   onFormat: () => void;
-  /** F-10: collapse into the sync-state rail. */
+  /** Collapse into the sync-state rail without discarding editor history. */
   onCollapse?: () => void;
+  /** Hide the pane while keeping CodeMirror and its document history mounted. */
+  collapsed?: boolean;
   /** F-22: canvas ↔ code mapping hooks. */
   revealRef?: { current: ((id: string) => void) | null };
   onCaretObject?: (id: string | null) => void;
 }
 
 /** Split-pane code view for the active file. */
-export function CodePane({ machine, snapshot, loaded = true, onFormat, onCollapse, revealRef, onCaretObject }: CodePaneProps) {
+export function CodePane({ machine, snapshot, loaded = true, onFormat, onCollapse, collapsed = false, revealRef, onCaretObject }: CodePaneProps) {
   return (
-    <section class="code-pane" data-testid="code-pane" aria-label={s('Code view')}>
+    <section
+      class="code-pane"
+      data-testid="code-pane"
+      aria-label={s('Code view')}
+      hidden={collapsed}
+      style={{ display: collapsed ? 'none' : undefined }}
+    >
       <header class="code-pane-head">
         <span class="panel-title">{s('Code')}</span>
         <span
           class="muted"
-          data-testid="sync-state"
+          data-testid={collapsed ? undefined : 'sync-state'}
           data-sync-state={snapshot.state}
           data-diverged={String(snapshot.divergedFromSaved)}
         >

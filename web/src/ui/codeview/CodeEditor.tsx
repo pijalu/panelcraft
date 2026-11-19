@@ -22,6 +22,10 @@ import { highlightExtension, setHighlight } from './highlight';
 import { codePorts } from '../codePorts';
 import { s } from '../strings';
 
+// Panel docking can move the editor to a new DOM parent. Retain its state so
+// that collapse/expand does not silently discard document undo/redo history.
+const editorStates = new WeakMap<SyncMachine, EditorState>();
+
 export interface CodeEditorProps {
   /** The App-owned sync machine (single source of sync truth). */
   machine: SyncMachine;
@@ -72,10 +76,10 @@ export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProp
   // Editor construction (once per machine).
   useEffect(() => {
     /** Mermaid pastes convert before entering the machine (D-M4-4). */
-    const onDocChanged = (text: string): void => {
+    const onDocChanged = (text: string, currentView: EditorView): void => {
       const pdl = mermaidToPdl(text);
       if (pdl !== null && pdl !== text) {
-        view.current?.dispatch({ changes: { from: 0, to: view.current.state.doc.length, insert: pdl } });
+        currentView.dispatch({ changes: { from: 0, to: currentView.state.doc.length, insert: pdl } });
         return; // the PDL dispatch re-enters here and feeds the machine
       }
       machine.textChanged(pdl ?? text);
@@ -91,36 +95,41 @@ export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProp
       }));
     }
 
-    const state = EditorState.create({
+    const extensions = [
+      lineNumbers(),
+      highlightActiveLine(),
+      highlightActiveLineGutter(),
+      history(),
+      highlightSelectionMatches(),
+      keymap.of([
+        { key: 'Shift-Alt-f', run: () => { machine.formatNow(); return true; } },
+        ...defaultKeymap,
+        ...historyKeymap,
+        ...searchKeymap,
+      ]),
+      pdlStreamLanguage,
+      pcTheme,
+      pcHighlightExtension,
+      // Accessibility: the editable content region needs an accessible name.
+      EditorView.contentAttributes.of({
+        'aria-label': s('Diagram source (PDL)'),
+        tabindex: '0', // scrollable CodeMirror region retains keyboard access
+      }),
+      lintGutter(),
+      linter(lintSource),
+      EditorView.updateListener.of((u) => onDocChanged(u.state.doc.toString(), u.view)),
+      highlightExtension,
+    ];
+    const state = editorStates.get(machine) ?? EditorState.create({
       doc: machine.snapshot().codeText,
-      extensions: [
-        lineNumbers(),
-        highlightActiveLine(),
-        highlightActiveLineGutter(),
-        history(),
-        highlightSelectionMatches(),
-        keymap.of([
-          { key: 'Shift-Alt-f', run: () => { machine.formatNow(); return true; } },
-          ...defaultKeymap,
-          ...historyKeymap,
-          ...searchKeymap,
-        ]),
-        pdlStreamLanguage,
-        pcTheme,
-        pcHighlightExtension,
-        // N5: the editable content region needs an accessible name
-        EditorView.contentAttributes.of({
-          'aria-label': s('Diagram source (PDL)'),
-          tabindex: '0', // scrollable CodeMirror region retains keyboard access
-        }),
-        lintGutter(),
-        linter(lintSource),
-        EditorView.updateListener.of((u) => onDocChanged(u.state.doc.toString())),
-        highlightExtension,
-      ],
+      extensions,
     });
     const v = new EditorView({ state, parent: host.current! });
     view.current = v;
+    const current = machine.snapshot().codeText;
+    if (state.doc.toString() !== current) {
+      v.dispatch({ changes: minimalChange(state.doc.toString(), current) });
+    }
     // F-22 canvas → code: select the entity's statement lines
     // F-24: undo/redo through the editor's own history command.
     codePorts.undo = () => undo(v);
@@ -151,6 +160,7 @@ export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProp
       v.dom.addEventListener('mouseup', report);
     }
     return () => {
+      editorStates.set(machine, v.state);
       codePorts.undo = null;
       codePorts.redo = null;
       if (revealRef) revealRef.current = null;

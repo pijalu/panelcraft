@@ -5,7 +5,8 @@
 // can see the whole walkthrough without a form in the middle of it. Every edit
 // still round-trips through retext() and surfaces as onChangeText(newText), so
 // the sync machine stays the single writer.
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
+import { flowHistoryKeyDown } from './flowHistory';
 import { flowsMarkdown } from '../../engine/format/flowMarkdown';
 import { downloadText } from '../download';
 import { stem } from '../paths';
@@ -104,11 +105,12 @@ function StepRow(props: {
   selected: boolean;
   ops: RowOps;
   names: Names;
+  doc: Doc;
 }) {
   const { row, index, ops, names } = props;
   const parent = row.path.slice(0, -1).join('.');
   const problems = stepProblems(row.step, names);
-  const title = stepTitle(row.step, names);
+  const title = stepTitle(row.step, names, props.doc);
   const sibling = row.path.at(-1) ?? 0;
   const drop = (e: DragEvent): void => {
     const from = e.dataTransfer?.getData('application/x-pc-step') ?? '';
@@ -195,7 +197,7 @@ function StepRow(props: {
   );
 }
 
-function StepList(props: { steps: FlatStep[]; sel: number[]; ops: RowOps; names: Names }) {
+function StepList(props: { steps: FlatStep[]; sel: number[]; ops: RowOps; names: Names; doc: Doc }) {
   return (
     <ol class="flow-steps" data-testid="flow-steps">
       {props.steps.map((fs, i) => (
@@ -206,6 +208,7 @@ function StepList(props: { steps: FlatStep[]; sel: number[]; ops: RowOps; names:
           selected={samePath(fs.path, props.sel)}
           ops={props.ops}
           names={props.names}
+          doc={props.doc}
         />
       ))}
     </ol>
@@ -306,16 +309,26 @@ function ActionBar(props: { ready: { msg: boolean; process: boolean }; onAdd(kin
 }
 
 /**
- * Flows to offer and whether the shown one is the virtual derived flow: a
- * link-only document shows its derived default flow so it is presentable before
- * anyone authors a flow.
+ * Flows to offer and whether the shown one is the virtual Default flow. Every
+ * non-empty diagram is presentable before anyone authors a custom flow.
  */
-function shownFlows(doc: Doc, sel: FlowSelection | null): { flows: Flow[]; virtual: boolean; flowKey: string } {
+function shownFlows(
+  doc: Doc,
+  sel: FlowSelection | null,
+  previousKey: string | null,
+): { flows: Flow[]; virtual: boolean; flowKey: string } {
   const flows = flowsForDisplay(doc);
-  const first = flows[0];
-  // A fresh panel opens on the first flow: the list is always ready to edit.
-  const key = sel?.flow ?? (first === undefined ? '' : flowKey(first));
-  return { flows, virtual: derivedFlow(doc) !== null, flowKey: key };
+  // Preserve the established entry point: an existing custom flow opens first,
+  // while a diagram without one opens on its live Default flow.
+  const first = doc.flows[0] ?? flows[0];
+  const previous = sel === null && previousKey !== null && flows.some((flow) => flowKey(flow) === previousKey)
+    ? previousKey
+    : null;
+  // Canvas selection clears the Properties selection, not the flow being built.
+  // Keep that flow active for canvas-assisted Add message/process actions.
+  const key = sel?.flow ?? previous ?? (first === undefined ? '' : flowKey(first));
+  const derived = derivedFlow(doc);
+  return { flows, virtual: derived !== null && flowKey(derived) === key, flowKey: key };
 }
 
 function ErrorPane({ noFile }: { noFile: boolean }) {
@@ -333,18 +346,24 @@ function FlowEditor(props: {
   pane: FlowPaneProps;
   doc: Doc;
   sel: FlowSelection | null;
+  previousKey: string | null;
   setSel(next: FlowSelection): void;
 }) {
   const { pane, doc, sel, setSel } = props;
   const names = objectNames(doc);
-  const { flows, virtual, flowKey: selKey } = shownFlows(doc, sel);
+  const { flows, virtual, flowKey: selKey } = shownFlows(doc, sel, props.previousKey);
   const flow = flows.find((f) => flowKey(f) === selKey) ?? null;
   const flat = flow === null ? [] : flatSteps(flow);
   const selStep = sel?.flow === selKey ? sel.step : [];
   const ready = canvasReady(pane.canvas);
   const pick = (key: string): void => setSel({ flow: key, step: [] });
   const withFlow = (fn: (f: Flow) => void): void => {
-    pane.session.apply((d) => editFlow(d, selKey, fn));
+    let nextKey = selKey;
+    pane.session.apply((d) => {
+      const edited = editFlow(d, selKey, fn);
+      if (edited !== null) nextKey = flowKey(edited);
+    });
+    if (nextKey !== selKey) setSel({ flow: nextKey, step: selStep });
   };
   const ops: RowOps = {
     select: (path) => {
@@ -373,11 +392,11 @@ function FlowEditor(props: {
   const addStep = (kind: FlowStep['type']): void => {
     const step = seedFor(kind, pane.canvas);
     if (step === null) return;
-    pane.session.apply((d) => editFlow(d, selKey, (f) => appendStep(f, step)));
+    withFlow((f) => appendStep(f, step));
   };
 
   return (
-    <div class="flow-pane" data-testid="flow-pane">
+    <div class="flow-pane" data-testid="flow-pane" onKeyDown={flowHistoryKeyDown}>
       {flows.length === 0 ? (
         <div class="flow-empty" data-testid="flow-empty">
           <p>{s('A flow is a short guided walkthrough of this diagram.')}</p>
@@ -390,7 +409,7 @@ function FlowEditor(props: {
         <>
           {virtual && (
             <p class="flow-hint" data-testid="flow-derived-hint">
-              {s('Derived from the connections in this diagram. Editing it makes it a real flow.')}
+              {s('Derived from this diagram. Editing creates a custom copy; Default flow stays up to date.')}
             </p>
           )}
           <FlowList flows={flows} selFlow={selKey} onPick={pick} onPlay={pane.onPlay} />
@@ -417,7 +436,7 @@ function FlowEditor(props: {
       )}
       {flow !== null && (
         <>
-          <StepList steps={flat} sel={selStep} ops={ops} names={names} />
+          <StepList steps={flat} sel={selStep} ops={ops} names={names} doc={doc} />
           <HiddenConnections doc={doc} flow={flow} names={names} onShow={(index) => pane.session.apply((d) => showFlowLink(d, selKey, index))} />
           <ActionBar ready={ready} onAdd={addStep} />
         </>
@@ -429,7 +448,9 @@ function FlowEditor(props: {
 /** Sidebar "Flows" tab: pick a flow, add steps, and hand the rest to Properties. */
 export function FlowPane(props: FlowPaneProps) {
   const [localSel, setLocalSel] = useState<FlowSelection | null>(null);
+  const lastFlow = useRef<string | null>(null);
   const sel = props.selection === undefined ? localSel : props.selection;
+  if (sel !== null) lastFlow.current = sel.flow;
   const setSel = (next: FlowSelection): void => {
     if (props.selection === undefined) setLocalSel(next);
     props.onSelection?.(next);
@@ -442,5 +463,5 @@ export function FlowPane(props: FlowPaneProps) {
   if (props.activePath === null || doc === null) {
     return <ErrorPane noFile={props.activePath === null} />;
   }
-  return <FlowEditor pane={props} doc={doc} sel={sel} setSel={setSel} />;
+  return <FlowEditor pane={props} doc={doc} sel={sel} previousKey={lastFlow.current} setSel={setSel} />;
 }
