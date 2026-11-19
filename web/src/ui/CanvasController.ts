@@ -490,6 +490,8 @@ export class CanvasController {
   private mode: Mode = { t: 'idle' };
   private selObjects = new Set<string>();
   private selLinks = new Set<string>();
+  /** Presentation hides editor-only selection chrome without losing selection. */
+  private editingChromeVisible = true;
   private grid: GridSettings = defaultGrid();
   /**
    * IR v9: payloads of the open document, keyed by handle. The canvas resolves an
@@ -580,6 +582,13 @@ export class CanvasController {
     if (this.selLinks.size !== 1) return null;
     const id = [...this.selLinks][0];
     return this.state.links.find((l) => l.id === id) ?? null;
+  }
+
+  /** Hide editor-only selection visuals during presentation; restore on exit. */
+  setEditingChromeVisible(visible: boolean): void {
+    if (this.editingChromeVisible === visible) return;
+    this.editingChromeVisible = visible;
+    this.render();
   }
 
   /** Place a new object centered at `at` (palette drop / click / quick-add). */
@@ -1313,8 +1322,12 @@ export class CanvasController {
     for (const o of this.state.objects) {
       this.renderer.elementFor(o.id)?.classList.toggle('pc-error', this.errorIds.has(o.id));
     }
-    this.renderer.setSelection([...this.selObjects], [...this.selLinks]);
-    if (this.mode.t === 'idle') this.paintIdleOverlay();
+    this.renderer.setSelection(
+      this.editingChromeVisible ? [...this.selObjects] : [],
+      this.editingChromeVisible ? [...this.selLinks] : [],
+    );
+    if (!this.editingChromeVisible) clearOverlay(this.renderer.overlay);
+    else if (this.mode.t === 'idle') this.paintIdleOverlay();
     if (notify) this.emit();
   }
 

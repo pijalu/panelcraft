@@ -884,6 +884,7 @@ function useFlowPresentation(
   const pres = useStagePresentation({
     player, activePath, ready, textOf: (path) => manager.text(path),
   });
+  usePresentationCanvasChrome(canvas, pres.presenting);
   return { player, pres };
 }
 
@@ -896,6 +897,17 @@ function useHistoryAndReveal(
     history: useHistory(canvas.ctrlRef, snapshot, canvas.ctrlRef.current !== null, setFlash),
     revealRef: useCanvasRevealPort(canvas.snap),
   };
+}
+
+function usePresentationCanvasChrome(
+  canvas: ReturnType<typeof useCanvasController>,
+  presenting: boolean,
+): void {
+  useEffect(() => {
+    // Selection remains editing state, but its handles and outlines must not
+    // follow the presentation camera. FlowAnimator owns a separate SVG layer.
+    canvas.ctrlRef.current?.setEditingChromeVisible(!presenting);
+  }, [canvas.ctrlRef, presenting]);
 }
 
 export function App() {
