@@ -127,6 +127,34 @@ with no clipping or overlap; selected history and preview remain clear in light 
 No visual defect remains open. The browser-directory scenarios continue to use mocked directory
 handles, while the Git scenario uses the actual Go CLI and a real repository.
 
+## Follow-up — editor dock lifecycle regressions
+
+The three unrelated baseline failures recorded in the original report were reproduced at
+`1e3a602` and are now closed. Dock regrouping can mount a replacement code editor before the
+predecessor's effect cleanup runs. The old cleanup then cleared the replacement's reveal port and
+undo/redo ports, so selecting a canvas object produced no source highlight and flow shortcuts
+had no document history to call. The editor also read its cached state before the predecessor
+could save it, losing live history across the remount.
+
+The editor now takes state from the active predecessor, and only the active editor caches state
+or clears ports that it still owns. Machine-originated document writes start a new undo group so
+a settled flow-delay edit cannot merge into the immediately preceding document edit. New unit
+regressions cover replacement-port ownership, live-history handoff, and undo-group isolation.
+
+Follow-up validation:
+
+- `npx vitest run web/src/ui/codeview/CodeEditor.test.tsx --coverage.enabled=false` — **9 passed**.
+- `npm test` — passed the full Vitest suite with coverage thresholds enabled.
+- `npm run check` — passed TypeScript checks for app/service worker and ESLint.
+- `npm run build && npm run e2e` — **269 passed**, including canvas-to-code highlighting and both
+  flow undo cases. The previous three-failure baseline no longer exists.
+- `go test ./...` — passed all Go packages.
+- Reviewed `test-results/screenshots/p3-canvas-code-map.png` and
+  `test-results/screenshots/p3-canvas-code-map-dark.png` against the style-guide checklist. The
+  three highlighted statement lines are visible without moving focus or changing panel geometry;
+  contrast, spacing, selection treatment, and theme parity remain intact. No visual defect was
+  found. Undo/redo keyboard behavior is covered by the browser scenarios above.
+
 ## Residual risks and explicit non-goals
 
 - Multi-file reconciliation followed by a Git commit is not a transaction. A partial failure is
@@ -138,6 +166,3 @@ handles, while the Git scenario uses the actual Go CLI and a real repository.
   historical Git snapshots. Repository hooks are not run.
 - Remote Git/GitHub, credentials, clone/fetch/push, and non-fast-forward remote policy remain future
   design work. No runtime network-backed Git operation exists in this implementation.
-- The repository-wide Playwright baseline at unchanged `2baad36` has three previously reproduced
-  failures: canvas-to-code highlighting and two flow-undo cases. The focused storage suite above is
-  green; no new evidence attributes those baseline failures to Git storage.

@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, redo, undo } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, isolateHistory, redo, undo } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { linter, type Diagnostic as CmDiagnostic, lintGutter } from '@codemirror/lint';
 import type { SyncMachine, SyncSnapshot } from './sync';
@@ -25,6 +25,8 @@ import { s } from '../strings';
 // Panel docking can move the editor to a new DOM parent. Retain its state so
 // that collapse/expand does not silently discard document undo/redo history.
 const editorStates = new WeakMap<SyncMachine, EditorState>();
+// A dock replacement mounts before its predecessor's cleanup; use the live state.
+const activeEditors = new WeakMap<SyncMachine, EditorView>();
 
 export interface CodeEditorProps {
   /** The App-owned sync machine (single source of sync truth). */
@@ -59,11 +61,11 @@ export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProp
         if (trailingWhitespaceOnly(current, s.codeText)) return;
         const change = minimalChange(current, s.codeText);
         if (change.from === change.to && change.insert === '') return;
-        // no explicit `selection`: CodeMirror maps the current selection
-        // through the change, so a caret in an untouched region stays put
+        // No explicit selection: CodeMirror maps it through the change. Isolate the
+        // machine write from earlier edits; flow edits already coalesce upstream.
         projecting.current = true;
         const hadFocus = v.hasFocus;
-        v.dispatch({ changes: change, scrollIntoView: false });
+        v.dispatch({ changes: change, scrollIntoView: false, annotations: isolateHistory.of('before') });
         projecting.current = false;
         // F-30: a programmatic write can leave CodeMirror believing it lost
         // focus, which silently disables its keymap (Ctrl+A, undo, search).
@@ -120,35 +122,35 @@ export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProp
       EditorView.updateListener.of((u) => onDocChanged(u.state.doc.toString(), u.view)),
       highlightExtension,
     ];
-    const state = editorStates.get(machine) ?? EditorState.create({
+    const state = activeEditors.get(machine)?.state ?? editorStates.get(machine) ?? EditorState.create({
       doc: machine.snapshot().codeText,
       extensions,
     });
     const v = new EditorView({ state, parent: host.current! });
-    view.current = v;
+    activeEditors.set(machine, v); view.current = v;
     const current = machine.snapshot().codeText;
     if (state.doc.toString() !== current) {
       v.dispatch({ changes: minimalChange(state.doc.toString(), current) });
     }
     // F-22 canvas → code: select the entity's statement lines
     // F-24: undo/redo through the editor's own history command.
-    codePorts.undo = () => undo(v);
-    codePorts.redo = () => redo(v);
-    if (revealRef) {
-      revealRef.current = (id: string) => {
-        const text = v.state.doc.toString();
-        const span = spanOf(text, id);
-        if (span === null) return;
-        const from = posToOffset(text, span.from, 1);
-        const to = Math.max(from, posToOffset(text, span.to + 1, 1) - 1);
-        v.dispatch({
-          effects: [
-            setHighlight.of({ from, to }),
-            EditorView.scrollIntoView(from, { y: 'center' }),
-          ],
-        });
-      };
-    }
+    const undoCode = () => undo(v);
+    const redoCode = () => redo(v);
+    codePorts.undo = undoCode; codePorts.redo = redoCode;
+    const reveal = (id: string): void => {
+      const text = v.state.doc.toString();
+      const span = spanOf(text, id);
+      if (span === null) return;
+      const from = posToOffset(text, span.from, 1);
+      const to = Math.max(from, posToOffset(text, span.to + 1, 1) - 1);
+      v.dispatch({
+        effects: [
+          setHighlight.of({ from, to }),
+          EditorView.scrollIntoView(from, { y: 'center' }),
+        ],
+      });
+    };
+    if (revealRef) revealRef.current = reveal;
     // F-22 code → canvas: the object under the caret (only while focused)
     if (onCaretObject) {
       const report = (): void => {
@@ -160,10 +162,14 @@ export function CodeEditor({ machine, revealRef, onCaretObject }: CodeEditorProp
       v.dom.addEventListener('mouseup', report);
     }
     return () => {
-      editorStates.set(machine, v.state);
-      codePorts.undo = null;
-      codePorts.redo = null;
-      if (revealRef) revealRef.current = null;
+      if (activeEditors.get(machine) === v) {
+        editorStates.set(machine, v.state); activeEditors.delete(machine);
+      }
+      // A dock move can mount the replacement before this cleanup runs. Only
+      // clear ports still owned by this editor, not the replacement's ports.
+      if (codePorts.undo === undoCode) codePorts.undo = null;
+      if (codePorts.redo === redoCode) codePorts.redo = null;
+      if (revealRef?.current === reveal) revealRef.current = null;
       v.destroy();
       view.current = null;
     };
