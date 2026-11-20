@@ -6,6 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { capture } from './lib/screenshots';
 import { chooseAppMenu, choosePanelMenu } from './lib/panels';
 import { seedCode } from './lib/seed';
+import { legacyIndexedDbOnly } from './lib/storage';
 
 type Panel = 'sidebar' | 'flows' | 'palette' | 'code' | 'props';
 type Dock = 'left' | 'right' | 'bottom' | 'float';
@@ -14,6 +15,8 @@ const PANELS: readonly Panel[] = ['sidebar', 'flows', 'palette', 'code', 'props'
 test.setTimeout(120_000);
 
 async function ready(page: Page): Promise<void> {
+  // This filmstrip asserts the legacy IndexedDB record, so pin the backend.
+  await page.addInitScript(legacyIndexedDbOnly);
   await page.goto('/');
   await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
 }

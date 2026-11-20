@@ -1,16 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Optional browser-only File System Access adapter. No server or network is used.
+// The handle-backed reconciliation lives in `HandleDirectoryStorage`, which is
+// shared by the user-selected native folder (this module) and the origin-private
+// file system adapter (`opfs.ts`) — one implementation, two capability labels.
 import {
   createFolder, MANIFEST_NAME, newRoot, parentPath, walkNodes, writeFile, type FsNode,
 } from '../fs';
 import {
   decodeStored, mapStoreError, newStoredWorkspace, StoreError,
-  type StoragePort, type StoredWorkspace,
+  type ContentProbePort, type StorageKind, type StoragePort, type StoredWorkspace,
 } from './port';
 
 const METADATA_DIR = '.panelcraft';
 const METADATA_FILE = 'workspace.json';
 const decoder = new TextDecoder('utf-8', { fatal: true });
+
+/** Unreadable metadata means corrupt data, not an unavailable backend. */
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new StoreError('corrupt', 'stored workspace is not valid JSON');
+  }
+}
 
 export interface DirectoryPickerHost {
   showDirectoryPicker?: (options: { mode: 'readwrite' }) => Promise<FileSystemDirectoryHandle>;
@@ -18,27 +30,90 @@ export interface DirectoryPickerHost {
 
 export type DirectoryPicker = DirectoryPickerHost['showDirectoryPicker'];
 
+/** Read/write permission state of a remembered directory handle. */
+export type DirectoryPermissionState = 'granted' | 'prompt' | 'denied';
+
+interface PermissionHandle {
+  queryPermission?: (descriptor: { mode: 'readwrite' }) => Promise<PermissionState>;
+  requestPermission?: (descriptor: { mode: 'readwrite' }) => Promise<PermissionState>;
+}
+
 export function supportsDirectoryPicker(host: DirectoryPickerHost = globalThis as DirectoryPickerHost): boolean {
   return typeof host.showDirectoryPicker === 'function';
 }
 
-export async function pickDirectoryStorage(picker?: DirectoryPicker): Promise<BrowserDirectoryStorage> {
-  const select = picker ?? (globalThis as DirectoryPickerHost).showDirectoryPicker;
-  if (!select) throw new StoreError('unavailable', 'this browser does not support local directory selection');
-  const handle = await select({ mode: 'readwrite' });
-  return new BrowserDirectoryStorage(handle);
+/**
+ * Ask whether a remembered handle still has read/write permission. Browsers
+ * expose this on the handle; test doubles and older engines may omit it, which
+ * is treated as already granted (the handle was handed to us by a real picker).
+ */
+export async function queryDirectoryPermission(handle: FileSystemDirectoryHandle): Promise<DirectoryPermissionState> {
+  const capable = handle as unknown as PermissionHandle;
+  if (typeof capable.queryPermission !== 'function') return 'granted';
+  try {
+    return await capable.queryPermission({ mode: 'readwrite' });
+  } catch {
+    return 'denied';
+  }
 }
 
-export class BrowserDirectoryStorage implements StoragePort {
-  readonly kind = 'directory' as const;
+/** Request permission from a user gesture (the Reconnect click). */
+export async function requestDirectoryPermission(handle: FileSystemDirectoryHandle): Promise<DirectoryPermissionState> {
+  const capable = handle as unknown as PermissionHandle;
+  if (typeof capable.requestPermission !== 'function') return 'granted';
+  try {
+    return await capable.requestPermission({ mode: 'readwrite' });
+  } catch {
+    return 'denied';
+  }
+}
+
+/**
+ * Invoke the picker with the right receiver. Browsers require a secure context
+ * and a user gesture; `host.showDirectoryPicker` must not be detached from its
+ * host object or the call throws an illegal-invocation error.
+ */
+export async function pickDirectoryHandle(
+  picker?: DirectoryPicker,
+  host: DirectoryPickerHost = globalThis as DirectoryPickerHost,
+): Promise<FileSystemDirectoryHandle> {
+  const select = picker ?? host.showDirectoryPicker?.bind(host);
+  if (!select) throw new StoreError('unavailable', 'this browser does not support local directory selection');
+  return select({ mode: 'readwrite' });
+}
+
+export async function pickDirectoryStorage(picker?: DirectoryPicker): Promise<BrowserDirectoryStorage> {
+  return new BrowserDirectoryStorage(await pickDirectoryHandle(picker));
+}
+
+/** Adapter identity supplied by the composition root (native folder vs OPFS). */
+export interface HandleDirectoryOptions {
+  kind?: StorageKind;
+  label?: string;
+}
+
+/**
+ * Snapshot StoragePort over a directory handle: files mirror the workspace tree,
+ * `.panelcraft/workspace.json` carries tabs/settings. Revisions guard against
+ * edits made outside PanelCraft.
+ */
+export class HandleDirectoryStorage implements StoragePort, ContentProbePort {
+  readonly kind: StorageKind;
   readonly label: string;
   private revision: string | null = null;
 
-  constructor(private readonly root: FileSystemDirectoryHandle) {
-    this.label = root.name;
+  constructor(private readonly root: FileSystemDirectoryHandle, options: HandleDirectoryOptions = {}) {
+    this.kind = options.kind ?? 'directory';
+    this.label = options.label ?? root.name;
   }
 
-  async load(): Promise<StoredWorkspace> {
+  /** Directory name, used for labels and diagnostics. */
+  get directoryName(): string {
+    return this.root.name;
+  }
+
+  /** Directory snapshot; never null, an empty folder is a readable workspace. */
+  async load(): Promise<StoredWorkspace | null> {
     try {
       const workspace = await this.read();
       this.revision = JSON.stringify(workspace);
@@ -79,6 +154,24 @@ export class BrowserDirectoryStorage implements StoragePort {
     return JSON.stringify(await this.read()).length;
   }
 
+  /**
+   * Presence, not validity: a stored-but-corrupt metadata file still counts as
+   * content so selection surfaces the error instead of starting elsewhere.
+   */
+  async hasContent(): Promise<boolean> {
+    try {
+      const metadata = await this.root.getDirectoryHandle(METADATA_DIR);
+      await metadata.getFileHandle(METADATA_FILE);
+      return true;
+    } catch (error) {
+      if ((error as { name?: string }).name !== 'NotFoundError') throw error;
+    }
+    for await (const [name, entry] of this.root.entries()) {
+      if (entry.kind === 'file' && name !== MANIFEST_NAME) return true;
+    }
+    return false;
+  }
+
   private checkRevision(current: StoredWorkspace): void {
     if (this.revision !== null && JSON.stringify(current) !== this.revision) {
       throw new StoreError('conflict', 'local folder changed outside PanelCraft; reopen it before saving');
@@ -96,7 +189,7 @@ export class BrowserDirectoryStorage implements StoragePort {
     try {
       const directory = await this.root.getDirectoryHandle(METADATA_DIR);
       const file = await (await directory.getFileHandle(METADATA_FILE)).getFile();
-      return decodeStored(JSON.parse(await file.text()));
+      return decodeStored(parseJson(await file.text()));
     } catch (error) {
       if ((error as { name?: string }).name === 'NotFoundError') return newStoredWorkspace(this.root.name);
       throw error;
@@ -186,5 +279,12 @@ export class BrowserDirectoryStorage implements StoragePort {
     } catch (error) {
       if ((error as { name?: string }).name !== 'NotFoundError') throw error;
     }
+  }
+}
+
+/** A user-selected, user-visible device folder (native storage). */
+export class BrowserDirectoryStorage extends HandleDirectoryStorage {
+  constructor(root: FileSystemDirectoryHandle) {
+    super(root, { kind: 'directory' });
   }
 }

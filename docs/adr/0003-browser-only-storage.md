@@ -35,9 +35,21 @@ network service.
 * Writable serving requires a loopback listener. It is a local single-user capability,
   not an authenticated network storage service. API mutations require JSON where
   applicable, `If-Match`, and a non-simple request header; responses are not cached.
-* Supporting browsers may offer **Open local folder…** through the File System Access
-  API. This is an explicit, secure-context, session-scoped choice. Cancellation retains
-  the current workspace; unsupported browsers retain IndexedDB.
+* Supporting browsers may offer **Open directory…** through the File System Access API.
+  This is an explicit, secure-context choice: no picker or permission prompt happens on
+  page load. A chosen handle is remembered in its own IndexedDB record (metadata only)
+  and reused silently only while read/write permission is already granted; otherwise the
+  browser fallback stays active and **Reconnect local folder…** requests permission from
+  that click. Cancellation retains the current workspace, and leaving the folder is
+  explicit.
+* The browser-only backend order for a profile without a chosen folder is the origin
+  private file system, then Web Storage `localStorage`, then legacy IndexedDB, then
+  memory. Selection is data-aware: an existing non-empty workspace always wins over an
+  empty preferred backend, which keeps upgrading from looking like data loss and keeps
+  the previous release usable as a rollback. Nothing is migrated or copied between
+  backends; a save failure stays a visible error and never switches the backend.
+  Composing that policy lives in one selection module that depends on injected
+  capabilities, so no adapter imports UI code and no component knows the chain.
 * TypeScript storage implementations share the existing snapshot `StoragePort`. Go
   handlers and CLI composition depend on a small `storage.Store` port. Local Git history
   belongs to a separate optional version-store port, preserving interface segregation.
@@ -52,8 +64,9 @@ network service.
 
 ## Alternatives considered
 
-* **IndexedDB only** — retained as the default, but insufficient as the only option for
-  users who need ordinary files and external tooling.
+* **IndexedDB only** — no longer the default. Retained as the legacy compatibility
+  backend: an existing IndexedDB workspace keeps working, but a new profile stores in the
+  origin private file system first.
 * **Server filesystem as an implicit default** — rejected: static hosts have no API,
   and probing one would add pointless requests and ambiguity. Explicit HTML capability
   advertisement selects the server adapter instead.
@@ -61,8 +74,8 @@ network service.
   permission behavior vary. It is now implemented as an optional user-selected adapter.
 * **localStorage only** — 5 MB cap, synchronous access, and poor blob support make it
   unsuitable for workspaces.
-* **OPFS** — blob-friendly but origin-partitioned and does not provide ordinary files
-  visible to external tools; IndexedDB is more portable for the default.
+* **OPFS** — origin-partitioned and invisible to external tools, so it is the preferred
+  browser-only backend rather than a replacement for chosen folders or server storage.
 * **Remote Git now** — rejected for this change because credentials, network failures,
   non-fast-forward updates, and history policy need their own security and UX design.
 

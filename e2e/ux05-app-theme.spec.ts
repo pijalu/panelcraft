@@ -6,6 +6,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
 import { chooseAppMenu, chooseExport, choosePanelMenu, openAppGroup, openWorkspacePanels, setAppTheme } from './lib/panels';
 import { seedCode } from './lib/seed';
+import { legacyIndexedDbOnly } from './lib/storage';
 
 const root = (page: Page) => page.locator('html');
 
@@ -48,6 +49,8 @@ async function replaceCode(page: Page, text: string): Promise<void> {
 }
 
 test('UX-05: System follows OS, explicit choices persist before first paint, and PDL stays independent', async ({ page }) => {
+  // The assertions read the legacy IndexedDB workspace record, so pin that backend.
+  await page.addInitScript(legacyIndexedDbOnly);
   await page.emulateMedia({ colorScheme: 'light' });
   await page.goto('/');
   await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();

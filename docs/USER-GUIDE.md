@@ -19,9 +19,10 @@ and the CLI's `--theme` option.
   to two lines with an ellipsis instead of hiding those buttons — the tooltip and
   the tab carry the full name.
 - Tabs across the top switch open files; the dot marks unsaved changes.
-- **Static hosting stores everything in your browser** (IndexedDB) — use *Export ZIP*
-  regularly for backups (the app reminds you) and *Snapshots* for named restore points
-  (restore goes through the full migration chain).
+- **Static hosting stores everything in your browser** (origin-private files, Web Storage
+  or IndexedDB, named in the Files panel) — use *Export ZIP* regularly for backups (the app
+  reminds you) and *Snapshots* for named restore points (restore goes through the full
+  migration chain).
 - *Clear data…* wipes the active workspace after typed confirmation. Browser, filesystem and
   direct-directory deletion cannot be undone; local Git records the clear as a commit, so an
   earlier committed version can be restored.
@@ -29,17 +30,37 @@ and the CLI's `--theme` option.
 
 ### Choosing where files live
 
-**Browser storage (default).** Hosted PanelCraft and `panelcraft serve` without `-local`
-use IndexedDB. They restore the workspace after reload and make no workspace API requests.
-The Files panel adds no storage label for this default.
+**Browser storage (the default when no folder is chosen).** Hosted PanelCraft and
+`panelcraft serve` without `-local` keep the workspace in the browser, restore it after
+reload, and make no workspace API requests. The app picks one backend at startup and
+names it in the Files panel:
+
+1. A local folder you authorized earlier (only while read/write permission is still
+   granted).
+2. **Browser files (origin-private)** — the origin private file system. These files belong
+   to this browser profile for this site only; they do not appear in your file manager
+   and cannot be opened by other applications. Use *Export ZIP* to keep a copy elsewhere.
+3. **Browser storage (Web Storage)** — used when origin-private files are unavailable.
+4. **Browser storage (IndexedDB)** — the backend older versions used. An existing
+   IndexedDB workspace keeps working: an empty newer backend never hides or replaces it.
+
+Backends stay independent. PanelCraft never copies, migrates or synchronizes a workspace
+between them, so you can always go back to an earlier version of the app and find your
+work where you left it. If no persistent backend can hold data at all, the workspace lives
+in memory and the label says it is not saved.
 
 **A folder chosen directly in the browser.** In a supporting browser on a secure context,
-choose **Application menu → File & data → Open local folder…**, then approve the directory
-picker and permission prompt. The current workspace is saved before switching; cancelling
-or a failed folder load leaves it unchanged. The Files panel shows `Local folder: NAME`.
-Edits are written to the selected folder without a server or network request. Directory
-access lasts for this session: after reload, choose **Open local folder…** again. Browsers
-without directory-picker support do not show the command and continue to use IndexedDB.
+use **Open directory…** in the Files panel (or **Application menu → File & data → Open
+local folder…**), then approve the directory picker. The current workspace is saved before
+switching; cancelling or a failed folder load leaves it unchanged. The label becomes
+`Local folder: NAME` and edits are written there without a server or network request.
+
+PanelCraft remembers the folder. On a later visit it reopens that folder by itself only
+when permission is still granted; otherwise it stays on browser files and offers
+**Reconnect local folder…**, which asks for permission from that click — a page load never
+raises a permission prompt. **Use browser storage** switches back explicitly and the
+folder's files stay on disk untouched. Browsers without directory-picker support do not
+show these actions and keep using browser storage.
 
 **A folder served by the local CLI.** Start
 `panelcraft serve -local DIR -storage-type filesystem --open`. The app loads `DIR` as the

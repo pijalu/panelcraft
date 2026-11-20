@@ -2,13 +2,15 @@
 // M3-WP2: IndexedDB StoragePort (FR-S1) + default-port feature detection.
 // Raw IDB API — no wrapper library (stdlib first, ADR-0004). The single
 // object store 'workspace' holds one record under the fixed key 'current'.
-import { decodeStored, mapStoreError, type StoragePort, type StoredWorkspace } from './port';
+import {
+  decodeStored, mapStoreError, type ContentProbePort, type StoragePort, type StoredWorkspace,
+} from './port';
 import { MemoryStorage } from './memory';
 import { openPanelCraftDb, WORKSPACE_STORE } from './db';
 
 const KEY = 'current';
 
-export class IdbStorage implements StoragePort {
+export class IdbStorage implements StoragePort, ContentProbePort {
   readonly kind = 'browser' as const;
   readonly label = 'Browser storage';
   private constructor(private readonly db: Promise<IDBDatabase>) {}
@@ -31,6 +33,11 @@ export class IdbStorage implements StoragePort {
   async load(): Promise<StoredWorkspace | null> {
     const raw = await this.tx<unknown>('readonly', (s) => s.get(KEY));
     return raw === undefined ? null : decodeStored(raw);
+  }
+
+  /** Present record, even when its JSON is unreadable (that error must surface). */
+  async hasContent(): Promise<boolean> {
+    return (await this.tx<unknown>('readonly', (s) => s.get(KEY))) !== undefined;
   }
 
   async save(ws: StoredWorkspace): Promise<void> {

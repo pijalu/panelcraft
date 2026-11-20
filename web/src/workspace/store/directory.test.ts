@@ -1,65 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest';
-import { BrowserDirectoryStorage, pickDirectoryStorage, supportsDirectoryPicker } from './directory';
+import {
+  BrowserDirectoryStorage, pickDirectoryHandle, pickDirectoryStorage,
+  queryDirectoryPermission, requestDirectoryPermission, supportsDirectoryPicker,
+} from './directory';
 import { newStoredWorkspace } from './port';
 import { createFile } from '../fs';
 
-class FakeFileHandle {
-  readonly kind = 'file' as const;
-  constructor(readonly name: string, public content = '') {}
-  async getFile(): Promise<File> {
-    return new File([this.content], this.name);
-  }
-  async createWritable(): Promise<{ write(text: string): Promise<void>; close(): Promise<void> }> {
-    return {
-      write: async (text: string) => { this.content = text; },
-      close: async () => undefined,
-    };
-  }
-}
-
-class FakeDirectoryHandle {
-  readonly kind = 'directory' as const;
-  readonly children = new Map<string, FakeDirectoryHandle | FakeFileHandle>();
-  constructor(readonly name: string) {}
-  file(name: string, content = ''): FakeFileHandle {
-    const file = new FakeFileHandle(name, content);
-    this.children.set(name, file);
-    return file;
-  }
-  directory(name: string): FakeDirectoryHandle {
-    const directory = new FakeDirectoryHandle(name);
-    this.children.set(name, directory);
-    return directory;
-  }
-  async *entries(): AsyncIterableIterator<[string, FakeDirectoryHandle | FakeFileHandle]> {
-    for (const entry of this.children) yield entry;
-  }
-  async getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<FakeDirectoryHandle> {
-    const existing = this.children.get(name);
-    if (existing instanceof FakeDirectoryHandle) return existing;
-    if (existing || !options?.create) throw new DOMException('not found', 'NotFoundError');
-    return this.directory(name);
-  }
-  async getFileHandle(name: string, options?: { create?: boolean }): Promise<FakeFileHandle> {
-    const existing = this.children.get(name);
-    if (existing instanceof FakeFileHandle) return existing;
-    if (existing || !options?.create) throw new DOMException('not found', 'NotFoundError');
-    return this.file(name);
-  }
-  async removeEntry(name: string, options?: { recursive?: boolean }): Promise<void> {
-    const existing = this.children.get(name);
-    if (!existing) throw new DOMException('not found', 'NotFoundError');
-    if (existing instanceof FakeDirectoryHandle && existing.children.size > 0 && !options?.recursive) {
-      throw new DOMException('directory not empty', 'InvalidModificationError');
-    }
-    this.children.delete(name);
-  }
-}
-
-function handle(root: FakeDirectoryHandle): FileSystemDirectoryHandle {
-  return root as unknown as FileSystemDirectoryHandle;
-}
+import { asDirectory as handle, FakeDirectoryHandle } from '../../test/fakeHandles';
 
 describe('BrowserDirectoryStorage', () => {
   it('loads, reconciles, and restores real directory content and metadata', async () => {
@@ -121,5 +69,81 @@ describe('directory picker capability', () => {
     expect(storage).toBeInstanceOf(BrowserDirectoryStorage);
     expect(storage.label).toBe('selected');
     await expect(pickDirectoryStorage(async () => { throw new DOMException('cancelled', 'AbortError'); })).rejects.toMatchObject({ name: 'AbortError' });
+  });
+});
+
+describe('directory permission helpers', () => {
+  it('reports the browser permission state without prompting', async () => {
+    const granted = new FakeDirectoryHandle('granted');
+    const prompt = new FakeDirectoryHandle('prompt');
+    prompt.permission = 'prompt';
+    await expect(queryDirectoryPermission(handle(granted))).resolves.toBe('granted');
+    await expect(queryDirectoryPermission(handle(prompt))).resolves.toBe('prompt');
+    expect(prompt.requestCalls).toBe(0);
+  });
+
+  it('requests permission only when explicitly asked to', async () => {
+    const dir = new FakeDirectoryHandle('reconnect');
+    dir.permission = 'prompt';
+    await expect(queryDirectoryPermission(handle(dir))).resolves.toBe('prompt');
+    await expect(requestDirectoryPermission(handle(dir))).resolves.toBe('prompt');
+    expect(dir.requestCalls).toBe(1);
+  });
+
+  it('treats a handle without permission methods as already granted', async () => {
+    const plain = { kind: 'directory', name: 'plain' } as unknown as FileSystemDirectoryHandle;
+    await expect(queryDirectoryPermission(plain)).resolves.toBe('granted');
+    await expect(requestDirectoryPermission(plain)).resolves.toBe('granted');
+  });
+
+  it('maps a throwing permission check to denied instead of crashing the startup', async () => {
+    const broken = {
+      kind: 'directory',
+      name: 'broken',
+      queryPermission: async () => { throw new DOMException('nope', 'SecurityError'); },
+    } as unknown as FileSystemDirectoryHandle;
+    await expect(queryDirectoryPermission(broken)).resolves.toBe('denied');
+  });
+});
+
+describe('directory picker invocation', () => {
+  it('calls the picker with its host as receiver', async () => {
+    const root = handle(new FakeDirectoryHandle('bound'));
+    const seen: unknown[] = [];
+    const host = {
+      showDirectoryPicker(this: unknown): Promise<FileSystemDirectoryHandle> {
+        seen.push(this);
+        return Promise.resolve(root);
+      },
+    };
+    await expect(pickDirectoryHandle(undefined, host)).resolves.toBe(root);
+    // Detached invocation would receive undefined and browsers reject it.
+    expect(seen[0]).toBe(host);
+  });
+
+  it('reports a missing picker instead of throwing a type error', async () => {
+    await expect(pickDirectoryHandle(undefined, {})).rejects.toMatchObject({ code: 'unavailable' });
+  });
+
+  it('treats user cancellation as an abort, not a storage failure', async () => {
+    await expect(pickDirectoryHandle(async () => { throw new DOMException('cancelled', 'AbortError'); }))
+      .rejects.toMatchObject({ name: 'AbortError' });
+  });
+});
+
+describe('directory content presence', () => {
+  it('distinguishes an untouched folder from a stored workspace', async () => {
+    const root = new FakeDirectoryHandle('empty');
+    const storage = new BrowserDirectoryStorage(handle(root));
+    await expect(storage.hasContent()).resolves.toBe(false);
+    await storage.load();
+    await storage.save(newStoredWorkspace('empty'));
+    await expect(storage.hasContent()).resolves.toBe(true);
+  });
+
+  it('counts ordinary files as content even without PanelCraft metadata', async () => {
+    const root = new FakeDirectoryHandle('plain-files');
+    root.file('main.pcd', 'sys "main"');
+    await expect(new BrowserDirectoryStorage(handle(root)).hasContent()).resolves.toBe(true);
   });
 });

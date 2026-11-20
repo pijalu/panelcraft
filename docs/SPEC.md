@@ -256,11 +256,18 @@ IcePanel-style visual storytelling over the static diagram.
 ### 4.8 Storage (FR-S)
 
 * **FR-S1** Persistence: autosave is debounced 800 ms. Static hosting and an
-  unconfigured Go server use IndexedDB and restore the last-open workspace; these
-  browser-storage sessions make no runtime API calls. An explicitly configured local
-  filesystem or Git server instead uses its same-origin workspace API. A user-selected
-  local directory can be used directly in supporting browsers without a server or
-  network requests. Storage adapters share one snapshot-oriented workspace port.
+  unconfigured Go server persist the workspace in the browser and restore the last-open
+  state; these browser-storage sessions make no runtime API calls. The browser backend is
+  chosen once at startup, in this order: an explicitly authorized native directory, then
+  the origin private file system, then Web Storage `localStorage`, then legacy IndexedDB,
+  with in-memory as the final non-persistent safeguard. An existing non-empty workspace
+  is never abandoned in favour of an empty preferred backend, so upgrading cannot look
+  like data loss. Backends stay independent: there is no automatic copy, migration or
+  synchronization between them, and a save failure never switches the active backend.
+  An explicitly configured local filesystem or Git server instead uses its same-origin
+  workspace API and skips every browser probe. A user-selected local directory can be
+  used directly in supporting browsers without a server or network requests. Storage
+  adapters share one snapshot-oriented workspace port.
 * **FR-S2** Ephemeral mode ("private tab" toggle): in-memory only, no persistent writes;
   export reminder banner every 10 min. Leaving private mode restores the previous backend.
 * **FR-S3** Quota handling: surface quota errors; graceful degradation to ephemeral
@@ -276,11 +283,17 @@ IcePanel-style visual storytelling over the static diagram.
   files and non-regular files are not exposed. Strong revisions reject stale writes rather
   than overwriting external edits. Writable mode requires a loopback listener and is a
   local single-user feature, not authenticated or multi-user storage.
-* **FR-S7** Optional direct directory access: **Open local folder…** appears only when
-  the browser supports directory picking. Selection requires an explicit gesture and a
-  secure context. Cancellation or load failure preserves the current workspace. Directory
-  handles are session-scoped in this version; after reload, choose the folder again.
-  Save conflicts and other failures remain visible and are never reported as saved.
+* **FR-S7** Direct directory access: **Open directory…** is offered in the Files panel
+  (and the application menu) whenever the browser supports directory picking. Selection
+  requires an explicit gesture and a secure context; the page never opens a picker on its
+  own at startup. Cancellation or load failure preserves the current workspace. A chosen
+  handle is remembered, and later startups reuse it silently only while read/write
+  permission is still granted; otherwise the browser fallback stays active and
+  **Reconnect local folder…** asks for permission from that click. Leaving a native folder
+  for browser storage is explicit (**Use browser storage**) and never copies files
+  between backends. Save conflicts and other failures remain visible and are never
+  reported as saved. The active backend is always named in the Files panel, and the
+  clear-data dialog names the files it really deletes.
 * **FR-S8** Optional local Git: `serve -local DIR -storage-type git` opens or initializes
   a standalone non-bare repository at exactly `DIR`, retaining filesystem confinement,
   depth limits and strong revisions. Only workspace content changes create commits;

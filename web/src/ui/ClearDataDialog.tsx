@@ -15,6 +15,8 @@ function clearCopy(kind: StorageKind): string {
   if (kind === 'server') return s('This deletes every workspace file on the server and its saved workspace state. Type');
   if (kind === 'directory') return s('This deletes every workspace file in the selected local folder and its saved workspace state. Type');
   if (kind === 'memory') return s('This deletes every file in this in-memory workspace. Type');
+  if (kind === 'opfs') return s('This deletes every workspace file in origin-private browser files and its saved workspace state. Type');
+  if (kind === 'local') return s('This deletes every workspace file and the autosaved copy in Web Storage. Type');
   return s('This deletes every file in the workspace and the autosaved copy in browser storage. Type');
 }
 

@@ -1854,6 +1854,48 @@ marker .pc-arrow[fill='none'] {
   overflow-wrap: anywhere;
 }
 
+/* Files-panel storage controls: quiet, always keyboard reachable, and readable
+   at narrow dock widths (the hint wraps instead of clipping). */
+.storage-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-space-1, 4px);
+  padding: 0 var(--pc-space-2) var(--pc-space-2);
+}
+
+.storage-action {
+  font-family: inherit;
+  font-size: var(--pc-text-xs);
+  font-weight: 500;
+  text-align: left;
+  min-height: 32px;
+  padding: 0 var(--pc-space-2);
+  border: 1px solid var(--pc-input-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-button-bg);
+  color: var(--pc-button-fg);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.storage-action:hover {
+  border-color: var(--pc-focus-ring);
+  background: var(--pc-button-hover-bg);
+}
+
+.storage-action:focus-visible {
+  outline: 2px solid var(--pc-focus-ring);
+  outline-offset: 1px;
+}
+
+.storage-hint {
+  margin: 0;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .tree-toolbar {
   display: flex;
   gap: 4px;

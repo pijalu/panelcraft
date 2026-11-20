@@ -84,8 +84,10 @@ describe('application storage selection', () => {
     const element = { getAttribute: () => 'filesystem' };
     const document = { querySelector: vi.fn(() => element) } as unknown as Document;
     const fetcher = vi.fn();
-    const storage = await createAppStorage({ document, fetcher, factory: undefined });
-    expect(storage).toBeInstanceOf(ApiStorage);
+    const { port } = await createAppStorage({
+      document, fetcher, factory: undefined, opfsRoot: null, local: null,
+    });
+    expect(port).toBeInstanceOf(ApiStorage);
     expect(fetcher).not.toHaveBeenCalled();
   });
 
@@ -93,18 +95,22 @@ describe('application storage selection', () => {
     const element = { getAttribute: () => 'git' };
     const document = { querySelector: vi.fn(() => element) } as unknown as Document;
     const fetcher = vi.fn();
-    const storage = await createAppStorage({ document, fetcher, factory: undefined });
-    expect(storage).toBeInstanceOf(ApiStorage);
-    expect(storage.label).toBe('Git repository');
-    expect(storage.versions).toBeDefined();
+    const { port } = await createAppStorage({
+      document, fetcher, factory: undefined, opfsRoot: null, local: null,
+    });
+    expect(port).toBeInstanceOf(ApiStorage);
+    expect(port.label).toBe('Git repository');
+    expect(port.versions).toBeDefined();
     expect(fetcher).not.toHaveBeenCalled();
   });
 
   it('uses browser storage on static hosting and never probes the API', async () => {
     const document = { querySelector: vi.fn(() => null) } as unknown as Document;
     const fetcher = vi.fn();
-    const storage = await createAppStorage({ document, fetcher, factory: undefined });
-    expect(storage).toBeInstanceOf(MemoryStorage);
+    const { port } = await createAppStorage({
+      document, fetcher, factory: undefined, opfsRoot: null, local: null,
+    });
+    expect(port).toBeInstanceOf(MemoryStorage);
     expect(fetcher).not.toHaveBeenCalled();
   });
 });

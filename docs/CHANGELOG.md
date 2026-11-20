@@ -4,6 +4,21 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — progressive web filesystem
+
+- Browser-only workspaces now use the best backend the browser offers instead of always
+  IndexedDB: an authorized local folder, then origin-private files, then Web Storage, then
+  legacy IndexedDB, then memory. The choice is data-aware — an existing non-empty
+  workspace is never replaced by an empty preferred backend — and nothing is copied or
+  migrated between backends, so an older release still finds its workspace.
+- **Open directory…** and **Reconnect local folder…** live in the Files panel. A chosen
+  folder is remembered and reopened silently only while read/write permission is granted;
+  otherwise the app stays on browser files and asks for permission from the reconnect
+  click. Page loads never raise a permission prompt. **Use browser storage** leaves a
+  folder explicitly and leaves its files untouched.
+- Every backend has its own label in the Files panel, and the clear-data dialog names the
+  files it actually deletes. Static hosting still makes no workspace API requests.
+
 ## Unreleased — local-first workspace storage
 
 - `panelcraft serve -local DIR` now edits ordinary workspace files through a confined,

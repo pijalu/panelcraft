@@ -10,7 +10,7 @@ import { stateToPcd, WorkspaceManager } from '../workspace/workspace';
 import { parsePDL } from '../engine/format/parser';
 import { printDoc } from '../engine/format/printer';
 import { writePositions } from '../engine/layout/apply';
-import { createAppStorage } from '../workspace/store/selection';
+import { createAppStorage, type AppStorage, type NativeDirectoryCandidate } from '../workspace/store/selection';
 import type { DocumentSource } from './useDocumentSource';
 
 /** Structurally-equal empty DiagramState (controller + manager share shape). */
@@ -22,6 +22,11 @@ export interface WorkspaceHandle {
   version: number;
   reminder: boolean;
   clearReminder: () => void;
+  /** Composition-root result: the active port plus native-handle actions. */
+  selection: AppStorage | null;
+  /** Remembered native folder whose permission must be re-granted by a click. */
+  reconnect: NativeDirectoryCandidate | null;
+  setReconnect: (candidate: NativeDirectoryCandidate | null) => void;
 }
 
 /**
@@ -36,11 +41,18 @@ export function useWorkspace(): WorkspaceHandle {
   const [ready, setReady] = useState(false);
   const [version, setVersion] = useState(0);
   const [reminder, setReminder] = useState(false);
+  const [selection, setSelection] = useState<AppStorage | null>(null);
+  const [reconnect, setReconnect] = useState<NativeDirectoryCandidate | null>(null);
 
   useEffect(() => {
     let disposed = false;
     void (async () => {
-      manager.attachStorage(await createAppStorage()); // Server marker, IDB, or memory fallback
+      // Server marker → OPFS → Web Storage → legacy IndexedDB → memory.
+      const selected = await createAppStorage();
+      if (disposed) return;
+      setSelection(selected);
+      setReconnect(selected.reconnect);
+      manager.attachStorage(selected.port);
       await manager.init();
       if (!disposed) setReady(true);
     })();
@@ -73,7 +85,7 @@ export function useWorkspace(): WorkspaceHandle {
     return () => window.clearInterval(timer);
   }, [ready, manager.ephemeral, version]);
 
-  return { manager, ready, version, reminder, clearReminder: () => setReminder(false) };
+  return { manager, ready, version, reminder, clearReminder: () => setReminder(false), selection, reconnect, setReconnect };
 }
 
 export interface CanvasHandle {

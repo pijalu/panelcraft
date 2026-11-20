@@ -45,7 +45,7 @@ import { useActiveDocument, useEmbeddedTree } from './useDocumentSource';
 import type { DocumentRef } from '../workspace/documents';
 import type { DocumentSource } from './useDocumentSource';
 import { ShellBanners } from './ShellBanners';
-import { DropZone, HostedPanel, StorageLabel } from './WorkspacePanels';
+import { DropZone, HostedPanel, StorageActions, StorageLabel } from './WorkspacePanels';
 import { useCanvasRevealPort } from './useCanvasReveal';
 import type { IllustrationId } from '../engine/anim/illustrations';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
@@ -59,7 +59,7 @@ import type { FlowPlayerApi } from './flows/useFlowPlayer';
 import { flowNotesVisible, stepExplanationVisible } from './flows/flowController';
 import type { CodeSyncHandle } from './useCodeSync';
 import type { WorkspaceManager } from '../workspace/workspace';
-import { pickDirectoryStorage, supportsDirectoryPicker } from '../workspace/store/directory';
+import { useStorageControls, type StorageControls } from './useStorageControls';
 
 /** Single-selection for the properties panel (obj xor link). */
 function selections(snap: Snapshot | null): { obj: ReturnType<typeof findObj>; link: ReturnType<typeof findLink> } {
@@ -128,6 +128,7 @@ function FilesPane(props: {
   activeRef: DocumentRef | null;
   onOpenRef: (ref: DocumentRef) => void;
   onCollapse: () => void;
+  storage: StorageControls;
 }) {
   return (
     <aside class="sidebar" aria-label={s('Workspace files')}>
@@ -136,6 +137,14 @@ function FilesPane(props: {
         <CollapseButton id="sidebar" label={s('files')} onCollapse={props.onCollapse} />
       </div>
       <StorageLabel kind={props.manager.storageKind} label={props.manager.storageLabel} />
+      <StorageActions
+        kind={props.manager.storageKind}
+        nativeSupported={props.storage.nativeSupported}
+        reconnect={props.storage.reconnect}
+        onOpenDirectory={props.storage.openDirectory}
+        onReconnect={props.storage.reconnectDirectory}
+        onUseBrowserStorage={props.storage.useBrowserStorage}
+      />
       <FileTree
         manager={props.manager}
         version={props.version}
@@ -254,6 +263,7 @@ function SidebarSlot(props: {
   embedded: ReturnType<typeof useEmbeddedTree>;
   activeRef: DocumentRef | null;
   onOpenRef: (ref: DocumentRef) => void;
+  storage: StorageControls;
 }) {
   return slot(
     props.ui.layout.panels.sidebar === 'collapsed',
@@ -267,6 +277,7 @@ function SidebarSlot(props: {
       activeRef={props.activeRef}
       onOpenRef={props.onOpenRef}
       onCollapse={() => props.ui.togglePanel('sidebar')}
+      storage={props.storage}
     />,
   );
 }
@@ -627,6 +638,7 @@ function bodyPanels(
         embedded={embedded}
         activeRef={source.ref}
         onOpenRef={p.onOpenRef}
+        storage={p.storage}
       />
     ),
     flows: flowsSlot({
@@ -742,6 +754,8 @@ function AppBody(p: {
   onSourceOpen: (objectId: string) => void;
   onResetDiagramLayout: () => void;
   selection: CommandSelection;
+  /** Files-panel storage controls (native folder, reconnect, browser switch). */
+  storage: StorageControls;
 }) {
   const { ws, canvas, code, ui, player, activePath, source } = p;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -923,36 +937,29 @@ function resyncDocuments(canvas: { resync(): void }, code: { resync(): void }): 
   code.resync();
 }
 
-async function openLocalWorkspace(
-  manager: WorkspaceManager,
-  resync: () => void,
-  onError: (message: string) => void,
-): Promise<void> {
-  try {
-    const storage = await pickDirectoryStorage();
-    await manager.switchStorage(storage);
-    resync();
-  } catch (error) {
-    if ((error as { name?: string }).name === 'AbortError') return;
-    onError(error instanceof Error ? error.message : String(error));
-  }
-}
-
-function directoryOpenHandler(
+/**
+ * Native open/reconnect/use-browser lives behind this one seam: components hold
+ * no capability chain, and a picked folder is remembered only after the switch.
+ */
+function useShellStorage(
+  ws: ReturnType<typeof useWorkspace>,
   manager: WorkspaceManager,
   canvas: ReturnType<typeof useCanvasController>,
   code: CodeSyncHandle,
   onError: (message: string) => void,
-): (() => void) | undefined {
-  if (!supportsDirectoryPicker()) return undefined;
-  return () => {
-    void openLocalWorkspace(manager, () => resyncDocuments(canvas, code), onError);
-  };
+): StorageControls {
+  return useStorageControls({
+    manager,
+    selection: ws.selection,
+    reconnect: ws.reconnect,
+    setReconnect: ws.setReconnect,
+    onSwitched: () => resyncDocuments(canvas, code),
+    onError,
+  });
 }
 
 export function App() {
-  const ws = useWorkspace();
-  const activePath = ws.ready ? ws.manager.activePath : null;
+  const ws = useWorkspace(); const activePath = ws.ready ? ws.manager.activePath : null;
   const { renaming, setRenaming, hover, setHover, illustration, setIllustration,
     flowSelection, setFlowSelection, historyOpen, setHistoryOpen } = useShellUi();
   const { grid, ui } = useShellLayout(ws.manager, ws.ready, ws.version); const { manager } = ws;
@@ -973,6 +980,7 @@ export function App() {
   const { dialogs, theme: appTheme } = useDialogsAndTheme(manager, ws.ready, ws.version);
   const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, versionsOpen, setVersionsOpen, flash, setFlash } = dialogs;
   const { history, revealRef } = useHistoryAndReveal(canvas, code.snapshot, setFlash);
+  const storage = useShellStorage(ws, manager, canvas, code, setFlash);
   const { selection: commandSelection, resetRoutes: onResetRoutes, resetDiagramLayout: onResetDiagramLayout } = useDiagramCommands(canvas, manager);
   const { player, pres } = useFlowPresentation(manager, canvas, activePath, illustration, ws.ready);
   const { diverged, pwa } = useShellLifecycle({
@@ -999,7 +1007,7 @@ export function App() {
         svgRef={canvas.svgRef}
         onFlash={setFlash}
         onClearRequest={() => setClearOpen(true)}
-        onOpenDirectory={directoryOpenHandler(manager, canvas, code, setFlash)}
+        onOpenDirectory={storage.nativeSupported ? storage.openDirectory : undefined}
         onSnapshotsRequest={() => setSnapsOpen(true)} onVersionsRequest={() => setVersionsOpen(true)}
         {...statusProps(code.snapshot, ws.ready, manager)}
         onHistoryRequest={() => setHistoryOpen(true)}
@@ -1015,8 +1023,7 @@ export function App() {
         code={code}
         ui={ui}
         player={player}
-        activePath={activePath}
-        source={source}
+        activePath={activePath} source={source}
         embedded={embedded}
         onOpenRef={setDocRef} onPresent={pres.start}
         sel={selections(canvas.snap)}
@@ -1035,6 +1042,7 @@ export function App() {
         onSourceOpen={layer.openSource}
         onResetDiagramLayout={onResetDiagramLayout}
         selection={commandSelection}
+        storage={storage}
       />
       <SourceLayer layer={layer} obj={layer.doc?.objects.find((o) => o.id === layer.sourceId) ?? null} />
       <AppOverlays

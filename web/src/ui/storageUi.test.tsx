@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Banners, type BannersProps } from './Banners';
 import { ClearDataDialog } from './ClearDataDialog';
-import { StorageLabel } from './WorkspacePanels';
+import { StorageActions, StorageLabel } from './WorkspacePanels';
 
 function bannerProps(overrides: Partial<BannersProps> = {}): BannersProps {
   return {
@@ -23,15 +23,93 @@ function bannerProps(overrides: Partial<BannersProps> = {}): BannersProps {
 describe('storage-aware workspace chrome', () => {
   afterEach(cleanup);
 
-  it('names server and directory storage without adding noise to browser storage', () => {
+  it('names every backend distinctly, including origin-private browser files', () => {
     const { rerender } = render(<StorageLabel kind="server" label="Server filesystem" />);
     expect(screen.getByTestId('workspace-storage').textContent).toBe('Server storage: Server filesystem');
 
     rerender(<StorageLabel kind="directory" label="architecture" />);
     expect(screen.getByTestId('workspace-storage').textContent).toBe('Local folder: architecture');
 
+    // Every backend now states where the files really live; none is silent.
     rerender(<StorageLabel kind="browser" label="Browser storage" />);
-    expect(screen.queryByTestId('workspace-storage')).toBeNull();
+    expect(screen.getByTestId('workspace-storage').textContent).toBe('Browser storage (IndexedDB)');
+    expect(screen.getByTestId('workspace-storage').getAttribute('data-storage-kind')).toBe('browser');
+
+    rerender(<StorageLabel kind="opfs" label="Origin-private browser files" />);
+    expect(screen.getByTestId('workspace-storage').textContent).toBe('Browser files (origin-private)');
+
+    rerender(<StorageLabel kind="local" label="Browser Web Storage" />);
+    expect(screen.getByTestId('workspace-storage').textContent).toBe('Browser storage (Web Storage)');
+
+    rerender(<StorageLabel kind="memory" label="In-memory" />);
+    expect(screen.getByTestId('workspace-storage').textContent).toBe('In-memory workspace (not saved)');
+  });
+
+  it('offers native selection, reconnect and the way back without a first-run modal', () => {
+    const onOpenDirectory = vi.fn();
+    const onReconnect = vi.fn();
+    const onUseBrowserStorage = vi.fn();
+    const { rerender } = render(
+      <StorageActions
+        kind="opfs"
+        nativeSupported
+        reconnect={null}
+        onOpenDirectory={onOpenDirectory}
+        onReconnect={onReconnect}
+        onUseBrowserStorage={onUseBrowserStorage}
+      />,
+    );
+    // Browser files: picker only; nothing to reconnect or leave yet.
+    fireEvent.click(screen.getByTestId('storage-open-directory'));
+    expect(onOpenDirectory).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('storage-reconnect')).toBeNull();
+    expect(screen.queryByTestId('storage-use-browser')).toBeNull();
+    // The origin-private explanation never claims OS-visible files.
+    expect(screen.getByTestId('storage-hint').textContent).toContain('not visible in your file manager');
+
+    // A remembered folder whose permission lapsed: reconnect, still no auto prompt.
+    rerender(
+      <StorageActions
+        kind="browser"
+        nativeSupported
+        reconnect="architecture"
+        onOpenDirectory={onOpenDirectory}
+        onReconnect={onReconnect}
+        onUseBrowserStorage={onUseBrowserStorage}
+      />,
+    );
+    expect(screen.getByTestId('storage-reconnect-hint').textContent).toContain('permission again');
+    fireEvent.click(screen.getByTestId('storage-reconnect'));
+    expect(onReconnect).toHaveBeenCalledTimes(1);
+
+    // Native folder active: leaving is explicit, and the files stay on disk.
+    rerender(
+      <StorageActions
+        kind="directory"
+        nativeSupported
+        reconnect={null}
+        onOpenDirectory={onOpenDirectory}
+        onReconnect={onReconnect}
+        onUseBrowserStorage={onUseBrowserStorage}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('storage-use-browser'));
+    expect(onUseBrowserStorage).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('storage-hint').textContent).toContain('stay on disk');
+  });
+
+  it('hides native selection where the browser has no directory picker', () => {
+    render(
+      <StorageActions
+        kind="browser"
+        nativeSupported={false}
+        reconnect={null}
+        onOpenDirectory={vi.fn()}
+        onReconnect={vi.fn()}
+        onUseBrowserStorage={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('storage-open-directory')).toBeNull();
   });
 
   it('describes the real files affected by server and directory clear actions', () => {

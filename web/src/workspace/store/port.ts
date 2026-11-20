@@ -43,7 +43,7 @@ export interface StoredWorkspace {
 
 export type StoreErrorCode = 'quota' | 'corrupt' | 'newer-schema' | 'conflict' | 'unavailable';
 
-export type StorageKind = 'browser' | 'server' | 'directory' | 'memory';
+export type StorageKind = 'browser' | 'server' | 'directory' | 'opfs' | 'local' | 'memory';
 
 export class StoreError extends Error {
   constructor(
@@ -82,6 +82,20 @@ export interface StoragePort {
   clear(): Promise<void>;
   /** Best-effort usage estimate in bytes, or null when unavailable (FR-S3). */
   estimate(): Promise<number | null>;
+}
+
+/**
+ * Optional companion capability: did this backend ever store a workspace?
+ * `load()` alone cannot answer that for adapters which synthesize an empty
+ * record (handle-backed folders always return one), and selection must not rank
+ * a never-used backend above one that holds real data.
+ */
+export interface ContentProbePort {
+  hasContent(): Promise<boolean>;
+}
+
+export function isContentProbe(port: StoragePort): port is StoragePort & ContentProbePort {
+  return typeof (port as Partial<ContentProbePort>).hasContent === 'function';
 }
 
 export function newStoredWorkspace(name = 'workspace'): StoredWorkspace {
