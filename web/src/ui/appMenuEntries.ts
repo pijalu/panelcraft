@@ -24,6 +24,8 @@ export interface AppMenuActions {
   history: () => void;
   present: () => void;
   snapshots: () => void;
+  /** Present only for persistent Git-backed workspaces. */
+  versions?: () => void;
   clearData: () => void;
   setPrivate: (on: boolean) => void;
 }
@@ -109,6 +111,9 @@ function fileDataEntries(ctx: AppMenuContext): MenuEntry[] {
     testId: 'tb-open-directory',
     onSelect: ctx.actions.openDirectory,
   }] : [];
+  const versions: MenuEntry[] = ctx.actions.versions ? [{
+    kind: 'item', id: 'versions', label: s('Git versions'), testId: 'tb-versions', onSelect: ctx.actions.versions,
+  }] : [];
   return [
     ...directory,
     {
@@ -126,6 +131,7 @@ function fileDataEntries(ctx: AppMenuContext): MenuEntry[] {
       onSelect: ctx.actions.exportWorkspaceZip,
     },
     { kind: 'separator', id: 'workspace-sep' },
+    ...versions,
     {
       kind: 'item',
       id: 'snapshots',

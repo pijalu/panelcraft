@@ -1,15 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Same-origin HTTP StoragePort. Revisions make stale writes explicit conflicts.
-import { decodeStored, mapStoreError, StoreError, type StoragePort, type StoredWorkspace } from './port';
+import {
+  decodeStored, mapStoreError, StoreError,
+  type StoragePort, type StoredWorkspace, type VersionStoragePort, type WorkspaceVersion,
+} from './port';
 
 export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
 
-export class ApiStorage implements StoragePort {
+export class ApiStorage implements StoragePort, VersionStoragePort {
   readonly kind = 'server' as const;
-  readonly label = 'Server filesystem';
+  readonly label: string;
   private revision: string | null = null;
 
-  constructor(private readonly url: string, private readonly fetcher: Fetcher) {}
+  constructor(
+    private readonly url: string,
+    private readonly fetcher: Fetcher,
+    private readonly backend: 'filesystem' | 'git' = 'filesystem',
+  ) {
+    this.label = backend === 'git' ? 'Git repository' : 'Server filesystem';
+  }
+
+  get versions(): VersionStoragePort | undefined {
+    return this.backend === 'git' ? this : undefined;
+  }
 
   async load(): Promise<StoredWorkspace> {
     try {
@@ -58,6 +71,43 @@ export class ApiStorage implements StoragePort {
     }
   }
 
+  async history(): Promise<WorkspaceVersion[]> {
+    try {
+      const response = await this.fetcher(`${this.url}/history`, { cache: 'no-store' });
+      await this.check(response);
+      return decodeVersions(await response.json());
+    } catch (error) {
+      throw mapStoreError(error);
+    }
+  }
+
+  async show(id: string): Promise<StoredWorkspace> {
+    try {
+      const response = await this.fetcher(`${this.url}/history/${encodeURIComponent(id)}`, { cache: 'no-store' });
+      await this.check(response);
+      return decodeStored(await response.json());
+    } catch (error) {
+      throw mapStoreError(error);
+    }
+  }
+
+  async restore(id: string): Promise<StoredWorkspace> {
+    const revision = this.requireRevision();
+    try {
+      const response = await this.fetcher(`${this.url}/history/${encodeURIComponent(id)}/restore`, {
+        method: 'POST',
+        headers: { 'X-PanelCraft-Storage': '1', 'If-Match': revision },
+        cache: 'no-store',
+      });
+      await this.check(response);
+      const workspace = decodeStored(await response.json());
+      this.revision = this.nextRevision(response);
+      return workspace;
+    } catch (error) {
+      throw mapStoreError(error);
+    }
+  }
+
   async estimate(): Promise<number | null> {
     return null;
   }
@@ -79,4 +129,14 @@ export class ApiStorage implements StoragePort {
     if (response.status === 409) throw new StoreError('conflict', message);
     throw new StoreError('unavailable', message);
   }
+}
+function decodeVersions(raw: unknown): WorkspaceVersion[] {
+  const versions = (raw as { versions?: unknown } | null)?.versions;
+  if (!Array.isArray(versions)) throw new StoreError('corrupt', 'invalid version history response');
+  return versions.map((version) => {
+    if (typeof version?.id !== 'string' || typeof version?.message !== 'string' || typeof version?.savedAt !== 'number') {
+      throw new StoreError('corrupt', 'invalid workspace version');
+    }
+    return { id: version.id, message: version.message, savedAt: version.savedAt };
+  });
 }

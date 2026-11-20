@@ -40,7 +40,7 @@ async function waitUntilReady(url: string, process: ChildProcess, output: () => 
 }
 
 /** Build and start the actual CLI against an isolated temporary directory. */
-export async function startLocalWorkspaceServer(depth = -1): Promise<LocalWorkspaceServer> {
+export async function startLocalWorkspaceServer(depth = -1, storageType: 'filesystem' | 'git' = 'filesystem'): Promise<LocalWorkspaceServer> {
   const work = mkdtempSync(join(tmpdir(), 'panelcraft-e2e-storage-'));
   const directory = join(work, 'workspace');
   mkdirSync(directory);
@@ -49,7 +49,9 @@ export async function startLocalWorkspaceServer(depth = -1): Promise<LocalWorksp
   execFileSync('go', ['build', '-o', binary, './cmd/panelcraft'], { cwd: repository, stdio: 'pipe' });
   const port = await availablePort();
   const log = join(work, 'server.log');
-  const child = spawn(binary, ['serve', '-addr', `127.0.0.1:${port}`, '-local', directory, '-depth', String(depth)], {
+  const child = spawn(binary, [
+    'serve', '-addr', `127.0.0.1:${port}`, '-local', directory, '-depth', String(depth), '-storage-type', storageType,
+  ], {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   const stream = createWriteStream(log);

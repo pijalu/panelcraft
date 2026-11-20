@@ -22,7 +22,9 @@ and the CLI's `--theme` option.
 - **Static hosting stores everything in your browser** (IndexedDB) — use *Export ZIP*
   regularly for backups (the app reminds you) and *Snapshots* for named restore points
   (restore goes through the full migration chain).
-- *Clear data…* wipes the active workspace after typed confirmation — it cannot be undone.
+- *Clear data…* wipes the active workspace after typed confirmation. Browser, filesystem and
+  direct-directory deletion cannot be undone; local Git records the clear as a commit, so an
+  earlier committed version can be restored.
   With server or directory storage, this deletes real workspace files, not browser data.
 
 ### Choosing where files live
@@ -52,6 +54,30 @@ Omit it or use `-depth -1` for unlimited depth. Hidden and out-of-depth content 
 An external edit is protected by revision checks: PanelCraft reports a conflict and keeps
 your unsaved editor text rather than overwriting the newer file. Download a copy before
 reloading if you need to compare or recover that text.
+
+**A local Git repository served by the CLI.** Start
+`panelcraft serve -local DIR -storage-type git --open`. This opens the standalone non-bare
+repository at exactly `DIR`, or initializes `.git` there when absent; it does not search parent
+directories. Bare repositories and linked worktrees represented by a `.git` file are not
+supported. The same file confinement, depth and revision rules apply, and the Files panel shows
+`Git repository`.
+
+Only workspace content changes create commits. Tab, cursor and settings-only saves update
+`.panelcraft/workspace.json` without adding a commit; that metadata joins the next content
+commit. Commits default to `PanelCraft <panelcraft@localhost>`. Override this with
+`-git-author-name NAME` and `-git-author-email EMAIL`. PanelCraft neither reads global Git
+identity nor runs repository hooks.
+
+Choose **Application menu → File & data → Git versions** to list local commits and inspect a
+selected version's workspace name and file list. **Restore this version…** requires confirmation,
+saves current edits first, then restores the selected content as a new forward commit. Existing
+history is preserved, including when the selected content already matches. A detached HEAD is
+supported. Externally staged paths or a merge in progress block saves and restores so PanelCraft
+does not commit unrelated staged work. Unrelated unstaged and binary files remain outside its
+document tree. Historical snapshots do not preserve empty directories.
+
+Git mode is entirely local: it performs no clone, fetch, push, credential or remote operation.
+Remote Git and GitHub integration are not implemented.
 
 Private mode always uses memory. Leaving private mode restores the storage you used before
 entering it; it does not silently copy work between browser, server and directory storage.
@@ -373,7 +399,8 @@ a development web bundle instead of the embedded one.
 To edit real workspace files instead, use:
 
 ```
-panelcraft serve -local DIR [-storage-type filesystem|filestorage] [-depth N] [--open]
+panelcraft serve -local DIR [-storage-type filesystem|filestorage|git] [-depth N]
+  [-git-author-name NAME] [-git-author-email EMAIL] [--open]
 ```
 
 `-storage-type filesystem` is the default and `filestorage` is an alias. Depth is unlimited
@@ -381,8 +408,9 @@ when omitted or `-1`; `0` means root files only. `-local` cannot be combined wit
 read-only positional `DIR`. Writable mode rejects non-loopback listen
 addresses; the default is `127.0.0.1:8080`. All workspace API traffic is same-origin,
 non-cached and excluded from the service worker. There is no authentication or multi-user
-support, so do not expose this mode as a network service. `-storage-type git` and remote
-Git/GitHub operations are not implemented.
+support, so do not expose this mode as a network service. `-storage-type git` enables the local
+repository and history behavior described above. Git author options are valid only with Git
+storage. Remote Git/GitHub operations are not implemented.
 
 Strict CSP headers; no telemetry and no third-party runtime requests.
 

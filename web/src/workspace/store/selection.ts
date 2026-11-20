@@ -18,8 +18,9 @@ export function defaultAppStorageOptions(): AppStorageOptions {
 export async function createAppStorage(overrides?: Partial<AppStorageOptions>): Promise<StoragePort> {
   const options = { ...defaultAppStorageOptions(), ...overrides };
   const marker = options.document.querySelector('meta[name="panelcraft-storage"]');
-  if (marker?.getAttribute('content') === 'filesystem') {
-    return new ApiStorage('./api/v1/workspace', options.fetcher);
+  const backend = marker?.getAttribute('content');
+  if (backend === 'filesystem' || backend === 'git') {
+    return new ApiStorage('./api/v1/workspace', options.fetcher, backend);
   }
   return createDefaultStorage(options.factory);
 }

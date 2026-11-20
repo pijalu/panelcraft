@@ -144,6 +144,14 @@ describe('application menu model', () => {
     expect(openDirectory).toHaveBeenCalledTimes(1);
   });
 
+  it('gates persistent versions on the optional Git port', () => {
+    expect(findOptional(buildAppMenu(context()), 'tb-versions')).toBeUndefined();
+    const versions = vi.fn();
+    const entries = buildAppMenu(context({ actions: { ...actions(), versions } }));
+    select(entries, 'tb-versions');
+    expect(versions).toHaveBeenCalledTimes(1);
+  });
+
   it('disables export and present without an active file', () => {
     const entries = buildAppMenu(context({ activePath: null }));
     expect(find(entries, 'tb-export-pcd')).toHaveProperty('disabled', true);

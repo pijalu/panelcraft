@@ -39,12 +39,16 @@ network service.
   API. This is an explicit, secure-context, session-scoped choice. Cancellation retains
   the current workspace; unsupported browsers retain IndexedDB.
 * TypeScript storage implementations share the existing snapshot `StoragePort`. Go
-  handlers and CLI composition depend on a small `storage.Store` port. Future version
-  history belongs to a separate port, preserving interface segregation.
+  handlers and CLI composition depend on a small `storage.Store` port. Local Git history
+  belongs to a separate optional version-store port, preserving interface segregation.
 * Private mode remains in-memory and leaving it restores the previous persistent
   backend. Clear operations require typed confirmation and describe actual file deletion.
-* Local Git history is a follow-up backend. Remote Git, credentials, clone/fetch/push,
-  and GitHub integration are not part of this decision's implementation.
+* `-storage-type git` composes the filesystem backend with an embedded local Git library.
+  It opens or initializes a standalone non-bare repository at exactly `DIR`, commits
+  workspace content changes, and provides history preview and forward-only restore.
+  Externally staged paths and merges in progress block mutation. Detached HEAD works;
+  bare and linked-worktree repositories do not. No hook or remote operation is performed.
+* Remote Git, credentials, clone/fetch/push, and GitHub integration remain separate work.
 
 ## Alternatives considered
 
@@ -69,11 +73,14 @@ network service.
 + Real files work with external editors and local tooling, while stale-write detection
   prevents the browser from silently replacing a newer external revision.
 + The same workspace and autosave behavior runs across storage implementations without
-  coupling UI code to HTTP, IndexedDB, or directory handles.
+  coupling UI code to HTTP, IndexedDB, directory handles, or Git. Git history adds local
+  commits and non-destructive restore without changing the default storage behavior.
 − Server-backed offline work requires the local server; the service worker must not
   substitute cached workspace API responses. Direct-directory handles must be chosen
   again after reload in this version.
 − Real-file deletion is destructive, multi-file reconciliation is not transactional,
   and conflict resolution currently requires user action rather than automatic merging.
+  Git can restore earlier committed content, but does not make filesystem writes atomic
+  and does not preserve empty directories.
 − Clearing browser data can still lose default IndexedDB work, so ZIP export and named
   snapshots remain important backup mechanisms.

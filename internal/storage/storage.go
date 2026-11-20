@@ -23,6 +23,7 @@ var (
 	ErrConflict  = errors.New("workspace changed since it was loaded")
 	ErrInvalid   = errors.New("invalid workspace")
 	ErrForbidden = errors.New("workspace path is outside the configured storage scope")
+	ErrNotFound  = errors.New("workspace version not found")
 )
 
 // Node mirrors the browser's virtual filesystem JSON representation.
@@ -62,10 +63,11 @@ type Store interface {
 type VersionStore interface {
 	Store
 	History(ctx context.Context) ([]Version, error)
+	Show(ctx context.Context, id string) (Snapshot, error)
 	Restore(ctx context.Context, id, expectedRevision string) (Snapshot, error)
 }
 
-// Version describes one persisted content revision for a future Git backend.
+// Version describes one persisted content revision from a version-capable store.
 type Version struct {
 	ID      string `json:"id"`
 	Message string `json:"message"`

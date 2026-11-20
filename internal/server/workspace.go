@@ -41,6 +41,10 @@ func readWorkspace(w http.ResponseWriter, r *http.Request, store storage.Store) 
 		workspaceError(w, err)
 		return
 	}
+	writeWorkspaceSnapshot(w, snapshot)
+}
+
+func writeWorkspaceSnapshot(w http.ResponseWriter, snapshot storage.Snapshot) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("ETag", snapshot.Revision)
 	_ = json.NewEncoder(w).Encode(snapshot.Workspace)
@@ -116,6 +120,8 @@ func workspaceError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, storage.ErrForbidden):
 		status = http.StatusForbidden
+	case errors.Is(err, storage.ErrNotFound):
+		status = http.StatusNotFound
 	case errors.Is(err, storage.ErrInvalid), errors.Is(err, io.EOF):
 		status = http.StatusBadRequest
 	case errors.As(err, &tooLarge):

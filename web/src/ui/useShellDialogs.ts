@@ -9,6 +9,8 @@ export interface ShellDialogsHandle {
   setClearOpen(on: boolean): void;
   snapsOpen: boolean;
   setSnapsOpen(on: boolean): void;
+  versionsOpen: boolean;
+  setVersionsOpen(on: boolean): void;
   /** Transient status message (shown by the banner layer). */
   flash: string | null;
   setFlash(msg: string | null): void;
@@ -17,6 +19,7 @@ export interface ShellDialogsHandle {
 export function useShellDialogs(): ShellDialogsHandle {
   const [clearOpen, setClearOpen] = useState(false);
   const [snapsOpen, setSnapsOpen] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
-  return { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash };
+  return { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, versionsOpen, setVersionsOpen, flash, setFlash };
 }

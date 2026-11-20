@@ -971,7 +971,7 @@ export function App() {
     source, setRef: setDocRef,
   });
   const { dialogs, theme: appTheme } = useDialogsAndTheme(manager, ws.ready, ws.version);
-  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = dialogs;
+  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, versionsOpen, setVersionsOpen, flash, setFlash } = dialogs;
   const { history, revealRef } = useHistoryAndReveal(canvas, code.snapshot, setFlash);
   const { selection: commandSelection, resetRoutes: onResetRoutes, resetDiagramLayout: onResetDiagramLayout } = useDiagramCommands(canvas, manager);
   const { player, pres } = useFlowPresentation(manager, canvas, activePath, illustration, ws.ready);
@@ -1000,7 +1000,7 @@ export function App() {
         onFlash={setFlash}
         onClearRequest={() => setClearOpen(true)}
         onOpenDirectory={directoryOpenHandler(manager, canvas, code, setFlash)}
-        onSnapshotsRequest={() => setSnapsOpen(true)}
+        onSnapshotsRequest={() => setSnapsOpen(true)} onVersionsRequest={() => setVersionsOpen(true)}
         {...statusProps(code.snapshot, ws.ready, manager)}
         onHistoryRequest={() => setHistoryOpen(true)}
         onPresentRequest={pres.launcher.show}
@@ -1061,8 +1061,8 @@ export function App() {
         flash={flash}
         onFlashDismiss={() => setFlash(null)}
         {...{ historyOpen, history, onHistoryClose: () => setHistoryOpen(false) }}
-        snapsOpen={snapsOpen}
-        onSnapsClose={() => setSnapsOpen(false)}
+        snapsOpen={snapsOpen} onSnapsClose={() => setSnapsOpen(false)}
+        versionsOpen={versionsOpen} onVersionsClose={() => setVersionsOpen(false)}
         iconsOpen={icons.managerOpen}
         iconDoc={icons.doc}
         onIconsClose={icons.closeManager}

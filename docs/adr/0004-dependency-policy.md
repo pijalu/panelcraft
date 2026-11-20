@@ -29,6 +29,7 @@
 | codemirror 6 (`codemirror`, `@codemirror/{state,view,language,commands,search}`) | code view: incremental parse, diagnostics gutters, performs on big files (FR-K1, M4-WP1). MIT. Used at M4: ~6 packages, tree-shaken bundle impact ≈ 300 kB min / ≈ 90 kB gzip (vite build evidence in M4.md) | textarea + highlighting lib (no gutter/diag model) |
 | dagre | layered auto-layout (N1); hand-rolling Sugiyama = high-risk algorithm code | own Sugiyama (post-v1 candidate); ELK (wasm, heavy) |
 | chromedp (Go) | headless render CLI via CDP; pure Go, no cgo | os/exec chrome --screenshot (no settle control) |
+| go-git/v5 (Go) | embedded local Git objects, index and history; Apache-2.0. Uncompressed binary grew by 2,814,544 bytes (13,941,586 → 16,756,130) in the implementation comparison | system Git executable (breaks zero-install single binary); hand-written Git formats (high correctness risk) |
 | fflate *(conditional)* | ZIP fallback **only** when `CompressionStream`/`DecompressionStream` unavailable (Safari <16.4); loaded lazily | always-on zip lib (violates stdlib-first) |
 
 ZIP base path = `CompressionStream`/`DecompressionStream` + thin container code

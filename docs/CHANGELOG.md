@@ -16,10 +16,15 @@ milestone-aligned minors. Dates are UTC.
   current workspace, and directory selection is session-scoped.
 - The Files panel identifies non-default storage. Save failures and conflicts remain
   visible, the status pill says **Unsaved**, and clear-data confirmation describes the
-  real files affected. Local Git history is the next backend; remote Git and GitHub
-  integration remain design-only follow-ups.
+  real files affected.
+- `-storage-type git` opens or initializes a standalone local repository and composes the
+  confined filesystem store. Content changes create embedded Git commits; metadata-only
+  saves do not. **Git versions** lists history, previews file lists and restores a version as a
+  forward commit. Externally staged paths and merges block mutation; no remote, credential,
+  hook or network operation is performed. Remote Git and GitHub integration remain design-only.
 
-Details and evidence: [pluggable workspace storage](archive/bugs-pluggable-workspace-storage.md).
+Details and evidence: [pluggable workspace storage](archive/bugs-pluggable-workspace-storage.md)
+and [local Git workspace storage](archive/bugs-local-git-storage.md).
 
 ## Unreleased — brand: wordmark and application icon
 

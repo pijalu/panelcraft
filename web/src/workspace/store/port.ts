@@ -55,11 +55,25 @@ export class StoreError extends Error {
   }
 }
 
+export interface WorkspaceVersion {
+  id: string;
+  message: string;
+  savedAt: number;
+}
+
+/** Optional persistent history; non-Git stores deliberately expose no version port. */
+export interface VersionStoragePort {
+  history(): Promise<WorkspaceVersion[]>;
+  show(id: string): Promise<StoredWorkspace>;
+  restore(id: string): Promise<StoredWorkspace>;
+}
+
 /** Storage port implemented by browser, HTTP, memory, and directory adapters. */
 export interface StoragePort {
   /** UI capability metadata; it does not change the persistence contract. */
   readonly kind?: StorageKind;
   readonly label?: string;
+  readonly versions?: VersionStoragePort;
   /** Last stored workspace, or null when none. Throws StoreError. */
   load(): Promise<StoredWorkspace | null>;
   /** Persist; throws StoreError('quota') on QuotaExceededError. */

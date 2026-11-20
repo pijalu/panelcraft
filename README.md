@@ -22,15 +22,17 @@ service-worker offline shell) and a single Go binary
   ```bash
   panelcraft serve --open                  # app + browser workspace storage
   panelcraft serve -local ./diagrams --open # editable real files, loopback only
+  panelcraft serve -local ./diagrams -storage-type git --open # files + local Git history
   panelcraft validate docs/architecture  # validate .pcd files (exit 1 = errors)
   panelcraft convert diagram.mmd -o diagram.pcd # Mermaid C4/flowchart → canonical PDL
   panelcraft render diagram.pcd -o diagram.png --theme dark --width 1920
   panelcraft version
   ```
 
-  `-local` accepts `-storage-type filesystem` (the default, also `filestorage`) and
+  `-local` accepts `-storage-type filesystem` (the default, also `filestorage`) or `git`,
   `-depth N` to limit descendants; omit depth or use `-1` for unlimited. Writable
-  serving is restricted to loopback. Local and remote Git backends are not implemented.
+  serving is restricted to loopback. Git mode creates local commits and offers **Git versions**
+  for preview and forward-only restore. Remote Git and GitHub integration are not implemented.
   In a supporting browser, **Application menu → File & data → Open local folder…**
   also edits a chosen folder directly, without a server.
 
@@ -45,8 +47,8 @@ service-worker offline shell) and a single Go binary
   [docs/FILE-FORMAT.md](docs/FILE-FORMAT.md))
 - **Flows**: record step-by-step narratives over the diagram and play them
   back with animated highlighting + ARIA narration
-- Multi-file workspace in IndexedDB, a confined local server directory, or a chosen
-  browser folder; snapshots; per-file export `.pcd` / `.mmd`
+- Multi-file workspace in IndexedDB, a confined local server directory with optional local
+  Git history, or a chosen browser folder; snapshots; per-file export `.pcd` / `.mmd`
   / `.svg` (sanitized) / `.png`; full workspace ZIP round-trip; mermaid import
 - **Fully self-contained**: no CDN, external resources, or third-party runtime origin;
   static/direct-folder sessions make no workspace network requests; system fonts,

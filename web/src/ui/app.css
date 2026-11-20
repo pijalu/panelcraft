@@ -3078,6 +3078,126 @@ marker .pc-arrow[fill='none'] {
   cursor: default;
 }
 
+/* Persistent Git history: quiet list, explicit preview, forward-only restore. */
+.versions-dialog {
+  width: min(560px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.version-list {
+  list-style: none;
+  margin: var(--pc-space-3) 0;
+  padding: 0;
+  max-height: 32vh;
+  overflow-y: auto;
+  border-top: 1px solid var(--pc-panel-border);
+}
+
+.version-list li {
+  border-bottom: 1px solid var(--pc-panel-border);
+}
+
+.version-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-space-1);
+  width: 100%;
+  min-height: var(--pc-control-min);
+  padding: var(--pc-space-2);
+  border: 0;
+  border-left: 4px solid transparent;
+  background: var(--pc-menu-bg);
+  color: var(--pc-button-fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.version-select:hover {
+  background: var(--pc-list-hover-bg);
+}
+
+.version-select[aria-pressed="true"] {
+  border-left-color: var(--pc-focus-ring);
+  background: var(--pc-list-selected-bg);
+  color: var(--pc-list-selected-fg);
+  font-weight: 600;
+}
+
+.version-select:focus-visible,
+.version-confirm button:focus-visible {
+  outline: 2px solid var(--pc-focus-ring);
+  outline-offset: -2px;
+}
+
+.version-select:disabled {
+  color: var(--pc-disabled-fg);
+  cursor: default;
+}
+
+.version-meta {
+  font-size: var(--pc-text-xs);
+}
+
+.version-preview {
+  margin: var(--pc-space-3) 0;
+  padding: var(--pc-space-3);
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-sm);
+}
+
+.version-preview h3 {
+  margin: 0;
+  font-size: var(--pc-text-md);
+}
+
+.version-preview ul {
+  max-height: 20vh;
+  overflow-y: auto;
+  padding-left: var(--pc-space-5);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--pc-text-sm);
+}
+
+.version-error {
+  color: var(--pc-danger-fg);
+}
+
+.version-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pc-space-2);
+  margin-top: var(--pc-space-3);
+  padding: var(--pc-space-3);
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-sm);
+}
+
+.version-confirm p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.version-confirm button {
+  min-height: var(--pc-control-min);
+  padding: var(--pc-space-1) var(--pc-space-3);
+  border: 1px solid var(--pc-input-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-button-bg);
+  color: var(--pc-button-fg);
+  cursor: pointer;
+}
+
+.version-confirm button.button-primary {
+  background: var(--pc-button-primary-bg);
+  color: var(--pc-button-primary-fg);
+}
+
+.version-confirm button:disabled {
+  color: var(--pc-disabled-fg);
+  cursor: default;
+}
+
 /* F-18 flow editing parity: sticky step header, draggable rows, inline controls */
 .flow-detail-head {
   position: sticky;

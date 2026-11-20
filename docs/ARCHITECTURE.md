@@ -10,8 +10,8 @@ itself (SPEC §14), marked *unvalidated* until M1 parser lands
 Client-only web UI (vite + Preact + TS strict) + single Go binary. The SPA is the
 product; the Go binary embeds the built SPA (`go:embed web/dist`) and serves it
 (`panelcraft serve`), plus CLI verbs (validate/convert/render, M1+). Static and
-unconfigured serving keep all workspace state in the browser. Explicit local filesystem
-mode adds a same-origin persistence API; no third-party origin receives workspace data.
+unconfigured serving keep all workspace state in the browser. Explicit local filesystem or
+Git mode adds a same-origin persistence API; no third-party origin receives workspace data.
 
 ## Package map
 
@@ -23,12 +23,12 @@ mode adds a same-origin persistence API; no third-party origin receives workspac
 | `web/src/engine/layout` | deterministic dagre auto-layout, including compound C4 boundaries | model |
 | `web/src/engine/flows` | flow step machine | model |
 | `web/src/engine/anim` | animation plan builder, reduced-motion | flows |
-| `web/src/workspace` | virtual FS, ZIP, IndexedDB/HTTP/directory storage adapters, undo | model |
+| `web/src/workspace` | virtual FS, ZIP, IndexedDB/HTTP/directory storage adapters, optional Git history, undo | model |
 | `web/src/ui` | Preact components, panels, dialogs | engine + workspace via ports |
 | `web/src/cliRender` | storage-free browser entry for standalone SVG/PNG rendering | engine + canvas controller |
 | `cmd/panelcraft` | CLI entry (serve/validate/convert/render/version) | internal/*, web |
 | `internal/server` | embedded SPA HTTP shell (CSP, fallback, read-only /files/*, optional workspace API) | web (dist), storage |
-| `internal/storage` | confined workspace stores and optimistic revisions | — |
+| `internal/storage` | confined filesystem/Git stores, optimistic revisions and local history | go-git |
 | `internal/ir` | Go IR codec (M1) | — |
 | `internal/pdl` | Go PDL parser/printer (M1, mirrors TS) | ir |
 | `internal/render` | loopback-only chromedp headless render | server (serves embedded CLI entry) |
@@ -47,7 +47,7 @@ depend on interfaces ("ports"): `LayoutEngine`, `Storage`, `Clock`,
 `WorkspaceManager` and `Autosaver` depend on the snapshot-oriented `StoragePort`;
 they do not select IndexedDB, HTTP, memory, or browser-directory implementations.
 `web/src/workspace/store/selection.ts` composes startup storage: only the served
-`<meta name="panelcraft-storage" content="filesystem">` capability marker selects
+`<meta name="panelcraft-storage" content="filesystem">` or `content="git"` selects
 the HTTP adapter. Static hosting performs no API discovery. The directory picker is
 a separate, capability-gated user action and a cancelled or failed load leaves the
 current backend intact.
@@ -56,8 +56,10 @@ The Go `storage.Store` port supplies load, compare-and-save, and clear operation
 The filesystem implementation owns canonical root confinement, depth limits, hidden
 metadata, and ordinary-file reconciliation. HTTP maps its errors to transport statuses
 and carries strong revisions in `ETag`/`If-Match`; transport policy never leaks into
-the store. A future local Git backend implements the same port, while optional history
-uses the separate `VersionStore` interface so non-Git stores need no history methods.
+the store. The local Git backend composes filesystem storage and implements the same port,
+while history uses the separate `VersionStore` interface for list/show/restore.
+Non-Git stores need no history methods; TypeScript exposes the matching optional
+`StoragePort.versions` capability.
 
 Server mutations are confined to loopback, same-origin requests. JSON plus a
 non-simple request header prevents cross-origin form writes; responses are `no-store`
@@ -100,7 +102,14 @@ and returns sanitized SVG or a Chrome PNG screenshot.
    default; `filestorage` is an alias. `-depth N` limits visible descendants. This mode
    writes real UTF-8 files and `.panelcraft/workspace.json`, preserving `.git`, hidden
    metadata, out-of-depth content, binary files, and non-regular files.
-4. **Direct browser directory** — supporting browsers offer **Open local folder…** after
+4. **Single binary, local Git** — `-storage-type git` opens or initializes a standalone
+   non-bare repository at exactly `DIR` and composes the filesystem store. Content changes
+   create commits with the configured author; metadata-only saves do not. History preview
+   reads commit objects, while restore reconciles files and creates a forward commit.
+   Externally staged paths and merges block mutation. No Git executable, hook, credential,
+   remote, or network operation is involved; bare and linked-worktree repositories are
+   unsupported, and Git history does not preserve empty directories.
+5. **Direct browser directory** — supporting browsers offer **Open local folder…** after
    an explicit user gesture. The directory adapter reconciles the same workspace snapshot
    without HTTP or a server. Handles last for the session; static hosting and IndexedDB
    remain available on unsupported browsers.
@@ -116,7 +125,9 @@ and returns sanitized SVG or a Chrome PNG screenshot.
   `filepath.Rel` guard); `/files/*` rejects traversal (tested).
 - Local filesystem storage uses a canonical root and rejects symlink escapes,
   reserved metadata, out-of-depth paths, binary/non-UTF-8 documents and non-regular
-  files. Writable serving is rejected on non-loopback addresses until authentication
+  files. Git revisions combine HEAD with the filesystem content hash; staged external
+  changes and merges in progress block mutation. Writable serving is rejected on
+  non-loopback addresses until authentication
   and authorization exist. Strong `If-Match` revisions protect external edits.
 - The a11y gate (`e2e/m7-a11y.spec.ts`) runs axe WCAG 2.1 A/AA over the shell
   and dialogs in both themes.

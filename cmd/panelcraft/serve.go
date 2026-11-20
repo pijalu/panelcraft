@@ -10,13 +10,15 @@ import (
 )
 
 type serveConfig struct {
-	addr        string
-	open        bool
-	devDir      string
-	filesDir    string
-	localDir    string
-	storageType string
-	depth       int
+	addr           string
+	open           bool
+	devDir         string
+	filesDir       string
+	localDir       string
+	storageType    string
+	depth          int
+	gitAuthorName  string
+	gitAuthorEmail string
 }
 
 func parseServeFlags(args []string) (serveConfig, error) {
@@ -29,6 +31,8 @@ func parseServeFlags(args []string) (serveConfig, error) {
 	flags.StringVar(&config.localDir, "local", "", "store workspace files in this local directory")
 	flags.StringVar(&config.storageType, "storage-type", "filesystem", "workspace storage backend")
 	flags.IntVar(&config.depth, "depth", -1, "maximum workspace directory depth (-1 is unlimited)")
+	flags.StringVar(&config.gitAuthorName, "git-author-name", "", "Git commit author name")
+	flags.StringVar(&config.gitAuthorEmail, "git-author-email", "", "Git commit author email")
 	if err := flags.Parse(args); err != nil {
 		return serveConfig{}, err
 	}
@@ -48,20 +52,20 @@ func validateServeConfig(config serveConfig, flags *flag.FlagSet) (serveConfig, 
 	if config.storageType == "filestorage" {
 		config.storageType = "filesystem"
 	}
-	if config.storageType == "git" {
-		return serveConfig{}, fmt.Errorf("git storage is not implemented yet")
-	}
-	if config.storageType != "filesystem" {
+	if config.storageType != "filesystem" && config.storageType != "git" {
 		return serveConfig{}, fmt.Errorf("unknown storage type %q", config.storageType)
 	}
 	if config.depth < -1 {
 		return serveConfig{}, fmt.Errorf("depth must be -1 (unlimited) or a non-negative integer")
 	}
 	if config.localDir == "" {
-		if flagProvided(flags, "depth") || flagProvided(flags, "storage-type") {
+		if storageConfigurationProvided(flags) {
 			return serveConfig{}, fmt.Errorf("workspace storage configuration requires -local DIR")
 		}
 		return config, nil
+	}
+	if config.storageType != "git" && gitOptionsProvided(flags) {
+		return serveConfig{}, fmt.Errorf("git author options require git storage")
 	}
 	if !loopbackAddress(config.addr) {
 		return serveConfig{}, fmt.Errorf("writable local storage requires a loopback listen address")
@@ -77,6 +81,14 @@ func flagProvided(flags *flag.FlagSet, name string) bool {
 		}
 	})
 	return provided
+}
+
+func storageConfigurationProvided(flags *flag.FlagSet) bool {
+	return flagProvided(flags, "depth") || flagProvided(flags, "storage-type") || gitOptionsProvided(flags)
+}
+
+func gitOptionsProvided(flags *flag.FlagSet) bool {
+	return flagProvided(flags, "git-author-name") || flagProvided(flags, "git-author-email")
 }
 
 func loopbackAddress(addr string) bool {

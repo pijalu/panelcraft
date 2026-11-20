@@ -24,7 +24,8 @@ const usage = `panelcraft — architecture diagrams, in your browser
 
 Usage:
   panelcraft serve [--addr 127.0.0.1:8080] [--open] [--dev-dir DIR] [DIR]
-  panelcraft serve -local DIR [-storage-type filesystem] [-depth N]
+  panelcraft serve -local DIR [-storage-type filesystem|git] [-depth N]
+                   [-git-author-name NAME] [-git-author-email EMAIL]
   panelcraft validate [--json] PATH...
   panelcraft convert <in.mmd|in.pcd> [-o out.pcd]
   panelcraft render <file.pcd> --out out.png|svg [--width 1920]
@@ -33,7 +34,7 @@ Usage:
 
 Commands:
   serve     serve the embedded SPA; optional DIR is read-only at /files/*
-            -local DIR enables confined writable filesystem workspace storage
+            -local DIR enables confined writable filesystem or Git workspace storage
   validate  validate .pcd files (PATH: file or dir, globbed *.pcd); exit 1
             only for error-severity findings, 2 for usage errors (D-M1-20)
   convert   convert Mermaid to canonical .pcd (or canonicalise .pcd)
@@ -78,7 +79,7 @@ func runServe(args []string) error {
 	}
 	opts := server.Options{FilesDir: config.filesDir}
 	if config.localDir != "" {
-		store, err := storage.NewFilesystem(config.localDir, config.depth)
+		store, err := newWorkspaceStore(config)
 		if err != nil {
 			return err
 		}
@@ -110,6 +111,20 @@ func runServe(args []string) error {
 	}
 	srv := &http.Server{Addr: config.addr, Handler: handler}
 	return srv.ListenAndServe()
+}
+
+type workspaceStore interface {
+	storage.Store
+	Close() error
+}
+
+func newWorkspaceStore(config serveConfig) (workspaceStore, error) {
+	if config.storageType == "git" {
+		return storage.NewGit(config.localDir, config.depth, storage.GitOptions{
+			AuthorName: config.gitAuthorName, AuthorEmail: config.gitAuthorEmail,
+		})
+	}
+	return storage.NewFilesystem(config.localDir, config.depth)
 }
 
 func openBrowser(url string) error {

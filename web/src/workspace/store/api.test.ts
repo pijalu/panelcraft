@@ -48,6 +48,30 @@ describe('ApiStorage', () => {
     await expect(storage.save(workspace)).rejects.toMatchObject({ code: 'conflict' });
   });
 
+  it('lists, shows, and restores Git versions without replacing the current revision on preview', async () => {
+    const workspace = newStoredWorkspace('git');
+    const historical = { ...workspace, name: 'historical' };
+    const restored = { ...workspace, name: 'restored' };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(response(200, JSON.stringify(workspace), '"one"'))
+      .mockResolvedValueOnce(response(200, JSON.stringify({ versions: [{ id: 'abc', message: 'first', savedAt: 42 }] })))
+      .mockResolvedValueOnce(response(200, JSON.stringify(historical), '"abc"'))
+      .mockResolvedValueOnce(response(200, JSON.stringify(restored), '"two"'))
+      .mockResolvedValueOnce(response(204, '', '"three"'));
+    const storage = new ApiStorage('/api/v1/workspace', fetcher, 'git');
+    await storage.load();
+    await expect(storage.versions?.history()).resolves.toEqual([{ id: 'abc', message: 'first', savedAt: 42 }]);
+    await expect(storage.versions?.show('abc')).resolves.toEqual(historical);
+    await expect(storage.versions?.restore('abc')).resolves.toEqual(restored);
+    expect(fetcher).toHaveBeenNthCalledWith(3, '/api/v1/workspace/history/abc', { cache: 'no-store' });
+    expect(fetcher).toHaveBeenNthCalledWith(4, '/api/v1/workspace/history/abc/restore', expect.objectContaining({
+      method: 'POST',
+      headers: { 'X-PanelCraft-Storage': '1', 'If-Match': '"one"' },
+    }));
+    await storage.save(restored);
+    expect(fetcher.mock.calls[4]?.[1]?.headers).toMatchObject({ 'If-Match': '"two"' });
+  });
+
   it('requires a revision from the server', async () => {
     const fetcher = vi.fn().mockResolvedValue(response(200, JSON.stringify(newStoredWorkspace())));
     const storage = new ApiStorage('/api/v1/workspace', fetcher);
@@ -62,6 +86,17 @@ describe('application storage selection', () => {
     const fetcher = vi.fn();
     const storage = await createAppStorage({ document, fetcher, factory: undefined });
     expect(storage).toBeInstanceOf(ApiStorage);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('enables versions only for advertised Git storage', async () => {
+    const element = { getAttribute: () => 'git' };
+    const document = { querySelector: vi.fn(() => element) } as unknown as Document;
+    const fetcher = vi.fn();
+    const storage = await createAppStorage({ document, fetcher, factory: undefined });
+    expect(storage).toBeInstanceOf(ApiStorage);
+    expect(storage.label).toBe('Git repository');
+    expect(storage.versions).toBeDefined();
     expect(fetcher).not.toHaveBeenCalled();
   });
 

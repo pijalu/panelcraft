@@ -258,9 +258,9 @@ IcePanel-style visual storytelling over the static diagram.
 * **FR-S1** Persistence: autosave is debounced 800 ms. Static hosting and an
   unconfigured Go server use IndexedDB and restore the last-open workspace; these
   browser-storage sessions make no runtime API calls. An explicitly configured local
-  filesystem server instead uses its same-origin workspace API. A user-selected local
-  directory can be used directly in supporting browsers without a server or network
-  requests. Storage adapters share one snapshot-oriented workspace port.
+  filesystem or Git server instead uses its same-origin workspace API. A user-selected
+  local directory can be used directly in supporting browsers without a server or
+  network requests. Storage adapters share one snapshot-oriented workspace port.
 * **FR-S2** Ephemeral mode ("private tab" toggle): in-memory only, no persistent writes;
   export reminder banner every 10 min. Leaving private mode restores the previous backend.
 * **FR-S3** Quota handling: surface quota errors; graceful degradation to ephemeral
@@ -281,6 +281,17 @@ IcePanel-style visual storytelling over the static diagram.
   secure context. Cancellation or load failure preserves the current workspace. Directory
   handles are session-scoped in this version; after reload, choose the folder again.
   Save conflicts and other failures remain visible and are never reported as saved.
+* **FR-S8** Optional local Git: `serve -local DIR -storage-type git` opens or initializes
+  a standalone non-bare repository at exactly `DIR`, retaining filesystem confinement,
+  depth limits and strong revisions. Only workspace content changes create commits;
+  metadata-only saves do not. `-git-author-name` and `-git-author-email` override the
+  PanelCraft-local commit identity. The optional version-store port and **Git versions**
+  dialog list commits, preview a historical file list and restore a version as a forward
+  commit.
+  Externally staged paths and merges in progress block mutations. Detached HEAD is
+  supported; bare repositories and linked-worktree `.git` files are rejected. No remote,
+  credential or hook operation is performed, and historical snapshots do not promise to
+  preserve empty directories.
 
 ### 4.9 CLI (Go binary) (FR-X)
 
@@ -289,10 +300,11 @@ Single static binary, no runtime deps, all assets embedded (`go:embed`).
 * `panelcraft serve [--addr 127.0.0.1:8080] [--open] [--dev-dir DIR] [DIR]` — serves
   the SPA at `/` and optionally exposes positional `DIR` read-only at `/files/*` for demo
   assets. With no `-local`, workspace persistence remains in the browser.
-* `panelcraft serve -local DIR [-storage-type filesystem|filestorage] [-depth N]` —
-  additionally enables the confined, writable workspace described by the optional server
-  filesystem requirement above. The two directory options are independent and cannot be
-  combined. `-storage-type git` is reserved for a future local backend and is not implemented.
+* `panelcraft serve -local DIR [-storage-type filesystem|filestorage|git] [-depth N]
+    [-git-author-name NAME] [-git-author-email EMAIL]` — additionally enables the confined,
+    writable workspace described by the optional server filesystem and local Git requirements
+    above. The two directory options are independent and cannot be combined. Git author
+    options require `-storage-type git`.
 * `panelcraft validate <file|dir>... [--json]` — parse + semantic validation
   (dangling refs, import cycles, flow refs, duplicate ids). Exit 0 clean; exit 1
   findings; exit 2 usage/IO error. CI-friendly.
@@ -589,9 +601,9 @@ implemented and covered by tests.
 
 Comments/annotations on objects · export to draw.io/PlantUML · plugin API for custom
 stencils · additional diagram notations (sequence-native, deployment advanced) ·
-local Git history through the storage port · provider-neutral remote Git and a possible
-GitHub adapter after separate security and UX design. Direct browser-directory access is
-now implemented as an optional capability, so it is no longer a backlog item.
+provider-neutral remote Git and a possible GitHub adapter after separate security and UX
+design. Direct browser-directory access is now implemented as an optional capability, so it
+is no longer a backlog item.
 Flow→`sequenceDiagram` export (`.seq.mmd`) was subsequently completed from M6-WP7.
 N10 full UI string centralization was subsequently completed in `strings.ts`; the
 runtime remains English-only (see M7.md). F-39/F-40 subsequently closed the carried

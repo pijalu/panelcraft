@@ -39,6 +39,8 @@ func New(opts Options) (http.Handler, error) {
 	mux := http.NewServeMux()
 
 	mux.Handle("/api/v1/workspace", workspaceHandler(opts.Workspace))
+	mux.Handle("/api/v1/workspace/history", historyCollectionHandler(opts.Workspace))
+	mux.Handle(historyPath, historyItemHandler(opts.Workspace))
 	if opts.FilesDir != "" {
 		mux.Handle("GET /files/", filesHandler(opts.FilesDir))
 	}

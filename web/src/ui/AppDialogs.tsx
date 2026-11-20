@@ -8,6 +8,7 @@ import type { HistoryHandle } from './useHistory';
 import { ClearDataDialog } from './ClearDataDialog';
 import { DivergedDialog } from './DivergedDialog';
 import { SnapshotsDialog } from './SnapshotsDialog';
+import { VersionHistoryDialog } from './VersionHistoryDialog';
 import { IconManagerDialog } from './IconPicker';
 import type { Doc } from '../engine/model/types';
 import { SearchDialog } from './search/SearchDialog';
@@ -34,6 +35,8 @@ export function AppDialogs(props: {
   onFlashDismiss(): void;
   snapsOpen: boolean;
   onSnapsClose(): void;
+  versionsOpen: boolean;
+  onVersionsClose(): void;
   /** IR v9: project-icon manager (add/rename/remove with usage checks). */
   iconsOpen: boolean;
   iconDoc: Doc | null;
@@ -46,6 +49,7 @@ export function AppDialogs(props: {
 }) {
   const search = useQuickSearch(props.manager, props.activePath, props.ctrlRef);
   const store = useSnapshotStore();
+  const versions = props.manager.versions;
   return (
     <>
       {props.historyOpen && (
@@ -98,6 +102,16 @@ export function AppDialogs(props: {
           }}
           onDelete={(id) => store.delete(id)}
           onClose={props.onSnapsClose}
+        />
+      )}
+      {props.versionsOpen && versions !== null && (
+        <VersionHistoryDialog
+          store={versions}
+          onRestore={async (id) => {
+            await props.manager.restoreVersion(id);
+            props.resyncDocuments();
+          }}
+          onClose={props.onVersionsClose}
         />
       )}
     </>

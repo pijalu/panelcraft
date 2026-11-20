@@ -15,8 +15,8 @@ Client-only web app for IcePanel-style architecture diagrams (IcePanel = inspira
 only, no links/affiliation in docs): WYSIWYG SVG canvas + always-visible code view,
 native `.pcd` format (own grammar, mermaid-inspired), mermaid import/export converters,
 flows/animation, multi-file workspace with IndexedDB by default plus optional confined
-local-server and user-selected browser-directory storage, ZIP import/export, GitHub
-Pages hostable, single Go binary (serve + validate/convert/render CLI). License **GPL-3.0-only**.
+local-server filesystem/Git and user-selected browser-directory storage, ZIP import/export,
+GitHub Pages hostable, single Go binary (serve + validate/convert/render CLI). License **GPL-3.0-only**.
 
 ## Ground rules (non-negotiable)
 
@@ -171,11 +171,11 @@ panelcraft serve --addr :8080 --open
 | `web/src/engine/format` | PDL parser/printer, mermaid converters (TS) |
 | `web/src/engine/model` | IR types + operations, validation |
 | `web/src/engine/{render,layout,flows,anim}` | SVG engine, dagre port, step machine |
-| `web/src/workspace` | virtual FS, ZIP, IndexedDB/HTTP/directory stores, undo |
+| `web/src/workspace` | virtual FS, ZIP, IndexedDB/HTTP/directory stores, optional Git history, undo |
 | `web/src/ui` | Preact components, panels, dialogs |
 | `cmd/panelcraft` | Go CLI entry (serve/validate/convert/render) |
 | `internal/{ir,pdl,server,render}` | Go IR codec, PDL parser, embedded server + optional workspace API, chromedp render |
-| `internal/storage` | confined local workspace stores and optimistic revisions |
+| `internal/storage` | confined filesystem/Git workspace stores, optimistic revisions and local history |
 | `testdata/corpus` | golden .pcd + .ir.json (shared TS/Go) |
 | `e2e` | Playwright specs + curated goldens (`e2e/goldens/`) |
 | `e2e-hosted` | Hosted smoke specs: items 7–16 against the deployed site, fresh + upgrading client |

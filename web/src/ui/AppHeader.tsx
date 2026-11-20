@@ -28,6 +28,7 @@ export function AppHeader(props: {
   onClearRequest(): void;
   onOpenDirectory?: () => void;
   onSnapshotsRequest(): void;
+  onVersionsRequest(): void;
   /** F-24: open the unified history affordance. */
   onHistoryRequest(): void;
   /** F-16: enter presentation mode from the application menu. */
@@ -90,6 +91,7 @@ export function AppHeader(props: {
           onHistoryRequest={props.onHistoryRequest}
           onPresent={props.onPresentRequest}
           onSnapshotsRequest={props.onSnapshotsRequest}
+          onVersionsRequest={props.onVersionsRequest}
           onClearRequest={props.onClearRequest}
           onOpenDirectory={props.onOpenDirectory}
           onToggleEphemeral={(on) => {

@@ -4,6 +4,8 @@ package main
 import (
 	"strings"
 	"testing"
+
+	"github.com/pijalu/panelcraft/internal/storage"
 )
 
 func TestParseServeDefaultsPreserveBrowserStorage(t *testing.T) {
@@ -29,6 +31,30 @@ func TestParseServeFilesystemAliasAndDepth(t *testing.T) {
 	}
 }
 
+func TestParseServeGitStorageAndAuthor(t *testing.T) {
+	config, err := parseServeFlags([]string{
+		"-local", "./diagrams", "-storage-type", "git",
+		"-git-author-name", "Local User", "-git-author-email", "local@example.test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.storageType != "git" || config.gitAuthorName != "Local User" || config.gitAuthorEmail != "local@example.test" {
+		t.Errorf("config = %+v", config)
+	}
+}
+
+func TestNewWorkspaceStoreEnablesGitVersions(t *testing.T) {
+	store, err := newWorkspaceStore(serveConfig{localDir: t.TempDir(), storageType: "git", depth: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if _, ok := store.(storage.VersionStore); !ok {
+		t.Fatalf("Git store does not implement VersionStore: %T", store)
+	}
+}
+
 func TestParseServeLegacyReadOnlyDirectory(t *testing.T) {
 	config, err := parseServeFlags([]string{"--addr", ":8080", "./diagrams"})
 	if err != nil {
@@ -47,8 +73,9 @@ func TestParseServeRejectsInvalidStorageCombinations(t *testing.T) {
 	}{
 		{name: "depth without local", args: []string{"-depth", "1"}, want: "requires -local"},
 		{name: "negative depth", args: []string{"-local", "x", "-depth", "-2"}, want: "depth"},
-		{name: "git not silently accepted", args: []string{"-local", "x", "-storage-type", "git"}, want: "not implemented"},
 		{name: "unknown backend", args: []string{"-local", "x", "-storage-type", "cloud"}, want: "unknown storage type"},
+		{name: "Git author on filesystem", args: []string{"-local", "x", "-git-author-name", "User"}, want: "require git storage"},
+		{name: "Git author without local", args: []string{"-git-author-email", "user@example.test"}, want: "requires -local"},
 		{name: "two roots", args: []string{"-local", "x", "y"}, want: "cannot be combined"},
 		{name: "non loopback wildcard", args: []string{"-local", "x", "-addr", ":8080"}, want: "loopback"},
 		{name: "non loopback IP", args: []string{"-local", "x", "-addr", "0.0.0.0:8080"}, want: "loopback"},

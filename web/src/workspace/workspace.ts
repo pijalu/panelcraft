@@ -14,7 +14,7 @@ import { Autosaver } from './store/autosave';
 import { MemoryStorage } from './store/memory';
 import {
   SCHEMA_VERSION, StoreError, newStoredWorkspace,
-  type StorageKind, type StoragePort, type StoredWorkspace, type WorkspaceSettings,
+  type StorageKind, type StoragePort, type StoredWorkspace, type VersionStoragePort, type WorkspaceSettings,
 } from './store/port';
 import { packZip, unpackZip } from './zip/zip';
 import { entriesToTree, treeToEntries, snapshotTree } from './zip/workspaceZip';
@@ -374,6 +374,10 @@ export class WorkspaceManager {
     return this.storage.label ?? 'Browser storage';
   }
 
+  get versions(): VersionStoragePort | null {
+    return this.storage.versions ?? null;
+  }
+
   private emit(): void {
     for (const l of [...this.listeners]) l();
   }
@@ -700,6 +704,18 @@ export class WorkspaceManager {
     this.storageError = null;
     this.emit();
     this.scheduleSave();
+  }
+
+  /** Flush edits, create a forward Git restore commit, and adopt its persisted record. */
+  async restoreVersion(id: string): Promise<void> {
+    const versions = this.versions;
+    if (versions === null) throw new StoreError('unavailable', 'persistent versions require Git storage');
+    await this.flush();
+    const rec = await versions.restore(id);
+    this.adoptRecord(structuredClone(rec));
+    this.openError = null;
+    this.storageError = null;
+    this.emit();
   }
 
   /* ---- storage lifecycle (FR-S2/S3/S4) ---- */

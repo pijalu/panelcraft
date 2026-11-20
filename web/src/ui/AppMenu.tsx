@@ -33,6 +33,7 @@ export interface AppMenuProps {
   onHistoryRequest: () => void;
   onPresent: () => void;
   onSnapshotsRequest: () => void;
+  onVersionsRequest: () => void;
   onClearRequest: () => void;
   onOpenDirectory?: () => void;
   onToggleEphemeral: (on: boolean) => void;
@@ -115,6 +116,7 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
       history: props.onHistoryRequest,
       present: props.onPresent,
       snapshots: props.onSnapshotsRequest,
+      versions: ready && manager.versions !== null ? props.onVersionsRequest : undefined,
       clearData: props.onClearRequest,
       setPrivate: props.onToggleEphemeral,
     },
