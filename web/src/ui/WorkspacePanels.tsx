@@ -5,7 +5,7 @@ import { useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { PANELS, type DockId, type FloatingBounds, type PanelId } from './uiLayout';
 import type { UiLayoutHandle } from './useUiLayout';
-import { Splitter } from './PanelChrome';
+import { Splitter, CollapseButton, InfoHint } from './PanelChrome';
 import { Menu } from './Menu';
 import { s } from './strings';
 import type { StorageKind } from '../workspace/store/port';
@@ -52,10 +52,31 @@ interface PanelHostProps {
   dock: DockId;
   bounds?: FloatingBounds;
   height?: number;
+  /** Collapse into the dock's rail (the chevron in the title row). */
+  onCollapse: (panel: PanelId) => void;
+  /** Explanation behind the info icon beside the title, when a panel has one. */
+  info?: PanelInfo;
   children: ComponentChildren;
   onMove: (panel: PanelId, dock: DockId) => void;
   onClose: (panel: PanelId) => void;
   onBounds: (panel: PanelId, bounds: FloatingBounds) => void;
+}
+
+/** Header explanation: the text the info icon reveals and describes. */
+export interface PanelInfo {
+  text: string;
+}
+
+/** The storage explanation the Files panel offers behind its info icon. */
+export function storageExplanation(kind: StorageKind): string {
+  if (kind === 'directory') {
+    return s('Switch to browser files and stop editing this folder. Its files stay on disk.');
+  }
+  if (kind === 'server') {
+    return s('Files live in the local server folder. Nothing is copied into the browser.');
+  }
+  if (kind === 'memory') return s('This workspace is not saved: closing the tab loses it.');
+  return s('Browser files live only in this browser. They are not visible in your file manager.');
 }
 
 /** One wording per backend: the label must name where the files really live. */
@@ -132,11 +153,6 @@ export function StorageActions(props: StorageActionsProps) {
           {s('Use browser storage')}
         </button>
       ) : null}
-      <p class="storage-hint" data-testid="storage-hint">
-        {native
-          ? s("Switch to browser files and stop editing this folder. Its files stay on disk.")
-          : s('Browser files live only in this browser. They are not visible in your file manager.')}
-      </p>
     </div>
   );
 }
@@ -203,6 +219,21 @@ export function PanelHost(props: PanelHostProps) {
         >
           {panelLabel(props.id)}
         </button>
+        {/* The chevron collapses the panel it sits next to, not a row of its own. */}
+        <CollapseButton
+          id={props.id}
+          label={panelLabel(props.id)}
+          dock={props.dock}
+          onCollapse={() => props.onCollapse(props.id)}
+        />
+        {props.info === undefined ? null : (
+          <InfoHint
+            label={s('{label} panel information', { label: panelLabel(props.id) })}
+            text={props.info.text}
+            testId={`panel-info-${props.id}`}
+            placement={props.dock === 'right' ? 'end' : 'start'}
+          />
+        )}
         <Menu
           id={`panel-actions-${props.id}`}
           class="panel-actions"
@@ -234,7 +265,7 @@ export function PanelHost(props: PanelHostProps) {
   );
 }
 
-export function HostedPanel(props: { id: PanelId; ui: UiLayoutHandle; children: ComponentChildren }) {
+export function HostedPanel(props: { id: PanelId; ui: UiLayoutHandle; info?: PanelInfo; children: ComponentChildren }) {
   const { id, ui } = props;
   const mode = ui.layout.panels[id];
   const dock = ui.layout.docks[id];
@@ -246,9 +277,11 @@ export function HostedPanel(props: { id: PanelId; ui: UiLayoutHandle; children: 
       dock={dock}
       bounds={ui.layout.floating[id]}
       height={ui.layout.heights[id]}
+      onCollapse={ui.togglePanel}
       onMove={ui.movePanel}
       onClose={ui.closePanel}
       onBounds={ui.setFloatingBounds}
+      {...(props.info === undefined ? {} : { info: props.info })}
     >
       {props.children}
     </PanelHost>

@@ -210,6 +210,40 @@ export function ArrowUpIcon(): ComponentChildren {
   );
 }
 
+/** Create a file (Files panel toolbar). */
+export function FilePlusIcon(): ComponentChildren {
+  return (
+    <Icon>
+      <path d="M8.5 2.5H4.5A1.5 1.5 0 0 0 3 4v8a1.5 1.5 0 0 0 1.5 1.5h3" />
+      <path d="M8.5 2.5 12 6v2" />
+      <path d="M8.5 2.5V6H12" />
+      <path d="M12 9.5v4M10 11.5h4" />
+    </Icon>
+  );
+}
+
+/** Create a folder (Files panel toolbar). */
+export function FolderPlusIcon(): ComponentChildren {
+  return (
+    <Icon>
+      <path d="M2.5 12.5v-8h4l1.5 2h4v2" />
+      <path d="M2.5 12.5h6" />
+      <path d="M12 9.5v4M10 11.5h4" />
+    </Icon>
+  );
+}
+
+/** Information about a panel, shown as a tooltip beside its title. */
+export function InfoIcon(): ComponentChildren {
+  return (
+    <Icon>
+      <circle cx="8" cy="8" r="5.6" />
+      <path d="M8 7.4v3.6" />
+      <circle cx="8" cy="5.1" r="0.9" fill="currentColor" stroke="none" />
+    </Icon>
+  );
+}
+
 /** Move an item later in a list. */
 export function ArrowDownIcon(): ComponentChildren {
   return (

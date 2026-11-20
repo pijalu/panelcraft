@@ -46,6 +46,15 @@ describe('splitPath / path utils', () => {
     expectCode(() => splitPath('x/' + 'y'.repeat(256)), 'invalid-name');
   });
 
+  it('rejects names that are blank or only differ by surrounding whitespace', () => {
+    // A whitespace-only name renders as a nameless row and a nameless tab, so it
+    // must never reach the tree — from the create row, a rename or an import.
+    expectCode(() => splitPath('   '), 'invalid-name');
+    expectCode(() => splitPath('a/   '), 'invalid-name');
+    expectCode(() => splitPath('  a.pcd'), 'invalid-name');
+    expectCode(() => splitPath('a.pcd '), 'invalid-name');
+  });
+
   it('joinPath/parentPath/basename', () => {
     expect(joinPath('', 'a', 'b')).toBe('a/b');
     expect(joinPath('a')).toBe('a');

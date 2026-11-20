@@ -6,7 +6,7 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { WorkspaceManager } from '../workspace/workspace';
 import { listDir } from '../workspace/fs';
-import { CloseIcon, CopyIcon, DisclosureClosedIcon, DisclosureOpenIcon, PencilIcon } from './icons';
+import { CloseIcon, CopyIcon, DisclosureClosedIcon, DisclosureOpenIcon, FilePlusIcon, FolderPlusIcon, PencilIcon } from './icons';
 import { useRowMenu, type RowMenuTarget } from './fileRowMenu';
 import { baseName } from './paths';
 import { refKey, type DocumentNode, type DocumentRef } from '../workspace/documents';
@@ -152,15 +152,68 @@ function useRowDrag(manager: WorkspaceManager) {
   };
 }
 
+/**
+ * The create row's state machine: which kind is being created, the typed name, the
+ * last refusal, and the folder the last folder created made current.
+ *
+ * Names are trimmed and a blank one is refused *with a reason*: the file system
+ * rejects untrimmed names outright, and an input that silently ignores Enter reads
+ * as broken rather than as validation.
+ */
+function useCreateRow(manager: WorkspaceManager) {
+  const [creating, setCreating] = useState<null | 'file' | 'folder'>(null);
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [lastFolder, setLastFolder] = useState('');
+
+  const begin = (kind: 'file' | 'folder'): void => {
+    setCreating(kind);
+    setName('');
+    setError(null);
+  };
+
+  const type = (value: string): void => {
+    setName(value);
+    setError(null);
+  };
+
+  const cancel = (): void => {
+    setCreating(null);
+    setError(null);
+  };
+
+  const commit = (): void => {
+    const trimmed = name.trim();
+    if (trimmed === '') {
+      setError(s('Enter a name first.'));
+      return;
+    }
+    const path = lastFolder === '' ? trimmed : `${lastFolder}/${trimmed}`;
+    try {
+      if (creating === 'file') manager.createFileAt(path, '');
+      else if (creating === 'folder') manager.createFolderAt(path);
+      else return;
+    } catch {
+      setError(s('That name is not available. Use a name without leading, trailing or control characters.'));
+      return; // invalid/duplicate name — stay in edit mode
+    }
+    if (creating === 'folder') setLastFolder(path);
+    setCreating(null);
+    setName('');
+    setError(null);
+  };
+
+  /** Folders created or expanded set where the next create lands. */
+  return { creating, name, error, lastFolder, begin, type, cancel, commit, focusFolder: setLastFolder };
+}
+
 export function FileTree({
   manager, version, onOpen, embedded = [], embeddedRoot = null, activeRef = null, onOpenRef,
 }: FileTreeProps) {
   const rows = buildRows(manager, embedded, embeddedRoot);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [creating, setCreating] = useState<null | 'file' | 'folder'>(null);
-  const [createName, setCreateName] = useState('');
-  const [lastFolder, setLastFolder] = useState('');
+  const createRow = useCreateRow(manager);
   void version; // re-read happens via buildRows on each render
   const { drag, down, up, reset, refresh } = useRowDrag(manager);
 
@@ -170,9 +223,10 @@ export function FileTree({
 
   const commitRename = (path: string, name: string): void => {
     setRenaming(null);
-    if (name !== '' && name !== baseName(path)) {
+    const trimmed = name.trim();
+    if (trimmed !== '' && trimmed !== baseName(path)) {
       try {
-        manager.renamePath(path, name);
+        manager.renamePath(path, trimmed);
       } catch {
         /* invalid name — tree keeps the old one */
       }
@@ -209,33 +263,17 @@ export function FileTree({
     onDelete,
   });
 
-  const commitCreate = (): void => {
-    const path = lastFolder === '' ? createName : `${lastFolder}/${createName}`;
-    try {
-      if (creating === 'file') manager.createFileAt(path, '');
-      else if (creating === 'folder') manager.createFolderAt(path);
-      else return;
-    } catch {
-      return; // invalid/duplicate name — stay in edit mode
-    }
-    if (creating === 'folder') setLastFolder(path);
-    setCreating(null);
-    setCreateName('');
-  };
-
   return (
     <nav class="file-tree" data-testid="file-tree">
       <TreeToolbar
-        creating={creating}
-        createName={createName}
-        dir={lastFolder}
-        onCreate={(kind) => {
-          setCreating(kind);
-          setCreateName('');
-        }}
-        onName={setCreateName}
-        onCommit={commitCreate}
-        onCancel={() => setCreating(null)}
+        creating={createRow.creating}
+        createName={createRow.name}
+        createError={createRow.error}
+        dir={createRow.lastFolder}
+        onCreate={createRow.begin}
+        onName={createRow.type}
+        onCommit={createRow.commit}
+        onCancel={createRow.cancel}
       />
       <ul class="tree-rows">
         {rows.map((row) => (
@@ -257,7 +295,7 @@ export function FileTree({
             onPointerUp={up}
             onOpenPath={onOpen}
             onToggleFolder={(p) => {
-              setLastFolder(p);
+              createRow.focusFolder(p);
               toggleFolder(p);
             }}
             onStartRename={startRename}
@@ -280,6 +318,8 @@ export function FileTree({
 interface TreeToolbarProps {
   creating: null | 'file' | 'folder';
   createName: string;
+  /** Refusal reason shown under the input; the row stays open while it shows. */
+  createError: string | null;
   dir: string;
   onCreate: (kind: 'file' | 'folder') => void;
   onName: (v: string) => void;
@@ -287,15 +327,31 @@ interface TreeToolbarProps {
   onCancel: () => void;
 }
 
-/** [+ file][+ folder] buttons plus the inline name input while creating. */
+/** [+ file][+ folder] icon buttons plus the inline name input while creating. */
 function TreeToolbar(props: TreeToolbarProps) {
   return (
     <>
       <div class="tree-toolbar" data-no-drag>
-        <button type="button" data-testid="tree-new-file" title={s("New file")} onClick={() => props.onCreate('file')}>
-          {s("+ file")}{' '}</button>
-        <button type="button" data-testid="tree-new-folder" title={s("New folder")} onClick={() => props.onCreate('folder')}>
-          {s("+ folder")}{' '}</button>
+        <button
+          type="button"
+          class="tree-tool"
+          data-testid="tree-new-file"
+          aria-label={s('New file')}
+          title={s('New file')}
+          onClick={() => props.onCreate('file')}
+        >
+          <FilePlusIcon />
+        </button>
+        <button
+          type="button"
+          class="tree-tool"
+          data-testid="tree-new-folder"
+          aria-label={s('New folder')}
+          title={s('New folder')}
+          onClick={() => props.onCreate('folder')}
+        >
+          <FolderPlusIcon />
+        </button>
       </div>
       {props.creating !== null && (
         <div class="tree-create" data-no-drag>
@@ -312,6 +368,11 @@ function TreeToolbar(props: TreeToolbarProps) {
             onBlur={props.onCommit}
             autoFocus
           />
+          {props.createError === null ? null : (
+            <p class="tree-create-error" data-testid="tree-create-error" role="alert">
+              {props.createError}
+            </p>
+          )}
         </div>
       )}
     </>

@@ -23,15 +23,16 @@ import { applyCanvasState } from '../engine/model/merge';
 import { FORMAT_VERSION, IR_VERSION, type Doc } from '../engine/model/types';
 import { printDoc } from '../engine/format/printer';
 import { parsePDL } from '../engine/format/parser';
-import { createSyncMachine, type SyncMachine, type SyncSnapshot } from './codeview/sync';
+import { createSyncMachine, canonText, type SyncMachine, type SyncSnapshot } from './codeview/sync';
 import type { DocumentSource } from './useDocumentSource';
 import { resolveDocument } from '../workspace/documents';
 
-/** Canonical print of `text`; the text itself if it does not parse. */
-function canon(text: string): string {
-  const { doc } = parsePDL(text);
-  return doc === null ? text : printDoc(doc);
-}
+/**
+ * The machine's canonical text (parse + print, blank files normalized); the buffer
+ * itself when it does not parse. Named locally because every call site here asks
+ * what a text means, not what the printer emits.
+ */
+const canon = canonText;
 
 /** Parsed doc of `text`, or null when it does not parse. */
 function docOf(text: string): Doc | null {

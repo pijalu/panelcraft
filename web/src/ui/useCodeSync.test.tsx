@@ -123,6 +123,20 @@ describe('useCodeSync apply port', () => {
     expect(result.current.machine.snapshot().state).toBe('pending-apply');
   });
 
+  it('an empty file whose canvas projection is the magic line does not diverge', async () => {
+    // The welcome file is empty; the canvas loads it and emits the projection of an
+    // empty document (`pcd 1.0`). Those are the same document, so closing the tab
+    // must not raise the unsaved-changes prompt for a file nobody edited.
+    const manager = await makeManager();
+    const w = wiredCtrl(manager);
+    const { result, rerender } = mountSync(manager, w);
+    act(() => {
+      w.ctrl.current?.loadState(emitSnap([], []));
+    });
+    rerender({ snap: w.snap });
+    expect(result.current.machine.snapshot().divergedFromSaved).toBe(false);
+  });
+
   it('apply → canvas echo converges clean; the file keeps the full text', async () => {
     const manager = await makeManager();
     const w = wiredCtrl(manager);

@@ -158,7 +158,9 @@ test('static hosting opens origin-private browser files and hides unsupported fo
   await expect(page.getByTestId('tree-row-untitled.pcd')).toBeVisible();
   // No picker → no native action in the Files panel, and none in the menu.
   await expect(page.getByTestId('storage-open-directory')).toHaveCount(0);
-  await expect(page.getByTestId('storage-hint')).toContainText('not visible in your file manager');
+  // The explanation now lives behind the header's info icon, as its description.
+  const originPrivateInfo = await page.getByTestId('panel-info-sidebar').getAttribute('aria-describedby');
+  await expect(page.locator(`#${originPrivateInfo}`)).toContainText('not visible in your file manager');
   await page.getByTestId('app-menu').click();
   await openAppGroup(page, 'menu-group-file');
   await expect(page.getByTestId('tb-open-directory')).toHaveCount(0);
@@ -324,7 +326,9 @@ test('leaving a native folder is explicit and forgets the handle only after swit
   await page.getByTestId('storage-open-directory').click();
   await expect.poll(() => storageLabel(page)).toBe('Local folder: architecture');
   await openFiles(page);
-  await expect(page.getByTestId('storage-hint')).toContainText('stay on disk');
+  // Leaving the folder is explained behind the header's info icon.
+  const folderInfo = await page.getByTestId('panel-info-sidebar').getAttribute('aria-describedby');
+  await expect(page.locator(`#${folderInfo}`)).toContainText('stay on disk');
   await page.getByTestId('storage-use-browser').click();
   await expect.poll(() => storageLabel(page)).toBe('Browser files (origin-private)');
   // The folder's files stay on disk; nothing is copied into browser files.

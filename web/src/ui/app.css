@@ -950,13 +950,9 @@ body {
   flex-wrap: wrap;
 }
 
-/* F-10: collapsible shell chrome — panel headers, rails, splitters */
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
+/* Collapsible shell chrome — panel headers, rails, splitters.
+   The collapse chevron sits in .panel-host-header next to the title, so panel
+   bodies start with their content and need no chrome row of their own. */
 
 .panel-toggle,
 .rail-toggle {
@@ -1848,7 +1844,7 @@ marker .pc-arrow[fill='none'] {
 
 .storage-label {
   margin: 0;
-  padding: 0 var(--pc-space-2) var(--pc-space-2);
+  padding: var(--pc-space-2) var(--pc-space-2) var(--pc-space-2);
   color: var(--pc-muted);
   font-size: var(--pc-text-xs);
   overflow-wrap: anywhere;
@@ -1902,22 +1898,39 @@ marker .pc-arrow[fill='none'] {
   padding: 8px;
 }
 
+/* Icon buttons: the create actions stay reachable at every dock width without
+   taking a row each. 32 px keeps the pointer target at the accessibility floor. */
 .tree-toolbar button {
-  flex: 1;
-  font-family: inherit;
-  font-size: var(--pc-text-xs);
-  min-height: 24px;
-  padding: 3px 6px;
-  border: 1px solid var(--pc-input-border);
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: var(--pc-radius-sm);
-  background: var(--pc-button-bg);
-  color: var(--pc-button-fg);
+  background: transparent;
+  color: var(--pc-muted);
   cursor: pointer;
 }
 
 .tree-toolbar button:hover {
-  border-color: var(--pc-focus-ring);
+  border-color: var(--pc-border);
+  color: var(--pc-fg);
   background: var(--pc-button-hover-bg);
+}
+
+.tree-toolbar button:focus-visible {
+  outline: 2px solid var(--pc-focus-ring);
+  outline-offset: 1px;
+}
+
+.tree-create-error {
+  margin: 4px 0 0;
+  color: var(--pc-danger-fg);
+  font-size: var(--pc-text-xs);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .tree-create {
@@ -4031,7 +4044,9 @@ marker .pc-arrow[fill='none'] {
 }
 
 .panel-host-header .panel-title {
-  flex: 1;
+  /* The title only takes the width of its text so the collapse chevron sits
+     immediately beside it; the panel actions are pushed to the far edge. */
+  flex: 0 1 auto;
   min-height: 32px;
   margin: 0;
   padding: 4px 8px;
@@ -4045,10 +4060,79 @@ marker .pc-arrow[fill='none'] {
 }
 
 .panel-host-header .panel-title:focus-visible,
-.panel-actions summary:focus-visible,
+.panel-host-header .panel-actions summary:focus-visible,
+.panel-info-trigger:focus-visible,
 .view-menu summary:focus-visible {
   outline: 2px solid var(--pc-accent);
   outline-offset: -2px;
+}
+
+.panel-host-header .panel-toggle {
+  margin-left: 2px;
+}
+
+/* The panel actions sit at the trailing edge, away from the title and its
+   chevron, so the three controls never read as one group. */
+.panel-host-header .panel-actions {
+  margin-left: auto;
+}
+
+.panel-info {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.panel-info-trigger {
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  background: transparent;
+  color: var(--pc-muted);
+  cursor: pointer;
+}
+
+.panel-info-trigger:hover {
+  border-color: var(--pc-border);
+  color: var(--pc-fg);
+}
+
+/* Opened by hover *and* by keyboard focus: nothing here is hover-only. It opens
+   to the side away from the panel body, so the explanation never covers the rows
+   the user is asking about. */
+.panel-info-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: calc(100% + 8px);
+  z-index: 40;
+  display: none;
+  width: max-content;
+  max-width: 260px;
+  padding: var(--pc-space-2);
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-panel-bg);
+  color: var(--pc-fg);
+  font-size: var(--pc-text-xs);
+  line-height: 1.4;
+  text-align: left;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 18%);
+  pointer-events: none;
+}
+
+.panel-info[data-placement='end'] .panel-info-tooltip {
+  left: auto;
+  right: calc(100% + 8px);
+}
+
+.panel-info-trigger:hover + .panel-info-tooltip,
+.panel-info-trigger:focus + .panel-info-tooltip {
+  display: block;
 }
 
 .panel-host-content {

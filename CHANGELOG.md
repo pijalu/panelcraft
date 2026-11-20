@@ -5,6 +5,25 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Fixed — Files panel names, template start and panel chrome
+
+- File and folder names are trimmed and refused when blank, with the reason shown under the
+  create row; a name that only differs by surrounding spaces can no longer become an invisible
+  file. The rule lives in the file-system layer, so create, rename, move and import all obey it.
+- Starting from a template with no open tab now creates and opens the file the template belongs
+  in (`diagram.pcd`), instead of filling a buffer that no file owned. An empty file and the canvas
+  projection of an empty document are recognized as the same document, so closing a file nobody
+  edited no longer asks about unsaved changes.
+- A collapsed panel rail is the outermost element of its dock: before every open panel in a left
+  (or bottom) dock, after all of them in a right dock, for every open/collapsed combination.
+- The collapse chevron moved into the shared panel header beside the title, including for floating
+  panels; panel bodies start with their content. The storage explanation moved behind an
+  information icon in the Files header — keyboard reachable, a tooltip on hover and focus, and the
+  trigger's accessible description — and **+ file** / **+ folder** became icon buttons with names
+  and tooltips. The visible storage label stays in the panel.
+
+Details and evidence: [Files panel defects](docs/archive/bugs-files-panel.md).
+
 ### Changed — brand identity
 
 - The header wordmark now uses a heavier Panel/Craft treatment with a purple gradient on

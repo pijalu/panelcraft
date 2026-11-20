@@ -4,7 +4,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Banners, type BannersProps } from './Banners';
 import { ClearDataDialog } from './ClearDataDialog';
-import { StorageActions, StorageLabel } from './WorkspacePanels';
+import { InfoHint } from './PanelChrome';
+import { StorageActions, StorageLabel, storageExplanation } from './WorkspacePanels';
 
 function bannerProps(overrides: Partial<BannersProps> = {}): BannersProps {
   return {
@@ -64,8 +65,10 @@ describe('storage-aware workspace chrome', () => {
     expect(onOpenDirectory).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('storage-reconnect')).toBeNull();
     expect(screen.queryByTestId('storage-use-browser')).toBeNull();
-    // The origin-private explanation never claims OS-visible files.
-    expect(screen.getByTestId('storage-hint').textContent).toContain('not visible in your file manager');
+    // The origin-private explanation never claims OS-visible files. It lives in the
+    // panel header's info tooltip, so the Files body holds actions and files only.
+    expect(storageExplanation('opfs')).toContain('not visible in your file manager');
+    expect(screen.queryByTestId('storage-hint')).toBeNull();
 
     // A remembered folder whose permission lapsed: reconnect, still no auto prompt.
     rerender(
@@ -95,7 +98,7 @@ describe('storage-aware workspace chrome', () => {
     );
     fireEvent.click(screen.getByTestId('storage-use-browser'));
     expect(onUseBrowserStorage).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('storage-hint').textContent).toContain('stay on disk');
+    expect(storageExplanation('directory')).toContain('stay on disk');
   });
 
   it('hides native selection where the browser has no directory picker', () => {
@@ -139,5 +142,23 @@ describe('storage-aware workspace chrome', () => {
     expect(storage.textContent).not.toContain('conflict: workspace changed');
     fireEvent.click(storage.querySelector('button') as HTMLButtonElement);
     expect(onDismissStorageError).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('panel info trigger', () => {
+  afterEach(cleanup);
+
+  it('carries an accessible name, an accessible description and a visible tooltip', () => {
+    // The explanation must survive without hovering: the trigger is a button, the
+    // text is its description, and focus opens the same tooltip hover does.
+    render(<InfoHint label="Files panel information" text="Browser files stay here." testId="info-test" />);
+    const trigger = screen.getByTestId('info-test');
+    expect(trigger.tagName).toBe('BUTTON');
+    expect(trigger.getAttribute('aria-label')).toBe('Files panel information');
+    expect(trigger.getAttribute('title')).toBe('Browser files stay here.');
+    const describedBy = trigger.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy!)?.textContent).toBe('Browser files stay here.');
+    expect(screen.getByTestId('info-test-tooltip').textContent).toBe('Browser files stay here.');
   });
 });

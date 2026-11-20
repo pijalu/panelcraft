@@ -58,7 +58,6 @@ export function PaletteSlot({ ui, onPlace, onDragDrop }: PaletteSlotProps) {
       kinds={PALETTE_ORDER}
       onPlace={onPlace}
       onDragDrop={onDragDrop}
-      onCollapse={() => ui.togglePanel('palette')}
     />,
   );
 }
@@ -142,7 +141,6 @@ function PropertiesTarget(props: PropsSlotProps) {
       onResetRoute={props.onResetRoute}
       onResetBends={props.onResetBends}
       onFit={props.onFit}
-      onCollapse={() => props.ui.togglePanel('props')}
       sections={props.sections}
       onToggleSection={props.onToggleSection}
       projectIcons={props.projectIcons}

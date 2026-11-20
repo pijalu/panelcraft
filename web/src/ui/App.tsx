@@ -30,7 +30,8 @@ import { useCanvasGrid } from './useCanvasGrid';
 import { useHistory } from './useHistory';
 import { useShellUi } from './useShellUi';
 import { layoutStyle, PANELS, type DockId, type PanelId } from './uiLayout';
-import { CollapseButton, PanelRail } from './PanelChrome';
+import { PanelRail } from './PanelChrome';
+import { storageExplanation, type PanelInfo } from './WorkspacePanels';
 import { CanvasMenu } from './CanvasMenu';
 import { useDiagramCommands } from './useDiagramCommands';
 import type { CommandSelection } from './commandPolicy';
@@ -127,15 +128,12 @@ function FilesPane(props: {
   embedded: ReturnType<typeof useEmbeddedTree>;
   activeRef: DocumentRef | null;
   onOpenRef: (ref: DocumentRef) => void;
-  onCollapse: () => void;
   storage: StorageControls;
 }) {
   return (
     <aside class="sidebar" aria-label={s('Workspace files')}>
-      {/* WP02: the host header already names the panel; keep only the collapse control. */}
-      <div class="panel-head">
-        <CollapseButton id="sidebar" label={s('files')} onCollapse={props.onCollapse} />
-      </div>
+      {/* The host header names the panel and holds its controls; the body starts
+          with the storage label, then the tree. */}
       <StorageLabel kind={props.manager.storageKind} label={props.manager.storageLabel} />
       <StorageActions
         kind={props.manager.storageKind}
@@ -167,7 +165,6 @@ function FlowStepsPane(props: {
   session: FlowSession;
   doc: Doc | null;
   onPlay(flowKey: string): void;
-  onCollapse: () => void;
   onPlayFrom(flowKey: string, index: number): void;
   dirty: boolean;
   selection: FlowSelection | null;
@@ -179,10 +176,7 @@ function FlowStepsPane(props: {
 }) {
   return (
     <aside class="sidebar" aria-label={s('Flow step editor')}>
-      {/* WP02: host header owns the title; no duplicate heading here. */}
-      <div class="panel-head">
-        <CollapseButton id="flows" label={s('flow steps')} onCollapse={props.onCollapse} />
-      </div>
+      {/* The host header owns the title and the collapse chevron. */}
       <FlowPane
         textOf={(path) => path === props.source?.label
           ? props.source.text
@@ -276,7 +270,6 @@ function SidebarSlot(props: {
       embedded={props.embedded}
       activeRef={props.activeRef}
       onOpenRef={props.onOpenRef}
-      onCollapse={() => props.ui.togglePanel('sidebar')}
       storage={props.storage}
     />,
   );
@@ -311,7 +304,6 @@ function FlowSlot(props: {
       session={props.session}
       doc={props.doc}
       onPlay={props.onPlay}
-      onCollapse={() => props.ui.togglePanel('flows')}
       onPlayFrom={props.onPlayFrom}
       dirty={props.dirty}
       selection={props.selection}
@@ -349,7 +341,6 @@ function CodeSlot(props: {
         snapshot={props.code.snapshot}
         loaded={props.code.loaded}
         onFormat={props.code.formatNow}
-        onCollapse={() => props.ui.togglePanel('code')}
         collapsed={collapsed}
         revealRef={props.revealRef}
         onCaretObject={props.onCaretObject}
@@ -566,36 +557,47 @@ function propsSlot(p: {
   );
 }
 
-/** Render one dock with all its collapsed tabs in a single shared column. */
+/** Render one dock: the open panels in order plus one rail group holding every
+ * collapsed panel of that dock. The rail is the dock's outermost element — before
+ * every open panel in a left dock (and in the bottom dock, which reads
+ * left-to-right from the same edge), after all of them in a right dock — so a
+ * collapsed panel never lands between two open ones. */
 function dockedPanels(
   dock: DockId,
   ui: ReturnType<typeof useUiLayout>,
   content: Record<PanelId, ComponentChildren>,
+  info: Partial<Record<PanelId, PanelInfo>>,
 ): ComponentChildren {
   const panels = PANELS.filter((panel) => ui.layout.docks[panel] === dock)
     .sort((a, b) => ui.layout.order[a] - ui.layout.order[b]);
   const collapsed = panels.filter((panel) => ui.layout.panels[panel] === 'collapsed' && dock !== 'float');
+  const open = panels.filter((panel) => !collapsed.includes(panel));
   const renderPanel = (panel: PanelId) => (
-    <HostedPanel key={panel} id={panel} ui={ui}>
+    <HostedPanel key={panel} id={panel} ui={ui} {...(info[panel] === undefined ? {} : { info: info[panel] })}>
       {content[panel]}
     </HostedPanel>
   );
-  let groupRendered = false;
-  return panels.map((panel) => {
-    if (!collapsed.includes(panel)) return renderPanel(panel);
-    if (groupRendered) return null;
-    groupRendered = true;
-    return (
-      <div
-        key={`collapsed-rail-${dock}`}
-        class="panel-rail-group"
-        data-testid={`collapsed-rail-${dock}`}
-        data-dock={dock}
-      >
-        {collapsed.map(renderPanel)}
-      </div>
-    );
-  });
+  const rail = collapsed.length === 0 ? null : (
+    <div
+      key={`collapsed-rail-${dock}`}
+      class="panel-rail-group"
+      data-testid={`collapsed-rail-${dock}`}
+      data-dock={dock}
+    >
+      {collapsed.map(renderPanel)}
+    </div>
+  );
+  const hosts = open.map(renderPanel);
+  return dock === 'right' ? [...hosts, rail] : [rail, ...hosts];
+}
+
+/** First free `diagram.pcd`, `diagram-2.pcd`, … in the workspace root. */
+function freeDiagramPath(manager: WorkspaceManager): string {
+  if (!manager.hasFile('diagram.pcd')) return 'diagram.pcd';
+  for (let n = 2; ; n += 1) {
+    const path = `diagram-${n}.pcd`;
+    if (!manager.hasFile(path)) return path;
+  }
 }
 
 /** Embedded-source dialog of the open element (IR v10, FILE-FORMAT.md §3.3). */
@@ -775,7 +777,12 @@ function AppBody(p: {
   }, [flowChoice]);
   const gallery = useGalleryPrompt();
   const content = bodyPanels({ ...p, flowEdit }, ctrl);
-  const docked = (dock: DockId) => dockedPanels(dock, ui, content);
+  // One explanation per panel header: the storage wording lives beside the Files
+  // title instead of occupying the top of the panel as a standing paragraph.
+  const panelInfo: Partial<Record<PanelId, PanelInfo>> = {
+    sidebar: { text: storageExplanation(ws.manager.storageKind) },
+  };
+  const docked = (dock: DockId) => dockedPanels(dock, ui, content, panelInfo);
   return (
     <div class="app-body" data-drawer={drawer === null ? undefined : 'open'}>
       {drawer !== null && (
@@ -848,6 +855,24 @@ function CenterColumn(props: {
 }) {
   const { canvas, player } = props;
   const parent = props.drill.parent;
+  /**
+   * A starting point needs a file to live in. With a tab open the buffer is the
+   * target; with none, the click used to fill a buffer that no file owned, so the
+   * text was dropped and the stale buffer then reported a divergence against the
+   * file that had just been closed. Creating the file first gives the gallery a
+   * real target — it opens, the canvas loads its diagram, and the answer is
+   * recorded for the new path so the gallery does not ask again.
+   */
+  const startFrom = (text: string): void => {
+    props.gallery.answer(props.activePath);
+    if (props.activePath !== null) {
+      props.code.machine.textChanged(text);
+      return;
+    }
+    const path = freeDiagramPath(props.manager);
+    props.manager.createFileAt(path, text);
+    props.gallery.answer(path);
+  };
   return (
     <main class="canvas-col" data-parent={parent === undefined ? undefined : parent.label}>
       <TemplateOverlay
@@ -856,14 +881,8 @@ function CenterColumn(props: {
           props.canvas.snap?.objects.length ?? 0,
           props.code.snapshot.codeText,
         )}
-        onInsert={(t) => {
-          props.gallery.answer(props.activePath);
-          props.code.machine.textChanged(t.text);
-        }}
-        onBlank={() => {
-          props.gallery.answer(props.activePath);
-          props.code.machine.textChanged(BLANK_TEXT);
-        }}
+        onInsert={(t) => startFrom(t.text)}
+        onBlank={() => startFrom(BLANK_TEXT)}
       />
       <CanvasTopRow
         manager={props.manager}

@@ -55,6 +55,12 @@ function validateName(name: string, ctx: string): void {
   if (name.length === 0 || name.length > MAX_NAME) {
     throw new FsError('invalid-name', ctx, `invalid name length: ${JSON.stringify(name)}`);
   }
+  // A blank name renders as an empty row and an empty tab, and a name that only
+  // differs by surrounding spaces is a different file nobody can see: trim is a
+  // contract, not a convenience, so it applies to create, rename and import.
+  if (name.trim() !== name) {
+    throw new FsError('invalid-name', ctx, `blank or untrimmed name rejected: ${JSON.stringify(name)}`);
+  }
   if (name === '.' || name === '..') {
     throw new FsError('invalid-name', ctx, `relative segment rejected: ${name}`);
   }
