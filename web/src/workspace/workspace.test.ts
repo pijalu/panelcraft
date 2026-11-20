@@ -5,7 +5,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { WorkspaceManager, pcdToState, stateToPcd, type CanvasState } from './workspace';
 import { MemoryStorage } from './store/memory';
 import { IdbStorage } from './store/idb';
-import { newStoredWorkspace, type StoragePort } from './store/port';
+import { newStoredWorkspace, StoreError, type StoragePort } from './store/port';
 import { getNode, readFile, deleteNode } from './fs';
 import { parsePDL } from '../engine/format/parser';
 
@@ -513,5 +513,72 @@ describe('subscribe/emit', () => {
     ws.createFileAt('a.pcd', '');
     expect(spy).toHaveBeenCalled();
     expect(() => ws.createFileAt('a.pcd', '')).toThrow(/exists/); // no emit on failure
+  });
+});
+
+describe('pluggable storage lifecycle', () => {
+  it('restores the selected persistent backend after private mode', async () => {
+    const memory = new MemoryStorage();
+    const port: StoragePort = {
+      kind: 'server',
+      label: 'Server filesystem',
+      load: () => memory.load(),
+      save: (workspace) => memory.save(workspace),
+      clear: () => memory.clear(),
+      estimate: () => memory.estimate(),
+    };
+    const ws = new WorkspaceManager({ storage: port, skipWelcome: true });
+    await ws.init();
+    await ws.setEphemeral(true);
+    expect(ws.storageKind).toBe('memory');
+    await ws.setEphemeral(false);
+    expect(ws.storageKind).toBe('server');
+    expect(ws.storageLabel).toBe('Server filesystem');
+  });
+
+  it('switches workspaces without deleting the previous backend', async () => {
+    const previous = new MemoryStorage();
+    const ws = new WorkspaceManager({ storage: previous, skipWelcome: true });
+    ws.createFileAt('old.pcd', 'old');
+    await ws.flush();
+    const next = new MemoryStorage();
+    const seed = new WorkspaceManager({ storage: next, skipWelcome: true });
+    seed.createFileAt('new.pcd', 'new');
+    await seed.flush();
+
+    await ws.switchStorage(next);
+    expect(ws.files().map((file) => file.path)).toEqual(['new.pcd']);
+    expect((await previous.load())?.tree.children?.[0]?.name).toBe('old.pcd');
+  });
+
+  it('keeps the current workspace when a new backend cannot load', async () => {
+    const ws = new WorkspaceManager({ storage: new MemoryStorage(), skipWelcome: true });
+    ws.createFileAt('safe.pcd', 'safe');
+    const broken: StoragePort = {
+      kind: 'server',
+      load: async () => { throw new StoreError('unavailable', 'offline'); },
+      save: async () => undefined,
+      clear: async () => undefined,
+      estimate: async () => null,
+    };
+    await expect(ws.switchStorage(broken)).rejects.toMatchObject({ code: 'unavailable' });
+    expect(ws.files().map((file) => file.path)).toEqual(['safe.pcd']);
+    expect(ws.storageKind).not.toBe('server');
+  });
+
+  it('surfaces save failures and does not advance the saved timestamp', async () => {
+    const failing: StoragePort = {
+      kind: 'server',
+      load: async () => null,
+      save: async () => { throw new StoreError('unavailable', 'server offline'); },
+      clear: async () => undefined,
+      estimate: async () => null,
+    };
+    const ws = new WorkspaceManager({ storage: failing, skipWelcome: true });
+    ws.createFileAt('a.pcd', 'a');
+    await expect(ws.flush()).rejects.toMatchObject({ code: 'unavailable' });
+    expect(ws.openError).toBeNull();
+    expect(ws.storageError).toContain('server offline');
+    expect(ws.lastSavedAt).toBe(0);
   });
 });

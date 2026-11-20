@@ -14,9 +14,9 @@ law references relevant to the interaction under review.
 Client-only web app for IcePanel-style architecture diagrams (IcePanel = inspiration
 only, no links/affiliation in docs): WYSIWYG SVG canvas + always-visible code view,
 native `.pcd` format (own grammar, mermaid-inspired), mermaid import/export converters,
-flows/animation, multi-file workspace in browser storage only (nothing server-side),
-ZIP import/export, GitHub Pages hostable, single Go binary (serve + validate/convert/
-render CLI). License **GPL-3.0-only**.
+flows/animation, multi-file workspace with IndexedDB by default plus optional confined
+local-server and user-selected browser-directory storage, ZIP import/export, GitHub
+Pages hostable, single Go binary (serve + validate/convert/render CLI). License **GPL-3.0-only**.
 
 ## Ground rules (non-negotiable)
 
@@ -30,9 +30,10 @@ render CLI). License **GPL-3.0-only**.
    thresholds enforce); corpus parity TS⇄Go is a CI gate.
 4. **No unverified claims**: every "done" statement cites the command that proves it
    (test run, e2e pass, screenshot review). Mark unverified work as such.
-5. **Storage stays browser-local.** Any change that adds a network call (beyond static
-   asset load) violates SPEC FR-S1/N7 — reject in review. E2E no-network test is the
-   enforcement.
+5. **Static and direct-directory workspaces make no runtime network calls.** Default
+   browser storage stays local. Only the explicit `serve -local DIR` mode may use its
+   same-origin workspace API, restricted to loopback; never add third-party origins.
+   Static no-API and network-blocked E2E tests are the enforcement.
 6. **Docs stay human-readable.** agents.md and docs/ are written for people first;
    agent-optimized pointers secondary. No IcePanel URLs in docs (name-as-inspiration
    only). Write the meaning, never just a code — see "Identifiers in this repo" below.
@@ -170,10 +171,11 @@ panelcraft serve --addr :8080 --open
 | `web/src/engine/format` | PDL parser/printer, mermaid converters (TS) |
 | `web/src/engine/model` | IR types + operations, validation |
 | `web/src/engine/{render,layout,flows,anim}` | SVG engine, dagre port, step machine |
-| `web/src/workspace` | virtual FS, ZIP, IDB store, undo |
+| `web/src/workspace` | virtual FS, ZIP, IndexedDB/HTTP/directory stores, undo |
 | `web/src/ui` | Preact components, panels, dialogs |
 | `cmd/panelcraft` | Go CLI entry (serve/validate/convert/render) |
-| `internal/{ir,pdl,server,render}` | Go IR codec, PDL parser, embedded server, chromedp render |
+| `internal/{ir,pdl,server,render}` | Go IR codec, PDL parser, embedded server + optional workspace API, chromedp render |
+| `internal/storage` | confined local workspace stores and optimistic revisions |
 | `testdata/corpus` | golden .pcd + .ir.json (shared TS/Go) |
 | `e2e` | Playwright specs + curated goldens (`e2e/goldens/`) |
 | `e2e-hosted` | Hosted smoke specs: items 7–16 against the deployed site, fresh + upgrading client |

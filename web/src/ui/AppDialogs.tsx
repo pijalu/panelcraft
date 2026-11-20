@@ -58,7 +58,13 @@ export function AppDialogs(props: {
           onClose={props.onHistoryClose}
         />
       )}
-      {props.clearOpen && <ClearDataDialog onConfirm={props.clearData} onCancel={props.onClearCancel} />}
+      {props.clearOpen && (
+        <ClearDataDialog
+          storageKind={props.manager.storageKind}
+          onConfirm={props.clearData}
+          onCancel={props.onClearCancel}
+        />
+      )}
       {props.iconsOpen && props.iconDoc !== null && (
         <IconManagerDialog
           doc={props.iconDoc}

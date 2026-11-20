@@ -135,6 +135,15 @@ describe('application menu model', () => {
     ].sort());
   });
 
+  it('gates direct folder access on browser capability', () => {
+    expect(findOptional(buildAppMenu(context()), 'tb-open-directory')).toBeUndefined();
+
+    const openDirectory = vi.fn();
+    const entries = buildAppMenu(context({ actions: { ...actions(), openDirectory } }));
+    select(entries, 'tb-open-directory');
+    expect(openDirectory).toHaveBeenCalledTimes(1);
+  });
+
   it('disables export and present without an active file', () => {
     const entries = buildAppMenu(context({ activePath: null }));
     expect(find(entries, 'tb-export-pcd')).toHaveProperty('disabled', true);

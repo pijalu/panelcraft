@@ -14,9 +14,8 @@ import { Autosaver } from './store/autosave';
 import { MemoryStorage } from './store/memory';
 import {
   SCHEMA_VERSION, StoreError, newStoredWorkspace,
-  type StoragePort, type StoredWorkspace, type WorkspaceSettings,
+  type StorageKind, type StoragePort, type StoredWorkspace, type WorkspaceSettings,
 } from './store/port';
-import { createDefaultStorage } from './store/idb';
 import { packZip, unpackZip } from './zip/zip';
 import { entriesToTree, treeToEntries, snapshotTree } from './zip/workspaceZip';
 import { exportPcd, exportMmd, importText } from './io';
@@ -326,20 +325,33 @@ export class WorkspaceManager {
   quotaDegraded = false;
   /** Set when the stored record could not be opened (corrupt/newer). */
   openError: string | null = null;
+  /** Set when the current backend could not persist a workspace revision. */
+  storageError: string | null = null;
   /** Persisted UI preferences (F-10/F-11); travels with the record, not the doc. */
   settings: WorkspaceSettings = {};
 
   private storage: StoragePort;
+  private persistentStorage: StoragePort;
   private readonly autosaver: Autosaver;
   private readonly listeners = new Set<() => void>();
   private readonly skipWelcome: boolean;
 
   constructor(deps: WorkspaceDeps = {}) {
     this.storage = deps.storage ?? new MemoryStorage();
+    this.persistentStorage = this.storage;
     this.skipWelcome = deps.skipWelcome ?? false;
     this.autosaver = new Autosaver({
       save: (ws) => this.storage.save(ws),
-      onQuota: () => void this.degradeToEphemeral('storage quota exceeded'),
+      onQuota: () => void this.degradeToEphemeral(),
+      onError: (error) => {
+        this.storageError = `${error.code}: ${error.message}`;
+        this.emit();
+      },
+      onSaved: (workspace) => {
+        this.storageError = null;
+        this.lastSavedAt = workspace.savedAt;
+        this.emit();
+      },
     });
   }
 
@@ -348,9 +360,18 @@ export class WorkspaceManager {
     return () => this.listeners.delete(listener);
   }
 
-  /** Swap the backing store before init() (app wiring: IDB in the browser). */
+  /** Swap the backing store before init(). */
   attachStorage(port: StoragePort): void {
     this.storage = port;
+    this.persistentStorage = port;
+  }
+
+  get storageKind(): StorageKind {
+    return this.storage.kind ?? 'browser';
+  }
+
+  get storageLabel(): string {
+    return this.storage.label ?? 'Browser storage';
   }
 
   private emit(): void {
@@ -366,10 +387,7 @@ export class WorkspaceManager {
     try {
       const rec = await this.storage.load();
       if (rec) {
-        this.root = rec.tree;
-        this.name = rec.name;
-        this.settings = rec.settings ?? {};
-        this.tabs = this.restoreTabs(rec);
+        this.adoptRecord(rec);
         this.emit();
         return;
       }
@@ -378,6 +396,14 @@ export class WorkspaceManager {
     }
     if (!this.skipWelcome) this.bootstrapWelcome();
     this.emit();
+  }
+
+  private adoptRecord(rec: StoredWorkspace): void {
+    this.root = rec.tree;
+    this.name = rec.name;
+    this.settings = rec.settings ?? {};
+    this.tabs = this.restoreTabs(rec);
+    this.lastSavedAt = rec.savedAt;
   }
 
   private restoreTabs(rec: StoredWorkspace): TabsState {
@@ -404,7 +430,6 @@ export class WorkspaceManager {
   record(): StoredWorkspace {
     const rec = newStoredWorkspace(this.name);
     rec.savedAt = Date.now();
-    this.lastSavedAt = rec.savedAt;
     rec.tree = this.root;
     rec.openTabs = this.tabs.tabs.map((t) => t.path);
     rec.activePath = this.activePath;
@@ -462,7 +487,7 @@ export class WorkspaceManager {
    */
   private saveContent(): void {
     this.scheduleSave();
-    void this.autosaver.flush();
+    void this.autosaver.flush().catch(() => {}); // onError surfaces the failure.
   }
 
   openFile(path: string): void {
@@ -672,6 +697,7 @@ export class WorkspaceManager {
     this.name = rec.name;
     this.tabs = this.restoreTabs({ ...rec, openTabs: rec.openTabs.filter((p) => getNode(this.root, p)?.kind === 'file') });
     this.openError = null;
+    this.storageError = null;
     this.emit();
     this.scheduleSave();
   }
@@ -680,12 +706,15 @@ export class WorkspaceManager {
 
   /** FR-S4: wipe stored data + reset the session. */
   async clearAll(): Promise<void> {
+    this.autosaver.cancel();
     await this.storage.clear();
     this.root = newRoot();
     this.tabs = initialTabs;
     this.name = 'workspace';
     this.openError = null;
+    this.storageError = null;
     this.settings = {};
+    this.lastSavedAt = 0;
     if (!this.ephemeral && !this.skipWelcome) this.bootstrapWelcome();
     this.emit();
   }
@@ -701,16 +730,35 @@ export class WorkspaceManager {
       this.storage = memory;
     } else {
       await this.autosaver.flush(); // commit to the real store before leaving
-      this.storage = await createDefaultStorage();
+      this.storage = this.persistentStorage;
     }
     this.emit();
   }
 
+  /** Load another backend without destroying the current workspace on failure. */
+  async switchStorage(port: StoragePort): Promise<void> {
+    if (this.ephemeral) throw new StoreError('unavailable', 'leave private mode before switching storage');
+    await this.flush();
+    const rec = await port.load();
+    this.autosaver.cancel();
+    this.attachStorage(port);
+    this.root = newRoot();
+    this.tabs = initialTabs;
+    this.name = 'workspace';
+    this.settings = {};
+    this.openError = null;
+    this.storageError = null;
+    this.quotaDegraded = false;
+    this.lastSavedAt = 0;
+    if (rec) this.adoptRecord(rec);
+    else if (!this.skipWelcome) this.bootstrapWelcome();
+    this.emit();
+  }
+
   /** FR-S3: quota failure ⇒ ephemeral for this session + degraded flag. */
-  async degradeToEphemeral(reason: string): Promise<void> {
+  async degradeToEphemeral(): Promise<void> {
     if (this.ephemeral) return;
     this.quotaDegraded = true;
-    this.openError = reason;
     await this.setEphemeral(true);
     this.emit();
   }

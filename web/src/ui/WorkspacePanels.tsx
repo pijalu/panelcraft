@@ -8,6 +8,7 @@ import type { UiLayoutHandle } from './useUiLayout';
 import { Splitter } from './PanelChrome';
 import { Menu } from './Menu';
 import { s } from './strings';
+import type { StorageKind } from '../workspace/store/port';
 
 export function panelLabel(panel: PanelId): string {
   if (panel === 'sidebar') return s('Files');
@@ -55,6 +56,15 @@ interface PanelHostProps {
   onMove: (panel: PanelId, dock: DockId) => void;
   onClose: (panel: PanelId) => void;
   onBounds: (panel: PanelId, bounds: FloatingBounds) => void;
+}
+
+/** Identify non-default persistence without crowding the application header. */
+export function StorageLabel(props: { kind: StorageKind; label: string }) {
+  if (props.kind === 'browser') return null;
+  const text = props.kind === 'directory'
+    ? s('Local folder: {name}', { name: props.label })
+    : `${s('Server storage:')} ${props.label}`;
+  return <p class="storage-label" data-testid="workspace-storage">{text}</p>;
 }
 
 /** Shared title, drag source, floating geometry and keyboard dock alternative. */

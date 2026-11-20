@@ -3,7 +3,7 @@
 // Component tests (M2-WP7/WP9 acceptance): palette click-to-place + drag-drop,
 // properties panel edits bound to controller ops (undoable), link editing.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, fireEvent, cleanup, screen } from '@testing-library/preact';
+import { render, fireEvent, cleanup, screen, waitFor } from '@testing-library/preact';
 import { act } from 'preact/test-utils';
 import { EditorView } from '@codemirror/view';
 import { App } from './App';
@@ -286,9 +286,8 @@ describe('workspace chrome (M3)', () => {
     fireEvent.input(screen.getByTestId('clear-confirm-input'), { target: { value: 'DELETE' } });
     expect((screen.getByTestId('clear-confirm-btn') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByTestId('clear-confirm-btn'));
-    await act(async () => {});
-    // workspace reset → welcome file re-bootstrapped, canvas emptied, dialog gone
-    expect(screen.queryByTestId('clear-dialog')).toBeNull();
+    // Clearing a real backend is asynchronous; success alone closes the dialog.
+    await waitFor(() => expect(screen.queryByTestId('clear-dialog')).toBeNull());
     const sidebarRail = screen.queryByTestId('expand-sidebar');
     if (sidebarRail) fireEvent.click(sidebarRail);
     expect(screen.getByTestId('tree-row-untitled.pcd')).not.toBeNull();

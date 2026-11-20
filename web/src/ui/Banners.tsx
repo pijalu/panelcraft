@@ -8,6 +8,8 @@ import { s } from './strings';
 // component so this list stays a plain composition.
 export interface BannersProps {
   openError: string | null;
+  storageError: string | null;
+  onDismissStorageError: () => void;
   quotaDegraded: boolean;
   ephemeral: boolean;
   reminder: boolean;
@@ -22,6 +24,19 @@ function ErrorBanner(props: { message: string; onDismiss: () => void }) {
     <div class="banner banner-error" data-testid="banner-open-error" role="alert">
       <span>{s("Could not open saved workspace:")}{' '}{props.message}</span>
       <button type="button" onClick={props.onDismiss}>{s("dismiss")}</button>
+    </div>
+  );
+}
+
+function StorageErrorBanner(props: { message: string; onDismiss: () => void }) {
+  const conflict = props.message.startsWith('conflict:');
+  const message = conflict
+    ? s('This workspace changed outside PanelCraft. Download a copy of your edits, then reload to get the latest version.')
+    : s('PanelCraft could not save this workspace. Keep this tab open and try again or download a copy of your work.');
+  return (
+    <div class="banner banner-error" data-testid="banner-storage-error" role="alert">
+      <span>{message}</span>
+      <button type="button" onClick={props.onDismiss}>{s('dismiss')}</button>
     </div>
   );
 }
@@ -44,6 +59,9 @@ export function Banners(props: BannersProps) {
   const nodes = [
     props.update === null || props.update === undefined ? null : <UpdateBanner {...props.update} />,
     openError === null ? null : <ErrorBanner message={openError} onDismiss={props.onDismissError} />,
+    props.storageError === null ? null : (
+      <StorageErrorBanner message={props.storageError} onDismiss={props.onDismissStorageError} />
+    ),
     quotaDegraded ? (
       <div class="banner banner-warn" data-testid="banner-quota" role="alert">
         <span>{s("Storage quota exceeded — this session is in-memory only (FR-S3).")}</span>

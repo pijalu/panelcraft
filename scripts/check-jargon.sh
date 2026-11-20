@@ -8,8 +8,8 @@
 # it means in plain words: "the offline-only rule (no runtime network calls)",
 # not "N7" on its own. A pointer is fine once the sentence stands without it.
 #
-# agents.md is exempt (it defines the tags) and so is docs/archive (closed
-# write-ups quote them when describing the problem).
+# agents.md and docs/SPEC.md are exempt (they define the tags) and so is
+# docs/archive (closed write-ups quote them when describing the problem).
 #
 # Usage: bash scripts/check-jargon.sh [base-ref]
 #   base-ref defaults to origin/main (CI) or HEAD (nothing to check locally).
@@ -25,7 +25,7 @@ pattern='(SPEC §[0-9]|FR-[A-Z]+[0-9]+|N[0-9]{1,2}([^0-9]|$)|F-[0-9]{2}([^0-9]|$
 
 # Committed/uncommitted changes, then whole new files (a fresh file has no diff).
 committed="$(
-  git diff -U0 "$base" -- '*.ts' '*.tsx' '*.go' '*.css' '*.md' ':!agents.md' ':!docs/archive/**' \
+  git diff -U0 "$base" -- '*.ts' '*.tsx' '*.go' '*.css' '*.md' ':!agents.md' ':!docs/SPEC.md' ':!docs/archive/**' \
     | grep -E '^\+' \
     | grep -vE '^\+\+\+' \
     | grep -E "$pattern" || true
@@ -33,7 +33,7 @@ committed="$(
 
 fresh="$(
   git ls-files --others --exclude-standard -- '*.ts' '*.tsx' '*.go' '*.css' '*.md' \
-    | grep -vE '^(agents\.md|docs/archive/)' \
+    | grep -vE '^(agents\.md|docs/SPEC\.md|docs/archive/)' \
     | xargs -r grep -HE "$pattern" 2>/dev/null || true
 )"
 

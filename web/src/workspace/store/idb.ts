@@ -9,6 +9,8 @@ import { openPanelCraftDb, WORKSPACE_STORE } from './db';
 const KEY = 'current';
 
 export class IdbStorage implements StoragePort {
+  readonly kind = 'browser' as const;
+  readonly label = 'Browser storage';
   private constructor(private readonly db: Promise<IDBDatabase>) {}
 
   /** Open (creating the store when needed). Rejects StoreError('unavailable'). */

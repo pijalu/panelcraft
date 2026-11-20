@@ -47,4 +47,6 @@ Fix plan and test approach:
 
 # To fix
 
+No open items.
+
 Closed items live in [docs/archive/](docs/archive/).

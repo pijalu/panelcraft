@@ -41,7 +41,9 @@ export interface StoredWorkspace {
   activePath: string | null;
 }
 
-export type StoreErrorCode = 'quota' | 'corrupt' | 'newer-schema' | 'unavailable';
+export type StoreErrorCode = 'quota' | 'corrupt' | 'newer-schema' | 'conflict' | 'unavailable';
+
+export type StorageKind = 'browser' | 'server' | 'directory' | 'memory';
 
 export class StoreError extends Error {
   constructor(
@@ -53,8 +55,11 @@ export class StoreError extends Error {
   }
 }
 
-/** Storage port — browser-local only, nothing server-side (ADR-0003, FR-S1). */
+/** Storage port implemented by browser, HTTP, memory, and directory adapters. */
 export interface StoragePort {
+  /** UI capability metadata; it does not change the persistence contract. */
+  readonly kind?: StorageKind;
+  readonly label?: string;
   /** Last stored workspace, or null when none. Throws StoreError. */
   load(): Promise<StoredWorkspace | null>;
   /** Persist; throws StoreError('quota') on QuotaExceededError. */

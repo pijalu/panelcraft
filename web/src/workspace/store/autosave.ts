@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // M3-WP2: debounced autosave controller (FR-S1 — 800 ms trailing edge).
-import { mapStoreError, type StoredWorkspace } from './port';
+import { mapStoreError, type StoreError, type StoredWorkspace } from './port';
 
 export interface AutosaveOpts {
   save: (ws: StoredWorkspace) => Promise<void>;
   /** Debounce window; SPEC FR-S1 = 800 ms. */
   delay?: number;
-  /** Quota failures surface here (FR-S3: degrade to ephemeral + banner). */
+  /** Quota failures surface here (degrade to ephemeral + banner). */
   onQuota?: (err: Error) => void;
+  /** Other failures remain pending and surface without claiming a save. */
+  onError?: (err: StoreError) => void;
+  /** Successful persistence timestamp, never the attempted-save timestamp. */
+  onSaved?: (workspace: StoredWorkspace) => void;
 }
 
 export class Autosaver {
@@ -17,11 +21,15 @@ export class Autosaver {
   private readonly delay: number;
   private readonly save: (ws: StoredWorkspace) => Promise<void>;
   private readonly onQuota?: (err: Error) => void;
+  private readonly onError?: (err: StoreError) => void;
+  private readonly onSaved?: (workspace: StoredWorkspace) => void;
 
   constructor(opts: AutosaveOpts) {
     this.delay = opts.delay ?? 800;
     this.save = opts.save;
     this.onQuota = opts.onQuota;
+    this.onError = opts.onError;
+    this.onSaved = opts.onSaved;
   }
 
   /** Record the latest state and (re)start the debounce window. */
@@ -56,6 +64,7 @@ export class Autosaver {
       this.pending = null;
       try {
         await this.save(ws);
+        this.onSaved?.(ws);
       } catch (err) {
         const mapped = mapStoreError(err);
         // A newer record queued during the failed write remains authoritative.
@@ -64,6 +73,7 @@ export class Autosaver {
           this.onQuota?.(mapped);
           return;
         }
+        this.onError?.(mapped);
         throw mapped;
       }
     }

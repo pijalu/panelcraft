@@ -10,7 +10,7 @@ import { stateToPcd, WorkspaceManager } from '../workspace/workspace';
 import { parsePDL } from '../engine/format/parser';
 import { printDoc } from '../engine/format/printer';
 import { writePositions } from '../engine/layout/apply';
-import { createDefaultStorage } from '../workspace/store/idb';
+import { createAppStorage } from '../workspace/store/selection';
 import type { DocumentSource } from './useDocumentSource';
 
 /** Structurally-equal empty DiagramState (controller + manager share shape). */
@@ -40,7 +40,7 @@ export function useWorkspace(): WorkspaceHandle {
   useEffect(() => {
     let disposed = false;
     void (async () => {
-      manager.attachStorage(await createDefaultStorage()); // IDB; falls back to memory
+      manager.attachStorage(await createAppStorage()); // Server marker, IDB, or memory fallback
       await manager.init();
       if (!disposed) setReady(true);
     })();

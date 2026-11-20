@@ -290,8 +290,8 @@ container api "Checkout API" {
   before the text lines. Absent means "unlabelled"; the viewer then shows plain text.
 * **Safety** — source is *text kept in the document*. It is never executed, never
   parsed as markup, never fetched and never rendered as HTML: the viewer prints it in
-  a text node, so `<script>` is shown, not run. Storage stays browser-local — no
-  URL, no server, no include.
+  a text node, so `<script>` is shown, not run. Embedded source stays as text in the
+  active workspace — no URL, fetch, or include.
 * **Limits** (`P217`): 64 KiB of source per object, 4096 lines per object, 256 KiB
   per document. Over the limit is an error and the file keeps the text it authored —
   nothing is truncated and nothing is dropped silently.

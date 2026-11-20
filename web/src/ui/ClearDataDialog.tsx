@@ -3,13 +3,22 @@
 // browser-native confirm() — keeps flows scriptable and styleable).
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { s } from './strings';
+import type { StorageKind } from '../workspace/store/port';
 
 export interface ClearDataDialogProps {
+  storageKind?: StorageKind;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export function ClearDataDialog({ onConfirm, onCancel }: ClearDataDialogProps) {
+function clearCopy(kind: StorageKind): string {
+  if (kind === 'server') return s('This deletes every workspace file on the server and its saved workspace state. Type');
+  if (kind === 'directory') return s('This deletes every workspace file in the selected local folder and its saved workspace state. Type');
+  if (kind === 'memory') return s('This deletes every file in this in-memory workspace. Type');
+  return s('This deletes every file in the workspace and the autosaved copy in browser storage. Type');
+}
+
+export function ClearDataDialog({ storageKind = 'browser', onConfirm, onCancel }: ClearDataDialogProps) {
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
   // Modal contract: the destructive confirmation starts on the field it needs and
@@ -31,7 +40,7 @@ export function ClearDataDialog({ onConfirm, onCancel }: ClearDataDialogProps) {
       <div class="dialog">
         <h2 class="dialog-title">{s("Clear all workspace data?")}</h2>
         <p class="dialog-text">
-          {s("This deletes every file in the workspace and the autosaved copy in browser storage. Type")}{' '}<code>{s("DELETE")}</code> {s("to confirm (FR-S4).")}{' '}</p>
+          {clearCopy(storageKind)}{' '}<code>{s("DELETE")}</code> {s("to confirm.")}{' '}</p>
         <input
           ref={inputRef}
           data-testid="clear-confirm-input"

@@ -1846,6 +1846,14 @@ marker .pc-arrow[fill='none'] {
   flex-direction: column;
 }
 
+.storage-label {
+  margin: 0;
+  padding: 0 var(--pc-space-2) var(--pc-space-2);
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+  overflow-wrap: anywhere;
+}
+
 .tree-toolbar {
   display: flex;
   gap: 4px;

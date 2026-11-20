@@ -34,6 +34,7 @@ export interface AppMenuProps {
   onPresent: () => void;
   onSnapshotsRequest: () => void;
   onClearRequest: () => void;
+  onOpenDirectory?: () => void;
   onToggleEphemeral: (on: boolean) => void;
   /** UX08-WP04: install affordance (absent in a standalone window). */
   install?: AppMenuInstall;
@@ -104,6 +105,7 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
       resetDiagramLayout: props.onResetDiagramLayout,
       resetRoutes: props.onResetRoutes,
       importFiles: () => filesRef.current?.click(),
+      openDirectory: props.onOpenDirectory,
       importZip: () => zipRef.current?.click(),
       exportCurrent,
       exportWorkspaceZip: exportZip,

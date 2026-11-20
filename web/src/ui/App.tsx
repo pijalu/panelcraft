@@ -45,7 +45,7 @@ import { useActiveDocument, useEmbeddedTree } from './useDocumentSource';
 import type { DocumentRef } from '../workspace/documents';
 import type { DocumentSource } from './useDocumentSource';
 import { ShellBanners } from './ShellBanners';
-import { DropZone, HostedPanel } from './WorkspacePanels';
+import { DropZone, HostedPanel, StorageLabel } from './WorkspacePanels';
 import { useCanvasRevealPort } from './useCanvasReveal';
 import type { IllustrationId } from '../engine/anim/illustrations';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
@@ -59,6 +59,7 @@ import type { FlowPlayerApi } from './flows/useFlowPlayer';
 import { flowNotesVisible, stepExplanationVisible } from './flows/flowController';
 import type { CodeSyncHandle } from './useCodeSync';
 import type { WorkspaceManager } from '../workspace/workspace';
+import { pickDirectoryStorage, supportsDirectoryPicker } from '../workspace/store/directory';
 
 /** Single-selection for the properties panel (obj xor link). */
 function selections(snap: Snapshot | null): { obj: ReturnType<typeof findObj>; link: ReturnType<typeof findLink> } {
@@ -134,6 +135,7 @@ function FilesPane(props: {
       <div class="panel-head">
         <CollapseButton id="sidebar" label={s('files')} onCollapse={props.onCollapse} />
       </div>
+      <StorageLabel kind={props.manager.storageKind} label={props.manager.storageLabel} />
       <FileTree
         manager={props.manager}
         version={props.version}
@@ -381,14 +383,19 @@ function renameBox(
 }
 
 /** Wipe the workspace: forget the canvas state, clear storage, close the dialog. */
-function clearWorkspace(
+async function clearWorkspace(
   manager: WorkspaceManager,
   canvas: ReturnType<typeof useCanvasController>,
   done: () => void,
-): void {
+  onError: (message: string) => void,
+): Promise<void> {
   canvas.resync();
-  void manager.clearAll();
-  done();
+  try {
+    await manager.clearAll();
+    done();
+  } catch (error) {
+    onError(error instanceof Error ? error.message : String(error));
+  }
 }
 
 /** F-25: status-pill inputs (dirty / last save / problem count). */
@@ -398,7 +405,7 @@ function statusProps(
   manager: WorkspaceManager,
 ): { dirty: boolean; savedAt: number | null; problems: number } {
   return {
-    dirty: snapshot.divergedFromSaved,
+    dirty: snapshot.divergedFromSaved || manager.storageError !== null,
     savedAt: ready ? manager.lastSavedAt || null : null,
     problems: snapshot.state === 'error' ? snapshot.diagnostics.length : 0,
   };
@@ -916,13 +923,39 @@ function resyncDocuments(canvas: { resync(): void }, code: { resync(): void }): 
   code.resync();
 }
 
+async function openLocalWorkspace(
+  manager: WorkspaceManager,
+  resync: () => void,
+  onError: (message: string) => void,
+): Promise<void> {
+  try {
+    const storage = await pickDirectoryStorage();
+    await manager.switchStorage(storage);
+    resync();
+  } catch (error) {
+    if ((error as { name?: string }).name === 'AbortError') return;
+    onError(error instanceof Error ? error.message : String(error));
+  }
+}
+
+function directoryOpenHandler(
+  manager: WorkspaceManager,
+  canvas: ReturnType<typeof useCanvasController>,
+  code: CodeSyncHandle,
+  onError: (message: string) => void,
+): (() => void) | undefined {
+  if (!supportsDirectoryPicker()) return undefined;
+  return () => {
+    void openLocalWorkspace(manager, () => resyncDocuments(canvas, code), onError);
+  };
+}
+
 export function App() {
   const ws = useWorkspace();
   const activePath = ws.ready ? ws.manager.activePath : null;
   const { renaming, setRenaming, hover, setHover, illustration, setIllustration,
     flowSelection, setFlowSelection, historyOpen, setHistoryOpen } = useShellUi();
-  const { grid, ui } = useShellLayout(ws.manager, ws.ready, ws.version);
-  const { manager } = ws;
+  const { grid, ui } = useShellLayout(ws.manager, ws.ready, ws.version); const { manager } = ws;
   const { source, embedded, setRef: setDocRef } = useActiveDocument(manager, activePath, ws.version);
   const { canvas, inspect, code, icons } = useDocumentPipeline({
     ws, ui, grid, activePath, source,
@@ -966,6 +999,7 @@ export function App() {
         svgRef={canvas.svgRef}
         onFlash={setFlash}
         onClearRequest={() => setClearOpen(true)}
+        onOpenDirectory={directoryOpenHandler(manager, canvas, code, setFlash)}
         onSnapshotsRequest={() => setSnapsOpen(true)}
         {...statusProps(code.snapshot, ws.ready, manager)}
         onHistoryRequest={() => setHistoryOpen(true)}
@@ -1022,7 +1056,7 @@ export function App() {
         ctrlRef={canvas.ctrlRef} resyncDocuments={() => resyncDocuments(canvas, code)}
         diverged={diverged}
         clearOpen={clearOpen}
-        clearData={() => clearWorkspace(manager, canvas, () => setClearOpen(false))}
+        clearData={() => void clearWorkspace(manager, canvas, () => setClearOpen(false), setFlash)}
         onClearCancel={() => setClearOpen(false)}
         flash={flash}
         onFlashDismiss={() => setFlash(null)}

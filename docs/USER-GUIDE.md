@@ -1,9 +1,12 @@
 # PanelCraft — user guide
 
-Everything happens in your browser; nothing is sent anywhere (the browser-local storage rule).
+PanelCraft is local-first. Static hosting stores your workspace in the browser and sends
+no workspace data anywhere. You can explicitly choose a local folder in a supporting
+browser, or run the local Go server with real-file storage. Those modes write only on
+your device; the server uses a loopback-only, same-origin connection.
 Screenshots reference the light application theme; the dark theme mirrors every feature.
 Choose **View → Application theme → System / Light / Dark**. System follows live OS changes;
-Light and Dark override it. The choice is stored with browser-local workspace settings and is
+Light and Dark override it. The choice is stored with the active workspace's settings and is
 applied before the app paints on reload. It is independent of a document's `theme` directive
 and the CLI's `--theme` option.
 
@@ -16,10 +19,42 @@ and the CLI's `--theme` option.
   to two lines with an ellipsis instead of hiding those buttons — the tooltip and
   the tab carry the full name.
 - Tabs across the top switch open files; the dot marks unsaved changes.
-- **Everything is stored in your browser** (IndexedDB) — use *Export ZIP*
-  regularly for backups (the app reminds you; SPEC FR-S2) and *Snapshots*
-  for named restore points (restore goes through the full migration chain).
-- *Clear data…* wipes the local workspace — it cannot be undone.
+- **Static hosting stores everything in your browser** (IndexedDB) — use *Export ZIP*
+  regularly for backups (the app reminds you) and *Snapshots* for named restore points
+  (restore goes through the full migration chain).
+- *Clear data…* wipes the active workspace after typed confirmation — it cannot be undone.
+  With server or directory storage, this deletes real workspace files, not browser data.
+
+### Choosing where files live
+
+**Browser storage (default).** Hosted PanelCraft and `panelcraft serve` without `-local`
+use IndexedDB. They restore the workspace after reload and make no workspace API requests.
+The Files panel adds no storage label for this default.
+
+**A folder chosen directly in the browser.** In a supporting browser on a secure context,
+choose **Application menu → File & data → Open local folder…**, then approve the directory
+picker and permission prompt. The current workspace is saved before switching; cancelling
+or a failed folder load leaves it unchanged. The Files panel shows `Local folder: NAME`.
+Edits are written to the selected folder without a server or network request. Directory
+access lasts for this session: after reload, choose **Open local folder…** again. Browsers
+without directory-picker support do not show the command and continue to use IndexedDB.
+
+**A folder served by the local CLI.** Start
+`panelcraft serve -local DIR -storage-type filesystem --open`. The app loads `DIR` as the
+active workspace and the Files panel shows server storage. Changes reconcile ordinary
+UTF-8 files in that folder. Open tabs, workspace name and UI settings live in
+`.panelcraft/workspace.json`. `.git`, PanelCraft metadata, the reserved ZIP manifest,
+binary files and non-regular files are not shown as documents. The writable server listens
+on loopback only and is intended for one local user, not network sharing.
+
+Use `-depth 0` for root files only, `-depth 1` to include one directory level, and so on.
+Omit it or use `-depth -1` for unlimited depth. Hidden and out-of-depth content is preserved.
+An external edit is protected by revision checks: PanelCraft reports a conflict and keeps
+your unsaved editor text rather than overwriting the newer file. Download a copy before
+reloading if you need to compare or recover that text.
+
+Private mode always uses memory. Leaving private mode restores the storage you used before
+entering it; it does not silently copy work between browser, server and directory storage.
 
 ## 2. Editing a diagram
 
@@ -29,7 +64,7 @@ and the CLI's `--theme` option.
   canvas; dragging a palette row onto the canvas also places it.
 - **Grid**: a fresh profile shows a subtle dots grid with snapping on. *Application
   menu → View* offers **Grid: off / dots / lines** and a separate **Snap to grid**
-  checkbox. The two are independent browser-local preferences (the grid is editor
+  checkbox. The two are independent workspace preferences (the grid is editor
   chrome: it is never written into a `.pcd` view and never appears in an SVG/PNG export).
   A grid choice you make yourself is remembered and is never replaced by the default
   when the app is upgraded; below 50% zoom the pattern is hidden so it cannot turn into
@@ -317,9 +352,11 @@ system shop "Webshop" {
 
 ## 5. Offline
 
-The service worker caches the app shell on first load. Afterwards the app
-boots with the network cut; your workspace (IndexedDB) is unaffected. When an
-update has been cached, the app surfaces it on the next reload.
+The service worker caches the app shell on first load. Afterwards the static app
+boots with the network cut; the IndexedDB workspace is unaffected. Direct folder access
+still needs browser permission. A server-backed workspace needs its local PanelCraft
+server and is not replaced by a cached API response. When an update has been cached,
+the app surfaces it on the next reload.
 
 ## 6. CLI reference
 
@@ -327,10 +364,27 @@ update has been cached, the app surfaces it on the next reload.
 validates/converts `.pcd` files. Exit codes: `0` ok, `1` error-severity
 findings / parse failure, `2` usage error.
 
-### `panelcraft serve [--addr :8080] [--open] [--dev-dir DIR] [DIR]`
-Serves the embedded app at `/`; `DIR` (or `--dev-dir`) is exposed read-only
-under `/files/` (no listing, traversal-guarded). Strict CSP headers; no
-telemetry, no runtime network.
+### `panelcraft serve [--addr 127.0.0.1:8080] [--open] [--dev-dir DIR] [DIR]`
+Serves the embedded app at `/`. Without `-local`, the workspace stays in IndexedDB.
+The positional `DIR` is exposed read-only under `/files/` (no listing, traversal-guarded)
+as a convenience for demo assets; it is not workspace persistence. `--dev-dir DIR` serves
+a development web bundle instead of the embedded one.
+
+To edit real workspace files instead, use:
+
+```
+panelcraft serve -local DIR [-storage-type filesystem|filestorage] [-depth N] [--open]
+```
+
+`-storage-type filesystem` is the default and `filestorage` is an alias. Depth is unlimited
+when omitted or `-1`; `0` means root files only. `-local` cannot be combined with the
+read-only positional `DIR`. Writable mode rejects non-loopback listen
+addresses; the default is `127.0.0.1:8080`. All workspace API traffic is same-origin,
+non-cached and excluded from the service worker. There is no authentication or multi-user
+support, so do not expose this mode as a network service. `-storage-type git` and remote
+Git/GitHub operations are not implemented.
+
+Strict CSP headers; no telemetry and no third-party runtime requests.
 
 ### `panelcraft validate [--json] PATH...`
 Validates `.pcd` files (file or directory, globbed `*.pcd`, sorted).

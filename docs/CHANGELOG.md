@@ -4,6 +4,23 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — local-first workspace storage
+
+- `panelcraft serve -local DIR` now edits ordinary workspace files through a confined,
+  loopback-only filesystem backend. `-storage-type filesystem` is the default,
+  `filestorage` is an alias, and `-depth N` limits visible descendants. Strong revisions
+  prevent stale browser saves from overwriting external edits. Without `-local`, serving
+  remains browser-storage-only and static hosting still performs no API discovery.
+- Supporting browsers offer **Open local folder…** for direct, server-free folder access.
+  IndexedDB remains the default and universal fallback; cancelling a picker preserves the
+  current workspace, and directory selection is session-scoped.
+- The Files panel identifies non-default storage. Save failures and conflicts remain
+  visible, the status pill says **Unsaved**, and clear-data confirmation describes the
+  real files affected. Local Git history is the next backend; remote Git and GitHub
+  integration remain design-only follow-ups.
+
+Details and evidence: [pluggable workspace storage](archive/bugs-pluggable-workspace-storage.md).
+
 ## Unreleased — brand: wordmark and application icon
 
 - The header wordmark uses a bold Panel/Craft treatment with a theme-aware purple gradient on

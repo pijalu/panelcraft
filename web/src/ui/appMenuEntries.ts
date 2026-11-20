@@ -11,6 +11,8 @@ import { routeResetTarget, type CommandSelection, type RouteResetTarget } from '
 
 export interface AppMenuActions {
   importFiles: () => void;
+  /** Present only when the browser supports direct directory access. */
+  openDirectory?: () => void;
   importZip: () => void;
   exportCurrent: (kind: 'pcd' | 'mmd' | 'svg' | 'png') => void;
   exportWorkspaceZip: () => void;
@@ -100,7 +102,15 @@ function primaryFileEntries(ctx: AppMenuContext): MenuEntry[] {
 
 /** Whole-workspace file and data commands, one level down. */
 function fileDataEntries(ctx: AppMenuContext): MenuEntry[] {
+  const directory: MenuEntry[] = ctx.actions.openDirectory ? [{
+    kind: 'item',
+    id: 'open-directory',
+    label: s('Open local folder…'),
+    testId: 'tb-open-directory',
+    onSelect: ctx.actions.openDirectory,
+  }] : [];
   return [
+    ...directory,
     {
       kind: 'item',
       id: 'import-zip',

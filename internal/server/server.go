@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Package server implements the embedded-SPA HTTP shell (SPEC FR-X serve, N6):
-// strict CSP + security headers, SPA fallback to index.html, read-only /files/*.
-// No write endpoints, ever (FR-X: "No write endpoints" + ground rule 5).
+// Package server implements the embedded-SPA HTTP shell: strict security
+// headers, SPA fallback, legacy read-only /files/*, and an opt-in workspace API.
 package server
 
 import (
+	"html"
 	"io/fs"
 	"net/http"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/pijalu/panelcraft/internal/storage"
 )
 
 // Options configures the SPA server.
@@ -19,8 +21,12 @@ type Options struct {
 	// dev mode, or fstest.MapFS in tests.
 	Assets fs.FS
 
-	// FilesDir (optional) mounts a directory read-only at /files/* (FR-X).
+	// FilesDir (optional) mounts a directory read-only at /files/*.
 	FilesDir string
+	// Workspace enables the mutable workspace API when explicitly configured.
+	Workspace storage.Store
+	// StorageType is advertised in served HTML; empty selects browser storage.
+	StorageType string
 }
 
 // CSP (N6 strict): no remote origins, no script eval, self-only everything.
@@ -32,11 +38,12 @@ const contentSecurityPolicy = "default-src 'self'; script-src 'self'; style-src 
 func New(opts Options) (http.Handler, error) {
 	mux := http.NewServeMux()
 
+	mux.Handle("/api/v1/workspace", workspaceHandler(opts.Workspace))
 	if opts.FilesDir != "" {
 		mux.Handle("GET /files/", filesHandler(opts.FilesDir))
 	}
 	if opts.Assets != nil {
-		mux.Handle("GET /", spaHandler(opts.Assets))
+		mux.Handle("/", spaHandler(opts.Assets, opts.StorageType))
 	}
 
 	return securityHeaders(mux), nil
@@ -57,13 +64,22 @@ func securityHeaders(next http.Handler) http.Handler {
 // spaHandler serves bundle assets; unknown extension-less paths fall back to
 // index.html (client routing). Missing asset-looking paths (with extension)
 // get a plain 404 — never HTML-with-200.
-func spaHandler(assets fs.FS) http.Handler {
+func spaHandler(assets fs.FS, storageType string) http.Handler {
 	fileServer := http.FileServerFS(assets)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		upath := path.Clean("/" + r.URL.Path)
 		name := strings.TrimPrefix(upath, "/")
 		if name == "" {
 			name = "index.html"
+		}
+		if name == "index.html" {
+			serveIndex(w, assets, storageType)
+			return
 		}
 		if _, err := fs.Stat(assets, name); err != nil {
 			if strings.Contains(path.Base(name), ".") {
@@ -72,20 +88,10 @@ func spaHandler(assets fs.FS) http.Handler {
 				return
 			}
 			// SPA fallback: serve index.html for client-side routes.
-			index, readErr := fs.ReadFile(assets, "index.html")
-			if readErr != nil {
-				http.Error(w, "bundle index.html missing", http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.Header().Set("Cache-Control", "no-cache")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(index)
+			serveIndex(w, assets, storageType)
 			return
 		}
 		switch {
-		case name == "index.html":
-			w.Header().Set("Cache-Control", "no-cache")
 		case name == "manifest.webmanifest":
 			// UX08-WP04: installability needs the manifest MIME the browser accepts
 			// (the stdlib table has no .webmanifest entry) and revalidation so a new
@@ -101,6 +107,28 @@ func spaHandler(assets fs.FS) http.Handler {
 		}
 		fileServer.ServeHTTP(w, r)
 	})
+}
+
+func serveIndex(w http.ResponseWriter, assets fs.FS, storageType string) {
+	index, err := fs.ReadFile(assets, "index.html")
+	if err != nil {
+		http.Error(w, "bundle index.html missing", http.StatusInternalServerError)
+		return
+	}
+	if storageType != "" {
+		marker := `<meta name="panelcraft-storage" content="` + html.EscapeString(storageType) + `">`
+		page := string(index)
+		if strings.Contains(page, "</head>") {
+			page = strings.Replace(page, "</head>", "    "+marker+"\n  </head>", 1)
+		} else {
+			page += marker
+		}
+		index = []byte(page)
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(index)
 }
 
 // filesHandler mounts dir read-only at /files/* (FR-X): no listings, no

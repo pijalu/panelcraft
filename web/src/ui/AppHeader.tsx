@@ -26,6 +26,7 @@ export function AppHeader(props: {
   svgRef: RefObject<SVGSVGElement | null>;
   onFlash(msg: string): void;
   onClearRequest(): void;
+  onOpenDirectory?: () => void;
   onSnapshotsRequest(): void;
   /** F-24: open the unified history affordance. */
   onHistoryRequest(): void;
@@ -47,6 +48,7 @@ export function AppHeader(props: {
 }) {
   const { ws } = props;
   const [dismissedError, setDismissedError] = useState<string | null>(null);
+  const [dismissedStorageError, setDismissedStorageError] = useState<string | null>(null);
   return (
     <>
       <header class="app-header">
@@ -89,6 +91,7 @@ export function AppHeader(props: {
           onPresent={props.onPresentRequest}
           onSnapshotsRequest={props.onSnapshotsRequest}
           onClearRequest={props.onClearRequest}
+          onOpenDirectory={props.onOpenDirectory}
           onToggleEphemeral={(on) => {
             ws.clearReminder();
             void ws.manager.setEphemeral(on);
@@ -117,6 +120,8 @@ export function AppHeader(props: {
       </header>
       <Banners
         openError={errorToShow(ws.manager, dismissedError, ws.ready)}
+        storageError={!ws.ready || ws.manager.storageError === dismissedStorageError ? null : ws.manager.storageError}
+        onDismissStorageError={() => setDismissedStorageError(ws.manager.storageError)}
         quotaDegraded={ws.ready && ws.manager.quotaDegraded}
         ephemeral={ws.ready && ws.manager.ephemeral}
         reminder={ws.reminder}
