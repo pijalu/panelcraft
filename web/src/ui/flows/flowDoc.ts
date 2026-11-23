@@ -251,36 +251,6 @@ export interface IndexedLink {
   index: number;
 }
 
-/** Stable entity ranks: creation order breaks ties, and cyclic leftovers retain
- * their original order. Flow order is a default snapshot, never a live resort. */
-function entityRanks(doc: Doc): Map<string, number> {
-  const remaining = new Set(doc.objects.map((obj) => obj.id));
-  const ordered: string[] = [];
-  while (remaining.size > 0) {
-    const next = doc.objects.find((obj) =>
-      remaining.has(obj.id) && !doc.links.some((link) =>
-        link.to === obj.id && link.from !== obj.id && remaining.has(link.from),
-      ),
-    );
-    if (next === undefined) {
-      ordered.push(...doc.objects.filter((obj) => remaining.has(obj.id)).map((obj) => obj.id));
-      break;
-    }
-    ordered.push(next.id);
-    remaining.delete(next.id);
-  }
-  return new Map(ordered.map((id, index) => [id, index]));
-}
-
-/** Existing connections in topological source order, then creation order. */
-export function topologicalLinks(doc: Doc): IndexedLink[] {
-  const ranks = entityRanks(doc);
-  return doc.links
-    .map((link, index) => ({ link, index }))
-    .sort((a, b) =>
-      (ranks.get(a.link.from) ?? 0) - (ranks.get(b.link.from) ?? 0) || a.index - b.index,
-    );
-}
 
 /** Explicit references keep parallel links distinct when steps are restored. */
 export function ensureLinkIds(doc: Doc): void {
@@ -312,7 +282,7 @@ function endpointPair(link: Link): string {
   return [link.from, link.to].sort().join('\u0000');
 }
 
-/** A current, reference-only walkthrough covering every usable diagram element. */
+/** A current, reference-only walkthrough in strict connector creation order. */
 export function diagramSteps(doc: Doc): FlowStep[] {
   const ids = new Set(doc.objects.map((obj) => obj.id));
   const represented = new Set<string>();
@@ -322,7 +292,7 @@ export function diagramSteps(doc: Doc): FlowStep[] {
     const pair = endpointPair(link);
     pairCounts.set(pair, (pairCounts.get(pair) ?? 0) + 1);
   });
-  topologicalLinks(doc).forEach(({ link, index }) => {
+  doc.links.forEach((link, index) => {
     if (!ids.has(link.from) || !ids.has(link.to)) return;
     // Parallel anonymous links need an ephemeral index ref in the virtual flow.
     // Materialisation replaces it with a real id; no diagram write happens here.

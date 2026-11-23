@@ -173,27 +173,22 @@ artefacts stay under `test-results/`; curated golden changes require an intentio
 - Run focused animation/presentation tests, accessibility, full unit/browser/quality
   gates, and archive the reproduced transport cause separately from the visual fixes.
 
-## 6. Sub-plan 10 — derive a virtual default flow without duplicating authored data
+## 6. Sub-plan 10 — keep Default live and creation-ordered
 
-**Owner:** Default-flow agent. **Depends on:** none.
+**Owner:** Default-flow agent. **Depends on:** none. **Closed:** see
+[Default playback and creation order](archive/bugs-default-flow-playback.md).
 
-1. Add failing tests for the shipped Customer/Shop/Payment provider template and a
-   generic link-only document. Require a launcher entry and playback order "buys" then
-   "charges" before any New flow action.
-2. Implement one pure derivation adapter around the existing `topologicalLinks()` /
-   `addFlow` ordering logic. Preserve stable link references, labels, parallel-link
-   identity, direction, and deterministic creation-order fallback for cycles.
-3. Prefer a non-persisted virtual default when a document has links and no authored
-   flows. Opening, presenting, saving, formatting, or reloading must not mutate PDL,
-   create undo history, or append flows. Specify what happens when the user edits the
-   default or deletes the last authored flow: materialize at most once on an explicit
-   edit, with an ordinary undoable command.
-4. Keep any authored flow authoritative; never silently reorder or replace it. Empty
-   documents and documents without usable connections retain the normal empty state.
-5. Test launcher, presentation, repeated reload/save, parallel links, cycles, hidden
-   links, invalid/deleted references, edit/materialize/undo, and template insertion.
-   Run flow, format, workspace, and full gates, then archive this as the missing
-   automatic path while retaining the archived topological algorithm.
+1. Reproduce blank drawing → two elements → connector → `test` label → immediate Default
+   presentation. Record the code buffer, derived plan and runner result separately so a
+   debounced editor is not mistaken for stale workspace playback.
+2. Cover fresh canvas resolution, inherited connector/process narration, strict connector
+   creation order, parallel identity, cycles and non-persistence of the virtual Default.
+3. Keep the existing virtual-flow resolver and derive directly from current connector order;
+   never write Default merely by presenting it.
+4. Prove real spark opacity and position changes, a settled reduced-motion token, and custom
+   flow ordering/details after later drawing edits. Review light/dark filmstrips.
+5. Align the product contract with creation order, then run focused/full web checks and each
+   required Go quality gate separately.
 
 ## 7. Sub-plan 11 — prove the integrated revision on the hosted site
 

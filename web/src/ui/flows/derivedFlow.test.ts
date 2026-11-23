@@ -7,6 +7,7 @@ import { parsePDL } from '../../engine/format/parser';
 import { printDoc } from '../../engine/format/printer';
 import { buildPlan } from '../../engine/flows/plan';
 import type { Doc } from '../../engine/model/types';
+import { WorkspaceManager, pcdToState } from '../../workspace/workspace';
 import {
   derivedFlow,
   findFlow,
@@ -58,6 +59,45 @@ describe('derived default flow (item 10)', () => {
     ]);
   });
 
+});
+
+describe('derived default flow currency and creation order', () => {
+  it('resolves the latest canvas source and inherits narration without persisting Default', () => {
+    const workspace = new WorkspaceManager({ skipWelcome: true });
+    workspace.createFileAt('live.pcd', 'pcd 1.0\n');
+    const drawn = pcdToState(`pcd 1.0
+
+person a "Ada" {
+description "Customer actor"
+}
+component b "Component"
+a -> b : "test"
+`);
+    workspace.saveCanvas('live.pcd', drawn);
+
+    const current = doc(workspace.text('live.pcd'));
+    const flow = findFlow(current, 'default')!;
+    expect(buildPlan({ doc: current, flow }).beats).toMatchObject([
+      { title: 'test', links: [{ from: 'a', to: 'b' }] },
+    ]);
+    expect(current.flows).toHaveLength(0);
+    expect(workspace.text('live.pcd')).not.toContain('flow ');
+
+    // A second canvas edit is visible to the next resolution, including process
+    // narration for an element not represented by a connector.
+    workspace.saveCanvas('live.pcd', {
+      ...drawn,
+      links: drawn.links.map((link) => ({ ...link, label: 'latest label' })),
+      objects: [...drawn.objects, pcdToState('pcd 1.0\nsystem c "C" { description "Latest detail" }\n').objects[0]!],
+    });
+    const updated = doc(workspace.text('live.pcd'));
+    expect(buildPlan({ doc: updated, flow: findFlow(updated, 'default')! }).beats).toMatchObject([
+      { title: 'latest label' },
+      { title: 'C', description: 'Latest detail' },
+    ]);
+    expect(updated.flows).toHaveLength(0);
+  });
+
   it('keeps an up-to-date default alongside authored custom flows', () => {
     const d = doc(AUTHORED);
     expect(derivedFlow(d)).toMatchObject({ id: 'default', title: 'Default flow' });
@@ -80,6 +120,36 @@ describe('derived default flow (item 10)', () => {
     expect(derivedFlow(orphan)?.steps).toMatchObject([{ type: 'process', target: 'a' }]);
   });
 
+  it('uses strict creation order when topology, parallel links and a cycle suggest another order', () => {
+    const d = doc(`pcd 1.0
+
+system a "A"
+system b "B"
+system c "C"
+
+b -> c : "created first"
+a -> b : "created second"
+a -> b : "created third"
+c -> a : "created fourth"
+`);
+    const flow = derivedFlow(d)!;
+    expect(flow.steps.map((step) => step.type === 'msg' ? step.linkRef : null)).toEqual([
+      undefined,
+      '#1',
+      '#2',
+      undefined,
+    ]);
+    expect(buildPlan({ doc: d, flow }).beats.map((beat) => beat.title)).toEqual([
+      'created first',
+      'created second',
+      'created third',
+      'created fourth',
+    ]);
+  });
+
+});
+
+describe('derived default flow references and custom copies', () => {
   it('keeps parallel links distinct and keeps a cycle deterministic', () => {
     const parallel = doc(`pcd 1.0
 

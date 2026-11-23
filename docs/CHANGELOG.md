@@ -71,7 +71,8 @@ Details and evidence: [brand and browser-workflow validation](archive/bugs-brand
   diagram and one that already has custom flows. Blank Default starts with zero steps and follows
   the first added element. Default covers current connectors and objects without being persisted;
   editing it creates a separate **Custom flow**, while Default keeps tracking
-  the drawing. Flow creation and editing preserve the whole document.
+  the drawing. Default and New flow snapshot connectors in strict creation order; existing
+  custom flows keep their own ordering and overrides. Flow creation and editing preserve the whole document.
 - Steps reference their elements and inherit connector labels and object descriptions. A step
   can override those values for one flow and return to inheritance when cleared. Parallel
   anonymous connectors retain their identity through playback and both documentation exports.
@@ -83,8 +84,9 @@ Details and evidence: [brand and browser-workflow validation](archive/bugs-brand
   them in a separate Checkout flow; the C4 card correctly describes its two links.
 
 Details and evidence: [Default flow integrity](archive/bugs-default-flow-integrity.md),
-[Default flow on blank diagrams](archive/bugs-blank-default-flow.md), and
-[new-file starter steps](archive/bugs-new-diagram-flow.md).
+[Default flow on blank diagrams](archive/bugs-blank-default-flow.md),
+[new-file starter steps](archive/bugs-new-diagram-flow.md), and
+[Default playback and creation order](archive/bugs-default-flow-playback.md).
 
 ## Unreleased — release: the site publishes what it is missing
 

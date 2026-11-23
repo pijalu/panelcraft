@@ -197,8 +197,8 @@ IcePanel-style visual storytelling over the static diagram.
   the diagram clears the step.
   Every valid document has a live virtual **Default flow**, whether or not custom flows
   exist. A blank document's Default has zero steps and gains them as elements are added.
-  Connections become message steps in stable topological order (creation order is the
-  cycle fallback and parallel links remain distinct); every otherwise unrepresented object
+  Connections become message steps in strict connector creation order, including parallel
+  and cyclic links (parallel links remain distinct); every otherwise unrepresented object
   becomes a process step, so the walkthrough covers the current diagram. Default flow is never
   persisted merely by opening, presenting, saving or reloading. Its first explicit edit creates
   and selects an independent **Custom flow** as one undoable command, while Default remains

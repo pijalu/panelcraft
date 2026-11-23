@@ -309,8 +309,8 @@ system shop "Webshop" {
    it docks, floats, collapses and closes like any other panel.
 2. **Create a flow** — or present the current diagram. Every valid document shows
    **Default flow**, alongside any custom flows. A blank document's Default starts with zero
-   steps; connections become message steps in topological source order (creation order breaks
-   ties), and objects not represented by a connection become process steps as you add them, so a
+   steps; connections become message steps in strict connector creation order (including
+   parallel and cyclic links), and objects not represented by a connection become process steps as you add them, so a
    link-free diagram is covered too. The presentation launcher offers Default marked *from the
    elements*. Opening, presenting, saving and reloading do not write it into the `.pcd`. Its first
    edit creates and selects an independent **Custom flow** in one undoable command; Default
