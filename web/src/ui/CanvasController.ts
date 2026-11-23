@@ -1364,7 +1364,8 @@ export class CanvasController {
     // are appended later stay on top (they are the finer targets).
     if (route) {
       drawSegmentHandles(this.renderer.overlay, routeChannels(route), link.id, (axis) =>
-        axis === 'h' ? s('Slide horizontal segment') : s('Slide vertical segment'));
+        axis === 'h' ? s('Slide horizontal segment') : s('Slide vertical segment'),
+      this.renderer.linkLabelRect(link.id));
     }
     if (link.waypoints && link.waypoints.length > 0) {
       drawWaypointHandles(
