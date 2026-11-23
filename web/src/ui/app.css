@@ -481,6 +481,8 @@ body {
 .app-shell.presenting .props-col,
 .app-shell.presenting .panel-rail,
 .app-shell.presenting .panel-splitter,
+/* The grid is editor chrome only (SPEC 4.2): never behind a presentation. */
+.app-shell.presenting .pc-grid,
 .app-shell.presenting .drawer-backdrop {
   display: none;
 }
