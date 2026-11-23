@@ -303,16 +303,16 @@ system shop "Webshop" {
 1. **Find Flows** in the left rail — the labelled *flow steps* entry is present from the first
    load, so you never have to know a menu path. Open it from the rail (or **View → Flow Steps**);
    it docks, floats, collapses and closes like any other panel.
-2. **Create a flow** — or present the current diagram. Every non-empty document shows
-   **Default flow**, alongside any custom flows. Connections become message steps in
-   topological source order (creation order breaks ties), and objects not represented by a
-   connection become process steps, so a link-free diagram is covered too. The presentation
-   launcher offers Default marked *from the elements*. Opening, presenting, saving and
-   reloading do not write it into the `.pcd`. Its first edit creates and selects an independent
-   **Custom flow** in one undoable command; Default remains beside it and follows later element
-   changes. **New flow** snapshots the current elements without removing or changing the
-   drawing. Only an empty document has no Default and keeps the short explanation plus
-   **New flow**. Fill in **Flow name** and **Flow purpose** — the purpose is printed
+2. **Create a flow** — or present the current diagram. Every valid document shows
+   **Default flow**, alongside any custom flows. A blank document's Default starts with zero
+   steps; connections become message steps in topological source order (creation order breaks
+   ties), and objects not represented by a connection become process steps as you add them, so a
+   link-free diagram is covered too. The presentation launcher offers Default marked *from the
+   elements*. Opening, presenting, saving and reloading do not write it into the `.pcd`. Its first
+   edit creates and selects an independent **Custom flow** in one undoable command; Default
+   remains beside it and follows later element changes. **New flow** snapshots the current
+   elements without removing or changing the drawing. Fill in **Flow name** and **Flow purpose** —
+   the purpose is printed
    as the flow's `description`, so it travels with the file instead of living in the UI.
    For longer walkthrough text use **Flow notes (Markdown)**: headings, bold, italic, inline
    code, bullet/numbered lists and links. The notes are saved as source text in the file.

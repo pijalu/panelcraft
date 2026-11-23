@@ -64,12 +64,16 @@ describe('derived default flow (item 10)', () => {
     expect(flowsForDisplay(d).map((f) => f.title)).toEqual(['Default flow', 'Checkout']);
   });
 
-  it('derives process steps for unconnected elements and nothing for an empty diagram', () => {
+  it('derives process steps for unconnected elements and an empty Default for a blank diagram', () => {
     expect(derivedFlow(doc('pcd 1.0\n\nsystem a "A"\ncontainer b "B"\n'))?.steps).toMatchObject([
       { type: 'process', target: 'a' },
       { type: 'process', target: 'b' },
     ]);
-    expect(derivedFlow(doc('pcd 1.0\n'))).toBeNull();
+    expect(derivedFlow(doc('pcd 1.0\n'))).toMatchObject({
+      id: 'default',
+      title: 'Default flow',
+      steps: [],
+    });
     expect(derivedFlow(null)).toBeNull();
     // An orphan connection is not presentable, but its real object still is.
     const orphan = parsePDL('pcd 1.0\n\nsystem a "A"\nb -> a : "orphan"\n').doc;

@@ -74,8 +74,21 @@ test('blank person + container + link presents by default and New flow preserves
   expect(errors).toEqual([]);
 });
 
-test('a diagram with one unconnected element still presents a default process step', async ({ page }) => {
+test('blank and populated diagrams always offer Default flow', async ({ page }) => {
   await blankDiagram(page);
+  const blankText = await documentText(page);
+  await page.getByTestId('present-open').click();
+  await expect(page.getByTestId('launcher-title-default')).toHaveText('Default flow');
+  await expect(page.getByTestId('launcher-meta-default')).toContainText('0 steps');
+  await expect(page.getByTestId('launcher-empty')).toHaveCount(0);
+  await capture(page, 'bugs-new-diagram-blank-launcher-light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await capture(page, 'bugs-new-diagram-blank-launcher-dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.keyboard.press('Escape');
+  expect(await documentText(page)).toBe(blankText);
+  expect(blankText).not.toContain('flow ');
+
   await page.getByTestId('palette-person').click();
   await expect(page.getByTestId('canvas').locator('g.pc-obj')).toHaveCount(1);
   await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');

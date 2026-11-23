@@ -50,8 +50,9 @@ Details and evidence: [brand and browser-workflow validation](docs/archive/bugs-
 
 ### Changed — every diagram has a live Default flow
 
-- Every non-empty diagram now has a virtual **Default flow**, alongside any custom flows.
-  Connections provide topologically ordered message steps and unrepresented objects provide
+- Every valid diagram now has a virtual **Default flow**, alongside any custom flows. A blank
+  diagram starts with a zero-step Default that follows the first added element. Connections
+  provide topologically ordered message steps and unrepresented objects provide
   process steps, including diagrams with no connections. Editing Default creates and selects
   an independent **Custom flow**; Default stays live as elements change. Creating or editing a
   flow rebases onto the current document and cannot discard its objects or connectors.
@@ -64,6 +65,8 @@ Details and evidence: [brand and browser-workflow validation](docs/archive/bugs-
   collapsing or docking the panel preserves editor history. The editing session reconciles
   fast undo against the code buffer without mistaking a stale clean projection for the current
   file. This also fixes the first-keystroke focus loss when Default becomes a custom copy.
+
+Blank-document evidence: [Default flow on blank diagrams](docs/archive/bugs-blank-default-flow.md).
 
 ### Changed — Flow Steps lists the flow, Properties edits the step
 

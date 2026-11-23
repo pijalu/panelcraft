@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Every non-empty document has a virtual Default flow derived from its current
-// elements. Presenting never writes it. Editing creates an ordinary custom copy,
-// while Default flow remains beside it and continues to follow the diagram.
+// Every parsed document has a virtual Default flow derived from its current
+// elements, including a blank document with no steps yet. Presenting never writes
+// it. Editing creates an ordinary custom copy, while Default flow remains beside
+// it and continues to follow the diagram.
 import type { Doc, Flow } from '../../engine/model/types';
 import { s } from '../strings';
 import { diagramSteps, ensureLinkIds } from './flowDoc';
@@ -46,13 +47,13 @@ function customFlowId(doc: Doc): string {
 }
 
 /**
- * Derive a complete walkthrough without changing the document. Connections are
- * message steps; objects not represented by a connection become process steps.
+ * Derive a walkthrough without changing the document. Connections are message
+ * steps; objects not represented by a connection become process steps. A blank
+ * document still has Default, with no steps until its first element arrives.
  */
 export function derivedFlow(doc: Doc | null): Flow | null {
-  if (doc === null || doc.objects.length === 0) return null;
+  if (doc === null) return null;
   const steps = diagramSteps(doc);
-  if (steps.length === 0) return null;
   return {
     id: derivedFlowId(doc),
     title: derivedFlowTitle(),

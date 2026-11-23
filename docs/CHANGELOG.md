@@ -67,9 +67,10 @@ Details and evidence: [brand and browser-workflow validation](archive/bugs-brand
 
 ## Unreleased — flows: a live Default for every diagram
 
-- Every non-empty diagram has a virtual **Default flow**, including an element-only diagram
-  and one that already has custom flows. It covers current connectors and objects without
-  being persisted; editing it creates a separate **Custom flow**, while Default keeps tracking
+- Every valid diagram has a virtual **Default flow**, including a blank diagram, an element-only
+  diagram and one that already has custom flows. Blank Default starts with zero steps and follows
+  the first added element. Default covers current connectors and objects without being persisted;
+  editing it creates a separate **Custom flow**, while Default keeps tracking
   the drawing. Flow creation and editing preserve the whole document.
 - Steps reference their elements and inherit connector labels and object descriptions. A step
   can override those values for one flow and return to inheritance when cleared. Parallel
@@ -78,7 +79,8 @@ Details and evidence: [brand and browser-workflow validation](archive/bugs-brand
   document-history routing from flow controls (including collapsed Code), the fast-undo
   stale-projection race, and history loss when the Code panel changes dock.
 
-Details and evidence: [Default flow integrity](archive/bugs-default-flow-integrity.md).
+Details and evidence: [Default flow integrity](archive/bugs-default-flow-integrity.md) and
+[Default flow on blank diagrams](archive/bugs-blank-default-flow.md).
 
 ## Unreleased — release: the site publishes what it is missing
 

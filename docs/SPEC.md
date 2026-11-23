@@ -195,8 +195,9 @@ IcePanel-style visual storytelling over the static diagram.
   flow rather than a step is selected. A flow selection and a canvas selection
   are mutually exclusive: picking a step clears the canvas selection and pressing
   the diagram clears the step.
-  Every non-empty document has a live virtual **Default flow**, whether or not custom flows
-  exist. Connections become message steps in stable topological order (creation order is the
+  Every valid document has a live virtual **Default flow**, whether or not custom flows
+  exist. A blank document's Default has zero steps and gains them as elements are added.
+  Connections become message steps in stable topological order (creation order is the
   cycle fallback and parallel links remain distinct); every otherwise unrepresented object
   becomes a process step, so the walkthrough covers the current diagram. Default flow is never
   persisted merely by opening, presenting, saving or reloading. Its first explicit edit creates

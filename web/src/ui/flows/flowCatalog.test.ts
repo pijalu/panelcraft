@@ -48,6 +48,13 @@ describe('flow catalog (UX08-WP13)', () => {
     expect(entries[2]?.description).toBeUndefined();
   });
 
+  it('always offers Default for a valid blank document', () => {
+    const { doc: blank } = parsePDL('pcd 1.0\n');
+    expect(flowCatalog(blank)).toMatchObject([
+      { key: 'default', title: 'Default flow', steps: 0, derived: true },
+    ]);
+  });
+
   it('offers an element-backed default without connections', () => {
     const { doc: bare } = parsePDL('pcd 1.0\nperson a "Ada"\n');
     expect(flowCatalog(bare)).toMatchObject([
