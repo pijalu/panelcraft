@@ -3,7 +3,7 @@
 // the panel action menus. Keyboard contract: trigger `aria-haspopup="menu"`,
 // roving `menuitem` focus with arrows/Home/End, ArrowRight/Left for submenus,
 // Escape and outside pointer dismiss, Tab closes, focus returns to the trigger.
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import {
   availableMenuHeight,
@@ -376,7 +376,8 @@ export function FloatingMenu(props: FloatingMenuProps): ComponentChildren {
   const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
   const anchor = props.anchor;
 
-  useEffect(() => {
+  // Layout effect, like the trigger-anchored menu: placed before first paint.
+  useLayoutEffect(() => {
     const place = (): void => {
       const size = popRef.current?.getBoundingClientRect();
       const viewport = { width: window.innerWidth, height: window.innerHeight };
@@ -452,7 +453,9 @@ export function Menu(props: MenuProps): ComponentChildren {
     });
   }, [props]);
 
-  useEffect(() => {
+  // Layout effect: the popover is positioned before it paints, so it never
+  // flashes at the anchor point outside the viewport for a frame under load.
+  useLayoutEffect(() => {
     if (!open) return undefined;
     const place = (): void => {
       const trigger = triggerRef.current?.getBoundingClientRect();

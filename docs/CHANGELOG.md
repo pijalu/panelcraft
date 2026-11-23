@@ -4,6 +4,25 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — fix: editor chrome and quick placement (drawing-session review)
+
+- The editor transport bar that appears when a flow plays from the Flow Steps
+  panel now docks inside the window: the canvas yields its height to it instead
+  of pushing it below the fold, and the mini-map sits above it, so every control
+  stays reachable without scrolling the page.
+- A presentation no longer paints the canvas grid behind the diagram; the saved
+  grid preference returns unchanged when the presentation ends.
+- Quick-add (`1`–`9`) places each new shape clear of the ones already there —
+  the centre of the view first, then right, below, above, left on the grid — so
+  a second shape never hides the first. Palette drops at a point are unchanged.
+- Menus are positioned before their first paint, so a context menu opened near
+  a window edge no longer flashes outside the window for a frame.
+
+Details and evidence: [play bar dock](archive/bugs-playbar-dock.md),
+[presentation grid](archive/bugs-presentation-grid.md),
+[quick-add cascade](archive/bugs-quick-add-cascade.md),
+[menu placement](archive/bugs-menu-placement-flash.md).
+
 ## Unreleased — fix: the diagram source is visible while you draw
 
 - A fresh workspace opens the Code pane beside the canvas instead of hiding the

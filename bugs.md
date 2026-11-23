@@ -47,37 +47,4 @@ Fix plan and test approach:
 
 # To fix
 
-### Quick-add stacks every new shape on the previous one
-
-Observed:
-
-- On a fresh profile, pressing `1` then `2` (or any two quick-add keys) places
-  the second shape exactly over the first: both land at the centre of the view
-  (`CanvasController.addObject` uses `centerOfView()` with no collision check),
-  so the first shape is hidden and the two must be dragged apart before they can
-  be connected. Seen during the reproduction for the two items archived in
-  `docs/archive/bugs-code-visible-by-default.md` (capture
-  `test-results/screenshots/code-default-fresh-*.png` show `System 1` covering
-  `Person 1`; the regression had to move the second shape clear to link them).
-
-Expected:
-
-- A quick-added (or palette-dropped) shape whose footprint would cover an
-  existing object is placed beside the occupied spot instead — offset along a
-  short cascade so the new shape is fully visible and immediately linkable,
-  while the position still snaps to the grid and stays inside the current view.
-
-Fix plan and test approach:
-
-1. Reproduce with a browser filmstrip: two quick-adds on a fresh profile, capture
-   the overlap; assert the second shape's rectangle intersects the first.
-2. Add a failing unit test in `CanvasController` coverage: adding the same or a
-   different kind twice yields non-overlapping bounds, grid-aligned positions,
-   and the cascade stops inside the viewport (wraps to the next free slot).
-3. Implement the smallest placement rule (a short cascade probe reusing the
-   existing overlap/geometry helpers), keeping explicit `at` placement (palette
-   drop at a point, paste, import) unchanged.
-4. Validation: unit suite, the drawing Playwright scenarios, light/dark capture
-   review, then each Go gate separately (no Go change expected).
-
 Closed items live in [docs/archive/](docs/archive/).
