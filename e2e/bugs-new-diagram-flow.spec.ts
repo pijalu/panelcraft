@@ -157,3 +157,42 @@ flow "Existing" as flow1 {
   await expect(page.getByTestId('canvas').locator('g.pc-obj')).toHaveCount(2);
   await expect(page.getByTestId('canvas').locator('g.pc-link')).toHaveCount(1);
 });
+
+const STARTERS = [
+  { id: 'blank', links: 0, titles: [], summaries: [] },
+  { id: 'c4', links: 2, titles: ['buys', 'charges'], summaries: ['Customer → Shop', 'Shop → Payment provider'] },
+  { id: 'flow', links: 2, titles: ['POST /checkout', '201 Created'], summaries: ['Web app → API', 'API → Web app'] },
+  { id: 'mermaid', links: 1, titles: [], summaries: ['Service A → Service B'] },
+] as const;
+
+for (const starter of STARTERS) {
+  test(`new ${starter.id} file opens Default with its expected drawn steps`, async ({ page }) => {
+    await page.goto('/');
+    await openWorkspacePanels(page, ['code', 'flows']);
+    await page.getByTestId(`template-${starter.id}`).click();
+    await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+
+    await expect(page.getByTestId('flow-list').locator('li')).toHaveCount(1);
+    await expect(page.getByTestId('flow-row-default')).toBeVisible();
+    await expect(page.getByTestId('flow-derived-hint')).toBeVisible();
+    await expect(page.getByTestId('flow-steps').locator('li')).toHaveCount(starter.titles.length || starter.summaries.length);
+    await expect(page.getByTestId('canvas').locator('g.pc-link')).toHaveCount(starter.links);
+    for (const [index, title] of starter.titles.entries()) {
+      await expect(page.getByTestId(`step-title-${index}`)).toHaveText(title);
+    }
+    for (const [index, summary] of starter.summaries.entries()) {
+      await expect(page.getByTestId(`step-summary-${index}`)).toHaveText(summary);
+    }
+
+    if (starter.id === 'flow') {
+      await capture(page, 'bugs-new-diagram-flow-template-light');
+      await page.emulateMedia({ colorScheme: 'dark' });
+      await capture(page, 'bugs-new-diagram-flow-template-dark');
+      await page.emulateMedia({ colorScheme: 'light' });
+    }
+    await page.getByTestId('present-open').click();
+    await expect(page.getByTestId('launcher-list').locator('li')).toHaveCount(1);
+    const count = starter.titles.length || starter.summaries.length;
+    await expect(page.getByTestId('launcher-meta-default')).toContainText(`${count} ${count === 1 ? 'step' : 'steps'}`);
+  });
+}

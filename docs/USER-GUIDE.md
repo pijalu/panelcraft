@@ -219,8 +219,12 @@ entering it; it does not silently copy work between browser, server and director
   freezing silently.
 
 ### Empty file
-- A new file offers three templates (C4 context, flow, mermaid starter); picking
-  one inserts real `.pcd` text you can keep editing.
+- A new file offers a blank canvas and three templates (C4 context, flow, mermaid
+  starter); picking one inserts real `.pcd` text you can keep editing.
+- Every starter opens with one virtual **Default flow** derived from its drawing:
+  Blank has no steps; C4 has `buys` then `charges`; Flow has `POST /checkout` then
+  `201 Created`; Mermaid has the drawn `Service A → Service B` message. The templates
+  do not add a separate authored flow, so the initial canvas, code and steps agree.
 
 ### Code view (source of truth)
 - The pane under the canvas always shows the canonical `.pcd` text; every

@@ -29,7 +29,7 @@ const CASES: readonly TemplateCase[] = [
   },
   {
     id: 'flow',
-    flowKey: 'checkout',
+    flowKey: 'default',
     objects: [
       { id: 'web', kind: 'system', name: 'Web app' },
       { id: 'api', kind: 'system', name: 'API' },

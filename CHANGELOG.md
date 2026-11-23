@@ -65,8 +65,12 @@ Details and evidence: [brand and browser-workflow validation](docs/archive/bugs-
   collapsing or docking the panel preserves editor history. The editing session reconciles
   fast undo against the code buffer without mistaking a stale clean projection for the current
   file. This also fixes the first-keystroke focus loss when Default becomes a custom copy.
+- Every new-file starter initially selects only Default with steps matching its drawing. The Flow
+  template now draws `POST /checkout` and `201 Created` as top-level connectors instead of hiding
+  them in a separate Checkout flow; the C4 card correctly describes its two links.
 
-Blank-document evidence: [Default flow on blank diagrams](docs/archive/bugs-blank-default-flow.md).
+Evidence: [Default flow on blank diagrams](docs/archive/bugs-blank-default-flow.md) and
+[new-file starter steps](docs/archive/bugs-new-diagram-flow.md).
 
 ### Changed — Flow Steps lists the flow, Properties edits the step
 

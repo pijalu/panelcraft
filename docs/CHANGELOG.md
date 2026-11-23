@@ -78,9 +78,13 @@ Details and evidence: [brand and browser-workflow validation](archive/bugs-brand
 - Browser regressions also closed Default-to-Custom focus loss, canvas-assisted selection,
   document-history routing from flow controls (including collapsed Code), the fast-undo
   stale-projection race, and history loss when the Code panel changes dock.
+- Every new-file starter initially selects only Default with steps matching its drawing. The Flow
+  template now draws `POST /checkout` and `201 Created` as top-level connectors instead of hiding
+  them in a separate Checkout flow; the C4 card correctly describes its two links.
 
-Details and evidence: [Default flow integrity](archive/bugs-default-flow-integrity.md) and
-[Default flow on blank diagrams](archive/bugs-blank-default-flow.md).
+Details and evidence: [Default flow integrity](archive/bugs-default-flow-integrity.md),
+[Default flow on blank diagrams](archive/bugs-blank-default-flow.md), and
+[new-file starter steps](archive/bugs-new-diagram-flow.md).
 
 ## Unreleased — release: the site publishes what it is missing
 

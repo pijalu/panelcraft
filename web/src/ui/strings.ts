@@ -431,7 +431,7 @@ const EN = {
   "Distribute vertically": "Distribute vertically",
   "Equal size": "Equal size",
   "C4 context": "C4 context",
-  "Two systems, one person, one link": "Two systems, one person, one link",
+  "Two systems, one person, two links": "Two systems, one person, two links",
   "A request/response flow you can play": "A request/response flow you can play",
   "From mermaid": "From mermaid",
   "Paste a flowchart and keep editing": "Paste a flowchart and keep editing",

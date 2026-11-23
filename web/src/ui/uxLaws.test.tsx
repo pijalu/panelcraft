@@ -11,6 +11,8 @@ import { HoverCard } from './HoverCard';
 import { TEMPLATES, EmptyState, galleryVisible, BLANK_TEXT } from './EmptyState';
 import type { Kind } from '../engine/model/types';
 import { parsePDL } from '../engine/format/parser';
+import { buildPlan } from '../engine/flows/plan';
+import { derivedFlow, flowsForDisplay } from './flows/derivedFlow';
 
 afterEach(cleanup);
 
@@ -94,6 +96,31 @@ describe('template gallery (paradox of the active user)', () => {
       const parsed = parsePDL(t.text);
       expect(parsed.doc, `${t.id}: ${parsed.diagnostics.map((d) => d.message).join('; ')}`).not.toBeNull();
     }
+  });
+
+  it('starts every template with only Default steps from its drawn connectors', () => {
+    const expected: Record<string, string[]> = {
+      c4: ['buys', 'charges'],
+      flow: ['POST /checkout', '201 Created'],
+      mermaid: ['Service A → Service B'],
+    };
+    for (const template of TEMPLATES) {
+      const { doc } = parsePDL(template.text);
+      if (doc === null) throw new Error(`${template.id} does not parse`);
+      expect(flowsForDisplay(doc).map((flow) => flow.title), template.id).toEqual(['Default flow']);
+      const flow = derivedFlow(doc);
+      if (flow === null) throw new Error(`${template.id} has no Default flow`);
+      expect(buildPlan({ doc, flow }).beats.map((beat) => beat.title), template.id).toEqual(
+        expected[template.id] ?? [],
+      );
+    }
+    const blank = parsePDL(BLANK_TEXT).doc;
+    expect(derivedFlow(blank)?.steps).toEqual([]);
+  });
+
+  it('describes the C4 template’s two drawn links accurately', () => {
+    render(<EmptyState onInsert={() => {}} onBlank={() => {}} />);
+    expect(screen.getByTestId('template-c4').textContent).toContain('two links');
   });
 
   it('renders one button per template', () => {
