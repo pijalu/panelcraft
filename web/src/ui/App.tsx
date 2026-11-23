@@ -207,22 +207,26 @@ function CanvasSplit(props: {
 }) {
   return (
     <main class="canvas-wrap" onContextMenu={props.onCanvasContextMenu}>
-      {/* Item 7: focusable (not tabbable) so closing a menu can restore focus
-          to the canvas the user invoked it from. */}
-      <svg
-        ref={props.canvas.svgRef}
-        class="pc-canvas"
-        data-testid="canvas"
-        width="100%"
-        height="100%"
-        tabindex={-1}
-      />
-      <MiniMap
-        snapshot={props.canvas.snap}
-        controller={props.canvas.ctrlRef.current}
-        canvasElement={props.canvas.svgRef.current}
-        viewSize={{ w: 800, h: 600 }}
-      />
+      {/* The stage is the positioning context for canvas overlays (mini-map), so
+          they sit above the docked transport rather than under it. */}
+      <div class="canvas-stage">
+        {/* Item 7: focusable (not tabbable) so closing a menu can restore focus
+            to the canvas the user invoked it from. */}
+        <svg
+          ref={props.canvas.svgRef}
+          class="pc-canvas"
+          data-testid="canvas"
+          width="100%"
+          height="100%"
+          tabindex={-1}
+        />
+        <MiniMap
+          snapshot={props.canvas.snap}
+          controller={props.canvas.ctrlRef.current}
+          canvasElement={props.canvas.svgRef.current}
+          viewSize={{ w: 800, h: 600 }}
+        />
+      </div>
       <PlayBar player={props.player} onPresent={props.onPresent} />
     </main>
   );

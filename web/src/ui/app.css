@@ -2711,6 +2711,25 @@ marker .pc-arrow[fill='none'] {
 /* Play bar overlay (canvas-wrap is the positioning context) */
 .canvas-wrap {
   position: relative;
+  /* The docked transport is a flex row below the canvas, so the canvas
+     yields its height to it instead of pushing it past the viewport. */
+  display: flex;
+  flex-direction: column;
+}
+
+/* The stage stacks the SVG and its overlays; the transport docks below it. */
+.canvas-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+
+.canvas-stage > .pc-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
 }
 
 .playbar {

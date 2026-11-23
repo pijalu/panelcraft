@@ -155,6 +155,13 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByTestId('step-play-1').click();
     await expect(page.getByTestId('playbar')).toBeVisible();
     await expect(page.getByTestId('pb-progress')).toBeVisible();
+    // The transport is docked inside the window: the canvas yields its height to
+    // it instead of pushing it below the fold where the page would scroll.
+    await expect.poll(() => page.evaluate(() => {
+      const bar = document.querySelector('[data-testid="playbar"]')?.getBoundingClientRect();
+      return { scroll: document.documentElement.scrollHeight, inner: window.innerHeight, barBottom: bar?.bottom ?? 0 };
+    })).toEqual({ scroll: 900, inner: 900, barBottom: 888 });
+    await capture(page, `flow01-playbar-docked-${theme}`);
     await page.getByTestId('pb-exit').click();
 
     // Sequence export is a property of the flow, so choose the flow first.
