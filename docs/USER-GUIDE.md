@@ -109,6 +109,10 @@ entering it; it does not silently copy work between browser, server and director
 - **Palette** (left): grouped by C4 level (Context/Container/Component, plus
   Structure for group/note). Click a kind — or press `1`–`9` — then click the
   canvas; dragging a palette row onto the canvas also places it.
+- **Quick placement**: pressing `1`–`9` with nothing armed puts the shape straight
+  into the centre of the view, stepping right, then down, past anything already
+  there — so a second shape never lands on top of the first. **Fit to diagram**
+  (`F`) frames whatever you have placed.
 - **Grid**: a fresh profile shows a subtle dots grid with snapping on. *Application
   menu → View* offers **Grid: off / dots / lines** and a separate **Snap to grid**
   checkbox. The two are independent workspace preferences (the grid is editor

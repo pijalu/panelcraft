@@ -88,14 +88,13 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.keyboard.press('2');
     await expect(canvas.locator('.pc-obj[data-id="o2"]')).toBeVisible();
     await expect(editor).toContainText('System 1');
-    // Quick-add places each shape at the canvas centre: move the second one
-    // clear of the first so it can be linked.
+    // Quick-add cascades past an occupied spot: the second shape is fully
+    // visible beside the first, so it can be connected at once.
+    const first = await canvas.locator('.pc-obj[data-id="o1"]').boundingBox();
     const second = await canvas.locator('.pc-obj[data-id="o2"]').boundingBox();
-    if (second === null) throw new Error('second object is unavailable');
-    await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(second.x + second.width / 2 + 340, second.y + second.height / 2 + 20, { steps: 8 });
-    await page.mouse.up();
+    if (first === null || second === null) throw new Error('quick-added shapes are unavailable');
+    expect(second.x).toBeGreaterThanOrEqual(first.x + first.width);
+    expect(Math.abs(second.y + second.height / 2 - (first.y + first.height / 2))).toBeLessThan(40);
     await canvas.locator('.pc-obj[data-id="o1"]').click();
     const halo = await canvas.locator('.pc-halo[data-side="right"]').first().boundingBox();
     const target = await canvas.locator('.pc-obj[data-id="o2"]').boundingBox();

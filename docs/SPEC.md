@@ -625,6 +625,16 @@ camera-containment and dependencies-heading items; active flow actors now have b
 and the dependencies heading names the owning file. The flow-presentation pass subsequently
 added one-beat history fading and production reduced-motion parity, with light/dark review.
 
+Drawing-session follow-ups (found in the default-shell review):
+
+* **Frame the drawing when it opens** — a template or a saved file opens at 1:1
+  from the origin, so a small diagram sits in the top-left corner of a large
+  canvas until the user presses `F`. An initial fit-to-diagram (only when the
+  file has no saved view) would match what people expect from diagram tools.
+* **Return to the editing view after a presentation** — leaving a presentation
+  keeps the camera on the last step, so the user has to find their way back to
+  the area they were editing. The pre-presentation camera should be restored.
+
 Route-editing follow-ups (found in the connection-move review):
 
 * **Bend preservation on channel slides** — sliding a channel whose run contains
