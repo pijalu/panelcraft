@@ -47,47 +47,37 @@ Fix plan and test approach:
 
 # To fix
 
-### Show the code view while drawing
+### Quick-add stacks every new shape on the previous one
 
 Observed:
 
-- Code is not showing while drawing. No separate capture or reproduction path was
-  supplied for this item.
+- On a fresh profile, pressing `1` then `2` (or any two quick-add keys) places
+  the second shape exactly over the first: both land at the centre of the view
+  (`CanvasController.addObject` uses `centerOfView()` with no collision check),
+  so the first shape is hidden and the two must be dragged apart before they can
+  be connected. Seen during the reproduction for the two items archived in
+  `docs/archive/bugs-code-visible-by-default.md` (capture
+  `test-results/screenshots/code-default-fresh-*.png` show `System 1` covering
+  `Person 1`; the regression had to move the second shape clear to link them).
 
 Expected:
 
-- A fresh drawing session shows the editable diagram source alongside the canvas.
-  Adding or editing an element on the canvas updates that source within the
-  documented debounce, while the explicit single-pane toggle remains available.
-
-Review:
-
-- **Severity: high.** Hiding the source removes the other half of the core
-  canvas/code authoring workflow and makes synchronization failures hard to see.
-- This is pinned by the current default rather than caused by a missing editor:
-  `web/src/ui/uiLayout.ts:78-91` initializes Code as `collapsed`, and
-  `web/src/ui/uiLayout.test.ts:11-21` explicitly expects that state at every
-  viewport. It conflicts with the product overview's requirement that diagram
-  source is always visible (`docs/SPEC.md:15-17`); the split-layout and explicit
-  single-pane option remain specified at `docs/SPEC.md:151-157`.
-- UX lens — **Mental Model**: visible source keeps the relationship between PDL,
-  canvas objects and saved files predictable.
+- A quick-added (or palette-dropped) shape whose footprint would cover an
+  existing object is placed beside the occupied spot instead — offset along a
+  short cascade so the new shape is fully visible and immediately linkable,
+  while the position still snaps to the grid and stays inside the current view.
 
 Fix plan and test approach:
 
-1. Reproduce in a fresh browser profile and capture the initial shell, then add an
-   object and a connector while keeping Code visible.
-2. Replace the default-layout assertions with the intended visible-Code contract
-   and add a browser regression proving that the editor is visible and receives
-   both canvas edits. This is an intentional contract correction, not removal of
-   the old assertion to make the implementation pass.
-3. Change the fresh-profile default so Code opens beside the canvas; keep its
-   docking, collapse and single-pane controls functional, and preserve explicit
-   saved layout choices.
-4. Verify canvas → code and code → canvas synchronization, diagnostics, undo and
-   redo with Code open, collapsed and reopened. Review usable canvas/code sizes at
-   wide and narrow viewports in both themes.
-5. Run `npm run check`, the layout/code-sync unit suites and the drawing, shell,
-  history and accessibility Playwright scenarios; attach before/after captures.
+1. Reproduce with a browser filmstrip: two quick-adds on a fresh profile, capture
+   the overlap; assert the second shape's rectangle intersects the first.
+2. Add a failing unit test in `CanvasController` coverage: adding the same or a
+   different kind twice yields non-overlapping bounds, grid-aligned positions,
+   and the cascade stops inside the viewport (wraps to the next free slot).
+3. Implement the smallest placement rule (a short cascade probe reusing the
+   existing overlap/geometry helpers), keeping explicit `at` placement (palette
+   drop at a point, paste, import) unchanged.
+4. Validation: unit suite, the drawing Playwright scenarios, light/dark capture
+   review, then each Go gate separately (no Go change expected).
 
 Closed items live in [docs/archive/](docs/archive/).

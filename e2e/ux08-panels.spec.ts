@@ -61,6 +61,11 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.emulateMedia({ colorScheme });
     await ready(page);
+    await expect(page.getByTestId('code-pane')).toBeVisible();
+    // The tab column is the collapsed state: start from Code shown, then fold
+    // it back into the right column like any other panel.
+    await page.getByTestId('collapse-code').click();
+    await expect(page.getByTestId('rail-code')).toBeVisible();
 
     const left = page.getByTestId('collapsed-rail-left');
     const right = page.getByTestId('collapsed-rail-right');

@@ -227,9 +227,16 @@ entering it; it does not silently copy work between browser, server and director
   do not add a separate authored flow, so the initial canvas, code and steps agree.
 
 ### Code view (source of truth)
-- The pane under the canvas always shows the canonical `.pcd` text; every
-  canvas edit lands there, and every code edit re-patches the canvas
-  (debounced; diverged states resolve through a guided dialog, M4).
+- The Code pane opens beside the canvas from the first load, so the canonical
+  `.pcd` text is visible while you draw; every canvas edit lands there, and every
+  code edit re-patches the canvas (debounced; diverged states resolve through a
+  guided dialog, M4). On a narrow screen it starts as a labelled rail instead of
+  covering the canvas — open it from the rail when you need it.
+- Collapse it to a rail with the chevron in its header or `Ctrl+J`; close it from
+  its panel menu and bring it back through **Application menu → Layout & workspace
+  → Show Code panel**. PanelCraft remembers the arrangement you leave, including
+  a collapsed or closed Code pane; **Reset workspace layout** in the same menu
+  returns to Code beside the canvas.
 - `Shift-Alt-F` formats the buffer.
 - Clicking an object highlights its statement here (no caret stealing); putting
   the caret on a statement selects that object on the canvas.

@@ -29,7 +29,9 @@ async function show(page: Page, panel: 'sidebar' | 'flows' | 'code'): Promise<vo
 }
 
 async function seedFlow(page: Page): Promise<void> {
-  await show(page, 'code');
+  // Code opens by default, so the source is already on screen; its App-menu
+  // command is disabled while the pane is shown.
+  await expect(page.getByTestId('code-pane')).toBeVisible();
   const editor = page.locator('.cm-content');
   await expect(editor).toContainText('pcd 1.0');
   await seedCode(page, FLOW_DOC);

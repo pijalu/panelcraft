@@ -4,6 +4,18 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — fix: the diagram source is visible while you draw
+
+- A fresh workspace opens the Code pane beside the canvas instead of hiding the
+  source behind a collapsed rail. Canvas edits reach the visible text within the
+  documented debounce, the drawn connection is a presentable Default flow, and
+  the explicit collapse, close, single-pane and reset controls keep working. A
+  layout you saved — including a collapsed or closed Code pane — is still yours.
+- A fresh profile on a narrow screen now fits the default before the first paint,
+  so Code starts as a labelled rail rather than a drawer covering the canvas.
+
+Details and evidence: [source visible by default](archive/bugs-code-visible-by-default.md).
+
 ## Unreleased — fix: presentation dock reserves its measured height
 
 - The presentation canvas and advance surface now share the dock's measured

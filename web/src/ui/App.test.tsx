@@ -34,7 +34,8 @@ describe('App shell + palette (WP9)', () => {
     const left = screen.getByTestId('collapsed-rail-left');
     const right = screen.getByTestId('collapsed-rail-right');
     expect(left.querySelectorAll('[data-testid="rail-sidebar"], [data-testid="rail-flows"], [data-testid="rail-palette"]')).toHaveLength(3);
-    expect(right.querySelectorAll('[data-testid="rail-code"], [data-testid="rail-props"]')).toHaveLength(2);
+    expect(right.querySelectorAll('[data-testid="rail-props"]')).toHaveLength(1);
+    expect(screen.getByTestId('code-pane')).not.toBeNull();
     expect(screen.getByTestId('dock-left').querySelectorAll('.panel-rail-group')).toHaveLength(1);
     expect(screen.getByTestId('dock-right').querySelectorAll('.panel-rail-group')).toHaveLength(1);
   });
@@ -157,7 +158,8 @@ async function mountReady() {
     await new Promise((r) => setTimeout(r, 0)); // storage fallback macrotask → setReady
   });
   for (const panel of ['sidebar', 'palette', 'code', 'props']) {
-    fireEvent.click(screen.getByTestId(`expand-${panel}`));
+    const expand = screen.queryByTestId(`expand-${panel}`);
+    if (expand) fireEvent.click(expand);
   }
   const svg = container.querySelector('svg[data-testid="canvas"]') as SVGSVGElement;
   svg.getBoundingClientRect = () =>

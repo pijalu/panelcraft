@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// UX-02 browser acceptance: canvas-first defaults, every dock, drag indicator,
+// UX-02 browser acceptance: visible-Code defaults, every dock, drag indicator,
 // floating recovery, resize/persistence, focus, keyboard commands and a11y.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
@@ -93,10 +93,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
     await expect(page.getByTestId('app-shell')).toHaveAttribute(
       'data-panels',
-      'sidebar:collapsed,flows:collapsed,palette:collapsed,code:collapsed,props:collapsed',
+      'sidebar:collapsed,flows:collapsed,palette:collapsed,code:open,props:collapsed',
     );
     await expect(page.getByTestId('palette')).toHaveCount(0);
-    for (const panel of PANELS) {
+    await expect(page.getByTestId('code-pane')).toBeVisible();
+    await expect(page.locator('.cm-content')).toHaveAttribute('contenteditable', 'true');
+    for (const panel of PANELS.filter((panel) => panel !== 'code')) {
       await expect(page.getByTestId(`rail-${panel}`)).toBeVisible();
     }
     await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
@@ -168,7 +170,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     await chooseAppMenu(page, 'reset-workspace-layout');
     await expect(page.getByTestId('app-shell')).toHaveAttribute(
       'data-panels',
-      'sidebar:collapsed,flows:collapsed,palette:collapsed,code:collapsed,props:collapsed',
+      'sidebar:collapsed,flows:collapsed,palette:collapsed,code:open,props:collapsed',
     );
     await expect(page.getByTestId('expand-palette')).toBeFocused();
     await capture(page, `ux02-reset-${colorScheme}`);
@@ -237,6 +239,12 @@ test('UX-02: unapplied code survives docking, floating, close and reopen', async
 
 test('UX-02: keyboard-only open, dock, float, close, reopen and reset', async ({ page }) => {
   await ready(page);
+  // Code opens by default; its App-menu command is disabled while shown, so
+  // start from the collapsed rail and prove the keyboard path both ways.
+  await page.keyboard.press('ControlOrMeta+j');
+  await expect(page.getByTestId('rail-code')).toBeVisible();
+  await expect(page.getByTestId('expand-code')).toBeFocused();
+
   await pressMenuItem(page, 'app-menu', 'view-panel-code');
   await expect(page.getByTestId('panel-title-code')).toBeFocused();
 

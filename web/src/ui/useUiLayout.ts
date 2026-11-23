@@ -140,13 +140,24 @@ function useLayoutPersistence(
 }
 
 /**
+ * The layout a profile without a saved one starts from. A narrow screen gets
+ * the same fit as a resize: an open side panel there renders as a drawer over
+ * the canvas, so the default Code pane has to yield until there is room for
+ * both halves.
+ */
+function freshLayout(viewport: number): UiLayout {
+  if (typeof window === 'undefined') return defaultLayout(viewport);
+  return recoverLayout(defaultLayout(viewport), viewport, window.innerHeight);
+}
+
+/**
  * @param manager  workspace manager (settings persistence)
  * @param ready    workspace initialized (stored layout available)
  * @param version  manager version bump (adopt restored settings)
  */
 export function useUiLayout(manager: WorkspaceManager, ready: boolean, version: number): UiLayoutHandle {
   const viewport = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : window.innerWidth;
-  const [layout, setLayout] = useState<UiLayout>(() => defaultLayout(viewport));
+  const [layout, setLayout] = useState<UiLayout>(() => freshLayout(viewport));
   const layoutRef = useRef<UiLayout>(layout);
   const adoptedFrom = useRef<unknown>(undefined);
   const touched = useRef(false);
