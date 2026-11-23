@@ -476,6 +476,7 @@ body {
 .app-shell.presenting .tab-strip,
 .app-shell.presenting .sidebar,
 .app-shell.presenting .palette,
+.app-shell.presenting .playbar,
 .app-shell.presenting .code-pane,
 .app-shell.presenting .props-col,
 .app-shell.presenting .panel-rail,
@@ -485,12 +486,12 @@ body {
 }
 
 .app-shell.presenting .app-body {
-  padding-bottom: 96px;
+  padding-bottom: var(--present-dock-height, 0px);
 }
 
 .present-advance {
   position: fixed;
-  inset: 0 0 96px 0;
+  inset: 0 0 var(--present-dock-height, 0px) 0;
   z-index: 20;
   background: transparent;
   border: 0;

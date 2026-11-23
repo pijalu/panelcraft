@@ -2,7 +2,7 @@
 // Present-mode transport dock (F-16): step counter, progress dots, speaker
 // notes and the minimal transport (back / play-pause / next / restart / exit).
 // Docked at the bottom so the diagram keeps the whole viewport.
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { FlowPlayerApi } from './flows/useFlowPlayer';
 import { flowNotesVisible, stepExplanationVisible } from './flows/flowController';
 import { parseSafeMarkdown } from '../engine/format/safeMarkdown';
@@ -195,6 +195,39 @@ function FramingArea(props: {
 /** Bottom dock shown while presenting (or paused inside a flow). */
 export function PresentDock({ player: p }: PresentDockProps) {
   const st = p.state;
+  const dockRef = useRef<HTMLDivElement | null>(null);
+  const refit = useRef(p.refit);
+  refit.current = p.refit;
+  useLayoutEffect(() => {
+    const dock = dockRef.current;
+    if (dock === null) return;
+    const root = document.documentElement;
+    let measured = 0;
+    let frame = 0;
+    const measure = (): void => {
+      const height = dock.getBoundingClientRect().height;
+      if (height <= 0 || height === measured) return;
+      measured = height;
+      // The dock is fixed and content-sized. Its border box already includes
+      // wrapped controls, dots, narration, choices and safe-area padding.
+      root.style.setProperty('--present-dock-height', `${height}px`);
+      if (frame !== 0) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        refit.current();
+      });
+    };
+    measure();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    if (observer === null) window.addEventListener('resize', measure);
+    else observer.observe(dock, { box: 'border-box' });
+    return () => {
+      observer?.disconnect();
+      if (observer === null) window.removeEventListener('resize', measure);
+      if (frame !== 0) cancelAnimationFrame(frame);
+      root.style.removeProperty('--present-dock-height');
+    };
+  }, []);
   const index = st.progress?.index ?? 0;
   const total = st.progress?.total ?? 0;
   const dots = progressDots(index, total);
@@ -208,7 +241,7 @@ export function PresentDock({ player: p }: PresentDockProps) {
   return (
     <>
     <FramingArea framing={framingShown ? framing : null} anchor={card} onClose={() => setDismissedAt(index)} />
-    <div class="present-dock" data-testid="present-dock" data-status={st.status}>
+    <div ref={dockRef} class="present-dock" data-testid="present-dock" data-status={st.status}>
       <div class="present-row">
         <button
           type="button"

@@ -3,7 +3,7 @@
 // presentAnchor.ts; this hook only supplies facts (workspace readiness, active
 // file, player status) and applies effects through the narrow history port and
 // the player API. FlowRunner remains URL-agnostic.
-import { useCallback, useEffect, useMemo, useRef } from 'preact/hooks';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'preact/hooks';
 import {
   anchorTransition,
   browserPresentHistory,
@@ -74,7 +74,10 @@ export function usePresentAnchor(deps: PresentAnchorDeps): PresentAnchorHandle {
     dispatch({ type: 'ready', hash: history.current(), path: deps.activePath });
   }, [deps.ready, deps.activePath, dispatch, history]);
 
-  useEffect(() => {
+  // History events can arrive between a deferred effect and the next render.
+  // Commit the player status with the render so a rapid Back/Forward cannot
+  // adopt a flow and then clear its new anchor with the previous exit's idle.
+  useLayoutEffect(() => {
     dispatch({ type: 'status', status: deps.player.state.status });
   }, [deps.player.state.status, dispatch]);
 

@@ -47,49 +47,6 @@ Fix plan and test approach:
 
 # To fix
 
-### Presentation dock can leave content partially hidden
-
-Observed:
-
-- The zone marked by the arrow in
-  `/Users/muaddib/Library/Caches/goa/images/goa-image-3117671125.png` shows a
-  partially hidden element at the bottom of the drawing/presentation surface. The
-  capture alone does not establish whether the obscured element is diagram
-  content or narration chrome.
-
-Expected:
-
-- The dock, canvas and narration have distinct visible regions. No active-step
-  object, connector label, narration or control is clipped behind the dock,
-  including when text wraps or the viewport is narrow.
-
-Review:
-
-- **Severity: medium.** Playback controls remain reachable, but partially hidden
-  content cannot be read reliably.
-- Presentation reserves a fixed 96 px bottom inset
-  (`web/src/ui/app.css:487-498`), while the fixed dock has content-driven height:
-  controls, progress dots, choices, narration and safe-area padding
-  (`app.css:505-576`). Those heights can diverge. Refitting reacts to presentation
-  entry, window resize and the optional asides, but not explicitly to dock height
-  changes (`web/src/ui/PresentDock.tsx:139-168`).
-- UX lens — **Flow**: presentation feedback and content must remain visible
-  without forcing the viewer to recover hidden context.
-
-Fix plan and test approach:
-
-1. In the same reproduction, identify the obscured DOM/SVG element and record its
-   bounds, the canvas bounds and the dock bounds before changing layout code.
-2. Add a browser regression asserting that the canvas's usable bottom equals the
-   dock's top and that all active-step bounds remain inside the visible canvas.
-3. Replace the fixed inset with one measured dock-height value shared by the
-   canvas reservation and advance surface; refit the camera after dock size
-   changes. Include safe-area padding and wrapped content in that measurement.
-4. Exercise short/long narration, step descriptions, choices, multiple progress
-   dots, narrow viewports and both themes. Capture initial, playing, paused and
-   settled frames and review them against the style-guide checklist.
-5. Run the presentation/framing Playwright suites and `npm run check`.
-
 ### Show the code view while drawing
 
 Observed:

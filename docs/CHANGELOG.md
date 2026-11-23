@@ -4,6 +4,18 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — fix: presentation dock reserves its measured height
+
+- The presentation canvas and advance surface now share the dock's measured
+  border-box height instead of a fixed 96 px inset. Wrapped narration, choices,
+  progress dots and safe-area padding resize both surfaces and trigger a camera
+  refit, keeping active-step content and dock controls visible at narrow widths.
+- Presentation hides the duplicate editor play bar, eliminating its horizontal
+  overflow, and synchronizes playback status with the shell so rapid Back/Forward
+  navigation cannot clear or hide a newly restored presentation.
+
+Details and measurement evidence: [presentation dock clipping](archive/bugs-presentation-dock-clipping.md).
+
 ## Unreleased — progressive web filesystem
 
 - Browser-only workspaces now use the best backend the browser offers instead of always
