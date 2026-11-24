@@ -146,6 +146,51 @@ test('blank person + component + link presents by default and New flow preserves
   expect(errors).toEqual([]);
 });
 
+test('a fresh no-file session saves mouse-drawn objects and their link to a new blank diagram', async ({ page }) => {
+  await page.goto('/');
+  await openWorkspacePanels(page, ['code', 'palette']);
+  await page.getByTestId('tab-close-untitled.pcd').click();
+  await expect(page.getByTestId('empty-state')).toBeVisible();
+  // Closing the last tab uses the workspace's trailing save. Reloading that
+  // saved state reproduces startup with a gallery but no previously loaded file.
+  await page.waitForTimeout(900);
+  await page.reload();
+  await expect(page.getByTestId('empty-state')).toBeVisible();
+  await expect(page.locator('[data-testid^="tab-close-"]')).toHaveCount(0);
+  await openWorkspacePanels(page, ['code', 'palette']);
+
+  await page.getByTestId('template-blank').click();
+  await expect(page.getByTestId('tab-diagram.pcd')).toBeVisible();
+  const canvas = page.getByTestId('canvas');
+  const box = await canvas.boundingBox();
+  if (box === null) throw new Error('canvas has no box');
+  await drag(page, 'palette-person', box.x + box.width * 0.22, box.y + box.height * 0.32);
+  await drag(page, 'palette-container', box.x + box.width * 0.65, box.y + box.height * 0.32);
+  await expect(canvas.locator('g.pc-obj')).toHaveCount(2);
+
+  await canvas.locator('g.pc-obj[data-id="o1"]').click();
+  const halo = await canvas.locator('.pc-halo[data-side="right"]').first().boundingBox();
+  const target = await canvas.locator('g.pc-obj[data-id="o2"]').boundingBox();
+  if (halo === null || target === null) throw new Error('connection endpoints are unavailable');
+  await page.mouse.move(halo.x + halo.width / 2, halo.y + halo.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await expect(canvas.locator('g.pc-link')).toHaveCount(1);
+
+  const editor = page.locator('.cm-content');
+  await test.info().attach('fresh-blank-code-after-mouse-drawing', {
+    contentType: 'text/plain',
+    body: await documentText(page),
+  });
+  await expect(editor).toContainText('person o1 "Person 1"');
+  await expect(editor).toContainText('container o2 "Container 1"');
+  await expect(editor).toContainText('o1 -> o2');
+  await page.getByTestId('present-open').click();
+  await expect(page.getByTestId('launcher-meta-default')).toContainText('1 step');
+  await capture(page, 'bugs-new-diagram-fresh-blank-mouse-light', { golden: false });
+});
+
 test('blank and populated diagrams always offer Default flow', async ({ page }) => {
   await blankDiagram(page);
   const blankText = await documentText(page);

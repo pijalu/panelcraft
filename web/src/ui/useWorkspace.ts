@@ -216,7 +216,9 @@ function loadCanvasDocument(a: CanvasLoadArgs): void {
     objects: a.ctrl.snapshot.objects,
     links: a.ctrl.snapshot.links,
   });
-  if ((a.source?.text ?? a.manager.text(path)) === curText) return;
+  // Equal text is an echo only after the first load. A canonical blank file
+  // can equal a never-loaded canvas; skipping it would reject every later edit.
+  if (a.ctrl.isHydrated() && (a.source?.text ?? a.manager.text(path)) === curText) return;
   a.loadingRef.current = a.documentKey;
   a.ctrl.loadState(a.source?.canvasState() ?? a.manager.canvasState(path));
   a.loadingRef.current = null;
