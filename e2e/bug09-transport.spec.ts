@@ -404,8 +404,12 @@ test.describe('presentation replay (item 9)', () => {
     const atStart = await token.boundingBox();
     const localStart = await token.evaluate((el) => getComputedStyle(el).transform);
     await expect.poll(() => token.evaluate((el) => getComputedStyle(el).transform)).not.toBe(localStart);
-    const later = await token.boundingBox();
-    expect(Math.abs((later?.x ?? 0) - (atStart?.x ?? 0))).toBeGreaterThan(2);
+    // Transform and bounding-box reads cross different rendering frames. Poll
+    // the visible displacement itself instead of sampling once after any change.
+    await expect.poll(async () => {
+      const later = await token.boundingBox();
+      return Math.abs((later?.x ?? 0) - (atStart?.x ?? 0));
+    }).toBeGreaterThan(2);
     await expect(page.getByTestId('present-counter')).toContainText('1 / 2');
 
     // A parked step really is parked: the dot jump settles the token at the

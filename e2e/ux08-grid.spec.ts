@@ -119,6 +119,7 @@ test.describe('canvas grid (UX08-WP05)', () => {
     await expect.poll(() => gridFill(page)).toBeNull();
 
     // Both preferences survive a reload (browser-local, not diagram data).
+    await page.waitForTimeout(400); // async store write
     await page.reload();
     await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
     await expect.poll(() => gridFill(page)).toBeNull();
