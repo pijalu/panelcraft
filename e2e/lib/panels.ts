@@ -61,6 +61,9 @@ export async function openWorkspacePanels(
   page: Page,
   panels: readonly WorkspacePanel[] = ['sidebar', 'palette', 'code', 'props'],
 ): Promise<void> {
+  // Stored settings arrive after the first shell paint. Wait for that render so
+  // a restored open panel cannot turn its menu command disabled mid-setup.
+  await expect(page.getByTestId('app-shell')).toHaveAttribute('data-workspace-ready', 'true');
   for (const panel of panels) {
     if (await page.locator(`[data-panel="${panel}"]`).count()) continue;
     const expand = page.getByTestId(`expand-${panel}`);

@@ -1019,7 +1019,7 @@ export function App() {
     <div
       class={`app-shell${pres.presenting ? ' presenting' : ''}${pres.presenting && flowNotesVisible(player.state) ? ' has-flow-notes' : ''}${pres.presenting && stepExplanationVisible(player.state) ? ' has-step-explanation' : ''}`}
       data-presenting={pres.presenting ? 'true' : 'false'}
-      data-testid="app-shell"
+      data-testid="app-shell" data-workspace-ready={String(ws.ready)}
       data-panels={Object.entries(ui.layout.panels).map(([k, v]) => `${k}:${v}`).join(',')}
       style={layoutStyle(ui.layout)}
     >
