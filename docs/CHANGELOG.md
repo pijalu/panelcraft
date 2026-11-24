@@ -4,6 +4,86 @@ All notable changes to PanelCraft. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com); versioning is SemVer-ish with
 milestone-aligned minors. Dates are UTC.
 
+## Unreleased — fix: editor chrome and quick placement (drawing-session review)
+
+- The editor transport bar that appears when a flow plays from the Flow Steps
+  panel now docks inside the window: the canvas yields its height to it instead
+  of pushing it below the fold, and the mini-map sits above it, so every control
+  stays reachable without scrolling the page.
+- A presentation no longer paints the canvas grid behind the diagram; the saved
+  grid preference returns unchanged when the presentation ends.
+- Quick-add (`1`–`9`) places each new shape clear of the ones already there —
+  the centre of the view first, then right, below, above, left on the grid — so
+  a second shape never hides the first. Palette drops at a point are unchanged.
+- Menus are positioned before their first paint, so a context menu opened near
+  a window edge no longer flashes outside the window for a frame.
+
+Details and evidence: [play bar dock](archive/bugs-playbar-dock.md),
+[presentation grid](archive/bugs-presentation-grid.md),
+[quick-add cascade](archive/bugs-quick-add-cascade.md),
+[menu placement](archive/bugs-menu-placement-flash.md).
+
+## Unreleased — fix: the diagram source is visible while you draw
+
+- A fresh workspace opens the Code pane beside the canvas instead of hiding the
+  source behind a collapsed rail. Canvas edits reach the visible text within the
+  documented debounce, the drawn connection is a presentable Default flow, and
+  the explicit collapse, close, single-pane and reset controls keep working. A
+  layout you saved — including a collapsed or closed Code pane — is still yours.
+- A fresh profile on a narrow screen now fits the default before the first paint,
+  so Code starts as a labelled rail rather than a drawer covering the canvas.
+
+Details and evidence: [source visible by default](archive/bugs-code-visible-by-default.md).
+
+## Unreleased — fix: presentation dock reserves its measured height
+
+- The presentation canvas and advance surface now share the dock's measured
+  border-box height instead of a fixed 96 px inset. Wrapped narration, choices,
+  progress dots and safe-area padding resize both surfaces and trigger a camera
+  refit, keeping active-step content and dock controls visible at narrow widths.
+- Presentation hides the duplicate editor play bar, eliminating its horizontal
+  overflow, and synchronizes playback status with the shell so rapid Back/Forward
+  navigation cannot clear or hide a newly restored presentation.
+
+Details and measurement evidence: [presentation dock clipping](archive/bugs-presentation-dock-clipping.md).
+
+## Unreleased — progressive web filesystem
+
+- Browser-only workspaces now use the best backend the browser offers instead of always
+  IndexedDB: an authorized local folder, then origin-private files, then Web Storage, then
+  legacy IndexedDB, then memory. The choice is data-aware — an existing non-empty
+  workspace is never replaced by an empty preferred backend — and nothing is copied or
+  migrated between backends, so an older release still finds its workspace.
+- **Open directory…** and **Reconnect local folder…** live in the Files panel. A chosen
+  folder is remembered and reopened silently only while read/write permission is granted;
+  otherwise the app stays on browser files and asks for permission from the reconnect
+  click. Page loads never raise a permission prompt. **Use browser storage** leaves a
+  folder explicitly and leaves its files untouched.
+- Every backend has its own label in the Files panel, and the clear-data dialog names the
+  files it actually deletes. Static hosting still makes no workspace API requests.
+
+## Unreleased — local-first workspace storage
+
+- `panelcraft serve -local DIR` now edits ordinary workspace files through a confined,
+  loopback-only filesystem backend. `-storage-type filesystem` is the default,
+  `filestorage` is an alias, and `-depth N` limits visible descendants. Strong revisions
+  prevent stale browser saves from overwriting external edits. Without `-local`, serving
+  remains browser-storage-only and static hosting still performs no API discovery.
+- Supporting browsers offer **Open local folder…** for direct, server-free folder access.
+  IndexedDB remains the default and universal fallback; cancelling a picker preserves the
+  current workspace, and directory selection is session-scoped.
+- The Files panel identifies non-default storage. Save failures and conflicts remain
+  visible, the status pill says **Unsaved**, and clear-data confirmation describes the
+  real files affected.
+- `-storage-type git` opens or initializes a standalone local repository and composes the
+  confined filesystem store. Content changes create embedded Git commits; metadata-only
+  saves do not. **Git versions** lists history, previews file lists and restores a version as a
+  forward commit. Externally staged paths and merges block mutation; no remote, credential,
+  hook or network operation is performed. Remote Git and GitHub integration remain design-only.
+
+Details and evidence: [pluggable workspace storage](archive/bugs-pluggable-workspace-storage.md)
+and [local Git workspace storage](archive/bugs-local-git-storage.md).
+
 ## Unreleased — brand: wordmark and application icon
 
 - The header wordmark uses a bold Panel/Craft treatment with a theme-aware purple gradient on
@@ -30,18 +110,26 @@ Details and evidence: [brand and browser-workflow validation](archive/bugs-brand
 
 ## Unreleased — flows: a live Default for every diagram
 
-- Every non-empty diagram has a virtual **Default flow**, including an element-only diagram
-  and one that already has custom flows. It covers current connectors and objects without
-  being persisted; editing it creates a separate **Custom flow**, while Default keeps tracking
-  the drawing. Flow creation and editing preserve the whole document.
+- Every valid diagram has a virtual **Default flow**, including a blank diagram, an element-only
+  diagram and one that already has custom flows. Blank Default starts with zero steps and follows
+  the first added element. Default covers current connectors and objects without being persisted;
+  editing it creates a separate **Custom flow**, while Default keeps tracking
+  the drawing. Default and New flow snapshot connectors in strict creation order; existing
+  custom flows keep their own ordering and overrides. Flow creation and editing preserve the whole document.
 - Steps reference their elements and inherit connector labels and object descriptions. A step
   can override those values for one flow and return to inheritance when cleared. Parallel
   anonymous connectors retain their identity through playback and both documentation exports.
 - Browser regressions also closed Default-to-Custom focus loss, canvas-assisted selection,
   document-history routing from flow controls (including collapsed Code), the fast-undo
   stale-projection race, and history loss when the Code panel changes dock.
+- Every new-file starter initially selects only Default with steps matching its drawing. The Flow
+  template now draws `POST /checkout` and `201 Created` as top-level connectors instead of hiding
+  them in a separate Checkout flow; the C4 card correctly describes its two links.
 
-Details and evidence: [Default flow integrity](archive/bugs-default-flow-integrity.md).
+Details and evidence: [Default flow integrity](archive/bugs-default-flow-integrity.md),
+[Default flow on blank diagrams](archive/bugs-blank-default-flow.md),
+[new-file starter steps](archive/bugs-new-diagram-flow.md), and
+[Default playback and creation order](archive/bugs-default-flow-playback.md).
 
 ## Unreleased — release: the site publishes what it is missing
 

@@ -27,7 +27,9 @@ export function useImportGhosts(
   useEffect(() => {
     const ctrl = ctrlRef.current;
     if (!ready || ctrl === null) return;
-    if (activePath === null) {
+    if (activePath === null || !manager.hasFile(activePath)) {
+      // A backend switch replaces the tree before the previous render's effects
+      // have all run. Its old active path is stale, not a corrupt import.
       ctrl.setGhosts([]);
       setErrors([]);
       return;

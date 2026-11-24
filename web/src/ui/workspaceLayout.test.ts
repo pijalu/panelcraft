@@ -15,7 +15,7 @@ import {
 } from './uiLayout';
 
 describe('UX-02 workspace layout', () => {
-  it('starts canvas-first with every panel present but collapsed', () => {
+  it('starts with visible Code and every secondary panel available as a rail', () => {
     const layout = defaultLayout(1600);
     expect(layout.version).toBe(2);
     // UX08-WP12: Flows keeps a labelled rail (collapsed, not closed) so flow
@@ -24,9 +24,19 @@ describe('UX-02 workspace layout', () => {
       sidebar: 'collapsed',
       flows: 'collapsed',
       palette: 'collapsed',
-      code: 'collapsed',
+      code: 'open',
       props: 'collapsed',
     });
+  });
+
+  it('recovers a narrow fresh layout to a usable canvas and an accessible Code rail', () => {
+    for (const width of [520, 680, 800]) {
+      const recovered = recoverLayout(defaultLayout(width), width, 640);
+      expect(recovered.panels.code, `width ${width}`).toBe('collapsed');
+      expect(recovered.docks.code).toBe('right');
+    }
+    // Wide enough for both halves: the source stays open.
+    expect(recoverLayout(defaultLayout(1024), 1024, 768).panels.code).toBe('open');
   });
 
   it('distinguishes collapse, close, and accessible reopening', () => {

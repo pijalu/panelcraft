@@ -30,7 +30,8 @@ import { useCanvasGrid } from './useCanvasGrid';
 import { useHistory } from './useHistory';
 import { useShellUi } from './useShellUi';
 import { layoutStyle, PANELS, type DockId, type PanelId } from './uiLayout';
-import { CollapseButton, PanelRail } from './PanelChrome';
+import { PanelRail } from './PanelChrome';
+import { storageExplanation, type PanelInfo } from './WorkspacePanels';
 import { CanvasMenu } from './CanvasMenu';
 import { useDiagramCommands } from './useDiagramCommands';
 import type { CommandSelection } from './commandPolicy';
@@ -45,7 +46,7 @@ import { useActiveDocument, useEmbeddedTree } from './useDocumentSource';
 import type { DocumentRef } from '../workspace/documents';
 import type { DocumentSource } from './useDocumentSource';
 import { ShellBanners } from './ShellBanners';
-import { DropZone, HostedPanel } from './WorkspacePanels';
+import { DropZone, HostedPanel, StorageActions, StorageLabel } from './WorkspacePanels';
 import { useCanvasRevealPort } from './useCanvasReveal';
 import type { IllustrationId } from '../engine/anim/illustrations';
 import { PaletteSlot, PropsSlot, slot } from './ShellSlots';
@@ -59,6 +60,7 @@ import type { FlowPlayerApi } from './flows/useFlowPlayer';
 import { flowNotesVisible, stepExplanationVisible } from './flows/flowController';
 import type { CodeSyncHandle } from './useCodeSync';
 import type { WorkspaceManager } from '../workspace/workspace';
+import { useStorageControls, type StorageControls } from './useStorageControls';
 
 /** Single-selection for the properties panel (obj xor link). */
 function selections(snap: Snapshot | null): { obj: ReturnType<typeof findObj>; link: ReturnType<typeof findLink> } {
@@ -126,14 +128,21 @@ function FilesPane(props: {
   embedded: ReturnType<typeof useEmbeddedTree>;
   activeRef: DocumentRef | null;
   onOpenRef: (ref: DocumentRef) => void;
-  onCollapse: () => void;
+  storage: StorageControls;
 }) {
   return (
     <aside class="sidebar" aria-label={s('Workspace files')}>
-      {/* WP02: the host header already names the panel; keep only the collapse control. */}
-      <div class="panel-head">
-        <CollapseButton id="sidebar" label={s('files')} onCollapse={props.onCollapse} />
-      </div>
+      {/* The host header names the panel and holds its controls; the body starts
+          with the storage label, then the tree. */}
+      <StorageLabel kind={props.manager.storageKind} label={props.manager.storageLabel} />
+      <StorageActions
+        kind={props.manager.storageKind}
+        nativeSupported={props.storage.nativeSupported}
+        reconnect={props.storage.reconnect}
+        onOpenDirectory={props.storage.openDirectory}
+        onReconnect={props.storage.reconnectDirectory}
+        onUseBrowserStorage={props.storage.useBrowserStorage}
+      />
       <FileTree
         manager={props.manager}
         version={props.version}
@@ -156,7 +165,6 @@ function FlowStepsPane(props: {
   session: FlowSession;
   doc: Doc | null;
   onPlay(flowKey: string): void;
-  onCollapse: () => void;
   onPlayFrom(flowKey: string, index: number): void;
   dirty: boolean;
   selection: FlowSelection | null;
@@ -168,10 +176,7 @@ function FlowStepsPane(props: {
 }) {
   return (
     <aside class="sidebar" aria-label={s('Flow step editor')}>
-      {/* WP02: host header owns the title; no duplicate heading here. */}
-      <div class="panel-head">
-        <CollapseButton id="flows" label={s('flow steps')} onCollapse={props.onCollapse} />
-      </div>
+      {/* The host header owns the title and the collapse chevron. */}
       <FlowPane
         textOf={(path) => path === props.source?.label
           ? props.source.text
@@ -202,22 +207,26 @@ function CanvasSplit(props: {
 }) {
   return (
     <main class="canvas-wrap" onContextMenu={props.onCanvasContextMenu}>
-      {/* Item 7: focusable (not tabbable) so closing a menu can restore focus
-          to the canvas the user invoked it from. */}
-      <svg
-        ref={props.canvas.svgRef}
-        class="pc-canvas"
-        data-testid="canvas"
-        width="100%"
-        height="100%"
-        tabindex={-1}
-      />
-      <MiniMap
-        snapshot={props.canvas.snap}
-        controller={props.canvas.ctrlRef.current}
-        canvasElement={props.canvas.svgRef.current}
-        viewSize={{ w: 800, h: 600 }}
-      />
+      {/* The stage is the positioning context for canvas overlays (mini-map), so
+          they sit above the docked transport rather than under it. */}
+      <div class="canvas-stage">
+        {/* Item 7: focusable (not tabbable) so closing a menu can restore focus
+            to the canvas the user invoked it from. */}
+        <svg
+          ref={props.canvas.svgRef}
+          class="pc-canvas"
+          data-testid="canvas"
+          width="100%"
+          height="100%"
+          tabindex={-1}
+        />
+        <MiniMap
+          snapshot={props.canvas.snap}
+          controller={props.canvas.ctrlRef.current}
+          canvasElement={props.canvas.svgRef.current}
+          viewSize={{ w: 800, h: 600 }}
+        />
+      </div>
       <PlayBar player={props.player} onPresent={props.onPresent} />
     </main>
   );
@@ -252,6 +261,7 @@ function SidebarSlot(props: {
   embedded: ReturnType<typeof useEmbeddedTree>;
   activeRef: DocumentRef | null;
   onOpenRef: (ref: DocumentRef) => void;
+  storage: StorageControls;
 }) {
   return slot(
     props.ui.layout.panels.sidebar === 'collapsed',
@@ -264,7 +274,7 @@ function SidebarSlot(props: {
       embedded={props.embedded}
       activeRef={props.activeRef}
       onOpenRef={props.onOpenRef}
-      onCollapse={() => props.ui.togglePanel('sidebar')}
+      storage={props.storage}
     />,
   );
 }
@@ -298,7 +308,6 @@ function FlowSlot(props: {
       session={props.session}
       doc={props.doc}
       onPlay={props.onPlay}
-      onCollapse={() => props.ui.togglePanel('flows')}
       onPlayFrom={props.onPlayFrom}
       dirty={props.dirty}
       selection={props.selection}
@@ -336,7 +345,6 @@ function CodeSlot(props: {
         snapshot={props.code.snapshot}
         loaded={props.code.loaded}
         onFormat={props.code.formatNow}
-        onCollapse={() => props.ui.togglePanel('code')}
         collapsed={collapsed}
         revealRef={props.revealRef}
         onCaretObject={props.onCaretObject}
@@ -381,14 +389,19 @@ function renameBox(
 }
 
 /** Wipe the workspace: forget the canvas state, clear storage, close the dialog. */
-function clearWorkspace(
+async function clearWorkspace(
   manager: WorkspaceManager,
   canvas: ReturnType<typeof useCanvasController>,
   done: () => void,
-): void {
+  onError: (message: string) => void,
+): Promise<void> {
   canvas.resync();
-  void manager.clearAll();
-  done();
+  try {
+    await manager.clearAll();
+    done();
+  } catch (error) {
+    onError(error instanceof Error ? error.message : String(error));
+  }
 }
 
 /** F-25: status-pill inputs (dirty / last save / problem count). */
@@ -398,7 +411,7 @@ function statusProps(
   manager: WorkspaceManager,
 ): { dirty: boolean; savedAt: number | null; problems: number } {
   return {
-    dirty: snapshot.divergedFromSaved,
+    dirty: snapshot.divergedFromSaved || manager.storageError !== null,
     savedAt: ready ? manager.lastSavedAt || null : null,
     problems: snapshot.state === 'error' ? snapshot.diagnostics.length : 0,
   };
@@ -548,36 +561,47 @@ function propsSlot(p: {
   );
 }
 
-/** Render one dock with all its collapsed tabs in a single shared column. */
+/** Render one dock: the open panels in order plus one rail group holding every
+ * collapsed panel of that dock. The rail is the dock's outermost element — before
+ * every open panel in a left dock (and in the bottom dock, which reads
+ * left-to-right from the same edge), after all of them in a right dock — so a
+ * collapsed panel never lands between two open ones. */
 function dockedPanels(
   dock: DockId,
   ui: ReturnType<typeof useUiLayout>,
   content: Record<PanelId, ComponentChildren>,
+  info: Partial<Record<PanelId, PanelInfo>>,
 ): ComponentChildren {
   const panels = PANELS.filter((panel) => ui.layout.docks[panel] === dock)
     .sort((a, b) => ui.layout.order[a] - ui.layout.order[b]);
   const collapsed = panels.filter((panel) => ui.layout.panels[panel] === 'collapsed' && dock !== 'float');
+  const open = panels.filter((panel) => !collapsed.includes(panel));
   const renderPanel = (panel: PanelId) => (
-    <HostedPanel key={panel} id={panel} ui={ui}>
+    <HostedPanel key={panel} id={panel} ui={ui} {...(info[panel] === undefined ? {} : { info: info[panel] })}>
       {content[panel]}
     </HostedPanel>
   );
-  let groupRendered = false;
-  return panels.map((panel) => {
-    if (!collapsed.includes(panel)) return renderPanel(panel);
-    if (groupRendered) return null;
-    groupRendered = true;
-    return (
-      <div
-        key={`collapsed-rail-${dock}`}
-        class="panel-rail-group"
-        data-testid={`collapsed-rail-${dock}`}
-        data-dock={dock}
-      >
-        {collapsed.map(renderPanel)}
-      </div>
-    );
-  });
+  const rail = collapsed.length === 0 ? null : (
+    <div
+      key={`collapsed-rail-${dock}`}
+      class="panel-rail-group"
+      data-testid={`collapsed-rail-${dock}`}
+      data-dock={dock}
+    >
+      {collapsed.map(renderPanel)}
+    </div>
+  );
+  const hosts = open.map(renderPanel);
+  return dock === 'right' ? [...hosts, rail] : [rail, ...hosts];
+}
+
+/** First free `diagram.pcd`, `diagram-2.pcd`, … in the workspace root. */
+function freeDiagramPath(manager: WorkspaceManager): string {
+  if (!manager.hasFile('diagram.pcd')) return 'diagram.pcd';
+  for (let n = 2; ; n += 1) {
+    const path = `diagram-${n}.pcd`;
+    if (!manager.hasFile(path)) return path;
+  }
 }
 
 /** Embedded-source dialog of the open element (IR v10, FILE-FORMAT.md §3.3). */
@@ -620,6 +644,7 @@ function bodyPanels(
         embedded={embedded}
         activeRef={source.ref}
         onOpenRef={p.onOpenRef}
+        storage={p.storage}
       />
     ),
     flows: flowsSlot({
@@ -735,6 +760,8 @@ function AppBody(p: {
   onSourceOpen: (objectId: string) => void;
   onResetDiagramLayout: () => void;
   selection: CommandSelection;
+  /** Files-panel storage controls (native folder, reconnect, browser switch). */
+  storage: StorageControls;
 }) {
   const { ws, canvas, code, ui, player, activePath, source } = p;
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -754,7 +781,12 @@ function AppBody(p: {
   }, [flowChoice]);
   const gallery = useGalleryPrompt();
   const content = bodyPanels({ ...p, flowEdit }, ctrl);
-  const docked = (dock: DockId) => dockedPanels(dock, ui, content);
+  // One explanation per panel header: the storage wording lives beside the Files
+  // title instead of occupying the top of the panel as a standing paragraph.
+  const panelInfo: Partial<Record<PanelId, PanelInfo>> = {
+    sidebar: { text: storageExplanation(ws.manager.storageKind) },
+  };
+  const docked = (dock: DockId) => dockedPanels(dock, ui, content, panelInfo);
   return (
     <div class="app-body" data-drawer={drawer === null ? undefined : 'open'}>
       {drawer !== null && (
@@ -827,6 +859,24 @@ function CenterColumn(props: {
 }) {
   const { canvas, player } = props;
   const parent = props.drill.parent;
+  /**
+   * A starting point needs a file to live in. With a tab open the buffer is the
+   * target; with none, the click used to fill a buffer that no file owned, so the
+   * text was dropped and the stale buffer then reported a divergence against the
+   * file that had just been closed. Creating the file first gives the gallery a
+   * real target — it opens, the canvas loads its diagram, and the answer is
+   * recorded for the new path so the gallery does not ask again.
+   */
+  const startFrom = (text: string): void => {
+    props.gallery.answer(props.activePath);
+    if (props.activePath !== null) {
+      props.code.machine.textChanged(text);
+      return;
+    }
+    const path = freeDiagramPath(props.manager);
+    props.manager.createFileAt(path, text);
+    props.gallery.answer(path);
+  };
   return (
     <main class="canvas-col" data-parent={parent === undefined ? undefined : parent.label}>
       <TemplateOverlay
@@ -835,14 +885,8 @@ function CenterColumn(props: {
           props.canvas.snap?.objects.length ?? 0,
           props.code.snapshot.codeText,
         )}
-        onInsert={(t) => {
-          props.gallery.answer(props.activePath);
-          props.code.machine.textChanged(t.text);
-        }}
-        onBlank={() => {
-          props.gallery.answer(props.activePath);
-          props.code.machine.textChanged(BLANK_TEXT);
-        }}
+        onInsert={(t) => startFrom(t.text)}
+        onBlank={() => startFrom(BLANK_TEXT)}
       />
       <CanvasTopRow
         manager={props.manager}
@@ -916,13 +960,32 @@ function resyncDocuments(canvas: { resync(): void }, code: { resync(): void }): 
   code.resync();
 }
 
+/**
+ * Native open/reconnect/use-browser lives behind this one seam: components hold
+ * no capability chain, and a picked folder is remembered only after the switch.
+ */
+function useShellStorage(
+  ws: ReturnType<typeof useWorkspace>,
+  manager: WorkspaceManager,
+  canvas: ReturnType<typeof useCanvasController>,
+  code: CodeSyncHandle,
+  onError: (message: string) => void,
+): StorageControls {
+  return useStorageControls({
+    manager,
+    selection: ws.selection,
+    reconnect: ws.reconnect,
+    setReconnect: ws.setReconnect,
+    onSwitched: () => resyncDocuments(canvas, code),
+    onError,
+  });
+}
+
 export function App() {
-  const ws = useWorkspace();
-  const activePath = ws.ready ? ws.manager.activePath : null;
+  const ws = useWorkspace(); const activePath = ws.ready ? ws.manager.activePath : null;
   const { renaming, setRenaming, hover, setHover, illustration, setIllustration,
     flowSelection, setFlowSelection, historyOpen, setHistoryOpen } = useShellUi();
-  const { grid, ui } = useShellLayout(ws.manager, ws.ready, ws.version);
-  const { manager } = ws;
+  const { grid, ui } = useShellLayout(ws.manager, ws.ready, ws.version); const { manager } = ws;
   const { source, embedded, setRef: setDocRef } = useActiveDocument(manager, activePath, ws.version);
   const { canvas, inspect, code, icons } = useDocumentPipeline({
     ws, ui, grid, activePath, source,
@@ -938,8 +1001,9 @@ export function App() {
     source, setRef: setDocRef,
   });
   const { dialogs, theme: appTheme } = useDialogsAndTheme(manager, ws.ready, ws.version);
-  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, flash, setFlash } = dialogs;
+  const { clearOpen, setClearOpen, snapsOpen, setSnapsOpen, versionsOpen, setVersionsOpen, flash, setFlash } = dialogs;
   const { history, revealRef } = useHistoryAndReveal(canvas, code.snapshot, setFlash);
+  const storage = useShellStorage(ws, manager, canvas, code, setFlash);
   const { selection: commandSelection, resetRoutes: onResetRoutes, resetDiagramLayout: onResetDiagramLayout } = useDiagramCommands(canvas, manager);
   const { player, pres } = useFlowPresentation(manager, canvas, activePath, illustration, ws.ready);
   const { diverged, pwa } = useShellLifecycle({
@@ -955,7 +1019,7 @@ export function App() {
     <div
       class={`app-shell${pres.presenting ? ' presenting' : ''}${pres.presenting && flowNotesVisible(player.state) ? ' has-flow-notes' : ''}${pres.presenting && stepExplanationVisible(player.state) ? ' has-step-explanation' : ''}`}
       data-presenting={pres.presenting ? 'true' : 'false'}
-      data-testid="app-shell"
+      data-testid="app-shell" data-workspace-ready={String(ws.ready)}
       data-panels={Object.entries(ui.layout.panels).map(([k, v]) => `${k}:${v}`).join(',')}
       style={layoutStyle(ui.layout)}
     >
@@ -966,7 +1030,8 @@ export function App() {
         svgRef={canvas.svgRef}
         onFlash={setFlash}
         onClearRequest={() => setClearOpen(true)}
-        onSnapshotsRequest={() => setSnapsOpen(true)}
+        onOpenDirectory={storage.nativeSupported ? storage.openDirectory : undefined}
+        onSnapshotsRequest={() => setSnapsOpen(true)} onVersionsRequest={() => setVersionsOpen(true)}
         {...statusProps(code.snapshot, ws.ready, manager)}
         onHistoryRequest={() => setHistoryOpen(true)}
         onPresentRequest={pres.launcher.show}
@@ -981,8 +1046,7 @@ export function App() {
         code={code}
         ui={ui}
         player={player}
-        activePath={activePath}
-        source={source}
+        activePath={activePath} source={source}
         embedded={embedded}
         onOpenRef={setDocRef} onPresent={pres.start}
         sel={selections(canvas.snap)}
@@ -1001,6 +1065,7 @@ export function App() {
         onSourceOpen={layer.openSource}
         onResetDiagramLayout={onResetDiagramLayout}
         selection={commandSelection}
+        storage={storage}
       />
       <SourceLayer layer={layer} obj={layer.doc?.objects.find((o) => o.id === layer.sourceId) ?? null} />
       <AppOverlays
@@ -1022,13 +1087,13 @@ export function App() {
         ctrlRef={canvas.ctrlRef} resyncDocuments={() => resyncDocuments(canvas, code)}
         diverged={diverged}
         clearOpen={clearOpen}
-        clearData={() => clearWorkspace(manager, canvas, () => setClearOpen(false))}
+        clearData={() => void clearWorkspace(manager, canvas, () => setClearOpen(false), setFlash)}
         onClearCancel={() => setClearOpen(false)}
         flash={flash}
         onFlashDismiss={() => setFlash(null)}
         {...{ historyOpen, history, onHistoryClose: () => setHistoryOpen(false) }}
-        snapsOpen={snapsOpen}
-        onSnapsClose={() => setSnapsOpen(false)}
+        snapsOpen={snapsOpen} onSnapsClose={() => setSnapsOpen(false)}
+        versionsOpen={versionsOpen} onVersionsClose={() => setVersionsOpen(false)}
         iconsOpen={icons.managerOpen}
         iconDoc={icons.doc}
         onIconsClose={icons.closeManager}

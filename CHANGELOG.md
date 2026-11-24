@@ -5,6 +5,25 @@ versioning: SemVer (pre-1.0 = milestone-driven).
 
 ## [Unreleased]
 
+### Fixed — Files panel names, template start and panel chrome
+
+- File and folder names are trimmed and refused when blank, with the reason shown under the
+  create row; a name that only differs by surrounding spaces can no longer become an invisible
+  file. The rule lives in the file-system layer, so create, rename, move and import all obey it.
+- Starting from a template with no open tab now creates and opens the file the template belongs
+  in (`diagram.pcd`), instead of filling a buffer that no file owned. An empty file and the canvas
+  projection of an empty document are recognized as the same document, so closing a file nobody
+  edited no longer asks about unsaved changes.
+- A collapsed panel rail is the outermost element of its dock: before every open panel in a left
+  (or bottom) dock, after all of them in a right dock, for every open/collapsed combination.
+- The collapse chevron moved into the shared panel header beside the title, including for floating
+  panels; panel bodies start with their content. The storage explanation moved behind an
+  information icon in the Files header — keyboard reachable, a tooltip on hover and focus, and the
+  trigger's accessible description — and **+ file** / **+ folder** became icon buttons with names
+  and tooltips. The visible storage label stays in the panel.
+
+Details and evidence: [Files panel defects](docs/archive/bugs-files-panel.md).
+
 ### Changed — brand identity
 
 - The header wordmark now uses a heavier Panel/Craft treatment with a purple gradient on
@@ -31,8 +50,9 @@ Details and evidence: [brand and browser-workflow validation](docs/archive/bugs-
 
 ### Changed — every diagram has a live Default flow
 
-- Every non-empty diagram now has a virtual **Default flow**, alongside any custom flows.
-  Connections provide topologically ordered message steps and unrepresented objects provide
+- Every valid diagram now has a virtual **Default flow**, alongside any custom flows. A blank
+  diagram starts with a zero-step Default that follows the first added element. Connections
+  provide message steps in strict creation order and unrepresented objects provide
   process steps, including diagrams with no connections. Editing Default creates and selects
   an independent **Custom flow**; Default stays live as elements change. Creating or editing a
   flow rebases onto the current document and cannot discard its objects or connectors.
@@ -45,6 +65,13 @@ Details and evidence: [brand and browser-workflow validation](docs/archive/bugs-
   collapsing or docking the panel preserves editor history. The editing session reconciles
   fast undo against the code buffer without mistaking a stale clean projection for the current
   file. This also fixes the first-keystroke focus loss when Default becomes a custom copy.
+- Every new-file starter initially selects only Default with steps matching its drawing. The Flow
+  template now draws `POST /checkout` and `201 Created` as top-level connectors instead of hiding
+  them in a separate Checkout flow; the C4 card correctly describes its two links.
+
+Evidence: [Default flow on blank diagrams](docs/archive/bugs-blank-default-flow.md),
+[new-file starter steps](docs/archive/bugs-new-diagram-flow.md), and
+[Default playback and creation order](docs/archive/bugs-default-flow-playback.md).
 
 ### Changed — Flow Steps lists the flow, Properties edits the step
 

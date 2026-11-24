@@ -23,7 +23,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'c4',
     title: s('C4 context'),
-    hint: s('Two systems, one person, one link'),
+    hint: s('Two systems, one person, two links'),
     text: `pcd 1.0
 
 person user "Customer"
@@ -43,10 +43,8 @@ app -> pay : "charges"
 system web "Web app"
 system api "API"
 
-flow "Checkout" as checkout {
-  web -> api : "POST /checkout"
-  api -> web : "201 Created"
-}
+web -> api : "POST /checkout"
+api -> web : "201 Created"
 `,
   },
   {

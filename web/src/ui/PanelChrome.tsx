@@ -5,7 +5,7 @@
 // code rail keeps the sync-state chip), and the draggable splitter.
 import { useRef } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { ChevronLeftIcon, ChevronRightIcon, InfoIcon } from './icons';
 import { s, type StringKey } from './strings';
 
 export interface RailProps {
@@ -48,8 +48,11 @@ export function focusRail(id: string): void {
   });
 }
 
-/** Header chevron that collapses its panel. */
-export function CollapseButton(props: { id: string; label: string; onCollapse: () => void }) {
+/** Header chevron that collapses its panel. It lives in the shared host header
+ * row, immediately after the panel title, so the control that hides a panel sits
+ * with the name that identifies it. */
+export function CollapseButton(props: { id: string; label: string; onCollapse: () => void; dock?: string }) {
+  const towards = props.dock === 'right' ? <ChevronRightIcon /> : <ChevronLeftIcon />;
   return (
     <button
       type="button"
@@ -63,8 +66,53 @@ export function CollapseButton(props: { id: string; label: string; onCollapse: (
         focusRail(props.id);
       }}
     >
-      <ChevronLeftIcon />
+      {towards}
     </button>
+  );
+}
+
+export interface InfoHintProps {
+  /** Accessible name of the trigger ("About the Files panel"). */
+  label: string;
+  /** The explanation, shown as a tooltip on hover/focus and as the description. */
+  text: string;
+  /** Test id of the trigger; the description id is derived from it. */
+  testId: string;
+  /**
+   * Which side the tooltip opens on. It must open away from the panel body, so it
+   * never covers the panel content the user is asking about.
+   */
+  placement?: 'start' | 'end';
+}
+
+/**
+ * Info trigger for a panel header. The explanation is a one-line icon next to the
+ * title instead of a standing paragraph: it stays reachable by keyboard, is
+ * announced as the trigger's accessible description, and opens as a tooltip on
+ * hover *or* focus — so nothing depends on hover alone.
+ */
+export function InfoHint(props: InfoHintProps) {
+  const textId = `${props.testId}-text`;
+  return (
+    <span class="panel-info" data-testid={`${props.testId}-wrap`} data-placement={props.placement ?? 'start'}>
+      <button
+        type="button"
+        class="panel-info-trigger"
+        data-testid={props.testId}
+        aria-label={props.label}
+        aria-describedby={textId}
+        title={props.text}
+      >
+        <InfoIcon />
+      </button>
+      {/* Visual tooltip only: the description above is what assistive tech reads. */}
+      <span class="panel-info-tooltip" data-testid={`${props.testId}-tooltip`} aria-hidden="true">
+        {props.text}
+      </span>
+      <span class="sr-only" id={textId}>
+        {props.text}
+      </span>
+    </span>
   );
 }
 

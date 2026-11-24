@@ -10,6 +10,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { capture } from './lib/screenshots';
 import { openAppGroup, openWorkspacePanels } from './lib/panels';
+import { seedCode } from './lib/seed';
 
 const DOC = `pcd 1.0
 
@@ -25,8 +26,7 @@ async function ready(page: Page, text = DOC): Promise<void> {
   await page.goto('/');
   await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
   await openWorkspacePanels(page, ['code']);
-  await page.locator('.cm-content').fill(text);
-  await expect(page.getByTestId('sync-state')).toHaveAttribute('data-sync-state', 'clean');
+  await seedCode(page, text);
 }
 
 /** Inside the viewport, allowing the shared 8 px edge margin. */

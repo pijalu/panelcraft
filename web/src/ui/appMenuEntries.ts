@@ -11,6 +11,8 @@ import { routeResetTarget, type CommandSelection, type RouteResetTarget } from '
 
 export interface AppMenuActions {
   importFiles: () => void;
+  /** Present only when the browser supports direct directory access. */
+  openDirectory?: () => void;
   importZip: () => void;
   exportCurrent: (kind: 'pcd' | 'mmd' | 'svg' | 'png') => void;
   exportWorkspaceZip: () => void;
@@ -22,6 +24,8 @@ export interface AppMenuActions {
   history: () => void;
   present: () => void;
   snapshots: () => void;
+  /** Present only for persistent Git-backed workspaces. */
+  versions?: () => void;
   clearData: () => void;
   setPrivate: (on: boolean) => void;
 }
@@ -100,7 +104,18 @@ function primaryFileEntries(ctx: AppMenuContext): MenuEntry[] {
 
 /** Whole-workspace file and data commands, one level down. */
 function fileDataEntries(ctx: AppMenuContext): MenuEntry[] {
+  const directory: MenuEntry[] = ctx.actions.openDirectory ? [{
+    kind: 'item',
+    id: 'open-directory',
+    label: s('Open local folder…'),
+    testId: 'tb-open-directory',
+    onSelect: ctx.actions.openDirectory,
+  }] : [];
+  const versions: MenuEntry[] = ctx.actions.versions ? [{
+    kind: 'item', id: 'versions', label: s('Git versions'), testId: 'tb-versions', onSelect: ctx.actions.versions,
+  }] : [];
   return [
+    ...directory,
     {
       kind: 'item',
       id: 'import-zip',
@@ -116,6 +131,7 @@ function fileDataEntries(ctx: AppMenuContext): MenuEntry[] {
       onSelect: ctx.actions.exportWorkspaceZip,
     },
     { kind: 'separator', id: 'workspace-sep' },
+    ...versions,
     {
       kind: 'item',
       id: 'snapshots',

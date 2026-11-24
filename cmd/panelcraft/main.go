@@ -4,7 +4,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -14,6 +13,7 @@ import (
 	"runtime"
 
 	"github.com/pijalu/panelcraft/internal/server"
+	"github.com/pijalu/panelcraft/internal/storage"
 	"github.com/pijalu/panelcraft/web"
 )
 
@@ -23,7 +23,9 @@ var version = "0.1.0-dev"
 const usage = `panelcraft — architecture diagrams, in your browser
 
 Usage:
-  panelcraft serve [--addr :8080] [--open] [--dev-dir DIR] [DIR]
+  panelcraft serve [--addr 127.0.0.1:8080] [--open] [--dev-dir DIR] [DIR]
+  panelcraft serve -local DIR [-storage-type filesystem|git] [-depth N]
+                   [-git-author-name NAME] [-git-author-email EMAIL]
   panelcraft validate [--json] PATH...
   panelcraft convert <in.mmd|in.pcd> [-o out.pcd]
   panelcraft render <file.pcd> --out out.png|svg [--width 1920]
@@ -31,7 +33,8 @@ Usage:
   panelcraft version
 
 Commands:
-  serve     serve the embedded SPA at /, DIR (optional) read-only at /files/*
+  serve     serve the embedded SPA; optional DIR is read-only at /files/*
+            -local DIR enables confined writable filesystem or Git workspace storage
   validate  validate .pcd files (PATH: file or dir, globbed *.pcd); exit 1
             only for error-severity findings, 2 for usage errors (D-M1-20)
   convert   convert Mermaid to canonical .pcd (or canonicalise .pcd)
@@ -70,25 +73,22 @@ func main() {
 }
 
 func runServe(args []string) error {
-	flags := flag.NewFlagSet("serve", flag.ExitOnError)
-	addr := flags.String("addr", ":8080", "listen address")
-	open := flags.Bool("open", false, "open browser after start")
-	devDir := flags.String("dev-dir", "", "serve web bundle from this dir instead of the embedded dist (dev mode)")
-	if err := flags.Parse(args); err != nil {
+	config, err := parseServeFlags(args)
+	if err != nil {
 		return err
 	}
-
-	filesDir := ""
-	if flags.NArg() > 1 {
-		return fmt.Errorf("serve takes at most one DIR argument")
+	opts := server.Options{FilesDir: config.filesDir}
+	if config.localDir != "" {
+		store, err := newWorkspaceStore(config)
+		if err != nil {
+			return err
+		}
+		defer store.Close()
+		opts.Workspace = store
+		opts.StorageType = config.storageType
 	}
-	if flags.NArg() == 1 {
-		filesDir = flags.Arg(0)
-	}
-
-	opts := server.Options{FilesDir: filesDir}
-	if *devDir != "" {
-		opts.Assets = os.DirFS(*devDir)
+	if config.devDir != "" {
+		opts.Assets = os.DirFS(config.devDir)
 	} else {
 		sub, err := fs.Sub(web.Dist(), "dist")
 		if err != nil {
@@ -102,14 +102,29 @@ func runServe(args []string) error {
 		return err
 	}
 
-	fmt.Printf("panelcraft %s serving on %s (files: %s)\n", version, *addr, orNone(filesDir))
-	if *open {
-		if err := openBrowser("http://localhost" + *addr); err != nil {
+	fmt.Printf("panelcraft %s serving on %s (read-only files: %s, workspace: %s)\n",
+		version, config.addr, orNone(config.filesDir), orNone(config.localDir))
+	if config.open {
+		if err := openBrowser(browserURL(config.addr)); err != nil {
 			fmt.Fprintf(os.Stderr, "panelcraft: could not open browser: %v\n", err)
 		}
 	}
-	srv := &http.Server{Addr: *addr, Handler: handler}
+	srv := &http.Server{Addr: config.addr, Handler: handler}
 	return srv.ListenAndServe()
+}
+
+type workspaceStore interface {
+	storage.Store
+	Close() error
+}
+
+func newWorkspaceStore(config serveConfig) (workspaceStore, error) {
+	if config.storageType == "git" {
+		return storage.NewGit(config.localDir, config.depth, storage.GitOptions{
+			AuthorName: config.gitAuthorName, AuthorEmail: config.gitAuthorEmail,
+		})
+	}
+	return storage.NewFilesystem(config.localDir, config.depth)
 }
 
 func openBrowser(url string) error {

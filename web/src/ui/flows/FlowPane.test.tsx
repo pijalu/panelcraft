@@ -347,7 +347,8 @@ function mountDoc(initial: string, canvas?: FlowCanvasContext, played: string[] 
 describe('FlowPane guided authoring (UX08-WP12)', () => {
   it('starts authoring from a blank file (no header yet)', () => {
     const { out } = mountDoc('');
-    expect(screen.getByTestId('flow-empty')).not.toBeNull();
+    expect(screen.queryByTestId('flow-empty')).toBeNull();
+    expect(screen.getByTestId('flow-row-default').textContent).toBe('Default flow');
     fireEvent.click(screen.getByTestId('flow-add'));
     expect(out()).toContain('pcd 1.0');
     expect(out()).toContain('flow "New flow" as flow1');

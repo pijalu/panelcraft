@@ -98,7 +98,9 @@ for (const theme of THEMES) {
     // re-renders in between (the focused node is replaced).
     await page.getByTestId('expand-flows').press('Enter');
     await expect(page.getByTestId('flow-pane')).toBeVisible();
-    await expect(page.getByTestId('flow-empty')).toContainText('guided walkthrough');
+    await expect(page.getByTestId('flow-row-default')).toHaveText('Default flow');
+    await expect(page.getByTestId('flow-derived-hint')).toBeVisible();
+    await expect(page.getByTestId('flow-empty')).toHaveCount(0);
     await capture(page, `ux08-flow-authoring-empty-${theme}`);
 
     await seedShapes(page);

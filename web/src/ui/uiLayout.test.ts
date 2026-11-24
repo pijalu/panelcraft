@@ -9,15 +9,15 @@ import {
 } from './uiLayout';
 
 describe('defaultLayout (F-10)', () => {
-  it('keeps every panel available as a collapsed rail on a fresh wide viewport', () => {
+  it('opens editable Code beside the canvas and keeps secondary panels as rails', () => {
     const l = defaultLayout(1600);
-    expect(Object.values(l.panels)).toEqual(['collapsed', 'collapsed', 'collapsed', 'collapsed', 'collapsed']);
+    expect(Object.values(l.panels)).toEqual(['collapsed', 'collapsed', 'collapsed', 'open', 'collapsed']);
     expect(l.widths).toEqual(DEFAULT_WIDTHS);
   });
 
-  it('keeps the canvas-first default at every viewport', () => {
-    expect(defaultLayout(NARROW_VIEWPORT - 1).panels.code).toBe('collapsed');
-    expect(defaultLayout(NARROW_VIEWPORT).panels.code).toBe('collapsed');
+  it('uses the visible-Code default at every viewport before responsive recovery', () => {
+    expect(defaultLayout(NARROW_VIEWPORT - 1).panels.code).toBe('open');
+    expect(defaultLayout(NARROW_VIEWPORT).panels.code).toBe('open');
   });
 });
 
@@ -27,7 +27,7 @@ describe('togglePanel', () => {
     const l = togglePanel(start, 'sidebar');
     expect(l.panels.sidebar).toBe('collapsed');
     expect(l.panels.palette).toBe('open');
-    expect(l.panels.code).toBe('collapsed');
+    expect(l.panels.code).toBe('open');
     expect(l.panels.props).toBe('collapsed');
   });
 
@@ -83,6 +83,13 @@ describe('normaliseLayout', () => {
     expect(normaliseLayout(null, 1600)).toEqual(defaultLayout(1600));
     expect(normaliseLayout('nope', 1600)).toEqual(defaultLayout(1600));
     expect(normaliseLayout({}, 1600)).toEqual(defaultLayout(1600));
+    expect(normaliseLayout({}, 1600).panels.code).toBe('open');
+  });
+
+  it('preserves explicit single-pane choices instead of applying the new default', () => {
+    for (const mode of ['collapsed', 'closed'] as const) {
+      expect(normaliseLayout({ panels: { code: mode } }, 1600).panels.code).toBe(mode);
+    }
   });
 
   it('keeps valid values, drops invalid ones and clamps widths', () => {
@@ -110,15 +117,20 @@ describe('normaliseLayout', () => {
 });
 
 describe('drawerPanel (UX08-WP02)', () => {
+  // Code is open by default; these cases are about which of several open
+  // panels wins, so start from the default with Code collapsed again.
+  const noCode = togglePanel(defaultLayout(1600), 'code');
+
   it('picks the first expanded side-docked panel', () => {
-    const palette = openPanel(defaultLayout(1600), 'palette');
+    expect(drawerPanel(defaultLayout(1600))).toBe('code');
+    const palette = openPanel(noCode, 'palette');
     expect(drawerPanel(palette)).toBe('palette');
     const onlyProps = openPanel(togglePanel(palette, 'palette'), 'props');
     expect(drawerPanel(onlyProps)).toBe('props');
   });
 
   it('ignores collapsed, closed, floating and bottom panels', () => {
-    const collapsed = togglePanel(openPanel(defaultLayout(1600), 'palette'), 'palette');
+    const collapsed = togglePanel(openPanel(noCode, 'palette'), 'palette');
     expect(collapsed.panels.palette).toBe('collapsed');
     expect(drawerPanel(collapsed)).toBeNull();
     expect(drawerPanel({ ...collapsed, docks: { ...collapsed.docks, palette: 'bottom' } })).toBeNull();

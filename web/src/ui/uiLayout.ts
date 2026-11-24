@@ -75,13 +75,15 @@ const DEFAULT_DOCKS: Record<PanelId, DockId> = {
   props: 'right',
 };
 
-/** Canvas-first defaults: every panel stays available as a labelled rail. */
+/** Canvas plus editable source by default; secondary panels stay labelled rails. */
 export function defaultLayout(_viewportWidth = Number.POSITIVE_INFINITY): UiLayout {
   return {
     version: 2,
-    // UX08-WP12: Flows keeps a labelled rail entry so authoring is discoverable
-    // from the default shell; a closed panel has no affordance at all.
-    panels: { sidebar: 'collapsed', flows: 'collapsed', palette: 'collapsed', code: 'collapsed', props: 'collapsed' },
+    // The source is the other half of the authoring model: it opens beside the
+    // canvas so a drawing is readable as text from the first shape. Flow steps
+    // keep a labelled rail entry so flow authoring is discoverable from the
+    // default shell; a closed panel has no affordance at all.
+    panels: { sidebar: 'collapsed', flows: 'collapsed', palette: 'collapsed', code: 'open', props: 'collapsed' },
     docks: { ...DEFAULT_DOCKS },
     order: { sidebar: 0, flows: 1, palette: 2, code: 0, props: 1 },
     widths: { ...DEFAULT_WIDTHS },

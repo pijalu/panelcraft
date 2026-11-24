@@ -349,6 +349,43 @@ function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x <= b.x + b.w && a.x + a.w >= b.x && a.y <= b.y + b.h && a.y + a.h >= b.y;
 }
 
+/** Stricter than rectsOverlap: shapes that merely touch edge to edge are fine. */
+function sharesArea(a: Rect, b: Rect): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function insideView(spot: Point, w: number, h: number, view: Rect): boolean {
+  return spot.x >= view.x && spot.y >= view.y && spot.x + w <= view.x + view.w && spot.y + h <= view.y + view.h;
+}
+
+/**
+ * Grid-cell offsets from the centre, ring by ring outward: the centre first,
+ * then the nearest cells of each ring with right before left and below before
+ * above, so a run of quick-added shapes reads left to right like a sentence.
+ * Twelve rings cover a full view many times over.
+ */
+function* cascadeOffsets(stepX: number, stepY: number): Generator<Point> {
+  yield { x: 0, y: 0 };
+  for (let ring = 1; ring <= 12; ring++) {
+    const cells: Point[] = [];
+    for (let dx = -ring; dx <= ring; dx++) {
+      for (let dy = -ring; dy <= ring; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === ring) cells.push({ x: dx * stepX, y: dy * stepY });
+      }
+    }
+    cells.sort((p, q) => cascadeRank(p, stepX, stepY) - cascadeRank(q, stepX, stepY));
+    yield* cells;
+  }
+}
+
+/** Reading order within a ring: right, below, above, left, then diagonals; nearest first among equals. */
+function cascadeRank(p: Point, stepX: number, stepY: number): number {
+  const dx = p.x / stepX;
+  const dy = p.y / stepY;
+  const sector = dy === 0 ? (dx > 0 ? 0 : 3) : dx === 0 ? (dy > 0 ? 1 : 2) : 4;
+  return sector * 100 + Math.round(Math.hypot(p.x, p.y) / 10);
+}
+
 function listEq<T>(a: T[], b: T[]): boolean {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
@@ -594,17 +631,21 @@ export class CanvasController {
   /** Place a new object centered at `at` (palette drop / click / quick-add). */
   addObject(kind: Kind, at?: Point): string {
     const size = DEFAULT_SHAPE[kind];
-    const p = at ?? this.centerOfView();
-    const x = at ? Math.round(p.x - size.w / 2) : this.snapped(p.x - size.w / 2);
-    const y = at ? Math.round(p.y - size.h / 2) : this.snapped(p.y - size.h / 2);
     // F-02: probe for a free id — never reuse an id loaded from the file
     const id = uniqueId(this.takenObjectIds(), 'o', ++this.seq);
     this.seq = Math.max(this.seq, seqOf(id, 'o'));
     const name = firstFreeName(this.state.objects, kind, labelFor(kind));
     // F-13 fit-to-name on create: the default box is a fallback, the label wins
     const fit = autoSize({ text: name, kind }, this.measure);
+    const w = Math.max(size.w, fit.w);
+    const h = Math.max(size.h, fit.h);
+    // Without a requested point the shape goes to the centre of the view,
+    // cascaded past whatever already sits there so nothing is hidden.
+    const spot = at
+      ? { x: Math.round(at.x - size.w / 2), y: Math.round(at.y - size.h / 2) }
+      : this.freeSpot(w, h);
     const obj: DiagramObject = {
-      id, kind, x, y, w: Math.max(size.w, fit.w), h: Math.max(size.h, fit.h), name, lines: fit.lines,
+      id, kind, x: spot.x, y: spot.y, w, h, name, lines: fit.lines,
     };
     const before = this.state.objects;
     this.state = { ...this.state, objects: [...before, obj] };
@@ -848,6 +889,28 @@ export class CanvasController {
   quickAdd(index1to9: number): string | null {
     const kind = PALETTE_ORDER[index1to9 - 1];
     return kind ? this.addObject(kind) : null;
+  }
+
+  /**
+   * A grid-aligned top-left corner for a `w × h` shape that covers no existing
+   * object: the centre of the view, then ring by ring outward (right first, so
+   * a run of shapes reads left to right), preferring a spot inside the view. A
+   * crowded view places the shape just outside it rather than on top of another;
+   * only a document with no free cell left at all falls back to the centre.
+   */
+  private freeSpot(w: number, h: number): Point {
+    const centre = this.centerOfView();
+    const view = this.viewRect();
+    const objects = this.state.objects;
+    const step = { x: this.snapped(w + 24), y: this.snapped(h + 24) };
+    let firstFree: Point | null = null;
+    for (const offset of cascadeOffsets(step.x, step.y)) {
+      const spot = { x: this.snapped(centre.x - w / 2 + offset.x), y: this.snapped(centre.y - h / 2 + offset.y) };
+      if (objects.some((o) => sharesArea({ ...spot, w, h }, o))) continue;
+      if (firstFree === null) firstFree = spot;
+      if (insideView(spot, w, h, view)) return spot;
+    }
+    return firstFree ?? { x: this.snapped(centre.x - w / 2), y: this.snapped(centre.y - h / 2) };
   }
 
   /** Patch editable fields of an object (properties panel, FR-C6). */
@@ -1364,7 +1427,8 @@ export class CanvasController {
     // are appended later stay on top (they are the finer targets).
     if (route) {
       drawSegmentHandles(this.renderer.overlay, routeChannels(route), link.id, (axis) =>
-        axis === 'h' ? s('Slide horizontal segment') : s('Slide vertical segment'));
+        axis === 'h' ? s('Slide horizontal segment') : s('Slide vertical segment'),
+      this.renderer.linkLabelRect(link.id));
     }
     if (link.waypoints && link.waypoints.length > 0) {
       drawWaypointHandles(

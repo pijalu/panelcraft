@@ -119,6 +119,7 @@ test.describe('canvas grid (UX08-WP05)', () => {
     await expect.poll(() => gridFill(page)).toBeNull();
 
     // Both preferences survive a reload (browser-local, not diagram data).
+    await page.waitForTimeout(400); // async store write
     await page.reload();
     await expect(page.getByTestId('tab-untitled.pcd')).toBeVisible();
     await expect.poll(() => gridFill(page)).toBeNull();
@@ -151,6 +152,22 @@ test.describe('canvas grid (UX08-WP05)', () => {
     const exported = await readFile(svgPath, 'utf8');
     expect(exported).toContain('pc-obj');
     expect(exported).not.toContain('pc-grid');
+  });
+
+  test('the grid is absent from a presentation and returns with the editor', async ({ page }) => {
+    await ready(page);
+    await expect.poll(() => gridFill(page)).toBe('url(#pc-grid-pattern-dots)');
+
+    await page.getByTestId('present-open').click();
+    await page.getByTestId('launcher-flow-default').click();
+    await expect(page.getByTestId('app-shell')).toHaveAttribute('data-presenting', 'true');
+    // Editor chrome only: the presentation paints the diagram on the plain canvas.
+    await expect(gridRect(page)).toBeHidden();
+    await capture(page, 'ux08-grid-presenting-light');
+    await page.getByTestId('present-exit').click();
+    await expect(page.getByTestId('app-shell')).toHaveAttribute('data-presenting', 'false');
+    // The saved preference is untouched: the same grid comes back.
+    await expect.poll(() => gridFill(page)).toBe('url(#pc-grid-pattern-dots)');
   });
 
   test('the grid does not intercept pointer input', async ({ page }) => {

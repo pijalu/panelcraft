@@ -1,9 +1,12 @@
 # PanelCraft — user guide
 
-Everything happens in your browser; nothing is sent anywhere (the browser-local storage rule).
+PanelCraft is local-first. Static hosting stores your workspace in the browser and sends
+no workspace data anywhere. You can explicitly choose a local folder in a supporting
+browser, or run the local Go server with real-file storage. Those modes write only on
+your device; the server uses a loopback-only, same-origin connection.
 Screenshots reference the light application theme; the dark theme mirrors every feature.
 Choose **View → Application theme → System / Light / Dark**. System follows live OS changes;
-Light and Dark override it. The choice is stored with browser-local workspace settings and is
+Light and Dark override it. The choice is stored with the active workspace's settings and is
 applied before the app paints on reload. It is independent of a document's `theme` directive
 and the CLI's `--theme` option.
 
@@ -16,10 +19,89 @@ and the CLI's `--theme` option.
   to two lines with an ellipsis instead of hiding those buttons — the tooltip and
   the tab carry the full name.
 - Tabs across the top switch open files; the dot marks unsaved changes.
-- **Everything is stored in your browser** (IndexedDB) — use *Export ZIP*
-  regularly for backups (the app reminds you; SPEC FR-S2) and *Snapshots*
-  for named restore points (restore goes through the full migration chain).
-- *Clear data…* wipes the local workspace — it cannot be undone.
+- **Static hosting stores everything in your browser** (origin-private files, Web Storage
+  or IndexedDB, named in the Files panel) — use *Export ZIP* regularly for backups (the app
+  reminds you) and *Snapshots* for named restore points (restore goes through the full
+  migration chain).
+- *Clear data…* wipes the active workspace after typed confirmation. Browser, filesystem and
+  direct-directory deletion cannot be undone; local Git records the clear as a commit, so an
+  earlier committed version can be restored.
+  With server or directory storage, this deletes real workspace files, not browser data.
+
+### Choosing where files live
+
+**Browser storage (the default when no folder is chosen).** Hosted PanelCraft and
+`panelcraft serve` without `-local` keep the workspace in the browser, restore it after
+reload, and make no workspace API requests. The app picks one backend at startup and
+names it in the Files panel:
+
+1. A local folder you authorized earlier (only while read/write permission is still
+   granted).
+2. **Browser files (origin-private)** — the origin private file system. These files belong
+   to this browser profile for this site only; they do not appear in your file manager
+   and cannot be opened by other applications. Use *Export ZIP* to keep a copy elsewhere.
+3. **Browser storage (Web Storage)** — used when origin-private files are unavailable.
+4. **Browser storage (IndexedDB)** — the backend older versions used. An existing
+   IndexedDB workspace keeps working: an empty newer backend never hides or replaces it.
+
+Backends stay independent. PanelCraft never copies, migrates or synchronizes a workspace
+between them, so you can always go back to an earlier version of the app and find your
+work where you left it. If no persistent backend can hold data at all, the workspace lives
+in memory and the label says it is not saved.
+
+**A folder chosen directly in the browser.** In a supporting browser on a secure context,
+use **Open directory…** in the Files panel (or **Application menu → File & data → Open
+local folder…**), then approve the directory picker. The current workspace is saved before
+switching; cancelling or a failed folder load leaves it unchanged. The label becomes
+`Local folder: NAME` and edits are written there without a server or network request.
+
+PanelCraft remembers the folder. On a later visit it reopens that folder by itself only
+when permission is still granted; otherwise it stays on browser files and offers
+**Reconnect local folder…**, which asks for permission from that click — a page load never
+raises a permission prompt. **Use browser storage** switches back explicitly and the
+folder's files stay on disk untouched. Browsers without directory-picker support do not
+show these actions and keep using browser storage.
+
+**A folder served by the local CLI.** Start
+`panelcraft serve -local DIR -storage-type filesystem --open`. The app loads `DIR` as the
+active workspace and the Files panel shows server storage. Changes reconcile ordinary
+UTF-8 files in that folder. Open tabs, workspace name and UI settings live in
+`.panelcraft/workspace.json`. `.git`, PanelCraft metadata, the reserved ZIP manifest,
+binary files and non-regular files are not shown as documents. The writable server listens
+on loopback only and is intended for one local user, not network sharing.
+
+Use `-depth 0` for root files only, `-depth 1` to include one directory level, and so on.
+Omit it or use `-depth -1` for unlimited depth. Hidden and out-of-depth content is preserved.
+An external edit is protected by revision checks: PanelCraft reports a conflict and keeps
+your unsaved editor text rather than overwriting the newer file. Download a copy before
+reloading if you need to compare or recover that text.
+
+**A local Git repository served by the CLI.** Start
+`panelcraft serve -local DIR -storage-type git --open`. This opens the standalone non-bare
+repository at exactly `DIR`, or initializes `.git` there when absent; it does not search parent
+directories. Bare repositories and linked worktrees represented by a `.git` file are not
+supported. The same file confinement, depth and revision rules apply, and the Files panel shows
+`Git repository`.
+
+Only workspace content changes create commits. Tab, cursor and settings-only saves update
+`.panelcraft/workspace.json` without adding a commit; that metadata joins the next content
+commit. Commits default to `PanelCraft <panelcraft@localhost>`. Override this with
+`-git-author-name NAME` and `-git-author-email EMAIL`. PanelCraft neither reads global Git
+identity nor runs repository hooks.
+
+Choose **Application menu → File & data → Git versions** to list local commits and inspect a
+selected version's workspace name and file list. **Restore this version…** requires confirmation,
+saves current edits first, then restores the selected content as a new forward commit. Existing
+history is preserved, including when the selected content already matches. A detached HEAD is
+supported. Externally staged paths or a merge in progress block saves and restores so PanelCraft
+does not commit unrelated staged work. Unrelated unstaged and binary files remain outside its
+document tree. Historical snapshots do not preserve empty directories.
+
+Git mode is entirely local: it performs no clone, fetch, push, credential or remote operation.
+Remote Git and GitHub integration are not implemented.
+
+Private mode always uses memory. Leaving private mode restores the storage you used before
+entering it; it does not silently copy work between browser, server and directory storage.
 
 ## 2. Editing a diagram
 
@@ -27,9 +109,13 @@ and the CLI's `--theme` option.
 - **Palette** (left): grouped by C4 level (Context/Container/Component, plus
   Structure for group/note). Click a kind — or press `1`–`9` — then click the
   canvas; dragging a palette row onto the canvas also places it.
+- **Quick placement**: pressing `1`–`9` with nothing armed puts the shape straight
+  into the centre of the view, stepping right, then down, past anything already
+  there — so a second shape never lands on top of the first. **Fit to diagram**
+  (`F`) frames whatever you have placed.
 - **Grid**: a fresh profile shows a subtle dots grid with snapping on. *Application
   menu → View* offers **Grid: off / dots / lines** and a separate **Snap to grid**
-  checkbox. The two are independent browser-local preferences (the grid is editor
+  checkbox. The two are independent workspace preferences (the grid is editor
   chrome: it is never written into a `.pcd` view and never appears in an SVG/PNG export).
   A grid choice you make yourself is remembered and is never replaced by the default
   when the app is upgraded; below 50% zoom the pattern is hidden so it cannot turn into
@@ -137,13 +223,24 @@ and the CLI's `--theme` option.
   freezing silently.
 
 ### Empty file
-- A new file offers three templates (C4 context, flow, mermaid starter); picking
-  one inserts real `.pcd` text you can keep editing.
+- A new file offers a blank canvas and three templates (C4 context, flow, mermaid
+  starter); picking one inserts real `.pcd` text you can keep editing.
+- Every starter opens with one virtual **Default flow** derived from its drawing:
+  Blank has no steps; C4 has `buys` then `charges`; Flow has `POST /checkout` then
+  `201 Created`; Mermaid has the drawn `Service A → Service B` message. The templates
+  do not add a separate authored flow, so the initial canvas, code and steps agree.
 
 ### Code view (source of truth)
-- The pane under the canvas always shows the canonical `.pcd` text; every
-  canvas edit lands there, and every code edit re-patches the canvas
-  (debounced; diverged states resolve through a guided dialog, M4).
+- The Code pane opens beside the canvas from the first load, so the canonical
+  `.pcd` text is visible while you draw; every canvas edit lands there, and every
+  code edit re-patches the canvas (debounced; diverged states resolve through a
+  guided dialog, M4). On a narrow screen it starts as a labelled rail instead of
+  covering the canvas — open it from the rail when you need it.
+- Collapse it to a rail with the chevron in its header or `Ctrl+J`; close it from
+  its panel menu and bring it back through **Application menu → Layout & workspace
+  → Show Code panel**. PanelCraft remembers the arrangement you leave, including
+  a collapsed or closed Code pane; **Reset workspace layout** in the same menu
+  returns to Code beside the canvas.
 - `Shift-Alt-F` formats the buffer.
 - Clicking an object highlights its statement here (no caret stealing); putting
   the caret on a statement selects that object on the canvas.
@@ -221,16 +318,16 @@ system shop "Webshop" {
 1. **Find Flows** in the left rail — the labelled *flow steps* entry is present from the first
    load, so you never have to know a menu path. Open it from the rail (or **View → Flow Steps**);
    it docks, floats, collapses and closes like any other panel.
-2. **Create a flow** — or present the current diagram. Every non-empty document shows
-   **Default flow**, alongside any custom flows. Connections become message steps in
-   topological source order (creation order breaks ties), and objects not represented by a
-   connection become process steps, so a link-free diagram is covered too. The presentation
-   launcher offers Default marked *from the elements*. Opening, presenting, saving and
-   reloading do not write it into the `.pcd`. Its first edit creates and selects an independent
-   **Custom flow** in one undoable command; Default remains beside it and follows later element
-   changes. **New flow** snapshots the current elements without removing or changing the
-   drawing. Only an empty document has no Default and keeps the short explanation plus
-   **New flow**. Fill in **Flow name** and **Flow purpose** — the purpose is printed
+2. **Create a flow** — or present the current diagram. Every valid document shows
+   **Default flow**, alongside any custom flows. A blank document's Default starts with zero
+   steps; connections become message steps in strict connector creation order (including
+   parallel and cyclic links), and objects not represented by a connection become process steps as you add them, so a
+   link-free diagram is covered too. The presentation launcher offers Default marked *from the
+   elements*. Opening, presenting, saving and reloading do not write it into the `.pcd`. Its first
+   edit creates and selects an independent **Custom flow** in one undoable command; Default
+   remains beside it and follows later element changes. **New flow** snapshots the current
+   elements without removing or changing the drawing. Fill in **Flow name** and **Flow purpose** —
+   the purpose is printed
    as the flow's `description`, so it travels with the file instead of living in the UI.
    For longer walkthrough text use **Flow notes (Markdown)**: headings, bold, italic, inline
    code, bullet/numbered lists and links. The notes are saved as source text in the file.
@@ -317,9 +414,11 @@ system shop "Webshop" {
 
 ## 5. Offline
 
-The service worker caches the app shell on first load. Afterwards the app
-boots with the network cut; your workspace (IndexedDB) is unaffected. When an
-update has been cached, the app surfaces it on the next reload.
+The service worker caches the app shell on first load. Afterwards the static app
+boots with the network cut; the IndexedDB workspace is unaffected. Direct folder access
+still needs browser permission. A server-backed workspace needs its local PanelCraft
+server and is not replaced by a cached API response. When an update has been cached,
+the app surfaces it on the next reload.
 
 ## 6. CLI reference
 
@@ -327,10 +426,29 @@ update has been cached, the app surfaces it on the next reload.
 validates/converts `.pcd` files. Exit codes: `0` ok, `1` error-severity
 findings / parse failure, `2` usage error.
 
-### `panelcraft serve [--addr :8080] [--open] [--dev-dir DIR] [DIR]`
-Serves the embedded app at `/`; `DIR` (or `--dev-dir`) is exposed read-only
-under `/files/` (no listing, traversal-guarded). Strict CSP headers; no
-telemetry, no runtime network.
+### `panelcraft serve [--addr 127.0.0.1:8080] [--open] [--dev-dir DIR] [DIR]`
+Serves the embedded app at `/`. Without `-local`, the workspace stays in IndexedDB.
+The positional `DIR` is exposed read-only under `/files/` (no listing, traversal-guarded)
+as a convenience for demo assets; it is not workspace persistence. `--dev-dir DIR` serves
+a development web bundle instead of the embedded one.
+
+To edit real workspace files instead, use:
+
+```
+panelcraft serve -local DIR [-storage-type filesystem|filestorage|git] [-depth N]
+  [-git-author-name NAME] [-git-author-email EMAIL] [--open]
+```
+
+`-storage-type filesystem` is the default and `filestorage` is an alias. Depth is unlimited
+when omitted or `-1`; `0` means root files only. `-local` cannot be combined with the
+read-only positional `DIR`. Writable mode rejects non-loopback listen
+addresses; the default is `127.0.0.1:8080`. All workspace API traffic is same-origin,
+non-cached and excluded from the service worker. There is no authentication or multi-user
+support, so do not expose this mode as a network service. `-storage-type git` enables the local
+repository and history behavior described above. Git author options are valid only with Git
+storage. Remote Git/GitHub operations are not implemented.
+
+Strict CSP headers; no telemetry and no third-party runtime requests.
 
 ### `panelcraft validate [--json] PATH...`
 Validates `.pcd` files (file or directory, globbed `*.pcd`, sorted).

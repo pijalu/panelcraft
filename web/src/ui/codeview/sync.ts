@@ -28,6 +28,25 @@ export interface SyncSnapshot {
   divergedFromSaved: boolean;
 }
 
+/**
+ * Canonical text of a document: the printer's own output, so two spellings of the
+ * same document compare equal.
+ *
+ * A blank file is not a blank string: the canvas projection of an empty document is
+ * the format's magic line, so the canonical text of an empty document is that line
+ * and not `''`. Without the normalization a brand-new empty file and the buffer
+ * holding its (identical) projection compare unequal, and the shell reports a
+ * divergence against a file nobody edited.
+ */
+export function canonText(text: string): string {
+  const { doc } = parsePDL(text);
+  if (doc !== null) return printDoc(doc);
+  return text.trim() === '' ? EMPTY_DOC_TEXT : text;
+}
+
+/** The magic line — what the printer emits for a document with no content. */
+const EMPTY_DOC_TEXT = 'pcd 1.0\n';
+
 export interface SyncMachinePort {
   /** Debounced timers (code re-render 150 ms; idle parse 300 ms). */
   schedule(fn: () => void, ms: number): unknown;
@@ -88,8 +107,7 @@ class SyncMachineImpl implements SyncMachine {
   /** Canonical form of the buffer (parse + print); the buffer itself if unparsable. */
   private canonOfBuffer(): string {
     if (this.bufferCanon !== null) return this.bufferCanon;
-    const { doc } = parsePDL(this.buffer);
-    this.bufferCanon = doc === null ? this.buffer : printDoc(doc);
+    this.bufferCanon = canonText(this.buffer);
     return this.bufferCanon;
   }
 

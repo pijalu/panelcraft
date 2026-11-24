@@ -50,8 +50,10 @@ test('S7: app functions with external requests blocked (N7 runtime proof)', asyn
   await expect(page.locator('.app-title-accent')).toHaveText('Craft');
   await expect(page.locator('.app-title-accent')).toHaveCSS('background-image', /linear-gradient/);
   await expectHeaderActions(page);
-  // Fresh workspace: every panel is available, none consumes canvas space.
-  for (const panel of ['sidebar', 'flows', 'palette', 'code', 'props']) {
+  // Fresh workspace: the source opens beside the canvas and every other panel
+  // stays available as a rail that consumes no canvas space.
+  await expect(page.getByTestId('code-pane')).toBeVisible();
+  for (const panel of ['sidebar', 'flows', 'palette', 'props']) {
     await expect(page.getByTestId(`rail-${panel}`)).toBeVisible();
   }
   await expect(page.getByTestId('palette')).toHaveCount(0);

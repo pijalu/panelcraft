@@ -398,11 +398,18 @@ test.describe('presentation replay (item 9)', () => {
     expect(replayed.currentTime).toBeGreaterThanOrEqual(0);
     expect(replayed.currentTime).toBeLessThan(frozen);
     // The visible spark moves again along the same connector, and the step is
-    // not advanced twice by the fresh full-duration dwell timer.
+    // not advanced twice by the fresh full-duration dwell timer. The source
+    // pulse precedes travel, so poll the token's own transform instead of
+    // letting a concurrent camera glide masquerade as spark movement.
     const atStart = await token.boundingBox();
-    await page.waitForTimeout(200);
-    const later = await token.boundingBox();
-    expect(Math.abs((later?.x ?? 0) - (atStart?.x ?? 0))).toBeGreaterThan(2);
+    const localStart = await token.evaluate((el) => getComputedStyle(el).transform);
+    await expect.poll(() => token.evaluate((el) => getComputedStyle(el).transform)).not.toBe(localStart);
+    // Transform and bounding-box reads cross different rendering frames. Poll
+    // the visible displacement itself instead of sampling once after any change.
+    await expect.poll(async () => {
+      const later = await token.boundingBox();
+      return Math.abs((later?.x ?? 0) - (atStart?.x ?? 0));
+    }).toBeGreaterThan(2);
     await expect(page.getByTestId('present-counter')).toContainText('1 / 2');
 
     // A parked step really is parked: the dot jump settles the token at the

@@ -65,7 +65,10 @@ sw.addEventListener('fetch', (event: FetchEvent) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== sw.location.origin) return;
   // Anything outside this worker's scope (e.g. /files/*) stays network-only.
-  if (!url.pathname.startsWith(new URL('./', sw.location.href).pathname)) return;
+  const scope = new URL('./', sw.location.href).pathname;
+  if (!url.pathname.startsWith(scope)) return;
+  // Workspace revisions must always reach their server; never answer from a shell cache.
+  if (url.pathname.startsWith(`${scope}api/`)) return;
 
   // hashed, immutable asset → cache-first
   if (url.pathname.includes('/assets/')) {

@@ -8,9 +8,11 @@
 import { mapStoreError } from './port';
 
 export const DB_NAME = 'panelcraft';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 export const WORKSPACE_STORE = 'workspace';
 export const SNAPSHOTS_STORE = 'snapshots';
+/** Remembered native directory handles (metadata only; never workspace JSON). */
+export const HANDLES_STORE = 'directoryHandles';
 
 /** Open the shared database; creates both stores on upgrade. */
 export function openPanelCraftDb(factory: IDBFactory): Promise<IDBDatabase> {
@@ -28,6 +30,9 @@ export function openPanelCraftDb(factory: IDBFactory): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains(SNAPSHOTS_STORE)) {
         database.createObjectStore(SNAPSHOTS_STORE, { keyPath: 'id' });
       }
+      // v3: native directory handles. An out-of-line key keeps the record opaque
+      // to this module; existing workspace/snapshot stores are untouched.
+      if (!database.objectStoreNames.contains(HANDLES_STORE)) database.createObjectStore(HANDLES_STORE);
     };
     req.onsuccess = () => {
       const database = req.result;

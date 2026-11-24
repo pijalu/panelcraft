@@ -25,7 +25,6 @@ import {
   removeAt,
   retext,
   showFlowLink,
-  topologicalLinks,
 } from './flowDoc';
 
 const FLOW_TEXT = `pcd 1.0
@@ -105,7 +104,7 @@ describe('retext (parse → mutate → print)', () => {
 });
 
 describe('connection-backed flow editing', () => {
-  it('creates a flow from existing connections in stable topological order', () => {
+  it('creates a flow from existing connections in strict creation order', () => {
     const doc: Doc = {
       ...fresh(),
       objects: [obj('C'), obj('A'), obj('B')],
@@ -115,13 +114,12 @@ describe('connection-backed flow editing', () => {
         link('A', 'B', 'second'),
       ],
     };
-    expect(topologicalLinks(doc).map(({ link }) => link.label)).toEqual(['first', 'second', undefined]);
     addFlow(doc, 'Flow', 1);
-    expect(doc.flows[0]?.steps.map((s) => s.type === 'msg' && s.linkRef)).toEqual(['L2', 'L3', 'L1']);
+    expect(doc.flows[0]?.steps.map((s) => s.type === 'msg' && s.linkRef)).toEqual(['L1', 'L2', 'L3']);
     expect(doc.links.map((l) => l.id)).toEqual(['L1', 'L2', 'L3']);
   });
 
-  it('uses creation order for independent branches and cyclic leftovers', () => {
+  it('keeps independent branches and cyclic links in creation order', () => {
     const doc: Doc = {
       ...fresh(),
       objects: ['D', 'C', 'B', 'A'].map(obj),
@@ -131,7 +129,9 @@ describe('connection-backed flow editing', () => {
         link('A', 'C', 'root'),
       ],
     };
-    expect(topologicalLinks(doc).map(({ link }) => link.label)).toEqual(['root', 'cycle-back', 'cycle-out']);
+    addFlow(doc, 'Flow', 1);
+    expect(doc.flows[0]?.steps.flatMap((s) => s.type === 'msg' ? [s.linkRef] : [])).toEqual(['L1', 'L2', 'L3']);
+    expect(doc.flows[0]?.steps.at(-1)).toMatchObject({ type: 'process', target: 'B' });
   });
 
   it('derives and restores hidden links without deleting diagram connections', () => {

@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { chooseAppMenu, openAppGroup, openWorkspacePanels } from './lib/panels';
 import { seedCode } from './lib/seed';
+import { legacyIndexedDbOnly } from './lib/storage';
 
 const EXTERNAL = /^https?:\/\/(?!localhost|127\.0\.0\.1)/;
 
@@ -171,6 +172,9 @@ test('S4: autosaved workspace survives reload (FR-S1)', async ({ page }) => {
 });
 
 test('S4: quota failure degrades to in-memory session with banner (FR-S3)', async ({ page }) => {
+  // Pin the IndexedDB backend: the fake below replaces only that store, so the
+  // quota path has to be the one the app actually uses.
+  await page.addInitScript(legacyIndexedDbOnly);
   // Hand-rolled fake IDB: opens fine, loads fine, every put throws
   // QuotaExceededError — exercises the real app storage path.
   await page.addInitScript(() => {

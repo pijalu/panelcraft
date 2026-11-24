@@ -66,7 +66,7 @@ afterEach(() => {
  * A is above-left of B, so the automatic orthogonal route is a Z with one
  * slidable vertical channel at x = 280 (both of its ends are interior).
  */
-function loadPair(link: Partial<{ waypoints: [number, number][] }> = {}): void {
+function loadPair(link: Partial<{ waypoints: [number, number][]; label: string }> = {}): void {
   ctrl.loadState({
     objects: [
       { id: 'a', kind: 'system', x: 0, y: 0, w: 160, h: 60, name: 'A' },
@@ -89,6 +89,25 @@ describe('segment handles (UX08-WP09)', () => {
     // 9 px hit target with keyboard semantics (Fitts's law + a11y).
     expect(segment()?.getAttribute('width')).toBe('9');
     expect(segment()?.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('uses the painted label bounds to keep the editing handle legible', () => {
+    loadPair({ label: 'test' });
+    const label = svg.querySelector('.pc-link-label-group[data-id="L1"] .pc-link-label-bg')!;
+    const handle = segment()!;
+    const labelBox = {
+      x: Number(label.getAttribute('x')), y: Number(label.getAttribute('y')),
+      w: Number(label.getAttribute('width')), h: Number(label.getAttribute('height')),
+    };
+    const handleBox = {
+      x: Number(handle.getAttribute('x')), y: Number(handle.getAttribute('y')),
+      w: Number(handle.getAttribute('width')), h: Number(handle.getAttribute('height')),
+    };
+    const overlaps = labelBox.x < handleBox.x + handleBox.w && labelBox.x + labelBox.w > handleBox.x &&
+      labelBox.y < handleBox.y + handleBox.h && labelBox.y + labelBox.h > handleBox.y;
+    expect(overlaps).toBe(false);
+    expect(Number(handle.getAttribute('x')) + handleBox.w / 2).toBe(280);
+    expect(svg.querySelectorAll('.pc-segment')).toHaveLength(1);
   });
 
   it('slides the channel and materialises waypoints without moving endpoints', () => {

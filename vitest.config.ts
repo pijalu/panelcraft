@@ -15,7 +15,14 @@ export default defineConfig({
       reporter: ['text', 'lcov', 'html'],
       reportsDirectory: 'coverage',
       include: ['web/src/**/*.ts', 'web/src/**/*.tsx'],
-      exclude: ['web/src/main.tsx', 'web/src/**/*.test.ts', 'web/src/**/*.test.tsx', 'web/src/**/*.d.ts'],
+      exclude: [
+        'web/src/main.tsx',
+        'web/src/**/*.test.ts',
+        'web/src/**/*.test.tsx',
+        'web/src/**/*.d.ts',
+        // Test-only helpers (fake file handles, DOM setup) are not shipped code.
+        'web/src/test/**',
+      ],
       thresholds: {
         'web/src/engine/**': { lines: 80, functions: 80, statements: 80, branches: 60 },
         'web/src/workspace/**': { lines: 80, functions: 80, statements: 80, branches: 60 },

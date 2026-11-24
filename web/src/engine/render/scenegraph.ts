@@ -13,7 +13,7 @@
 
 import { iconStructuralKey, shapeGlyphs, type ElSpec, type SceneObject } from './shapes';
 import type { Polyline, RouteMode } from './router';
-import type { Point } from './viewport';
+import type { Point, Rect } from './viewport';
 import { routeToPath } from './routePath';
 import {
   LABEL_LINE_HEIGHT, LABEL_PAD_Y, layoutLinkLabels, type LabelPlacement,
@@ -181,6 +181,11 @@ export class SceneRenderer {
   /** Overlay layer (guides, rubber band, halos) — painted by the controller. */
   get overlay(): SVGGElement {
     return this.overlayLayer;
+  }
+
+  /** Painted label bounds in the same world coordinates as editing handles. */
+  linkLabelRect(linkId: string): Rect | undefined {
+    return this.labelPlacements.get(linkId)?.rect;
   }
 
   /** Apply the viewport transform to the world wrapper (WP1 wiring). */

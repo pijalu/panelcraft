@@ -3,7 +3,7 @@
 // Component tests (M2-WP7/WP9 acceptance): palette click-to-place + drag-drop,
 // properties panel edits bound to controller ops (undoable), link editing.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, fireEvent, cleanup, screen } from '@testing-library/preact';
+import { render, fireEvent, cleanup, screen, waitFor } from '@testing-library/preact';
 import { act } from 'preact/test-utils';
 import { EditorView } from '@codemirror/view';
 import { App } from './App';
@@ -34,7 +34,8 @@ describe('App shell + palette (WP9)', () => {
     const left = screen.getByTestId('collapsed-rail-left');
     const right = screen.getByTestId('collapsed-rail-right');
     expect(left.querySelectorAll('[data-testid="rail-sidebar"], [data-testid="rail-flows"], [data-testid="rail-palette"]')).toHaveLength(3);
-    expect(right.querySelectorAll('[data-testid="rail-code"], [data-testid="rail-props"]')).toHaveLength(2);
+    expect(right.querySelectorAll('[data-testid="rail-props"]')).toHaveLength(1);
+    expect(screen.getByTestId('code-pane')).not.toBeNull();
     expect(screen.getByTestId('dock-left').querySelectorAll('.panel-rail-group')).toHaveLength(1);
     expect(screen.getByTestId('dock-right').querySelectorAll('.panel-rail-group')).toHaveLength(1);
   });
@@ -157,7 +158,8 @@ async function mountReady() {
     await new Promise((r) => setTimeout(r, 0)); // storage fallback macrotask → setReady
   });
   for (const panel of ['sidebar', 'palette', 'code', 'props']) {
-    fireEvent.click(screen.getByTestId(`expand-${panel}`));
+    const expand = screen.queryByTestId(`expand-${panel}`);
+    if (expand) fireEvent.click(expand);
   }
   const svg = container.querySelector('svg[data-testid="canvas"]') as SVGSVGElement;
   svg.getBoundingClientRect = () =>
@@ -286,9 +288,8 @@ describe('workspace chrome (M3)', () => {
     fireEvent.input(screen.getByTestId('clear-confirm-input'), { target: { value: 'DELETE' } });
     expect((screen.getByTestId('clear-confirm-btn') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByTestId('clear-confirm-btn'));
-    await act(async () => {});
-    // workspace reset → welcome file re-bootstrapped, canvas emptied, dialog gone
-    expect(screen.queryByTestId('clear-dialog')).toBeNull();
+    // Clearing a real backend is asynchronous; success alone closes the dialog.
+    await waitFor(() => expect(screen.queryByTestId('clear-dialog')).toBeNull());
     const sidebarRail = screen.queryByTestId('expand-sidebar');
     if (sidebarRail) fireEvent.click(sidebarRail);
     expect(screen.getByTestId('tree-row-untitled.pcd')).not.toBeNull();
@@ -386,5 +387,127 @@ describe('blank diagram creation (the gallery asks once per file)', () => {
     fireEvent.keyDown(svg, { key: '2' });
     await act(async () => {});
     expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(1);
+  });
+});
+
+describe('Files panel names and the no-file gallery', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  afterEach(cleanup);
+
+  it('refuses a blank create name, keeps the input open and says why', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tree-new-file'));
+    const input = screen.getByTestId('tree-create-input') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: '   ' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    // The refusal is announced, not silent, and the create row is still there.
+    expect(screen.getByTestId('tree-create-error').textContent).toContain('Enter a name');
+    expect(screen.getByTestId('tree-create-input')).not.toBeNull();
+    // Nothing was created: no nameless row, no nameless tab.
+    const rows = document.querySelectorAll('[data-testid^="tree-row-"]');
+    expect(rows).toHaveLength(1);
+    const tabs = [...document.querySelectorAll('[data-testid^="tab-"]')]
+      .map((el) => el.getAttribute('data-testid'))
+      .filter((id) => id !== null && id.startsWith('tab-') && !id.startsWith('tab-close-') && id !== 'tab-strip');
+    expect(tabs).toEqual(['tab-untitled.pcd']);
+  });
+
+  it('trims surrounding whitespace instead of refusing a typed name', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tree-new-file'));
+    const input = screen.getByTestId('tree-create-input') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: '  spaced.pcd  ' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByTestId('tree-row-spaced.pcd')).not.toBeNull();
+    expect(screen.getByTestId('tab-spaced.pcd')).not.toBeNull();
+  });
+
+  it('a blank or whitespace-only rename keeps the old name', async () => {
+    await mountReady();
+    fireEvent.click(screen.getByTestId('tree-ren-untitled.pcd'));
+    const input = screen.getByTestId('tree-rename-input') as HTMLInputElement;
+    fireEvent.input(input, { target: { value: '   ' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(screen.getByTestId('tree-row-untitled.pcd')).not.toBeNull();
+    expect(screen.queryByTestId('tree-rename-input')).toBeNull();
+  });
+
+  it('starting from a template with no open file creates the file it belongs to', async () => {
+    const { svg } = await mountReady();
+    // Close the last tab: the gallery appears and no file is open any more.
+    fireEvent.click(screen.getByTestId('tab-close-untitled.pcd'));
+    await act(async () => {});
+    expect(screen.getByTestId('empty-state')).not.toBeNull();
+
+    fireEvent.click(screen.getByTestId('template-c4'));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 400));
+    });
+    // The template landed in a real file with a readable name — not a buffer that
+    // belongs to the file that was just closed.
+    expect(screen.getByTestId('tab-diagram.pcd').getAttribute('data-active')).toBe('true');
+    expect(screen.getByTestId('tree-row-diagram.pcd')).not.toBeNull();
+    expect(codeView().state.doc.toString()).toContain('system app "Shop"');
+    expect(svg.querySelectorAll('g.pc-obj')).toHaveLength(3);
+    // …and nothing reports a divergence against the closed file.
+    expect(screen.queryByTestId('diverged-dialog')).toBeNull();
+    expect(screen.queryByTestId('empty-state')).toBeNull();
+  });
+});
+
+describe('dock rail geometry', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  afterEach(cleanup);
+
+  /** Dock children that carry a panel or the rail, in DOM order (splitters and the
+   * bottom dock's host wrapper are layout glue, not dock content). */
+  function childIds(dock: string): string[] {
+    const describe = (el: HTMLElement): string[] => {
+      if (el.classList.contains('panel-rail-group')) return ['rail'];
+      const panel = el.getAttribute('data-panel');
+      if (panel !== null) return [`panel:${panel}`];
+      if (el.classList.contains('panel-bottom-wrap')) {
+        return [...el.children].flatMap((child) => describe(child as HTMLElement));
+      }
+      return [];
+    };
+    return [...screen.getByTestId(`dock-${dock}`).children]
+      .flatMap((child) => describe(child as HTMLElement));
+  }
+
+  it('keeps a left-dock rail before every open panel', async () => {
+    await mountReady(); // Files + Shapes open, Flow Steps collapsed
+    // Files open, Flow Steps collapsed, Shapes open: the rail holds Flow Steps and
+    // must hug the outer (left) edge instead of landing between the two open panels.
+    expect(childIds('left')).toEqual(['rail', 'panel:sidebar', 'panel:palette']);
+  });
+
+  it('keeps a right-dock rail after every open panel', async () => {
+    await mountReady(); // code + props opened by the mount helper
+    fireEvent.click(screen.getByTestId('collapse-code'));
+    await act(async () => {});
+    expect(childIds('right')).toEqual(['panel:props', 'rail']);
+  });
+
+  it('keeps a bottom-dock rail before every open panel', async () => {
+    await mountReady();
+    // Dock Files at the bottom, then Shapes, then collapse Shapes: the rail now
+    // belongs to the bottom dock and must sit at that dock's leading (left) edge.
+    fireEvent.click(screen.getByTestId('panel-menu-sidebar'));
+    fireEvent.click(screen.getByTestId('dock-sidebar-bottom'));
+    await act(async () => {});
+    fireEvent.click(screen.getByTestId('panel-menu-palette'));
+    fireEvent.click(screen.getByTestId('dock-palette-bottom'));
+    await act(async () => {});
+    fireEvent.click(screen.getByTestId('collapse-palette'));
+    await act(async () => {});
+    // Left edge of the bottom strip, mirroring the left dock above it.
+    expect(childIds('bottom')).toEqual(['rail', 'panel:sidebar']);
   });
 });

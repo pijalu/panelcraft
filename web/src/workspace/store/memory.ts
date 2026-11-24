@@ -4,6 +4,8 @@
 import { decodeStored, newStoredWorkspace, type StoragePort, type StoredWorkspace } from './port';
 
 export class MemoryStorage implements StoragePort {
+  readonly kind = 'memory' as const;
+  readonly label = 'In-memory workspace';
   private record: StoredWorkspace | null = null;
 
   async load(): Promise<StoredWorkspace | null> {

@@ -20,7 +20,11 @@ function player(st: FlowPlayerState, refit = vi.fn()): FlowPlayerApi {
 }
 
 describe('presentation notes aside', () => {
-  afterEach(cleanup);
+  afterEach(async () => {
+    cleanup();
+    // Preact defers effect cleanup to a macrotask; drain it before jsdom teardown.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 
   it('shows a labelled non-modal aside only when enabled and non-empty', () => {
     const { container, rerender } = render(<PresentLayer player={player(state({

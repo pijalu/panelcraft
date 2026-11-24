@@ -476,21 +476,24 @@ body {
 .app-shell.presenting .tab-strip,
 .app-shell.presenting .sidebar,
 .app-shell.presenting .palette,
+.app-shell.presenting .playbar,
 .app-shell.presenting .code-pane,
 .app-shell.presenting .props-col,
 .app-shell.presenting .panel-rail,
 .app-shell.presenting .panel-splitter,
+/* The grid is editor chrome only (SPEC 4.2): never behind a presentation. */
+.app-shell.presenting .pc-grid,
 .app-shell.presenting .drawer-backdrop {
   display: none;
 }
 
 .app-shell.presenting .app-body {
-  padding-bottom: 96px;
+  padding-bottom: var(--present-dock-height, 0px);
 }
 
 .present-advance {
   position: fixed;
-  inset: 0 0 96px 0;
+  inset: 0 0 var(--present-dock-height, 0px) 0;
   z-index: 20;
   background: transparent;
   border: 0;
@@ -950,13 +953,9 @@ body {
   flex-wrap: wrap;
 }
 
-/* F-10: collapsible shell chrome — panel headers, rails, splitters */
-.panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
+/* Collapsible shell chrome — panel headers, rails, splitters.
+   The collapse chevron sits in .panel-host-header next to the title, so panel
+   bodies start with their content and need no chrome row of their own. */
 
 .panel-toggle,
 .rail-toggle {
@@ -1846,28 +1845,95 @@ marker .pc-arrow[fill='none'] {
   flex-direction: column;
 }
 
+.storage-label {
+  margin: 0;
+  padding: var(--pc-space-2) var(--pc-space-2) var(--pc-space-2);
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+  overflow-wrap: anywhere;
+}
+
+/* Files-panel storage controls: quiet, always keyboard reachable, and readable
+   at narrow dock widths (the hint wraps instead of clipping). */
+.storage-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-space-1, 4px);
+  padding: 0 var(--pc-space-2) var(--pc-space-2);
+}
+
+.storage-action {
+  font-family: inherit;
+  font-size: var(--pc-text-xs);
+  font-weight: 500;
+  text-align: left;
+  min-height: 32px;
+  padding: 0 var(--pc-space-2);
+  border: 1px solid var(--pc-input-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-button-bg);
+  color: var(--pc-button-fg);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.storage-action:hover {
+  border-color: var(--pc-focus-ring);
+  background: var(--pc-button-hover-bg);
+}
+
+.storage-action:focus-visible {
+  outline: 2px solid var(--pc-focus-ring);
+  outline-offset: 1px;
+}
+
+.storage-hint {
+  margin: 0;
+  color: var(--pc-muted);
+  font-size: var(--pc-text-xs);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .tree-toolbar {
   display: flex;
   gap: 4px;
   padding: 8px;
 }
 
+/* Icon buttons: the create actions stay reachable at every dock width without
+   taking a row each. 32 px keeps the pointer target at the accessibility floor. */
 .tree-toolbar button {
-  flex: 1;
-  font-family: inherit;
-  font-size: var(--pc-text-xs);
-  min-height: 24px;
-  padding: 3px 6px;
-  border: 1px solid var(--pc-input-border);
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: var(--pc-radius-sm);
-  background: var(--pc-button-bg);
-  color: var(--pc-button-fg);
+  background: transparent;
+  color: var(--pc-muted);
   cursor: pointer;
 }
 
 .tree-toolbar button:hover {
-  border-color: var(--pc-focus-ring);
+  border-color: var(--pc-border);
+  color: var(--pc-fg);
   background: var(--pc-button-hover-bg);
+}
+
+.tree-toolbar button:focus-visible {
+  outline: 2px solid var(--pc-focus-ring);
+  outline-offset: 1px;
+}
+
+.tree-create-error {
+  margin: 4px 0 0;
+  color: var(--pc-danger-fg);
+  font-size: var(--pc-text-xs);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .tree-create {
@@ -2645,6 +2711,25 @@ marker .pc-arrow[fill='none'] {
 /* Play bar overlay (canvas-wrap is the positioning context) */
 .canvas-wrap {
   position: relative;
+  /* The docked transport is a flex row below the canvas, so the canvas
+     yields its height to it instead of pushing it past the viewport. */
+  display: flex;
+  flex-direction: column;
+}
+
+/* The stage stacks the SVG and its overlays; the transport docks below it. */
+.canvas-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+
+.canvas-stage > .pc-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
 }
 
 .playbar {
@@ -3067,6 +3152,126 @@ marker .pc-arrow[fill='none'] {
 
 .snapshot-list button:disabled {
   opacity: 0.5;
+  cursor: default;
+}
+
+/* Persistent Git history: quiet list, explicit preview, forward-only restore. */
+.versions-dialog {
+  width: min(560px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.version-list {
+  list-style: none;
+  margin: var(--pc-space-3) 0;
+  padding: 0;
+  max-height: 32vh;
+  overflow-y: auto;
+  border-top: 1px solid var(--pc-panel-border);
+}
+
+.version-list li {
+  border-bottom: 1px solid var(--pc-panel-border);
+}
+
+.version-select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pc-space-1);
+  width: 100%;
+  min-height: var(--pc-control-min);
+  padding: var(--pc-space-2);
+  border: 0;
+  border-left: 4px solid transparent;
+  background: var(--pc-menu-bg);
+  color: var(--pc-button-fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.version-select:hover {
+  background: var(--pc-list-hover-bg);
+}
+
+.version-select[aria-pressed="true"] {
+  border-left-color: var(--pc-focus-ring);
+  background: var(--pc-list-selected-bg);
+  color: var(--pc-list-selected-fg);
+  font-weight: 600;
+}
+
+.version-select:focus-visible,
+.version-confirm button:focus-visible {
+  outline: 2px solid var(--pc-focus-ring);
+  outline-offset: -2px;
+}
+
+.version-select:disabled {
+  color: var(--pc-disabled-fg);
+  cursor: default;
+}
+
+.version-meta {
+  font-size: var(--pc-text-xs);
+}
+
+.version-preview {
+  margin: var(--pc-space-3) 0;
+  padding: var(--pc-space-3);
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-sm);
+}
+
+.version-preview h3 {
+  margin: 0;
+  font-size: var(--pc-text-md);
+}
+
+.version-preview ul {
+  max-height: 20vh;
+  overflow-y: auto;
+  padding-left: var(--pc-space-5);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--pc-text-sm);
+}
+
+.version-error {
+  color: var(--pc-danger-fg);
+}
+
+.version-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pc-space-2);
+  margin-top: var(--pc-space-3);
+  padding: var(--pc-space-3);
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-sm);
+}
+
+.version-confirm p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.version-confirm button {
+  min-height: var(--pc-control-min);
+  padding: var(--pc-space-1) var(--pc-space-3);
+  border: 1px solid var(--pc-input-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-button-bg);
+  color: var(--pc-button-fg);
+  cursor: pointer;
+}
+
+.version-confirm button.button-primary {
+  background: var(--pc-button-primary-bg);
+  color: var(--pc-button-primary-fg);
+}
+
+.version-confirm button:disabled {
+  color: var(--pc-disabled-fg);
   cursor: default;
 }
 
@@ -3861,7 +4066,9 @@ marker .pc-arrow[fill='none'] {
 }
 
 .panel-host-header .panel-title {
-  flex: 1;
+  /* The title only takes the width of its text so the collapse chevron sits
+     immediately beside it; the panel actions are pushed to the far edge. */
+  flex: 0 1 auto;
   min-height: 32px;
   margin: 0;
   padding: 4px 8px;
@@ -3875,10 +4082,79 @@ marker .pc-arrow[fill='none'] {
 }
 
 .panel-host-header .panel-title:focus-visible,
-.panel-actions summary:focus-visible,
+.panel-host-header .panel-actions summary:focus-visible,
+.panel-info-trigger:focus-visible,
 .view-menu summary:focus-visible {
   outline: 2px solid var(--pc-accent);
   outline-offset: -2px;
+}
+
+.panel-host-header .panel-toggle {
+  margin-left: 2px;
+}
+
+/* The panel actions sit at the trailing edge, away from the title and its
+   chevron, so the three controls never read as one group. */
+.panel-host-header .panel-actions {
+  margin-left: auto;
+}
+
+.panel-info {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.panel-info-trigger {
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--pc-radius-sm);
+  background: transparent;
+  color: var(--pc-muted);
+  cursor: pointer;
+}
+
+.panel-info-trigger:hover {
+  border-color: var(--pc-border);
+  color: var(--pc-fg);
+}
+
+/* Opened by hover *and* by keyboard focus: nothing here is hover-only. It opens
+   to the side away from the panel body, so the explanation never covers the rows
+   the user is asking about. */
+.panel-info-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: calc(100% + 8px);
+  z-index: 40;
+  display: none;
+  width: max-content;
+  max-width: 260px;
+  padding: var(--pc-space-2);
+  border: 1px solid var(--pc-panel-border);
+  border-radius: var(--pc-radius-sm);
+  background: var(--pc-panel-bg);
+  color: var(--pc-fg);
+  font-size: var(--pc-text-xs);
+  line-height: 1.4;
+  text-align: left;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 18%);
+  pointer-events: none;
+}
+
+.panel-info[data-placement='end'] .panel-info-tooltip {
+  left: auto;
+  right: calc(100% + 8px);
+}
+
+.panel-info-trigger:hover + .panel-info-tooltip,
+.panel-info-trigger:focus + .panel-info-tooltip {
+  display: block;
 }
 
 .panel-host-content {

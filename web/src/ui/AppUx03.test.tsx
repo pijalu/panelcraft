@@ -15,8 +15,11 @@ async function mountReady(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
   for (const panel of ['sidebar', 'code', 'props']) {
-    fireEvent.click(screen.getByTestId(`expand-${panel}`));
+    // Code opens by default (no rail to expand); the others start collapsed.
+    const expand = screen.queryByTestId(`expand-${panel}`);
+    if (expand) fireEvent.click(expand);
   }
+  expect(screen.getByTestId('code-pane')).not.toBeNull();
 }
 
 function codeView(): EditorView {

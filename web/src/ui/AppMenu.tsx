@@ -33,7 +33,9 @@ export interface AppMenuProps {
   onHistoryRequest: () => void;
   onPresent: () => void;
   onSnapshotsRequest: () => void;
+  onVersionsRequest: () => void;
   onClearRequest: () => void;
+  onOpenDirectory?: () => void;
   onToggleEphemeral: (on: boolean) => void;
   /** UX08-WP04: install affordance (absent in a standalone window). */
   install?: AppMenuInstall;
@@ -104,6 +106,7 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
       resetDiagramLayout: props.onResetDiagramLayout,
       resetRoutes: props.onResetRoutes,
       importFiles: () => filesRef.current?.click(),
+      openDirectory: props.onOpenDirectory,
       importZip: () => zipRef.current?.click(),
       exportCurrent,
       exportWorkspaceZip: exportZip,
@@ -113,6 +116,7 @@ export function AppMenu(props: AppMenuProps): ComponentChildren {
       history: props.onHistoryRequest,
       present: props.onPresent,
       snapshots: props.onSnapshotsRequest,
+      versions: ready && manager.versions !== null ? props.onVersionsRequest : undefined,
       clearData: props.onClearRequest,
       setPrivate: props.onToggleEphemeral,
     },

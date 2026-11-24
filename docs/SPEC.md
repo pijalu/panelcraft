@@ -22,15 +22,18 @@ no links in documentation):
   static diagrams.
 * **Workspace** — multiple files, directory tree, per-file import/export, full ZIP
   export/import.
-* **Zero server storage** — everything lives in the browser; nothing is sent anywhere.
+* **Local-first storage** — static hosting uses browser storage by default; an explicitly
+  configured local server or user-selected browser directory can persist ordinary files.
+  No workspace content is sent to a third-party origin.
 * **Shipable two ways** — fully static on GitHub Pages, *and* as a single Go binary
   (Windows/Linux/macOS) that serves the app plus a headless CLI (`validate` / `convert`
   / `render`).
 
 ### Out of scope (explicitly)
 
-Real-time collaboration, authentication, server-side persistence, AI assistance, mobile
-native apps. Full mermaid feature coverage (only the subset in [FILE-FORMAT.md](FILE-FORMAT.md)).
+Real-time collaboration, authentication, network-hosted or multi-user persistence, remote
+Git/GitHub operations, AI assistance, mobile native apps. Full mermaid feature coverage
+(only the subset in [FILE-FORMAT.md](FILE-FORMAT.md)).
 
 ---
 
@@ -192,9 +195,10 @@ IcePanel-style visual storytelling over the static diagram.
   flow rather than a step is selected. A flow selection and a canvas selection
   are mutually exclusive: picking a step clears the canvas selection and pressing
   the diagram clears the step.
-  Every non-empty document has a live virtual **Default flow**, whether or not custom flows
-  exist. Connections become message steps in stable topological order (creation order is the
-  cycle fallback and parallel links remain distinct); every otherwise unrepresented object
+  Every valid document has a live virtual **Default flow**, whether or not custom flows
+  exist. A blank document's Default has zero steps and gains them as elements are added.
+  Connections become message steps in strict connector creation order, including parallel
+  and cyclic links (parallel links remain distinct); every otherwise unrepresented object
   becomes a process step, so the walkthrough covers the current diagram. Default flow is never
   persisted merely by opening, presenting, saving or reloading. Its first explicit edit creates
   and selects an independent **Custom flow** as one undoable command, while Default remains
@@ -252,23 +256,69 @@ IcePanel-style visual storytelling over the static diagram.
 
 ### 4.8 Storage (FR-S)
 
-* **FR-S1** Persistence: IndexedDB autosave, debounced 800 ms; last-open workspace
-  restored on load. Storage model = **browser-local only**; "nothing server-side" is a
-  hard constraint (E2E asserts zero network calls after initial load).
-* **FR-S2** Ephemeral mode ("private tab" toggle): in-memory only, no IDB writes;
-  export reminder banner every 10 min.
+* **FR-S1** Persistence: autosave is debounced 800 ms. Static hosting and an
+  unconfigured Go server persist the workspace in the browser and restore the last-open
+  state; these browser-storage sessions make no runtime API calls. The browser backend is
+  chosen once at startup, in this order: an explicitly authorized native directory, then
+  the origin private file system, then Web Storage `localStorage`, then legacy IndexedDB,
+  with in-memory as the final non-persistent safeguard. An existing non-empty workspace
+  is never abandoned in favour of an empty preferred backend, so upgrading cannot look
+  like data loss. Backends stay independent: there is no automatic copy, migration or
+  synchronization between them, and a save failure never switches the active backend.
+  An explicitly configured local filesystem or Git server instead uses its same-origin
+  workspace API and skips every browser probe. A user-selected local directory can be
+  used directly in supporting browsers without a server or network requests. Storage
+  adapters share one snapshot-oriented workspace port.
+* **FR-S2** Ephemeral mode ("private tab" toggle): in-memory only, no persistent writes;
+  export reminder banner every 10 min. Leaving private mode restores the previous backend.
 * **FR-S3** Quota handling: surface quota errors; graceful degradation to ephemeral
-  mode with warning; storage usage indicator in settings.
-* **FR-S4** Reset/clear-all-data with typed confirmation.
+  mode with warning; storage usage indicator in settings where the backend can estimate it.
+* **FR-S4** Reset/clear-all-data with typed confirmation. Server and directory backends
+  identify the real workspace files that will be deleted and close the dialog only after
+  deletion succeeds.
 * **FR-S5** Schema versioning of stored workspace (migrations forward-only).
+* **FR-S6** Optional server filesystem: `serve -local DIR -storage-type filesystem`
+  confines reads and writes to `DIR`, with `-depth N` limiting descendants (`0` = root
+  files, `-1` or omitted = unlimited). Ordinary UTF-8 files remain directly editable;
+  `.panelcraft/workspace.json` stores workspace state. `.git`, reserved metadata, binary
+  files and non-regular files are not exposed. Strong revisions reject stale writes rather
+  than overwriting external edits. Writable mode requires a loopback listener and is a
+  local single-user feature, not authenticated or multi-user storage.
+* **FR-S7** Direct directory access: **Open directory…** is offered in the Files panel
+  (and the application menu) whenever the browser supports directory picking. Selection
+  requires an explicit gesture and a secure context; the page never opens a picker on its
+  own at startup. Cancellation or load failure preserves the current workspace. A chosen
+  handle is remembered, and later startups reuse it silently only while read/write
+  permission is still granted; otherwise the browser fallback stays active and
+  **Reconnect local folder…** asks for permission from that click. Leaving a native folder
+  for browser storage is explicit (**Use browser storage**) and never copies files
+  between backends. Save conflicts and other failures remain visible and are never
+  reported as saved. The active backend is always named in the Files panel, and the
+  clear-data dialog names the files it really deletes.
+* **FR-S8** Optional local Git: `serve -local DIR -storage-type git` opens or initializes
+  a standalone non-bare repository at exactly `DIR`, retaining filesystem confinement,
+  depth limits and strong revisions. Only workspace content changes create commits;
+  metadata-only saves do not. `-git-author-name` and `-git-author-email` override the
+  PanelCraft-local commit identity. The optional version-store port and **Git versions**
+  dialog list commits, preview a historical file list and restore a version as a forward
+  commit.
+  Externally staged paths and merges in progress block mutations. Detached HEAD is
+  supported; bare repositories and linked-worktree `.git` files are rejected. No remote,
+  credential or hook operation is performed, and historical snapshots do not promise to
+  preserve empty directories.
 
 ### 4.9 CLI (Go binary) (FR-X)
 
 Single static binary, no runtime deps, all assets embedded (`go:embed`).
 
-* `panelcraft serve [--addr :8080] [--open] [dir]` — serves the SPA at `/`, workspace
-  files under `[dir]` read-only at `/files/*` (optional convenience for demo assets).
-  SPA fallback to `index.html`. No write endpoints, ever.
+* `panelcraft serve [--addr 127.0.0.1:8080] [--open] [--dev-dir DIR] [DIR]` — serves
+  the SPA at `/` and optionally exposes positional `DIR` read-only at `/files/*` for demo
+  assets. With no `-local`, workspace persistence remains in the browser.
+* `panelcraft serve -local DIR [-storage-type filesystem|filestorage|git] [-depth N]
+    [-git-author-name NAME] [-git-author-email EMAIL]` — additionally enables the confined,
+    writable workspace described by the optional server filesystem and local Git requirements
+    above. The two directory options are independent and cannot be combined. Git author
+    options require `-storage-type git`.
 * `panelcraft validate <file|dir>... [--json]` — parse + semantic validation
   (dangling refs, import cycles, flow refs, duplicate ids). Exit 0 clean; exit 1
   findings; exit 2 usage/IO error. CI-friendly.
@@ -331,8 +381,8 @@ flat. Grammar and diagnostics: [FILE-FORMAT.md](FILE-FORMAT.md) §3.2, §3.3, §
 | N4 | Binary size | < 30 MB compressed |
 | N5 | Accessibility | WCAG 2.1 AA for UI chrome; canvas: full keyboard object nav, ARIA live narration in play mode; `prefers-reduced-motion` honored |
 | N6 | Security | Strict CSP (no inline script eval in app), exported SVG sanitized (no scripts/foreignObject from untrusted labels), CLI: path traversal guarded, no telemetry |
-| N7 | Self-containment & privacy | **Zero external resources at runtime**: no CDN, no third-party origins, no webfonts (system font stack), icons = inline SVG (no icon fonts/CDN); zero network calls at runtime — proven by E2E network block + CI asset scan |
-| N8 | Offline | App shell + last workspace available offline (service worker, M7); bundle fully self-contained |
+| N7 | Self-containment & privacy | **Zero external resources at runtime**: no CDN, no third-party origins, no webfonts (system font stack), icons = inline SVG (no icon fonts/CDN). Static and direct-directory sessions make no workspace network requests; the explicit local-server backend uses only its same-origin API. Proven by E2E network block + CI asset scan |
+| N8 | Offline | Static/IndexedDB app shell + last workspace available offline (service worker, M7); bundle fully self-contained. Direct folders need browser permission; server-backed workspaces need their local server |
 | N9 | Browser support | Evergreen Chrome/Edge/Firefox/Safari (last 2 versions); `CompressionStream` required (Safari ≥16.4), fallback dependency fflate if feature absent (ADR-0004) |
 | N10 | i18n | English v1; all strings centralized for later l10n |
 | N11 | Offline build & reproducibility | Build runs **without network** after one-time dependency fetch (`npm ci` + `go mod download`, lockfile/go.sum committed); CI may run fully offline via caches; produced artifacts are self-contained — web bundle inlines all assets, Go binary embeds `web/dist` via `go:embed` |
@@ -565,13 +615,25 @@ implemented and covered by tests.
 
 Comments/annotations on objects · export to draw.io/PlantUML · plugin API for custom
 stencils · additional diagram notations (sequence-native, deployment advanced) ·
-optional file-system access API for real folders.
+provider-neutral remote Git and a possible GitHub adapter after separate security and UX
+design. Direct browser-directory access is now implemented as an optional capability, so it
+is no longer a backlog item.
 Flow→`sequenceDiagram` export (`.seq.mmd`) was subsequently completed from M6-WP7.
 N10 full UI string centralization was subsequently completed in `strings.ts`; the
 runtime remains English-only (see M7.md). F-39/F-40 subsequently closed the carried
 camera-containment and dependencies-heading items; active flow actors now have browser containment assertions
 and the dependencies heading names the owning file. The flow-presentation pass subsequently
 added one-beat history fading and production reduced-motion parity, with light/dark review.
+
+Drawing-session follow-ups (found in the default-shell review):
+
+* **Frame the drawing when it opens** — a template or a saved file opens at 1:1
+  from the origin, so a small diagram sits in the top-left corner of a large
+  canvas until the user presses `F`. An initial fit-to-diagram (only when the
+  file has no saved view) would match what people expect from diagram tools.
+* **Return to the editing view after a presentation** — leaving a presentation
+  keeps the camera on the last step, so the user has to find their way back to
+  the area they were editing. The pre-presentation camera should be restored.
 
 Route-editing follow-ups (found in the connection-move review):
 

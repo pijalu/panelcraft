@@ -4,7 +4,6 @@
 import { useRef } from 'preact/hooks';
 import type { Kind } from '../engine/model/types';
 import { labelFor } from './CanvasController';
-import { CollapseButton } from './PanelChrome';
 import { groupKinds, quickAddKey } from './paletteGroups';
 import { s } from './strings';
 
@@ -13,13 +12,11 @@ interface PaletteProps {
   onPlace: (kind: Kind) => void;
   /** Pointer-based drop: (kind, end-event) — App converts to canvas coords. */
   onDragDrop: (kind: Kind, e: PointerEvent) => void;
-  /** F-10: collapse this panel into its rail. */
-  onCollapse?: () => void;
 }
 
 const DRAG_SLOP_PX = 4;
 
-export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps) {
+export function Palette({ kinds, onPlace, onDragDrop }: PaletteProps) {
   const dragging = useRef<{ kind: Kind; ghost: HTMLDivElement } | null>(null);
   // A press that became a drag reports its drop on pointer-up; the click event
   // that follows the same press must not place a second element.
@@ -62,12 +59,7 @@ export function Palette({ kinds, onPlace, onDragDrop, onCollapse }: PaletteProps
 
   return (
     <aside class="palette" data-testid="palette" aria-label={s('Shape palette')}>
-      {/* WP02: the panel host header already names this panel. */}
-      {onCollapse && (
-        <div class="panel-head">
-          <CollapseButton id="palette" label={s('shapes')} onCollapse={onCollapse} />
-        </div>
-      )}
+      {/* The host header owns the title and the collapse chevron. */}
       {groupKinds(kinds).map((group) => (
         <section class="palette-group" data-testid={`palette-group-${group.id}`} key={group.id}>
           <h3 class="palette-group-title">{group.title}</h3>

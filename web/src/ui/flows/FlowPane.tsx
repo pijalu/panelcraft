@@ -310,7 +310,8 @@ function ActionBar(props: { ready: { msg: boolean; process: boolean }; onAdd(kin
 
 /**
  * Flows to offer and whether the shown one is the virtual Default flow. Every
- * non-empty diagram is presentable before anyone authors a custom flow.
+ * parsed document has Default before anyone authors a custom flow; a blank one
+ * starts with no steps and follows the first added element.
  */
 function shownFlows(
   doc: Doc,

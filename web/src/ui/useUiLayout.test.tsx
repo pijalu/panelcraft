@@ -91,6 +91,33 @@ describe('useUiLayout (UX-02)', () => {
     expect(Object.values(result.current.layout.panels)).not.toEqual(['open', 'open', 'open', 'open', 'open']);
   });
 
+  it('starts a fresh profile with Code open beside the canvas on a wide screen', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
+    const { manager } = managerWith(undefined as unknown as UiLayout);
+    const { result } = renderHook(() => useUiLayout(manager, false, 0));
+    expect(result.current.layout.panels).toEqual({
+      sidebar: 'collapsed',
+      flows: 'collapsed',
+      palette: 'collapsed',
+      code: 'open',
+      props: 'collapsed',
+    });
+  });
+
+  it('starts a fresh profile on a narrow screen with Code as a rail, not a drawer over the canvas', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 680 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 820 });
+    const { manager } = managerWith(undefined as unknown as UiLayout);
+    const { result } = renderHook(() => useUiLayout(manager, false, 0));
+    // Before the first resize event: the initial state itself must fit.
+    expect(result.current.layout.panels.code).toBe('collapsed');
+    expect(result.current.layout.docks.code).toBe('right');
+    // The rail reopens it on demand as the accessible narrow drawer.
+    act(() => result.current.openPanel('code'));
+    expect(result.current.layout.panels.code).toBe('open');
+  });
+
   it('restores an unchanged stored layout and persists dock/close operations at once', () => {
     // The layout is normalised against the live viewport, so state the viewport
     // the stored layout was made for instead of inheriting a neighbour's width.

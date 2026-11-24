@@ -11,7 +11,6 @@ import type { ComponentChildren, Ref } from 'preact';
 import { useState } from 'preact/hooks';
 import type { CanvasController } from './CanvasController';
 import type { DiagramLink, DiagramObject } from './CanvasController';
-import { CollapseButton } from './PanelChrome';
 import { LINE_OPTIONS, MARKER_OPTIONS, ROUTE_OPTIONS, WIDTH_OPTIONS } from './connectorOptions';
 import { VisualPicker } from './VisualPicker';
 import { CloseIcon, DisclosureClosedIcon, DisclosureOpenIcon } from './icons';
@@ -63,7 +62,6 @@ export interface PropertiesPanelProps {
   /** F-13 `Fit` command: size the selection to its labels. */
   onFit?: () => void;
   /** F-10: collapse this panel into its rail. */
-  onCollapse?: () => void;
   /** IR v9: icons declared in this file (picker source). */
   projectIcons?: IconDecl[];
   /** IR v9: open the project-icon manager. */
@@ -241,7 +239,6 @@ function ObjectFields(props: {
   nameFieldRef?: Ref<HTMLInputElement>;
   onChange: ObjectChange;
   onFit?: () => void;
-  onCollapse?: () => void;
   sections: Record<string, boolean>;
   onToggleSection?: (s: string) => void;
   projectIcons?: IconDecl[];
@@ -252,11 +249,6 @@ function ObjectFields(props: {
   const open = (id: string): boolean => sections[id] !== false;
   return (
     <aside class="properties" data-testid="properties" aria-label={s("Properties")}>
-      {props.onCollapse && (
-        <div class="panel-head">
-          <CollapseButton id="props" label={s("properties")} onCollapse={props.onCollapse} />
-        </div>
-      )}
       <Section id="identity" title={s("Identity")} open={open('identity')} onToggle={onToggleSection}>
         <Field label={s("Name")}>
           <input
@@ -648,7 +640,7 @@ function LinkFields(props: {
 }
 
 export function PropertiesPanel(props: PropertiesPanelProps) {
-  const { obj, link, nameFieldRef, linkLabelRef, onChangeObject, onChangeLink, onFit, onCollapse } = props;
+  const { obj, link, nameFieldRef, linkLabelRef, onChangeObject, onChangeLink, onFit } = props;
   const sections = props.sections ?? {};
   if (obj) {
     return (
@@ -657,7 +649,6 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         nameFieldRef={nameFieldRef}
         onChange={onChangeObject}
         onFit={onFit}
-        onCollapse={onCollapse}
         sections={sections}
         onToggleSection={props.onToggleSection}
         projectIcons={props.projectIcons}
@@ -680,11 +671,6 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
   }
   return (
     <aside class="properties" data-testid="properties" aria-label={s("Properties")}>
-      {onCollapse && (
-        <div class="panel-head">
-          <CollapseButton id="props" label={s("properties")} onCollapse={onCollapse} />
-        </div>
-      )}
       <p class="muted panel-empty">{s("Select an object or link to edit its properties.")}</p>
     </aside>
   );

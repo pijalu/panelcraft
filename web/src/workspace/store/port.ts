@@ -41,7 +41,9 @@ export interface StoredWorkspace {
   activePath: string | null;
 }
 
-export type StoreErrorCode = 'quota' | 'corrupt' | 'newer-schema' | 'unavailable';
+export type StoreErrorCode = 'quota' | 'corrupt' | 'newer-schema' | 'conflict' | 'unavailable';
+
+export type StorageKind = 'browser' | 'server' | 'directory' | 'opfs' | 'local' | 'memory';
 
 export class StoreError extends Error {
   constructor(
@@ -53,8 +55,25 @@ export class StoreError extends Error {
   }
 }
 
-/** Storage port — browser-local only, nothing server-side (ADR-0003, FR-S1). */
+export interface WorkspaceVersion {
+  id: string;
+  message: string;
+  savedAt: number;
+}
+
+/** Optional persistent history; non-Git stores deliberately expose no version port. */
+export interface VersionStoragePort {
+  history(): Promise<WorkspaceVersion[]>;
+  show(id: string): Promise<StoredWorkspace>;
+  restore(id: string): Promise<StoredWorkspace>;
+}
+
+/** Storage port implemented by browser, HTTP, memory, and directory adapters. */
 export interface StoragePort {
+  /** UI capability metadata; it does not change the persistence contract. */
+  readonly kind?: StorageKind;
+  readonly label?: string;
+  readonly versions?: VersionStoragePort;
   /** Last stored workspace, or null when none. Throws StoreError. */
   load(): Promise<StoredWorkspace | null>;
   /** Persist; throws StoreError('quota') on QuotaExceededError. */
@@ -63,6 +82,20 @@ export interface StoragePort {
   clear(): Promise<void>;
   /** Best-effort usage estimate in bytes, or null when unavailable (FR-S3). */
   estimate(): Promise<number | null>;
+}
+
+/**
+ * Optional companion capability: did this backend ever store a workspace?
+ * `load()` alone cannot answer that for adapters which synthesize an empty
+ * record (handle-backed folders always return one), and selection must not rank
+ * a never-used backend above one that holds real data.
+ */
+export interface ContentProbePort {
+  hasContent(): Promise<boolean>;
+}
+
+export function isContentProbe(port: StoragePort): port is StoragePort & ContentProbePort {
+  return typeof (port as Partial<ContentProbePort>).hasContent === 'function';
 }
 
 export function newStoredWorkspace(name = 'workspace'): StoredWorkspace {

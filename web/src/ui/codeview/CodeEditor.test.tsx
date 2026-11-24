@@ -7,9 +7,11 @@ import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 import { render, cleanup } from '@testing-library/preact';
 import { act } from 'preact/test-utils';
 import { EditorView } from '@codemirror/view';
+import { isolateHistory } from '@codemirror/commands';
 import { CodeEditor, posToOffset } from './CodeEditor';
 import { createSyncMachine, type SyncMachine } from './sync';
 import type { Doc } from '../../engine/model/types';
+import { codePorts } from '../codePorts';
 
 const PDL = 'pcd 1.0\n\nsystem a "A" {\n}\n';
 
@@ -119,5 +121,44 @@ describe('CodeEditor', () => {
     });
     // with the synchronous scheduler the debounced render already landed
     expect(document.querySelector('.cm-content')?.textContent).toContain('Pat');
+  });
+
+  it('keeps replacement ports and live history when an older editor unmounts', () => {
+    const { machine } = makeMachine(PDL);
+    const revealRef: { current: ((id: string) => void) | null } = { current: null };
+    const older = render(<CodeEditor machine={machine} revealRef={revealRef} />);
+    const olderView = EditorView.findFromDOM(older.container.querySelector('.cm-editor') as HTMLElement)!;
+    act(() => {
+      olderView.dispatch({
+        changes: { from: olderView.state.doc.length, insert: 'system b "B"\n' },
+        annotations: isolateHistory.of('full'),
+      });
+    });
+    const replacement = render(<CodeEditor machine={machine} revealRef={revealRef} />);
+
+    act(() => older.unmount());
+
+    expect(revealRef.current).not.toBeNull();
+    expect(codePorts.undo).not.toBeNull();
+    expect(codePorts.redo).not.toBeNull();
+    act(() => revealRef.current?.('a'));
+    expect(replacement.container.querySelectorAll('.pc-code-highlight')).toHaveLength(2);
+    act(() => codePorts.undo?.());
+    expect(replacement.container.querySelector('.cm-content')?.textContent).toContain('system a');
+    expect(replacement.container.querySelector('.cm-content')?.textContent).not.toContain('system b');
+  });
+
+  it('starts a new undo group for a machine-originated write', () => {
+    const { machine } = makeMachine('');
+    render(<CodeEditor machine={machine} />);
+    setBuffer(PDL);
+    const edited = PDL.replace('system a "A" {', 'system a "A" {\n  description "first"');
+    act(() => machine.textChanged(edited));
+    expect(document.querySelector('.cm-content')?.textContent).toContain('description');
+
+    act(() => codePorts.undo?.());
+
+    const view = EditorView.findFromDOM(document.querySelector('.cm-editor') as HTMLElement)!;
+    expect(view.state.doc.toString()).toBe(PDL);
   });
 });

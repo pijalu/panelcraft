@@ -25,7 +25,11 @@ const intro = (text = '# Before we start\n\nThe story runs **left to right**.'):
   state({ status: 'playing', narration: 'Before we start', framing: { kind: 'intro', text } });
 
 describe('framing explanation popover', () => {
-  afterEach(cleanup);
+  afterEach(async () => {
+    cleanup();
+    // Preact defers effect cleanup to a macrotask; drain it before jsdom teardown.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 
   it('renders the framing prose as Markdown, not plain narration', () => {
     render(<PresentLayer player={player(intro())} />);

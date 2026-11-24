@@ -139,24 +139,48 @@ export function drawWaypointHandles(
  * ends are both interior vertices. Dragging slides the run; a click without
  * movement is not an edit, so an untouched automatic route gains no geometry.
  */
+const SEGMENT_HANDLE_SIZE = 9;
+const SEGMENT_HANDLE_LABEL_GAP = 4;
+
+/** Move only along the channel, to the nearest side of its painted label box. */
+function segmentHandlePoint(
+  mid: Point,
+  axis: 'h' | 'v',
+  label: Rect | undefined,
+): Point {
+  if (!label) return mid;
+  const half = SEGMENT_HANDLE_SIZE / 2;
+  const handle = { x: mid.x - half, y: mid.y - half, w: SEGMENT_HANDLE_SIZE, h: SEGMENT_HANDLE_SIZE };
+  const collides = handle.x < label.x + label.w && handle.x + handle.w > label.x &&
+    handle.y < label.y + label.h && handle.y + handle.h > label.y;
+  if (!collides) return mid;
+  const before = (axis === 'h' ? label.x : label.y) - SEGMENT_HANDLE_LABEL_GAP - half;
+  const after = (axis === 'h' ? label.x + label.w : label.y + label.h) + SEGMENT_HANDLE_LABEL_GAP + half;
+  const origin = axis === 'h' ? mid.x : mid.y;
+  const at = Math.abs(before - origin) <= Math.abs(after - origin) ? before : after;
+  return axis === 'h' ? { x: at, y: mid.y } : { x: mid.x, y: at };
+}
+
 export function drawSegmentHandles(
   overlay: SVGGElement,
   list: ReadonlyArray<{ from: number; to: number; mid: Point; axis: 'h' | 'v' | 'diag'; editable: boolean }>,
   linkId: string,
   label: (axis: 'h' | 'v' | 'diag') => string,
+  labelBounds?: Rect,
 ): void {
   for (const channel of list) {
     if (!channel.editable || channel.axis === 'diag') continue;
     const rect = el('rect') as SVGRectElement;
-    const size = 9;
+    const size = SEGMENT_HANDLE_SIZE;
+    const at = segmentHandlePoint(channel.mid, channel.axis, labelBounds);
     rect.setAttribute('class', 'pc-segment');
     rect.setAttribute('data-link', linkId);
     rect.setAttribute('data-seg-index', String(channel.from));
     rect.setAttribute('data-seg-to', String(channel.to));
     rect.setAttribute('data-seg-axis', channel.axis);
     rect.setAttribute('data-testid', `segment-${channel.from}`);
-    rect.setAttribute('x', String(channel.mid.x - size / 2));
-    rect.setAttribute('y', String(channel.mid.y - size / 2));
+    rect.setAttribute('x', String(at.x - size / 2));
+    rect.setAttribute('y', String(at.y - size / 2));
     rect.setAttribute('width', String(size));
     rect.setAttribute('height', String(size));
     rect.setAttribute('rx', '2');
