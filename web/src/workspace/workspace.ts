@@ -755,7 +755,13 @@ export class WorkspaceManager {
   async switchStorage(port: StoragePort): Promise<void> {
     if (this.ephemeral) throw new StoreError('unavailable', 'leave private mode before switching storage');
     await this.flush();
-    const rec = await port.load();
+    let rec = await port.load();
+    // A directory without metadata loads as a new record. Save it before the
+    // switch resolves so the first write never depends on an unload handler.
+    if (rec?.savedAt === 0) {
+      rec = { ...rec, savedAt: Date.now() };
+      await port.save(rec);
+    }
     this.autosaver.cancel();
     this.attachStorage(port);
     this.root = newRoot();

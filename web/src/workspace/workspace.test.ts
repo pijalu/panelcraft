@@ -5,7 +5,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { WorkspaceManager, pcdToState, stateToPcd, type CanvasState } from './workspace';
 import { MemoryStorage } from './store/memory';
 import { IdbStorage } from './store/idb';
-import { newStoredWorkspace, StoreError, type StoragePort } from './store/port';
+import { newStoredWorkspace, StoreError, type StoragePort, type StoredWorkspace } from './store/port';
 import { getNode, readFile, deleteNode } from './fs';
 import { parsePDL } from '../engine/format/parser';
 
@@ -534,6 +534,24 @@ describe('pluggable storage lifecycle', () => {
     await ws.setEphemeral(false);
     expect(ws.storageKind).toBe('server');
     expect(ws.storageLabel).toBe('Server filesystem');
+  });
+
+  it('persists a directory-loaded workspace before completing the switch', async () => {
+    const ws = new WorkspaceManager({ storage: new MemoryStorage(), skipWelcome: true });
+    const saved: StoredWorkspace[] = [];
+    const next: StoragePort = {
+      kind: 'directory',
+      load: async () => newStoredWorkspace('architecture'),
+      save: async (workspace) => { saved.push(structuredClone(workspace)); },
+      clear: async () => undefined,
+      estimate: async () => null,
+    };
+
+    await ws.switchStorage(next);
+
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.name).toBe('architecture');
+    expect(ws.storageKind).toBe('directory');
   });
 
   it('switches workspaces without deleting the previous backend', async () => {
